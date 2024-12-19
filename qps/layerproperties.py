@@ -20,10 +20,11 @@ import pathlib
 import re
 import sys
 import warnings
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Optional, Union
 
-from osgeo import gdal, osr
-
+from qgis.PyQt.QtWidgets import QAction, QApplication, QButtonGroup, QCheckBox, QComboBox, QDialog, QDialogButtonBox, \
+    QGridLayout, QHBoxLayout, QLabel, QLineEdit, QMainWindow, QMenu, QMessageBox, QSizePolicy, QSpacerItem, \
+    QSpinBox, QTableView, QToolButton, QVBoxLayout, QWidget
 from qgis.core import Qgis, QgsAction, QgsApplication, QgsCategorizedSymbolRenderer, QgsContrastEnhancement, \
     QgsDataProvider, QgsDistanceArea, QgsEditFormConfig, QgsEditorWidgetSetup, QgsExpression, QgsExpressionContext, \
     QgsExpressionContextGenerator, QgsExpressionContextScope, QgsExpressionContextUtils, QgsFeature, QgsFeatureRenderer, \
@@ -34,9 +35,6 @@ from qgis.core import Qgis, QgsAction, QgsApplication, QgsCategorizedSymbolRende
     QgsSingleBandPseudoColorRenderer, QgsSingleSymbolRenderer, QgsVectorDataProvider, QgsVectorLayer, QgsWkbTypes
 from qgis.PyQt.QtCore import pyqtSignal, QMimeData, QModelIndex, QObject, QTimer, QVariant
 from qgis.PyQt.QtGui import QCloseEvent, QIcon
-from qgis.PyQt.QtWidgets import QAction, QApplication, QButtonGroup, QCheckBox, QComboBox, QDialog, QDialogButtonBox, \
-    QGridLayout, QHBoxLayout, QLabel, QLineEdit, QMainWindow, QMenu, QMessageBox, QSizePolicy, QSpacerItem, QSpinBox, \
-    QTableView, QToolButton, QVBoxLayout, QWidget
 from qgis.PyQt.QtXml import QDomDocument
 from .qgisenums import QGIS_RASTERBANDSTATISTIC
 from .speclib import EDITOR_WIDGET_REGISTRY_KEY
@@ -72,7 +70,7 @@ from . import DIR_UI_FILES
 from .classification.classificationscheme import ClassificationScheme
 from .models import OptionListModel, Option
 from .speclib.core import can_store_spectral_profiles
-from .utils import write_vsimem, loadUi, defaultBands, iconForFieldType, qgsFields, copyEditorWidgetSetup
+from .utils import loadUi, defaultBands, iconForFieldType, qgsFields, copyEditorWidgetSetup
 from .vectorlayertools import VectorLayerTools
 
 RENDER_CLASSES = {}
@@ -572,7 +570,7 @@ def rendererFromXml(xml):
 def defaultRasterRenderer(layer: QgsRasterLayer,
                           bandIndices: List[int] = None,
                           sampleSize: int = 256,
-                          readQml: bool = True) -> QgsRasterRenderer:
+                          readQml: bool = True) -> Optional[QgsRasterRenderer]:
     """
     Returns a good default Raster Renderer.
     See https://bitbucket.org/hu-geomatics/enmap-box/issues/166/default-raster-visualization
@@ -645,7 +643,10 @@ def defaultRasterRenderer(layer: QgsRasterLayer,
     assert isinstance(dp, QgsRasterDataProvider)
 
     stats = QGIS_RASTERBANDSTATISTIC.Min | QGIS_RASTERBANDSTATISTIC.Max
-    bandStats = [dp.bandStatistics(b + 1, stats=stats, sampleSize=sampleSize) for b in bandIndices]
+
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore', category=DeprecationWarning)
+        bandStats = [dp.bandStatistics(b + 1, stats=stats, sampleSize=sampleSize) for b in bandIndices]
 
     # classification ? -> QgsPalettedRasterRenderer
     classes = ClassificationScheme.fromMapLayer(layer)
@@ -739,49 +740,6 @@ def rendererToXml(layerOrRenderer, geomType: QgsWkbTypes = None):
         root = doc.createElement('renderer')
         layerOrRenderer.writeXml(doc, root)
         doc.appendChild(root)
-        if False:
-            import uuid
-            xml = """<VRTDataset rasterXSize="1" rasterYSize="1">
-                      <GeoTransform>  0.0000000000000000e+00,  1.0000000000000000e+00,  0.0000000000000000e+00,
-                      0.0000000000000000e+00,  0.0000000000000000e+00, -1.0000000000000000e+00</GeoTransform>
-                      <VRTRasterBand dataType="Float32" band="1">
-                        <Metadata>
-                          <MDI key="STATISTICS_MAXIMUM">0</MDI>
-                          <MDI key="STATISTICS_MEAN">0</MDI>
-                          <MDI key="STATISTICS_MINIMUM">0</MDI>
-                          <MDI key="STATISTICS_STDDEV">0</MDI>
-                        </Metadata>
-                        <Description>Band 1</Description>
-                        <Histograms>
-                          <HistItem>
-                            <HistMin>0</HistMin>
-                            <HistMax>0</HistMax>
-                            <BucketCount>1</BucketCount>
-                            <IncludeOutOfRange>0</IncludeOutOfRange>
-                            <Approximate>0</Approximate>
-                            <HistCounts>0</HistCounts>
-                          </HistItem>
-                        </Histograms>
-                      </VRTRasterBand>
-                    </VRTDataset>
-                    """
-            path = '/vsimem/{}.vrt'.format(uuid.uuid4())
-            drv = gdal.GetDriverByName('VRT')
-            assert isinstance(drv, gdal.Driver)
-            write_vsimem(path, xml)
-            ds = gdal.Open(path)
-            assert isinstance(ds, gdal.Dataset)
-            srs = osr.SpatialReference()
-            srs.ImportFromEPSG(4326)
-            ds.SetProjection(srs.ExportToWkt())
-            ds.FlushCache()
-            lyr = QgsRasterLayer(path)
-            assert lyr.isValid()
-            lyr.setRenderer(layerOrRenderer.clone())
-            err = lyr.exportNamedStyle(doc)
-            # remove dummy raster layer
-            lyr = None
-            drv.Delete(path)
 
     elif isinstance(layerOrRenderer, QgsFeatureRenderer) and geomType is not None:
         # todo: distinguish vector type from requested renderer
@@ -988,6 +946,20 @@ def showLayerPropertiesDialog(layer: QgsMapLayer,
     return None
 
 
+class AttributeTableMapCanvas(QgsMapCanvas):
+
+    def __init__(self, *args, **kwds):
+        super().__init__(*args, **kwds)
+        s = ""
+
+    def panToFeatureIds(self, layer, QgsVectorLayer=None, *args, **kwargs):
+        s = ""
+        s = ""
+
+    def zoomToFeatureIds(self, layer, QgsVectorLayer=None, *args, **kwargs):
+        s = ""
+
+
 class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
     """
     Reimplements QgsAttributeTableDialog which unfortunately is not
@@ -996,7 +968,7 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
     sigWindowIsClosing = pyqtSignal()
 
     def __init__(self, mLayer: QgsVectorLayer, *args,
-                 initialMode: QgsAttributeTableFilterModel.FilterMode = QgsAttributeTableFilterModel.ShowVisible,
+                 initialMode: QgsAttributeTableFilterModel.FilterMode = QgsAttributeTableFilterModel.ShowAll,
                  **kwds):
         super().__init__(*args, **kwds)
         loadUi(pathlib.Path(DIR_UI_FILES) / 'attributetablewidget.ui', self)
@@ -1044,8 +1016,10 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
         self.mLayer: QgsVectorLayer = mLayer
         self.mLayer.nameChanged.connect(self.updateTitle)
 
-        self.mMapCanvas = QgsMapCanvas()
+        # self.mMapCanvas = QgsMapCanvas()
+        self.mMapCanvas = AttributeTableMapCanvas()
         self.mMapCanvas.setLayers([self.mLayer])
+
         # Initialize the window geometry
         # geom = settings.value("Windows/BetterAttributeTable/geometry")
         # self.restoreGeometry(geom)
@@ -1075,7 +1049,12 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
 
         # Initialize dual view
         # self.mMainView.init(mLayer, self.mMapCanvas, r, self.mEditorContext, False)
-        self.mMainView.init(mLayer, self.mMapCanvas)
+
+        self.mFeatureRequest = QgsFeatureRequest()
+        self.mContext = QgsAttributeEditorContext()
+        self.mContext.setMapCanvas(self.mMapCanvas)
+
+        self.mMainView.init(mLayer, self.mMapCanvas, self.mFeatureRequest, self.mContext)
 
         config = mLayer.attributeTableConfig()
         self.mMainView.setAttributeTableConfig(config)
@@ -1795,7 +1774,7 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
             self.mMainViewButtonGroup.button(m).setChecked(m == mode)
 
     def setFilterMode(self, mode: QgsAttributeTableFilterModel.FilterMode):
-
+        self.mMainView.setFilterMode(mode)
         return
         # todo: re-implement QgsFeatureFilterWidget
 

@@ -425,7 +425,7 @@ class ProcessingToolsTest(TestCase):
         results, success = alg.run(par, context, feedback)
         self.assertTrue(success)
 
-        testDir = self.createTestCaseDirectory()
+        testDir = self.createTestOutputDirectory()
 
         rx = re.compile(r'\(\*(?P<extension>\.[^)]+)\)')
         for i, io in enumerate(SpectralLibraryIO.spectralLibraryIOs(write=True)):

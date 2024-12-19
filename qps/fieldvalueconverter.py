@@ -1,15 +1,16 @@
 import datetime
 import json
-import numpy as np
 import warnings
-from osgeo import gdal
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Union
+from uuid import uuid4
+
+from osgeo import gdal
+import numpy as np
 from qgis.PyQt.QtCore import QDate, QDateTime, QLocale, Qt, QTime
 from qgis.core import Qgis, QgsCoordinateReferenceSystem, QgsEditorWidgetSetup, QgsExpressionContext, QgsFeature, \
     QgsField, QgsFields, QgsProject, QgsProperty, QgsPropertyTransformer, QgsRemappingSinkDefinition, \
     QgsVectorDataProvider, QgsVectorFileWriter, QgsVectorLayer
-from typing import Any, Dict, List, Optional, Union
-from uuid import uuid4
 
 from .qgisenums import QMETATYPE_INT, QMETATYPE_QDATE, QMETATYPE_QDATETIME, QMETATYPE_QSTRING, QMETATYPE_QTIME, \
     QMETATYPE_QVARIANTMAP

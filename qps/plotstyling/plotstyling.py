@@ -27,21 +27,19 @@ import copy
 import enum
 import json
 import pathlib
-import re
 import sys
 import warnings
 from json import JSONDecodeError
-from typing import Dict, List, Union
+from typing import Any, Dict, List, Union
 
+from qgis.PyQt.QtWidgets import QComboBox, QDialog, QDialogButtonBox, QLabel, QMenu, QSpinBox, QToolButton, QVBoxLayout, \
+    QWidget, QWidgetAction
+from qgis.gui import QgsColorButton, QgsDialog, QgsEditorConfigWidget, QgsEditorWidgetFactory, QgsEditorWidgetWrapper, \
+    QgsGui, QgsPenStyleComboBox, QgsSearchWidgetWrapper
 from qgis.core import QgsAction, QgsField, QgsMessageLog, QgsSymbolLayerUtils, QgsVectorLayer
-from qgis.gui import QgsDialog, QgsEditorConfigWidget, QgsEditorWidgetFactory, QgsEditorWidgetWrapper, QgsGui, \
-    QgsPenStyleComboBox, QgsSearchWidgetWrapper
 from qgis.PyQt.QtCore import pyqtSignal, QByteArray, QDataStream, QIODevice, QObject, QSize, Qt
 from qgis.PyQt.QtGui import QBrush, QColor, QIcon, QPainter, QPainterPath, QPen, QPixmap
-from qgis.PyQt.QtWidgets import QComboBox, QDialog, QDialogButtonBox, QLabel, QMenu, QToolButton, QVBoxLayout, QWidget, \
-    QWidgetAction
 from qgis.PyQt.QtXml import QDomDocument, QDomElement
-
 from ..pyqtgraph import pyqtgraph as pg
 from ..pyqtgraph.pyqtgraph.graphicsItems.ScatterPlotItem import drawSymbol, renderSymbol
 from ..qgisenums import QMETATYPE_QSTRING
@@ -100,8 +98,9 @@ def pens_equal(p1, p2):
 
 
 class MarkerSymbol(enum.Enum):
+    No_Symbol = None
     Circle = 'o'
-    Triangle_Down = 't'
+    Triangle = Triangle_Down = 't'
     Triangle_Up = 't1'
     Triangle_Right = 't2'
     Triangle_Left = 't3'
@@ -116,17 +115,19 @@ class MarkerSymbol(enum.Enum):
     ArrowRight = 'arrow_right'
     ArrowDown = 'arrow_down'
     ArrowLeft = 'arrow_left'
-    No_Symbol = None
+    VerticalLine = '|'
+    LowLine = '_'
+    Crosshair = 'crosshair'
 
     @staticmethod
-    def decode(input):
+    def decode(input: Any) -> 'MarkerSymbol':
         """
         Tries to match a MarkerSymbol with any input
         :param input: any
         :return: MarkerSymbol
         """
-        if input == 'Triangle':
-            return MarkerSymbol.Triangle_Down
+        # if input == 'Triangle':
+        #    return MarkerSymbol.Triangle_Down
 
         if isinstance(input, MarkerSymbol):
             return input
@@ -138,7 +139,7 @@ class MarkerSymbol(enum.Enum):
             if input in [s.value, s.name, str(s.value)]:
                 return s
 
-        raise Exception('Unable to decode MarkerSymbol from "{}"'.format(input))
+        raise Exception('Unable to get MarkerSymbol for input "{}"'.format(input))
 
     @staticmethod
     def icon(symbol):
@@ -179,6 +180,7 @@ class MarkerSymbolComboBox(QComboBox):
             icon = MarkerSymbol.icon(symbol)
             text = MarkerSymbol.encode(symbol)
             self.addItem(icon, text, userData=symbol)
+        self.setCurrentIndex(1)
 
     def markerSymbol(self) -> MarkerSymbol:
         return self.currentData(role=Qt.UserRole)
@@ -570,7 +572,7 @@ class PlotStyle(QObject):
         style['linePen'] = pen2tuple(self.linePen)
         style['isVisible'] = self.mIsVisible
         style['backgroundColor'] = QgsSymbolLayerUtils.encodeColor(self.backgroundColor)
-        dump = json.dumps(style, sort_keys=True, indent=-1, separators=(',', ':'))
+        dump = json.dumps(style, sort_keys=True, ensure_ascii=False, indent=-1, separators=(',', ':'))
         # log('END json()')
         return dump
 
@@ -743,7 +745,19 @@ class PlotStyle(QObject):
 class PlotStyleWidget(QWidget):
     sigPlotStyleChanged = pyqtSignal(PlotStyle)
 
-    def __init__(self, title='<#>', parent=None, x=None, y=None, plotStyle: PlotStyle = PlotStyle()):
+    class VisibilityFlags(enum.IntFlag):
+        Type = enum.auto()
+        Color = enum.auto()
+        Size = enum.auto()
+        Symbol = enum.auto()
+        SymbolPen = enum.auto()
+        Line = enum.auto()
+        Visibility = enum.auto()
+        Preview = enum.auto()
+        All = Type | Color | Size | Symbol | SymbolPen | Line | Visibility | Preview
+
+    def __init__(self, title='<#>', parent=None, x=None, y=None,
+                 plotStyle: PlotStyle = PlotStyle()):
         super(PlotStyleWidget, self).__init__(parent)
 
         ui_file = pathlib.Path(__file__).parent / 'plotstylewidget.ui'
@@ -758,6 +772,8 @@ class PlotStyleWidget(QWidget):
         self.plotWidget.setRange(xRange=[0, 1], yRange=[0, 1], update=True)
         self.plotWidget.setLimits(xMin=0, xMax=1, yMin=0, yMax=1)
         self.plotWidget.setMouseEnabled(x=False, y=False)
+
+        self.mVisibility = self.VisibilityFlags.All
 
         for ax in self.plotWidget.plotItem.axes:
             self.plotWidget.plotItem.hideAxis(ax)
@@ -774,56 +790,108 @@ class PlotStyleWidget(QWidget):
         self.legend.setParentItem(self.plotDataItem.topLevelItem())  # Note we do NOT call plt.addItem in this case
         self.legend.hide()
 
-        assert isinstance(self.cbLinePenStyle, QgsPenStyleComboBox)
-        assert isinstance(self.cbMarkerPenStyle, QgsPenStyleComboBox)
-        assert isinstance(self.cbMarkerSymbol, MarkerSymbolComboBox)
+        assert isinstance(self.cbSymbol, MarkerSymbolComboBox)
+        assert isinstance(self.cbSymbolPen, QgsPenStyleComboBox)
+        assert isinstance(self.cbLinePen, QgsPenStyleComboBox)
+
         # connect signals
-        self.btnMarkerBrushColor.colorChanged.connect(self.onStyleChanged)
-        self.btnMarkerPenColor.colorChanged.connect(self.onStyleChanged)
-        self.btnLinePenColor.colorChanged.connect(self.onStyleChanged)
+        for cb in [self.cbSymbol, self.cbSymbolPen, self.cbLinePen]:
+            cb: QComboBox
+            cb.currentIndexChanged.connect(self.onStyleChanged)
 
-        self.cbMarkerSymbol.currentIndexChanged.connect(self.onStyleChanged)
-        self.cbMarkerSymbol.currentIndexChanged.connect(
-            lambda: self.toggleWidgetEnabled(self.cbMarkerSymbol, [self.btnMarkerBrushColor, self.sbMarkerSize]))
-        self.cbMarkerPenStyle.currentIndexChanged.connect(self.onStyleChanged)
-        self.cbMarkerPenStyle.currentIndexChanged.connect(
-            lambda: self.toggleWidgetEnabled(self.cbMarkerPenStyle, [self.btnMarkerPenColor, self.sbMarkerPenWidth]))
-        self.cbLinePenStyle.currentIndexChanged.connect(self.onStyleChanged)
-        self.cbLinePenStyle.currentIndexChanged.connect(
-            lambda: self.toggleWidgetEnabled(self.cbLinePenStyle, [self.btnLinePenColor, self.sbLinePenWidth]))
+        for bt in [self.btnSymbolColor, self.btnSymbolPenColor, self.btnLinePenColor]:
+            bt: QgsColorButton
+            bt.colorChanged.connect(self.onStyleChanged)
 
-        self.sbMarkerSize.valueChanged.connect(self.onStyleChanged)
-        self.sbMarkerPenWidth.valueChanged.connect(self.onStyleChanged)
-        self.sbLinePenWidth.valueChanged.connect(self.onStyleChanged)
+        for sb in [self.sbSymbolSize, self.sbSymbolPenWidth, self.sbLinePenWidth]:
+            sb: QSpinBox
+            sb.valueChanged.connect(self.onStyleChanged)
 
         self.mLastPlotStyle = plotStyle
         self.cbIsVisible.toggled.connect(self.onStyleChanged)
         self.setPlotStyle(plotStyle)
+
         self.refreshPreview()
 
     def onStyleChanged(self, color: QColor):
-        ps = self.plotStyle()
+        self.toggleWidgetEnabled()
         self.refreshPreview()
+        ps = self.plotStyle()
         if self.mLastPlotStyle != ps:
             self.sigPlotStyleChanged.emit(ps)
 
+    def setVisibilityFlag(self, flag, b: bool):
+        """
+        Allows to enable or disable components of the widget
+        :param flag:
+        :param b:
+        :return:
+        """
+        flags = self.visibilityFlags()
+        if b:
+            flags = flags | flag
+        else:
+            flags = flags & ~flag
+        self.setVisibilityFlags(flags)
+
+    def setVisibilityFlags(self, flags: 'PlotStyleWidget.VisibilityFlags'):
+        F = self.VisibilityFlags
+        any_col = any([f in flags for f in [F.Type, F.Color, F.Size]])
+
+        self.labelSymbol.setVisible(F.Symbol in flags and any_col)
+        self.labelSymbolPen.setVisible(F.SymbolPen in flags and any_col)
+        self.labelLine.setVisible(F.Line in flags and any_col)
+
+        # 1st col - types
+        self.cbSymbol.setVisible(F.Symbol in flags and F.Type in flags)
+        self.cbSymbolPen.setVisible(F.SymbolPen in flags and F.Type in flags)
+        self.cbLinePen.setVisible(F.Line in flags and F.Type in flags)
+
+        # 2nd col - colors
+        self.btnSymbolColor.setVisible(F.Symbol in flags and F.Color in flags)
+        self.btnSymbolPenColor.setVisible(F.SymbolPen in flags and F.Color in flags)
+        self.btnLinePenColor.setVisible(F.Line in flags and F.Color in flags)
+
+        # 3rd col - pixel size
+        self.sbSymbolSize.setVisible(F.Symbol in flags and F.Size in flags)
+        self.sbSymbolPenWidth.setVisible(F.SymbolPen in flags and F.Size in flags)
+        self.sbLinePenWidth.setVisible(F.Line in flags and F.Size in flags)
+
+        #
+        self.cbIsVisible.setVisible(F.Visibility in flags)
+        self.plotWidget.setVisible(F.Preview in flags)
+
+        self.mVisibility = flags
+
+    def visibilityFlags(self) -> 'PlotStyleWidget.VVisibilityFlags':
+        return self.mVisibility
+
     def setColorWidgetVisibility(self, b: bool):
         assert isinstance(b, bool)
-        self.btnMarkerBrushColor.setVisible(b)
-        self.btnMarkerPenColor.setVisible(b)
-        self.btnLinePenColor.setVisible(b)
+        warnings.warn('Use .setVisibilitFlag', DeprecationWarning, stacklevel=2)
+        F = self.VisibilityFlags
+        self.setVisibilityFlag(F.Color, b)
 
-    def toggleWidgetEnabled(self, cb: QComboBox, widgets: list):
+    def toggleWidgetEnabled(self):
         """
         Toggles if widgets are enabled according to the QComboBox text values
         :param cb: QComboBox
         :param widgets: [list-of-QWidgets]
         """
-        text = cb.currentText()
-        enabled = re.search(r'No (Pen|Symbol)', text) is None
-        for w in widgets:
-            assert isinstance(w, QWidget)
-            w.setEnabled(enabled)
+        cb: QComboBox = self.cbSymbol
+        has_symbol = self.cbSymbol.currentData() != MarkerSymbol.No_Symbol
+        has_symbol_pen = self.cbSymbolPen.currentData() != Qt.NoPen
+        has_line = self.cbLinePen.currentData() != Qt.NoPen
+
+        for w in [self.btnSymbolColor, self.sbSymbolSize,
+                  self.labelSymbolPen, self.cbSymbolPen]:
+            w.setEnabled(has_symbol)
+
+        for w in [self.btnSymbolPenColor, self.sbSymbolPenWidth]:
+            w.setEnabled(has_symbol and has_symbol_pen)
+
+        for w in [self.btnLinePenColor, self.sbLinePenWidth]:
+            w.setEnabled(has_line)
 
     def setVisibilityCheckboxVisible(self, b: bool):
         """
@@ -833,7 +901,9 @@ class PlotStyleWidget(QWidget):
         :return:
         :rtype:
         """
-        self.cbIsVisible.setVisible(b)
+        warnings.warn('Use .setVisibilityFlag', DeprecationWarning, stacklevel=2)
+
+        self.setVisibilityFlag(self.VisibilityFlags.Visibility, b)
 
     def setPreviewVisible(self, b: bool):
         """
@@ -842,6 +912,8 @@ class PlotStyleWidget(QWidget):
         :type b:
         """
         assert isinstance(b, bool)
+        warnings.warn('Use .setVisibilitFlag', DeprecationWarning, stacklevel=2)
+
         self.plotWidget.setVisible(b)
 
     def refreshPreview(self, *args):
@@ -860,24 +932,24 @@ class PlotStyleWidget(QWidget):
             pi.update()
             self.plotWidget.update()
 
-    def setPlotStyle(self, style):
+    def setPlotStyle(self, style: PlotStyle):
         assert isinstance(style, PlotStyle)
         # set widget values
         self.mLastPlotStyle = style
         self.mBlockUpdates = True
-        self.sbMarkerSize.setValue(style.markerSize)
-        self.cbMarkerSymbol.setMarkerSymbol(style.markerSymbol)
+        self.sbSymbolSize.setValue(style.markerSize)
+        self.cbSymbol.setMarkerSymbol(style.markerSymbol)
 
         assert isinstance(style.markerPen, QPen)
         assert isinstance(style.markerBrush, QBrush)
         assert isinstance(style.linePen, QPen)
 
-        self.btnMarkerPenColor.setColor(style.markerPen.color())
-        self.cbMarkerPenStyle.setPenStyle(style.markerPen.style())
-        self.sbMarkerPenWidth.setValue(style.markerPen.width())
-        self.btnMarkerBrushColor.setColor(style.markerBrush.color())
+        self.btnSymbolPenColor.setColor(style.markerPen.color())
+        self.cbSymbolPen.setPenStyle(style.markerPen.style())
+        self.sbSymbolPenWidth.setValue(style.markerPen.width())
+        self.btnSymbolColor.setColor(style.markerBrush.color())
         self.btnLinePenColor.setColor(style.linePen.color())
-        self.cbLinePenStyle.setPenStyle(style.linePen.style())
+        self.cbLinePen.setPenStyle(style.linePen.style())
         self.sbLinePenWidth.setValue(style.linePen.width())
 
         if self.cbIsVisible.isVisible():
@@ -891,19 +963,19 @@ class PlotStyleWidget(QWidget):
         style = PlotStyle(plotStyle=self.mLastPlotStyle)
 
         # read plotstyle values from widgets
-        style.markerSize = self.sbMarkerSize.value()
-        style.setMarkerSymbol(self.cbMarkerSymbol.markerSymbol())
+        style.markerSize = self.sbSymbolSize.value()
+        style.setMarkerSymbol(self.cbSymbol.markerSymbol())
         assert isinstance(style.markerPen, QPen)
         assert isinstance(style.markerBrush, QBrush)
         assert isinstance(style.linePen, QPen)
 
-        style.markerPen.setColor(self.btnMarkerPenColor.color())
-        style.markerPen.setWidth(self.sbMarkerPenWidth.value())
-        style.markerPen.setStyle(self.cbMarkerPenStyle.penStyle())
-        style.markerBrush.setColor(self.btnMarkerBrushColor.color())
+        style.markerPen.setColor(self.btnSymbolPenColor.color())
+        style.markerPen.setWidth(self.sbSymbolPenWidth.value())
+        style.markerPen.setStyle(self.cbSymbolPen.penStyle())
+        style.markerBrush.setColor(self.btnSymbolColor.color())
         style.linePen.setColor(self.btnLinePenColor.color())
         style.linePen.setWidth(self.sbLinePenWidth.value())
-        style.linePen.setStyle(self.cbLinePenStyle.penStyle())
+        style.linePen.setStyle(self.cbLinePen.penStyle())
 
         if self.cbIsVisible.isVisible():
             style.setVisibility(self.cbIsVisible.isChecked())
@@ -932,8 +1004,8 @@ class PlotStyleButton(QToolButton):
         self.mDialog.accepted.connect(self.onAccepted)
         self.mDialog.rejected.connect(self.onCanceled)
         self.mDialog.sigPlotStyleChanged.connect(self.onPlotStyleChanged)
-        self.mDialog.plotStyleWidget().setPreviewVisible(False)
-        self.mDialog.setVisibilityCheckboxVisible(self.isCheckable())
+        self.mDialog.plotStyleWidget().setVisibilityFlag(PlotStyleWidget.VisibilityFlags.Preview, False)
+        self.mDialog.setVisibilityFlag(PlotStyleWidget.VisibilityFlags.Visibility, self.isCheckable())
         # self.mDialog.plotStyleWidget().setVisibilityCheckboxVisible(False)
         self.mWA = QWidgetAction(self.mMenu)
         self.mWA.setDefaultWidget(self.mDialog)
@@ -956,6 +1028,9 @@ class PlotStyleButton(QToolButton):
         self.sigPlotStyleChanged.emit(self.plotStyle())
         self.updateIcon()
 
+    def setVisibilityFlag(self, flag: PlotStyleWidget.VisibilityFlags, b: bool):
+        self.mDialog.setVisibilityFlag(flag, b)
+
     def onAboutToShowMenu(self, *args):
         self.mWA.setVisible(True)
         self.mDialog.setVisible(True)
@@ -965,13 +1040,13 @@ class PlotStyleButton(QToolButton):
         self.mDialog.activateWindow()
 
     def setColorWidgetVisibility(self, b: bool):
-        self.mDialog.setColorWidgetVisibility(b)
+        self.mDialog.setVisibilityFlag(PlotStyleWidget.VisibilityFlags.Color, b)
 
     def setVisibilityCheckboxVisible(self, b: bool):
-        self.mDialog.setVisibilityCheckboxVisible(b)
+        self.mDialog.setVisibilityFlag(PlotStyleWidget.VisibilityFlags.Visibility, b)
 
     def setPreviewVisible(self, b: bool):
-        self.mDialog.setPreviewVisible(b)
+        self.mDialog.setVisibilityFlag(PlotStyleWidget.VisibilityFlags.Preview, b)
 
     def onAccepted(self, *args):
         ps = self.plotStyle()
@@ -995,7 +1070,8 @@ class PlotStyleButton(QToolButton):
 
     def setCheckable(self, b: bool) -> None:
         super().setCheckable(b)
-        self.mDialog.setVisibilityCheckboxVisible(b)
+        # self.mDialog.setVisibilityCheckboxVisible(b)
+        self.mDialog.setVisibilityFlag(PlotStyleWidget.VisibilityFlags.Visibility, b)
         self.onToggled(b)
 
     def setPlotStyle(self, plotStyle):
@@ -1055,6 +1131,9 @@ class PlotStyleDialog(QgsDialog):
         layout.addWidget(self.w)
         if isinstance(plotStyle, PlotStyle):
             self.setPlotStyle(plotStyle)
+
+    def setVisibilityFlag(self, flag: PlotStyleWidget.VisibilityFlags, b: bool):
+        self.w.setVisibilityFlag(flag, b)
 
     def onPlotStyleChanged(self, plotStyle: PlotStyle):
 

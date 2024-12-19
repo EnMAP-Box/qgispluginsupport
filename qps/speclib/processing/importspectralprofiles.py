@@ -1,18 +1,18 @@
 import os.path
-from os import scandir
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from qgis.core import QgsCoordinateReferenceSystem, QgsEditorWidgetSetup, QgsExpressionContext, \
     QgsExpressionContextScope, QgsFeature, QgsFeatureSink, QgsField, QgsFields, QgsMapLayer, QgsProcessing, \
     QgsProcessingAlgorithm, QgsProcessingContext, QgsProcessingException, QgsProcessingFeedback, \
-    QgsProcessingOutputLayerDefinition, QgsProcessingParameterFeatureSink, QgsProcessingParameterMultipleLayers, \
-    QgsProcessingUtils, QgsProject, QgsProperty, QgsRemappingProxyFeatureSink, QgsRemappingSinkDefinition, \
-    QgsVectorFileWriter, QgsVectorLayer, QgsWkbTypes
-
+    QgsProcessingMultiStepFeedback, QgsProcessingOutputLayerDefinition, QgsProcessingParameterBoolean, \
+    QgsProcessingParameterFeatureSink, QgsProcessingParameterMultipleLayers, QgsProcessingUtils, QgsProject, \
+    QgsProperty, QgsRemappingProxyFeatureSink, QgsRemappingSinkDefinition, QgsVectorFileWriter, QgsVectorLayer, \
+    QgsWkbTypes
 from ..core import profile_field_names
 from ..core.spectrallibraryio import SpectralLibraryIO
 from ...fieldvalueconverter import GenericFieldValueConverter, GenericPropertyTransformer
+from ...utils import file_search
 
 
 class SpectralLibraryOutputDefinition(QgsProcessingOutputLayerDefinition):
@@ -27,7 +27,9 @@ class SpectralLibraryOutputDefinition(QgsProcessingOutputLayerDefinition):
 class ImportSpectralProfiles(QgsProcessingAlgorithm):
     NAME = 'importspectralprofiles'
     P_INPUT = 'INPUT'
+    P_RECURSIVE = 'RECURSIVE'
     P_OUTPUT = 'OUTPUT'
+    P_USE_RELPATH = 'RELPATH'
 
     def __init__(self):
         super().__init__()
@@ -70,6 +72,12 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
             optional=False)
         )
 
+        self.addParameter(QgsProcessingParameterBoolean(self.P_RECURSIVE,
+                                                        description='Recursive search for profile files',
+                                                        optional=True,
+                                                        defaultValue=False),
+                          )
+
         self.addParameter(QgsProcessingParameterFeatureSink(self.P_OUTPUT, 'Spectral Library'))
 
     def prepareAlgorithm(self,
@@ -79,14 +87,14 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
 
         input_sources = self.parameterAsFileList(parameters, self.P_INPUT, context)
         errors = []
-
+        recursive: bool = self.parameterAsBool(parameters, self.P_RECURSIVE, context)
         input_files = []
         for f in input_sources:
             p = Path(f)
             if p.is_dir():
-                for e in scandir(p):
-                    if e.is_file():
-                        input_files.append(Path(e.path))
+                for f in file_search(p, '*.*', recursive=recursive):
+                    if os.path.isfile(f):
+                        input_files.append(Path(f))
             elif p.is_file():
                 input_files.append(p)
 
@@ -117,8 +125,10 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
         # collect profiles, ordered by field definition
         PROFILES: Dict[str, List[QgsFeature]] = dict()
 
+        multiFeedback = QgsProcessingMultiStepFeedback(len(self._input_files), feedback)
+
         for uri in self._input_files:
-            profiles = SpectralLibraryIO.readProfilesFromUri(uri, feedback=feedback)
+            profiles = SpectralLibraryIO.readProfilesFromUri(uri, feedback=multiFeedback)
             if len(profiles) > 0:
                 fields: QgsFields = profiles[0].fields()
                 key = tuple(fields.names())

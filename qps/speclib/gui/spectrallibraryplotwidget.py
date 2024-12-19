@@ -5,19 +5,19 @@ from typing import Callable, Dict, Iterable, Iterator, List, Optional, Set, Tupl
 
 import numpy as np
 
-from qgis.PyQt.QtCore import pyqtSignal, QAbstractItemModel, QItemSelectionModel, QMimeData, QModelIndex, \
-    QPoint, QRect, QSize, QSortFilterProxyModel, Qt
-from qgis.PyQt.QtGui import QBrush, QColor, QContextMenuEvent, QDragEnterEvent, QDropEvent, QFontMetrics, QIcon, \
-    QPainter, QPalette, QPen, QPixmap, QStandardItem, QStandardItemModel
 from qgis.PyQt.QtWidgets import QAbstractItemView, QAction, QApplication, QComboBox, QDialog, QFrame, QHBoxLayout, \
     QMenu, QMessageBox, QStyle, QStyledItemDelegate, QStyleOptionButton, QStyleOptionViewItem, QTableView, QTreeView, \
     QWidget
-from qgis.PyQt.QtXml import QDomDocument, QDomElement
 from qgis.core import QgsApplication, QgsExpressionContext, QgsExpressionContextScope, QgsFeature, QgsFeatureRenderer, \
     QgsFeatureRequest, QgsField, QgsMapLayerProxyModel, QgsMarkerSymbol, QgsProject, QgsProperty, QgsRasterLayer, \
     QgsReadWriteContext, QgsRenderContext, QgsSettings, QgsSingleSymbolRenderer, QgsSymbol, QgsVectorLayer, \
     QgsVectorLayerCache
 from qgis.gui import QgsDualView, QgsFilterLineEdit
+from qgis.PyQt.QtCore import pyqtSignal, QAbstractItemModel, QItemSelectionModel, QMimeData, QModelIndex, \
+    QPoint, QRect, QSize, QSortFilterProxyModel, Qt
+from qgis.PyQt.QtGui import QBrush, QColor, QContextMenuEvent, QDragEnterEvent, QDropEvent, QFontMetrics, QIcon, \
+    QPainter, QPalette, QPen, QPixmap, QStandardItem, QStandardItemModel
+from qgis.PyQt.QtXml import QDomDocument, QDomElement
 from .spectrallibraryplotitems import FEATURE_ID, FIELD_INDEX, MODEL_NAME, PlotUpdateBlocker, \
     SpectralProfilePlotDataItem, SpectralProfilePlotWidget
 from .spectrallibraryplotmodelitems import GeneralSettingsGroup, PlotStyleItem, ProfileCandidateGroup, \
