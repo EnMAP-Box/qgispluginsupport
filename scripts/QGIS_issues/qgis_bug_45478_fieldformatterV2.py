@@ -1,21 +1,19 @@
 # see https://github.com/qgis/QGIS/issues/45478
 
-from qgis.PyQt.QtCore import QByteArray
 import pickle
 
+from qgis.PyQt.QtCore import QByteArray
+from qgis.PyQt.QtCore import QVariant
+from qgis.core import QgsVectorLayer, QgsField, QgsFeature
+from qgis.gui import QgsDualView
 from qgis.gui import QgsMapCanvas
-
 from qgis.testing import start_app, stop_app
+from qps.qgisenums import QMETATYPE_QSTRING
+
 app = start_app()
 
-from qgis.gui import QgsDualView
-
-from qgis.utils import iface
-from qgis.core import QgsVectorLayer, QgsField, QgsFeature, QgsProject
-from qgis.PyQt.QtCore import QVariant
-
 uri = "point?crs=epsg:4326"
-lyr = QgsVectorLayer(uri, "Scratch point layer",  "memory")
+lyr = QgsVectorLayer(uri, "Scratch point layer", "memory")
 lyr.startEditing()
 lyr.addAttribute(QgsField('blob', QVariant.ByteArray))
 lyr.addAttribute(QgsField('text1', QMETATYPE_QSTRING))
@@ -36,7 +34,6 @@ f.setAttribute('text1', 'foo')
 f.setAttribute('text2', 'bar')
 lyr.addFeature(f)
 lyr.commitChanges(False)
-
 
 lyr.deleteAttribute(1)
 s = ""

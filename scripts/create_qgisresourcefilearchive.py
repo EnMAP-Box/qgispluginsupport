@@ -1,13 +1,12 @@
 import argparse
 import os
 import pathlib
-import sys
 import zipfile
-import os
 
-REPO:pathlib.Path = pathlib.Path(__file__).parents[1]
+REPO: pathlib.Path = pathlib.Path(__file__).parents[1]
+
+
 def findQGISRepo() -> pathlib.Path:
-
     if 'QGIS_REPO' in os.environ.keys():
         return pathlib.Path(os.environ['QGIS_REPO'])
 
@@ -20,7 +19,6 @@ def findQGISRepo() -> pathlib.Path:
 
 
 def create_qgis_resource_file_archive(qgis_repo=None):
-
     from qps.resources import compileQGISResourceFiles
 
     if qgis_repo is None:
@@ -30,7 +28,7 @@ def create_qgis_resource_file_archive(qgis_repo=None):
 
     assert isinstance(qgis_repo, pathlib.Path)
     assert qgis_repo.is_dir()
-    assert pathlib.Path(qgis_repo/'.git').is_dir()
+    assert pathlib.Path(qgis_repo / '.git').is_dir()
 
     TARGET_DIR = REPO / 'qgisresources'
     TARGET_ZIP = REPO / 'qgisresources.zip'
@@ -48,7 +46,8 @@ def create_qgis_resource_file_archive(qgis_repo=None):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Create QGIS Resource file archive', formatter_class=argparse.RawTextHelpFormatter)
+    parser = argparse.ArgumentParser(description='Create QGIS Resource file archive',
+                                     formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument('-q', '--qgisrepo',
                         required=False,
                         default=None,

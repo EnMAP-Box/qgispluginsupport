@@ -1,5 +1,5 @@
+from qgis.core import QgsCoordinateReferenceSystem, Qgis
 from qgis.testing import start_app
-from qgis.core import QgsCoordinateReferenceSystem, QgsProject, Qgis
 
 print(f'QGIS Version: {Qgis.version()}  ({Qgis.versionInt()})')
 

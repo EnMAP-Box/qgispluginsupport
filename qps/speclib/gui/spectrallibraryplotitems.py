@@ -7,13 +7,13 @@ from typing import Dict, List, Tuple, Union
 
 import numpy as np
 
-from qgis.PyQt.QtCore import QPoint, QPointF, Qt, pyqtSignal
+from qgis.PyQt.QtCore import pyqtSignal, QPoint, QPointF, Qt
 from qgis.PyQt.QtGui import QColor, QDragEnterEvent, QStandardItem
 from qgis.PyQt.QtWidgets import QAction, QApplication, QMenu, QSlider, QWidgetAction
 from qgis.core import QgsProject
 from ...plotstyling.plotstyling import PlotStyle, PlotWidgetStyle
 from ...pyqtgraph import pyqtgraph as pg
-from ...unitmodel import UnitWrapper, datetime64
+from ...unitmodel import datetime64, UnitWrapper
 from ...utils import HashablePointF, SignalObjectWrapper
 
 
@@ -308,13 +308,21 @@ class SpectralProfilePlotDataItem(pg.PlotDataItem):
         self.mVisualizationKey: VISUALIZATION_KEY = None
 
     def setProfileData(self,
-                       plot_data,
+                       plot_data: dict,
                        plot_style: PlotStyle,
                        showBadBands: bool = True,
                        sortBands: bool = False,
                        zValue: int = None,
                        label: str = None,
                        tooltip: str = None):
+
+        y = plot_data.get('y')
+
+        if y is None:
+            self.clear()
+            return
+
+        x = plot_data.get('x', list(range(len(y))))
 
         linePen = pg.mkPen(plot_style.linePen)
         symbolPen = pg.mkPen(plot_style.markerPen)
@@ -323,8 +331,6 @@ class SpectralProfilePlotDataItem(pg.PlotDataItem):
         symbol = plot_style.markerSymbol
         symbolSize = plot_style.markerSize
 
-        x = plot_data['x']
-        y = plot_data['y']
         if isinstance(x[0], (datetime.date, datetime.datetime)):
             x = np.asarray(x, dtype=np.datetime64)
 

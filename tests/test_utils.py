@@ -24,7 +24,6 @@ from typing import Dict
 
 import numpy as np
 from osgeo import gdal, gdal_array, ogr, osr
-
 from qgis.PyQt.QtCore import NULL, QByteArray, QObject, QPoint, QRect, QUrl, QVariant
 from qgis.PyQt.QtGui import QColor
 from qgis.PyQt.QtWidgets import QDialog, QDockWidget, QGroupBox, QMainWindow, QMenu, QWidget
@@ -33,6 +32,7 @@ from qgis.core import QgsCoordinateReferenceSystem, QgsFeature, QgsFeatureReques
     QgsGeometryParameters, QgsMapLayerProxyModel, QgsMapLayerStore, QgsMapToPixel, QgsPointXY, QgsProcessingFeedback, \
     QgsProject, QgsRaster, QgsRasterDataProvider, QgsRasterIdentifyResult, QgsRasterLayer, QgsRectangle, QgsVector, \
     QgsVectorLayer
+
 from qps.speclib.core import is_spectral_library
 from qps.testing import start_app, TestCase, TestObjects
 from qps.unitmodel import UnitLookup
@@ -698,6 +698,12 @@ class TestUtils(TestCase):
             ptPx = SpatialPoint.fromPixelPosition(layer, x, y).toPixelPosition(layer)
             self.assertEqual(ptPx.x(), x)
             self.assertEqual(ptPx.y(), y)
+
+        pt = SpatialPoint.fromPixelPosition(layer, -0.5, -0.5)
+        self.assertFalse(layer.extent().contains(pt))
+        px = pt.toPixel(layer)
+        self.assertEqual(px, QPoint(-1, -1))
+        s = ""
         s = ""
 
     def test_aggregateArray(self):

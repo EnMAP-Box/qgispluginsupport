@@ -1,0 +1,118 @@
+[
+  {
+    "name": "maximum_profile",
+    "type": "function",
+    "description": "Returns the profile of band-wise maximum values",
+    "arguments": [
+      {
+        "arg": "profiles",
+        "description": "field with spectral profiles"
+      },
+      {
+        "arg": "group_by",
+        "description": "output format of spectral profile: 'text', 'json', 'map' or 'bytes'"
+      },
+      {
+        "arg": "filter",
+        "description": "todo"
+      },
+      {
+        "arg": "encoding",
+        "description": "output format of spectral profile: 'text', 'json', 'map' or 'bytes'."
+      }
+    ],
+    "examples": [
+      {
+        "expression": "maximum_profile(\"profiles\", 'landcover')",
+        "returns": "Returns the maximum profile values for each landcover"
+      }
+    ]
+  },
+  {
+    "name": "minimum_profile",
+    "type": "function",
+    "description": "Returns the profile of band-wise minimum values",
+    "arguments": [
+      {
+        "arg": "profiles",
+        "description": "field with spectral profiles"
+      },
+      {
+        "arg": "group_by",
+        "description": "output format of spectral profile: 'text', 'json', 'map' or 'bytes'"
+      },
+      {
+        "arg": "filter",
+        "description": "todo"
+      },
+      {
+        "arg": "encoding",
+        "description": "output format of spectral profile: 'text', 'json', 'map' or 'bytes'."
+      }
+    ],
+    "examples": [
+      {
+        "expression": "minimum_profile(\"profiles\", 'landcover')",
+        "returns": "Returns the minimum profile values for each landcover"
+      }
+    ]
+  },
+  {
+    "name": "median_profile",
+    "type": "function",
+    "description": "Returns the profile of band-wise median values",
+    "arguments": [
+      {
+        "arg": "profiles",
+        "description": "field with spectral profiles"
+      },
+      {
+        "arg": "group_by",
+        "description": "output format of spectral profile: 'text', 'json', 'map' or 'bytes'"
+      },
+      {
+        "arg": "filter",
+        "description": "todo"
+      },
+      {
+        "arg": "encoding",
+        "description": "output format of spectral profile: 'text', 'json', 'map' or 'bytes'."
+      }
+    ],
+    "examples": [
+      {
+        "expression": "median_profile(\"profiles\", 'landcover')",
+        "returns": "Returns the median profile values for each landcover"
+      }
+    ]
+  },
+  {
+    "name": "mean_profile",
+    "type": "function",
+    "description": "Returns the profile of band-wise mean values",
+    "arguments": [
+      {
+        "arg": "profiles",
+        "description": "field with spectral profiles"
+      },
+      {
+        "arg": "group_by",
+        "description": "output format of spectral profile: 'text', 'json', 'map' or 'bytes'"
+      },
+      {
+        "arg": "filter",
+        "description": "todo"
+      },
+      {
+        "arg": "encoding",
+        "description": "output format of spectral profile: 'text', 'json', 'map' or 'bytes'."
+      }
+    ],
+    "examples": [
+      {
+        "expression": "mean_profile(\"profiles\", 'landcover')",
+        "returns": "Returns the mean profile values for each landcover"
+      }
+    ]
+  }
+]

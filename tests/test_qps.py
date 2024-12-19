@@ -6,7 +6,6 @@ import pathlib
 import re
 import unittest
 
-
 DIR_QPS = pathlib.Path(__file__).parents[1] / 'qps'
 
 
@@ -33,15 +32,13 @@ class ResourceTests(unittest.TestCase):
 
         from qps.utils import file_search
 
-        rxTest1 = re.compile(r'^ *from qps(\..*)? import.*')
-        rxTest2 = re.compile(r'^ *import qps(\..*)?')
+        error_types = [
+            (re.compile(r'^ *(from qps(\..*)? import.*|import qps(\..*)?)'),
+             'Absolute import of qps. Make relative'),
+            (re.compile(r'^ *(from qps(\..*)? import.*|import qps(\..*)?)'),
+             'Absolute import of pyqtgraph. Use relative import from ..pytqgraph')
 
-        self.assertTrue(rxTest1.search('from qps import xyz'))
-        self.assertTrue(rxTest1.search('from qps.xyz import xyz'))
-        self.assertTrue(rxTest2.search('import qps'))
-        self.assertTrue(rxTest2.search('import qps.xyz'))
-
-        rxTest3 = re.compile(r'(from|import) qgis[.]_[^3]+')
+        ]
 
         errors = []
         for path in file_search(DIR_QPS, '*.py', recursive=True):
@@ -49,13 +46,11 @@ class ResourceTests(unittest.TestCase):
             with open(path, 'r', encoding='utf-8') as f:
                 lastLine = None
                 for i, line in enumerate(f.readlines()):
-                    if rxTest3.search(line):
-                        errors.append(f'File "{path}", line {i + 1}, "{line.strip()}"')
-                    elif rxTest1.search(line) or rxTest2.search(line):
-                        if path.name == 'utils.py' and rxTest2.search(line):
-                            continue
-                        if not (lastLine and 'except ImportError:' in lastLine):
+                    for (rx, err_msg) in error_types:
+                        match = rx.search(line)
+                        if match:
                             errors.append(f'File "{path}", line {i + 1}, "{line.strip()}"')
+
                     lastLine = line
         self.assertTrue(len(errors) == 0, msg=f'{len(errors)} Absolute imports:\n' + '\n'.join(errors))
 

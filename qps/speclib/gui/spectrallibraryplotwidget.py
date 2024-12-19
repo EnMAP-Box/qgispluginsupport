@@ -1,7 +1,10 @@
 import datetime
 import math
-import numpy as np
 import re
+from typing import Callable, Dict, Iterable, Iterator, List, Optional, Set, Tuple, Union
+
+import numpy as np
+
 from qgis.PyQt.QtCore import pyqtSignal, QAbstractItemModel, QItemSelectionModel, QMimeData, QModelIndex, \
     QPoint, QRect, QSize, QSortFilterProxyModel, Qt
 from qgis.PyQt.QtGui import QBrush, QColor, QContextMenuEvent, QDragEnterEvent, QDropEvent, QFontMetrics, QIcon, \
@@ -15,8 +18,6 @@ from qgis.core import QgsApplication, QgsExpressionContext, QgsExpressionContext
     QgsReadWriteContext, QgsRenderContext, QgsSettings, QgsSingleSymbolRenderer, QgsSymbol, QgsVectorLayer, \
     QgsVectorLayerCache
 from qgis.gui import QgsDualView, QgsFilterLineEdit
-from typing import Callable, Dict, Iterable, Iterator, List, Optional, Set, Tuple, Union
-
 from .spectrallibraryplotitems import FEATURE_ID, FIELD_INDEX, MODEL_NAME, PlotUpdateBlocker, \
     SpectralProfilePlotDataItem, SpectralProfilePlotWidget
 from .spectrallibraryplotmodelitems import GeneralSettingsGroup, PlotStyleItem, ProfileCandidateGroup, \
@@ -31,8 +32,7 @@ from ...models import SettingsModel
 from ...plotstyling.plotstyling import PlotStyle, PlotWidgetStyle
 from ...qgisenums import QMETATYPE_INT, QMETATYPE_QSTRING
 from ...unitmodel import BAND_INDEX, BAND_NUMBER, datetime64, UnitConverterFunctionModel, UnitWrapper
-from ...utils import convertDateUnit, loadUi, printCaller, qgsField, SelectMapLayerDialog, SignalBlocker, \
-    SignalObjectWrapper
+from ...utils import convertDateUnit, loadUi, printCaller, qgsField, SelectMapLayerDialog, SignalObjectWrapper
 
 MAX_PROFILES_DEFAULT: int = 516
 FIELD_NAME = str
@@ -128,8 +128,8 @@ class SpectralProfilePlotModel(QStandardItemModel):
         # self.mCache3PlotData: Dict[PLOT_DATA_KEY, dict] = dict()
 
         self.mUnitConverterFunctionModel = UnitConverterFunctionModel.instance()
-        self.mDualView: QgsDualView = None
-        self.mSpeclib: QgsVectorLayer = None
+        self.mDualView: QgsDualView = Optional[None]
+        self.mSpeclib: QgsVectorLayer = Optional[None]
 
         self.mXUnitModel: SpectralProfilePlotXAxisUnitModel = SpectralProfilePlotXAxisUnitModel.instance()
         self.mXUnit: UnitWrapper = self.mXUnitModel.findUnitWrapper(BAND_NUMBER)
@@ -143,6 +143,15 @@ class SpectralProfilePlotModel(QStandardItemModel):
         self.insertPropertyGroup(1, self.mProfileCandidates)
 
         self.setMaxProfiles(MAX_PROFILES_DEFAULT)
+
+        self.itemChanged.connect(self.onItemChanged)
+
+    def onItemChanged(self, *args):
+
+        if not self.updatesBlocked():
+            # print('#ITEM CHANGED')
+            # self.updatePlot()
+            pass
 
     def blockUpdates(self, b: bool) -> bool:
         state = self.mBlockUpdates
@@ -433,10 +442,13 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
             self.updatePlot()
 
-    def updatePlot(self, fids_to_update=[]):
+    def updatePlot(self, fids_to_update=[]):  #
+
+        if not isinstance(self.speclib(), QgsVectorLayer):
+            return
         if self.updatesBlocked() or self.speclib().isEditCommandActive():
             return
-
+        # print('## UPDATE PLOT')
         t0 = datetime.datetime.now()
         if not (isinstance(self.mPlotWidget, SpectralProfilePlotWidget) and isinstance(self.speclib(), QgsVectorLayer)):
             return
@@ -652,7 +664,8 @@ class SpectralProfilePlotModel(QStandardItemModel):
     def updateProfileLabel(self, n: int, limit_reached: bool):
         propertyItem = self.generalSettings().mP_MaxProfiles
 
-        with SignalBlocker(propertyItem.signals()) as blocker:
+        # with SignalBlocker(propertyItem.signals()) as blocker:
+        with SpectralProfilePlotModel.UpdateBlocker(self) as blocker:
             if limit_reached:
                 fg = QColor('red')
                 tt = 'Profile limit reached. Increase to show more profiles at the same time (decreases speed)'
@@ -839,6 +852,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
             if isinstance(self.mSpeclib, QgsVectorLayer):
                 self.mVectorLayerCache = QgsVectorLayerCache(speclib, 1000)
                 self.connectSpeclibSignals(self.mSpeclib)
+                # self.updatePlot()
 
     def connectSpeclibSignals(self, speclib: QgsVectorLayer):
 

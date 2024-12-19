@@ -1,8 +1,6 @@
 from qgis.PyQt.QtCore import QObject, pyqtSignal, QSignalBlocker
-from qgis.PyQt.QtWidgets import QWidget, QGridLayout, QLabel, QVBoxLayout, QCheckBox, QComboBox
-from qgis.core import QgsFeature, QgsField, QgsVectorLayer, QgsAttributeTableConfig, \
-    QgsEditorWidgetSetup, QgsActionManager, QgsAction
-from qgis.gui import QgsMapCanvas, QgsDualView, QgsGui, QgsSearchWidgetWrapper
+
+
 class MyClass(QObject):
     wasTriggered = pyqtSignal(str)
 

@@ -8,6 +8,7 @@ from qgis.core import QgsProcessingParameterMultipleLayers, QgsProcessingContext
 
 from qgis.gui import QgsProcessingGui, QgsGui, QgsProcessingParameterWidgetContext
 from qgis.testing.mocked import start_app
+
 APP = start_app()
 
 uri = 'Point?crs=epsg:4326&field=id:integer&field=name:string(20)'
@@ -25,14 +26,14 @@ localProcessingContext.setProject(localProject)
 param1 = QgsProcessingParameterVectorLayer('SINGLE_LAYER', 'Single Layer')
 param2 = QgsProcessingParameterMultipleLayers('MULTIPLE_LAYERS', 'Multiple Layers')
 
-l = QGridLayout()
+layout = QGridLayout()
 for row, param in enumerate([param1, param2]):
     wrapper = QgsGui.processingGuiRegistry().createParameterWidgetWrapper(param, QgsProcessingGui.Standard)
     wrapper.setWidgetContext(localWidgetContext)
-    l.addWidget(wrapper.createWrappedLabel(), row, 0)
-    l.addWidget(wrapper.createWrappedWidget(localProcessingContext), row, 1)
+    layout.addWidget(wrapper.createWrappedLabel(), row, 0)
+    layout.addWidget(wrapper.createWrappedWidget(localProcessingContext), row, 1)
 
 w = QWidget()
-w.setLayout(l)
+w.setLayout(layout)
 w.show()
 APP.exec_()

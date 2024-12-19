@@ -1,6 +1,8 @@
-import time, typing, multiprocessing, os
+import os
+import time
 from typing import List
 
+from qgis.PyQt.QtWidgets import QDialog, QHBoxLayout, QPushButton, QProgressBar
 from qgis.core import QgsApplication, QgsTask, QgsTaskManager
 from qgis.testing import start_app
 
@@ -33,10 +35,11 @@ class MyTask(QgsTask):
             return False
         return True
 
-    def finished(self, result:bool):
+    def finished(self, result: bool):
         print('{} FINISHED {}'.format(self.description(), result))
         self.mCallback(self)
         return
+
 
 class MyTaskDialog(QDialog):
 
@@ -48,7 +51,7 @@ class MyTaskDialog(QDialog):
         self.btnCancel = QPushButton('Cancel')
         self.btnCancel.clicked.connect(self.onCancel)
         self.pbar = QProgressBar()
-        self.pbar.setRange(0,100)
+        self.pbar.setRange(0, 100)
         self.layout().addWidget(self.btnStart)
         self.layout().addWidget(self.btnCancel)
         self.layout().addWidget(self.pbar)
@@ -60,17 +63,13 @@ class MyTaskDialog(QDialog):
 
     def onProgressChanged(self, taskId, progress):
         mgr: QgsTaskManager = QgsApplication.taskManager()
-        #print('{}:{}%'.format(taskId, progress))
-        #self.pbar.setValue(int(progress))
+        # print('{}:{}%'.format(taskId, progress))
+        # self.pbar.setValue(int(progress))
 
-
-    def onFinished(self, task:MyTask):
+    def onFinished(self, task: MyTask):
 
         print('{} Canceled? {} {}'.format(task.description(), task.isCanceled(), task.mWasCanceled))
         print('{} PID {} CNT {}'.format(task.description(), task.mPID, task.mCount))
-
-
-
 
     def onStatusChanged(self, taskID, status):
 
@@ -90,7 +89,7 @@ class MyTaskDialog(QDialog):
         if self.pbar.value() >= self.pbar.maximum():
             self.close()
 
-    def addTasks(self, tasks:List[MyTask], start=True):
+    def addTasks(self, tasks: List[MyTask], start=True):
         self.mTasks.extend(tasks)
         if start:
             self.btnStart.click()
@@ -103,12 +102,11 @@ class MyTaskDialog(QDialog):
 
         self.btnStart.setEnabled(True)
         self.btnCancel.setEnabled(False)
-        #self.reject()
-
+        # self.reject()
 
     def onStart(self):
 
-        mgr:QgsTaskManager = QgsApplication.taskManager()
+        mgr: QgsTaskManager = QgsApplication.taskManager()
         tasks = self.mTasks[:]
         self.pbar.setRange(0, len(tasks))
         self.pbar.setValue(0)
@@ -123,14 +121,12 @@ class MyTaskDialog(QDialog):
         self.btnCancel.setEnabled(True)
 
 
-
 def run():
-
     print('PID MAIN: {}'.format(os.getpid()))
     d1 = MyTaskDialog()
     tasks = []
     for i in range(100):
-        tasks.append(MyTask('Task A{}'.format(i+1)))
+        tasks.append(MyTask('Task A{}'.format(i + 1)))
     d1.setWindowTitle('Dialog 1')
     d1.addTasks(tasks)
     d1.exec_()
@@ -145,6 +141,7 @@ def run():
         d2.exec_()
 
     print('Script finished')
+
 
 if __name__ == "__main__":
     app = start_app()
