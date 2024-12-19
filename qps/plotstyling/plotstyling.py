@@ -1071,6 +1071,9 @@ class PlotStyleButton(QToolButton):
     def setVisibilityFlag(self, flag: PlotStyleWidget.VisibilityFlags, b: bool):
         self.mDialog.setVisibilityFlag(flag, b)
 
+    def setVisibilityFlags(self, flags: PlotStyleWidget.VisibilityFlags):
+        self.mDialog.setVisibilityFlags(flags)
+
     def onAboutToShowMenu(self, *args):
         self.mWA.setVisible(True)
         self.mDialog.setVisible(True)
@@ -1174,6 +1177,9 @@ class PlotStyleDialog(QgsDialog):
 
     def setVisibilityFlag(self, flag: PlotStyleWidget.VisibilityFlags, b: bool):
         self.w.setVisibilityFlag(flag, b)
+
+    def setVisibilityFlags(self, flags: PlotStyleWidget.VisibilityFlags):
+        self.w.setVisibilityFlags(flags)
 
     def onPlotStyleChanged(self, plotStyle: PlotStyle):
 
