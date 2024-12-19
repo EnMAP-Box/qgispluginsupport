@@ -8,11 +8,11 @@ from typing import List
 
 import numpy as np
 from osgeo import gdal, gdal_array, ogr
+
 from qgis.PyQt.QtCore import QMimeData, QModelIndex, QUrl
 from qgis.PyQt.QtWidgets import QAction, QApplication, QDialog, QHBoxLayout, QMenu, QPushButton, QVBoxLayout, QWidget
 from qgis.core import edit, QgsFeature, QgsMapLayer, QgsProject, QgsRasterLayer, QgsVectorLayer
 from qgis.gui import QgsDualView, QgsMapCanvas, QgsMapLayerComboBox, QgsRasterBandComboBox
-
 from qps.layerconfigwidgets.gdalmetadata import BandFieldNames, BandPropertyCalculator, GDALBandMetadataModel, \
     GDALMetadataItem, GDALMetadataItemDialog, GDALMetadataModel, GDALMetadataModelConfigWidget
 from qps.qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
@@ -250,7 +250,7 @@ class TestsGdalMetadata(TestCase):
     def test_modify_metadata(self):
         nb, nl, ns = 5, 2, 2
 
-        path = self.tempDir() / 'test.img'
+        path = self.createTestOutputDirectory() / 'test.img'
         path = path.as_posix()
 
         drv: gdal.Driver = gdal.GetDriverByName('ENVI')

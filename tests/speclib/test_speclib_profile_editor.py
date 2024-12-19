@@ -1,7 +1,7 @@
 import unittest
 from typing import List
 
-from qgis.PyQt.QtCore import NULL, QSize, QVariant, Qt
+from qgis.PyQt.QtCore import NULL, QSize, Qt, QVariant
 from qgis.PyQt.QtWidgets import QCheckBox, QVBoxLayout, QWidget
 from qgis.core import QgsActionManager, QgsFeature
 from qgis.gui import QgsDualView, QgsGui, QgsMapCanvas, QgsSearchWidgetWrapper
@@ -10,9 +10,10 @@ from qps.speclib.core import profile_field_list
 from qps.speclib.core.spectralprofile import decodeProfileValueDict, prepareProfileValueDict
 from qps.speclib.gui.spectrallibraryplotunitmodels import SpectralProfilePlotXAxisUnitModel
 from qps.speclib.gui.spectralprofileeditor import SpectralProfileEditorConfigWidget, SpectralProfileEditorWidget, \
-    SpectralProfileEditorWidgetFactory, SpectralProfileEditorWidgetWrapper, SpectralProfileJsonEditor, \
-    SpectralProfileTableEditor, SpectralProfileTableModel, spectralProfileEditorWidgetFactory
-from qps.testing import TestCase, TestObjects, start_app
+    SpectralProfileEditorWidgetFactory, spectralProfileEditorWidgetFactory, SpectralProfileEditorWidgetWrapper, \
+    SpectralProfileJsonEditor, SpectralProfileTableEditor, SpectralProfileTableModel
+from qps.speclib.gui.spectralprofileplotwidget import SpectralProfilePlotWidget
+from qps.testing import start_app, TestCase, TestObjects
 from qps.unitmodel import BAND_NUMBER
 
 start_app()
@@ -70,6 +71,8 @@ class TestSpeclibWidgets(TestCase):
             self.assertEqual(editor.profileDict(), dict())
 
     def test_SpectralProfileEditorWidget(self):
+        from qps import initResources
+        initResources()
         p = list(TestObjects.spectralProfiles(1, n_bands=[8]))[0]
         self.assertIsInstance(p, QgsFeature)
 
@@ -88,6 +91,22 @@ class TestSpeclibWidgets(TestCase):
             w.setProfile(p)
             r = w.profile()
             self.assertEqual(r, None)
+
+        w.setProfile(d)
+        # w.setReadOnly(True)
+        self.showGui(w)
+
+    def test_SpectralProfilePlotWidget(self):
+
+        w = SpectralProfilePlotWidget()
+
+        p = list(TestObjects.spectralProfiles(1, n_bands=[8]))[0]
+        self.assertIsInstance(p, QgsFeature)
+
+        pField = profile_field_list(p)[0]
+        profile = decodeProfileValueDict(p.attribute(pField.name()))
+
+        w.setProfile(profile)
 
         self.showGui(w)
 

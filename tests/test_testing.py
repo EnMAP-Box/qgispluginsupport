@@ -6,13 +6,13 @@
 __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 
 import unittest
+from pathlib import Path
 
-from qgis.core import QgsProject, QgsApplication, QgsProcessingRegistry, QgsLayerTree, QgsLayerTreeModel
-from qgis.gui import QgsLayerTreeView, QgisInterface, QgsGui
-
+from qgis.core import QgsApplication, QgsLayerTree, QgsLayerTreeModel, QgsProcessingRegistry, QgsProject
+from qgis.gui import QgisInterface, QgsGui, QgsLayerTreeView
 import qps.testing
-from qps.testing import TestCase
-from qps.testing import start_app
+from qps.testing import start_app, TestCase
+from scripts.install_testdata import DIR_REPO
 
 start_app()
 
@@ -64,11 +64,28 @@ class TestCasesClassTesting(TestCase):
             print('{}={}'.format(k, ENV[k]))
 
         QgsProject.instance().removeAllMapLayers()
-        # qps.testing.stop_app()
 
-    # def test_fail_to_remove_layers(self):
-    #    lyr1 = qps.testing.TestObjects.createVectorLayer()
-    #    QgsProject.instance().addMapLayer(lyr1)
+    def test_testfolders(self):
+        p = self.createTestOutputDirectory()
+        expected = DIR_REPO / 'test-outputs' / __name__ / self.__class__.__name__ / 'test_testfolders'
+        self.assertEqual(p, expected)
+        self.assertTrue(p.is_dir())
+
+        p = self.createTestOutputDirectory(subdir='my/subdirs')
+        self.assertEqual(p, expected / 'my' / 'subdirs')
+        self.assertTrue(p.is_dir())
+
+        p = self.createTestOutputDirectory(subdir=Path('my/subdirs2'))
+        self.assertEqual(p, expected / 'my' / 'subdirs2')
+        self.assertTrue(p.is_dir())
+
+        path_testfile = p / 'testfile.txt'
+        with open(path_testfile, 'w') as f:
+            f.write('test')
+        self.assertTrue(path_testfile.is_file())
+
+        p = self.createTestOutputDirectory(subdir=Path('my/subdirs2'), cleanup=True)
+        self.assertFalse(path_testfile.is_file())
 
 
 if __name__ == "__main__":

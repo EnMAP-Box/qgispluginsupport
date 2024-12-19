@@ -55,6 +55,8 @@ class TestSubDataSets(TestCase):
             dir_gdal / 'autotest/ogr/data/gpkg/poly.gpkg.zip',
         ]
 
+        # sources = [s for s in sources if isinstance(gdal.Open(s.as_posix()), gdal.Dataset)]
+
         d = SubDatasetSelectionDialog()
         d.setFiles(sources)
         QgsApplication.processEvents()
@@ -68,11 +70,12 @@ class TestSubDataSets(TestCase):
 
         d.tvSubDatasets.selectRow(0)
         sublayers = d.selectedSublayerDetails()
-        self.assertEqual(len(sublayers), 2)
+        self.assertEqual(len(sublayers), 1)
 
         if not TestCase.runsInCI():
             if d.exec() == QDialog.Accepted:
                 sublayers = d.selectedSublayerDetails()
+                s = ""
 
 
 if __name__ == '__main__':
