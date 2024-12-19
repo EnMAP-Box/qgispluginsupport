@@ -40,6 +40,7 @@ from qgis.core import QgsAction, QgsField, QgsMessageLog, QgsSymbolLayerUtils, Q
 from qgis.PyQt.QtCore import pyqtSignal, QByteArray, QDataStream, QIODevice, QObject, QSize, Qt
 from qgis.PyQt.QtGui import QBrush, QColor, QIcon, QPainter, QPainterPath, QPen, QPixmap
 from qgis.PyQt.QtXml import QDomDocument, QDomElement
+
 from ..pyqtgraph import pyqtgraph as pg
 from ..pyqtgraph.pyqtgraph.graphicsItems.ScatterPlotItem import drawSymbol, renderSymbol
 from ..qgisenums import QMETATYPE_QSTRING
@@ -838,23 +839,26 @@ class PlotStyleWidget(QWidget):
         F = self.VisibilityFlags
         any_col = any([f in flags for f in [F.Type, F.Color, F.Size]])
 
-        self.labelSymbol.setVisible(F.Symbol in flags and any_col)
-        self.labelSymbolPen.setVisible(F.SymbolPen in flags and any_col)
+        showSymbol = F.Symbol in flags
+        showSymbolPen = showSymbol and F.SymbolPen in flags
+
+        self.labelSymbol.setVisible(showSymbol and any_col)
+        self.labelSymbolPen.setVisible(showSymbolPen and any_col)
         self.labelLine.setVisible(F.Line in flags and any_col)
 
         # 1st col - types
-        self.cbSymbol.setVisible(F.Symbol in flags and F.Type in flags)
-        self.cbSymbolPen.setVisible(F.SymbolPen in flags and F.Type in flags)
+        self.cbSymbol.setVisible(showSymbol and F.Type in flags)
+        self.cbSymbolPen.setVisible(showSymbolPen and F.Type in flags)
         self.cbLinePen.setVisible(F.Line in flags and F.Type in flags)
 
         # 2nd col - colors
-        self.btnSymbolColor.setVisible(F.Symbol in flags and F.Color in flags)
-        self.btnSymbolPenColor.setVisible(F.SymbolPen in flags and F.Color in flags)
+        self.btnSymbolColor.setVisible(showSymbol and F.Color in flags)
+        self.btnSymbolPenColor.setVisible(showSymbolPen and F.Color in flags)
         self.btnLinePenColor.setVisible(F.Line in flags and F.Color in flags)
 
         # 3rd col - pixel size
-        self.sbSymbolSize.setVisible(F.Symbol in flags and F.Size in flags)
-        self.sbSymbolPenWidth.setVisible(F.SymbolPen in flags and F.Size in flags)
+        self.sbSymbolSize.setVisible(showSymbol and F.Size in flags)
+        self.sbSymbolPenWidth.setVisible(showSymbolPen and F.Size in flags)
         self.sbLinePenWidth.setVisible(F.Line in flags and F.Size in flags)
 
         #
@@ -862,6 +866,7 @@ class PlotStyleWidget(QWidget):
         self.plotWidget.setVisible(F.Preview in flags)
 
         self.mVisibility = flags
+        self.refreshPreview()
 
     def visibilityFlags(self) -> 'PlotStyleWidget.VVisibilityFlags':
         return self.mVisibility
@@ -918,7 +923,6 @@ class PlotStyleWidget(QWidget):
 
     def refreshPreview(self, *args):
         if not self.mBlockUpdates:
-            # log(': REFRESH NOW')
             style = self.plotStyle()
             assert isinstance(style, PlotStyle)
             # todo: set style to style preview
@@ -963,19 +967,55 @@ class PlotStyleWidget(QWidget):
         style = PlotStyle(plotStyle=self.mLastPlotStyle)
 
         # read plotstyle values from widgets
-        style.markerSize = self.sbSymbolSize.value()
-        style.setMarkerSymbol(self.cbSymbol.markerSymbol())
+        F = self.VisibilityFlags
+        visFlags = self.visibilityFlags()
+
         assert isinstance(style.markerPen, QPen)
         assert isinstance(style.markerBrush, QBrush)
         assert isinstance(style.linePen, QPen)
 
-        style.markerPen.setColor(self.btnSymbolPenColor.color())
-        style.markerPen.setWidth(self.sbSymbolPenWidth.value())
-        style.markerPen.setStyle(self.cbSymbolPen.penStyle())
-        style.markerBrush.setColor(self.btnSymbolColor.color())
-        style.linePen.setColor(self.btnLinePenColor.color())
-        style.linePen.setWidth(self.sbLinePenWidth.value())
-        style.linePen.setStyle(self.cbLinePen.penStyle())
+        if F.Symbol in visFlags:
+            if F.Type in visFlags:
+                style.setMarkerSymbol(self.cbSymbol.markerSymbol())
+            if F.Color in visFlags:
+                style.markerBrush.setColor(self.btnSymbolColor.color())
+            if F.Size in visFlags:
+                style.markerSize = self.sbSymbolSize.value()
+
+            if F.SymbolPen in visFlags:
+                if F.Type in visFlags:
+                    style.markerPen.setStyle(self.cbSymbolPen.penStyle())
+                if F.Color in visFlags:
+                    style.markerPen.setColor(self.btnSymbolPenColor.color())
+                if F.Size in visFlags:
+                    style.markerPen.setWidth(self.sbSymbolPenWidth.value())
+            else:
+                style.markerPen.setStyle(Qt.NoPen)
+
+        else:
+            style.setMarkerSymbol(MarkerSymbol.No_Symbol)
+
+        if F.Line in visFlags:
+            if F.Type in visFlags:
+                style.linePen.setStyle(self.cbLinePen.penStyle())
+            if F.Color in visFlags:
+                style.linePen.setColor(self.btnLinePenColor.color())
+            if F.Size in visFlags:
+                style.linePen.setWidth(self.sbLinePenWidth.value())
+
+        else:
+            style.linePen.setStyle(Qt.NoPen)
+
+        # style.markerSize = self.sbSymbolSize.value()
+        # style.setMarkerSymbol(self.cbSymbol.markerSymbol())
+
+        # style.markerPen.setColor(self.btnSymbolPenColor.color())
+        # style.markerPen.setWidth(self.sbSymbolPenWidth.value())
+        # style.markerPen.setStyle(self.cbSymbolPen.penStyle())
+        # style.markerBrush.setColor(self.btnSymbolColor.color())
+        # style.linePen.setColor(self.btnLinePenColor.color())
+        # style.linePen.setWidth(self.sbLinePenWidth.value())
+        # style.linePen.setStyle(self.cbLinePen.penStyle())
 
         if self.cbIsVisible.isVisible():
             style.setVisibility(self.cbIsVisible.isChecked())
