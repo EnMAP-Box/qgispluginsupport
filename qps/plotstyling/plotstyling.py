@@ -30,7 +30,7 @@ import pathlib
 import sys
 import warnings
 from json import JSONDecodeError
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Optional, Union
 
 from qgis.PyQt.QtWidgets import QComboBox, QDialog, QDialogButtonBox, QLabel, QMenu, QSpinBox, QToolButton, QVBoxLayout, \
     QWidget, QWidgetAction
@@ -516,7 +516,7 @@ class PlotStyle(QObject):
         return PlotStyle.fromJSON(cdata.nodeValue())
 
     @classmethod
-    def fromMap(cls, obj: Dict[str, Any]):
+    def fromMap(cls, obj: Dict[str, Any]) -> 'PlotStyle':
         """
         Creates a PlotStyle from a dictionary
         :param map: dict
@@ -542,7 +542,7 @@ class PlotStyle(QObject):
         return plotStyle
 
     @classmethod
-    def fromJSON(cls, jsonString: str):
+    def fromJSON(cls, jsonString: str) -> Optional['PlotStyle']:
         """
         Takes a json string and returns a PlotStyle if any plot-style attribute was set
         see https://www.gdal.org/ogr_feature_style.html for details
@@ -561,7 +561,7 @@ class PlotStyle(QObject):
             return None
 
     @classmethod
-    def fromDialog(cls, *args, **kwds):
+    def fromDialog(cls, *args, **kwds) -> Optional['PlotStyle']:
         """
         Selects a PlotStyle from a user dialog
         :param self:
