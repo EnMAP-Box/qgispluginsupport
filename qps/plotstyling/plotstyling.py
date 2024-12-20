@@ -30,7 +30,7 @@ import pathlib
 import sys
 import warnings
 from json import JSONDecodeError
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Optional, Union
 
 from qgis.PyQt.QtWidgets import QComboBox, QDialog, QDialogButtonBox, QLabel, QMenu, QSpinBox, QToolButton, QVBoxLayout, \
     QWidget, QWidgetAction
@@ -515,24 +515,15 @@ class PlotStyle(QObject):
         assert cdata.isCDATASection()
         return PlotStyle.fromJSON(cdata.nodeValue())
 
-    @staticmethod
-    def fromJSON(jsonString: str):
+    @classmethod
+    def fromMap(cls, obj: Dict[str, Any]) -> 'PlotStyle':
         """
-        Takes a json string and returns a PlotStyle if any plot-style attribute was set
-        see https://www.gdal.org/ogr_feature_style.html for details
-
-        :param ogrFeatureStyle: str
-        :return: [list-of-PlotStyles], usually of length = 1
+        Creates a PlotStyle from a dictionary
+        :param map: dict
+        :return: PlotStyle
         """
-        # log('BEGIN fromJSON')
-        if not isinstance(jsonString, str):
-            return None
-        try:
-            obj = json.loads(jsonString)
-        except Exception:
-            return None
-
         plotStyle = PlotStyle()
+
         if 'markerPen' in obj.keys():
             plotStyle.markerPen = tuple2pen(obj['markerPen'])
         if 'markerBrush' in obj.keys():
@@ -550,8 +541,27 @@ class PlotStyle(QObject):
         # log('END fromJSON')
         return plotStyle
 
-    @staticmethod
-    def fromDialog(*args, **kwds):
+    @classmethod
+    def fromJSON(cls, jsonString: str) -> Optional['PlotStyle']:
+        """
+        Takes a json string and returns a PlotStyle if any plot-style attribute was set
+        see https://www.gdal.org/ogr_feature_style.html for details
+
+        :param ogrFeatureStyle: str
+        :return: [list-of-PlotStyles], usually of length = 1
+        """
+        # log('BEGIN fromJSON')
+        if not isinstance(jsonString, str):
+            return None
+        try:
+            obj = json.loads(jsonString)
+            assert isinstance(obj, dict)
+            return PlotStyle.fromMap(obj)
+        except Exception:
+            return None
+
+    @classmethod
+    def fromDialog(cls, *args, **kwds) -> Optional['PlotStyle']:
         """
         Selects a PlotStyle from a user dialog
         :param self:
@@ -565,6 +575,15 @@ class PlotStyle(QObject):
         """Returns a JSON representation of this plot style
         """
         # log('START json()')
+        dump = json.dumps(self.map(), sort_keys=True, ensure_ascii=False, indent=-1, separators=(',', ':'))
+        # log('END json()')
+        return dump
+
+    def map(self) -> Dict[str, Any]:
+        """
+        Returns a dictionary representation of this plot style
+        :return: dict
+        """
         style = dict()
         style['markerPen'] = pen2tuple(self.markerPen)
         style['markerBrush'] = brush2tuple(self.markerBrush)
@@ -573,9 +592,7 @@ class PlotStyle(QObject):
         style['linePen'] = pen2tuple(self.linePen)
         style['isVisible'] = self.mIsVisible
         style['backgroundColor'] = QgsSymbolLayerUtils.encodeColor(self.backgroundColor)
-        dump = json.dumps(style, sort_keys=True, ensure_ascii=False, indent=-1, separators=(',', ':'))
-        # log('END json()')
-        return dump
+        return style
 
     def setVisibility(self, b):
         """

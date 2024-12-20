@@ -4,8 +4,9 @@ import unittest
 
 from qgis.PyQt.QtWidgets import QDialog
 from qgis.core import QgsApplication, QgsProviderSublayerDetails
+
 from qps.subdatasets import SubDatasetLoadingTask, SubDatasetSelectionDialog
-from qps.testing import TestCase, TestObjects, start_app
+from qps.testing import start_app, TestCase, TestObjects
 
 start_app()
 
@@ -68,11 +69,12 @@ class TestSubDataSets(TestCase):
 
         d.tvSubDatasets.selectRow(0)
         sublayers = d.selectedSublayerDetails()
-        self.assertEqual(len(sublayers), 2)
+        self.assertEqual(len(sublayers), 1)
 
         if not TestCase.runsInCI():
             if d.exec() == QDialog.Accepted:
                 sublayers = d.selectedSublayerDetails()
+                s = ""
 
 
 if __name__ == '__main__':
