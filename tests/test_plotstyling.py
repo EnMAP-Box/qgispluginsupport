@@ -16,21 +16,22 @@
 *                                                                         *
 ***************************************************************************
 """
+import json
 # noinspection PyPep8Naming
 import os
 import unittest
 
+from qgis.PyQt.QtCore import QByteArray, QDataStream, QIODevice, QSize, Qt
 from qgis.PyQt.QtWidgets import QCheckBox, QComboBox, QGridLayout, QHBoxLayout, QLabel, QVBoxLayout, QWidget
-from qgis.PyQt.QtCore import QSize, Qt
 from qgis.PyQt.QtGui import QColor, QPen
 from qgis.PyQt.QtXml import QDomDocument
 from qgis.core import QgsAction, QgsActionManager, QgsAttributeTableConfig, QgsEditorWidgetSetup, QgsFeature, QgsField, \
     QgsVectorLayer
 from qgis.gui import QgsDualView, QgsGui, QgsMapCanvas, QgsSearchWidgetWrapper
 
-from qps.plotstyling.plotstyling import createSetPlotStyleAction, MarkerSymbol, MarkerSymbolComboBox, pen2tuple, \
+from qps.plotstyling.plotstyling import createSetPlotStyleAction, MarkerSymbol, MarkerSymbolComboBox, pen2list, \
     PlotStyle, PlotStyleButton, PlotStyleEditorConfigWidget, PlotStyleEditorWidgetFactory, plotStyleEditorWidgetFactory, \
-    PlotStyleEditorWidgetWrapper, PlotStyleWidget, PlotWidgetStyle, tuple2pen, XMLTAG_PLOTSTYLENODE
+    PlotStyleEditorWidgetWrapper, PlotStyleWidget, PlotWidgetStyle, tuple2list, XMLTAG_PLOTSTYLENODE
 from qps.qgisenums import QMETATYPE_DOUBLE, QMETATYPE_INT, QMETATYPE_QSTRING
 from qps.testing import start_app, TestCase
 from qps.pyqtgraph.pyqtgraph.graphicsItems.ScatterPlotItem import Symbols as pgSymbols
@@ -78,9 +79,10 @@ class PlotStyleTests(TestCase):
     def test_json(self):
 
         pen = QPen()
-        encoded = pen2tuple(pen)
-        self.assertIsInstance(encoded, tuple)
-        pen2 = tuple2pen(encoded)
+        encoded = pen2list(pen)
+        self.assertIsInstance(encoded, list)
+        penStr = json.dumps(encoded)
+        pen2 = tuple2list(json.loads(penStr))
         self.assertIsInstance(pen2, QPen)
         self.assertEqual(pen, pen2)
 
@@ -196,6 +198,24 @@ class PlotStyleTests(TestCase):
         w.setLayout(l1)
 
         self.showGui(w)
+
+    def test_serialize_plotstyle(self):
+
+        # Create a QPen
+        pen = QPen(QColor("blue"))
+        pen.setWidth(2)
+        pen.setStyle(Qt.DashLine)
+
+        # Serialize the QPen to a QByteArray
+        byte_array = QByteArray()
+        stream = QDataStream(byte_array, QIODevice.WriteOnly)
+        stream << pen  # Use the Qt operator<< to serialize
+
+        # Convert to a string (e.g., for storage or transmission)
+        pen_string = byte_array.toHex().data().decode("utf-8")
+        print("Serialized Pen:", pen_string)
+
+        s = ""
 
     def test_PlotStyleQgsAction(self):
 

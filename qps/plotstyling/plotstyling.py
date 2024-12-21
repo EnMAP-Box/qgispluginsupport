@@ -201,17 +201,17 @@ class MarkerSymbolComboBox(QComboBox):
         return MarkerSymbol.icon(self.markerSymbol())
 
 
-def brush2tuple(brush: QBrush) -> tuple:
-    return (
+def brush2list(brush: QBrush) -> list:
+    return [
         QgsSymbolLayerUtils.encodeColor(brush.color()),
         # setMatrix
         QgsSymbolLayerUtils.encodeBrushStyle(brush.style())
         # texture
         # transform
-    )
+    ]
 
 
-def tuple2brush(t: tuple) -> QBrush:
+def list2brush(t: list) -> QBrush:
     # log('tuple2brush')
     assert len(t) == 2
     brush = QBrush()
@@ -220,11 +220,11 @@ def tuple2brush(t: tuple) -> QBrush:
     return brush
 
 
-def pen2tuple(pen: QPen) -> tuple:
+def pen2list(pen: QPen) -> list:
     # log('pen2tuple')
-    return (
+    return [
         pen.width(),
-        brush2tuple(pen.brush()),  # 1
+        brush2list(pen.brush()),  # 1
         QgsSymbolLayerUtils.encodePenCapStyle(pen.capStyle()),
         QgsSymbolLayerUtils.encodeColor(pen.color()),
         pen.isCosmetic(),
@@ -233,15 +233,14 @@ def pen2tuple(pen: QPen) -> tuple:
         QgsSymbolLayerUtils.encodePenJoinStyle(pen.joinStyle()),
         pen.miterLimit(),
         QgsSymbolLayerUtils.encodePenStyle(pen.style())  # 9
+    ]
 
-    )
 
-
-def tuple2pen(t: tuple) -> QPen:
+def tuple2list(t: list) -> QPen:
     assert len(t) == 10
     pen = QPen()
     pen.setWidth(t[0])
-    pen.setBrush(tuple2brush(t[1]))
+    pen.setBrush(list2brush(t[1]))
     pen.setCapStyle(QgsSymbolLayerUtils.decodePenCapStyle(t[2]))
     pen.setColor(QgsSymbolLayerUtils.decodeColor(t[3]))
     pen.setCosmetic(t[4])
@@ -525,15 +524,15 @@ class PlotStyle(QObject):
         plotStyle = PlotStyle()
 
         if 'markerPen' in obj.keys():
-            plotStyle.markerPen = tuple2pen(obj['markerPen'])
+            plotStyle.markerPen = tuple2list(obj['markerPen'])
         if 'markerBrush' in obj.keys():
-            plotStyle.markerBrush = tuple2brush(obj['markerBrush'])
+            plotStyle.markerBrush = list2brush(obj['markerBrush'])
         if 'markerSymbol' in obj.keys():
             plotStyle.markerSymbol = obj['markerSymbol']
         if 'markerSize' in obj.keys():
             plotStyle.markerSize = obj['markerSize']
         if 'linePen' in obj.keys():
-            plotStyle.linePen = tuple2pen(obj['linePen'])
+            plotStyle.linePen = tuple2list(obj['linePen'])
         if 'isVisible' in obj.keys():
             plotStyle.setVisibility(obj['isVisible'])
         if 'backgroundColor' in obj.keys():
@@ -542,15 +541,14 @@ class PlotStyle(QObject):
         return plotStyle
 
     @classmethod
-    def fromJSON(cls, jsonString: str) -> Optional['PlotStyle']:
+    def fromJSON(cls, jsonString: Optional[str]) -> Optional['PlotStyle']:
         """
         Takes a json string and returns a PlotStyle if any plot-style attribute was set
         see https://www.gdal.org/ogr_feature_style.html for details
 
-        :param ogrFeatureStyle: str
+        :param jsonString:
         :return: [list-of-PlotStyles], usually of length = 1
         """
-        # log('BEGIN fromJSON')
         if not isinstance(jsonString, str):
             return None
         try:
@@ -585,11 +583,11 @@ class PlotStyle(QObject):
         :return: dict
         """
         style = dict()
-        style['markerPen'] = pen2tuple(self.markerPen)
-        style['markerBrush'] = brush2tuple(self.markerBrush)
+        style['markerPen'] = pen2list(self.markerPen)
+        style['markerBrush'] = brush2list(self.markerBrush)
         style['markerSymbol'] = self.markerSymbol
         style['markerSize'] = self.markerSize
-        style['linePen'] = pen2tuple(self.linePen)
+        style['linePen'] = pen2list(self.linePen)
         style['isVisible'] = self.mIsVisible
         style['backgroundColor'] = QgsSymbolLayerUtils.encodeColor(self.backgroundColor)
         return style
