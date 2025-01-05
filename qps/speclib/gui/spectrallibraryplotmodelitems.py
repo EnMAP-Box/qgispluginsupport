@@ -245,12 +245,12 @@ class PropertyItem(PropertyItemBase):
     """
     Controls a single property parameter.
     Is paired with a PropertyLabel.
-    .properyRow() -> [PropertyLabel, PropertyItem]
+    .propertyRow() -> [PropertyLabel, PropertyItem]
     """
 
     class Signals(QObject):
         """
-        Signales for the PropertyItem
+        Signals for the PropertyItem
         """
         dataChanged = pyqtSignal()
         checkedChanged = pyqtSignal(bool)
