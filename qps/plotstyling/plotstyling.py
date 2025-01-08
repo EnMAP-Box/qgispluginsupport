@@ -40,7 +40,6 @@ from qgis.core import QgsAction, QgsField, QgsMessageLog, QgsSymbolLayerUtils, Q
 from qgis.PyQt.QtCore import pyqtSignal, QByteArray, QDataStream, QIODevice, QObject, QSize, Qt
 from qgis.PyQt.QtGui import QBrush, QColor, QIcon, QPainter, QPainterPath, QPen, QPixmap
 from qgis.PyQt.QtXml import QDomDocument, QDomElement
-
 from ..pyqtgraph import pyqtgraph as pg
 from ..pyqtgraph.pyqtgraph.graphicsItems.ScatterPlotItem import drawSymbol, renderSymbol
 from ..qgisenums import QMETATYPE_QSTRING
@@ -236,7 +235,7 @@ def pen2list(pen: QPen) -> list:
     ]
 
 
-def tuple2list(t: list) -> QPen:
+def list2pen(t: list) -> QPen:
     assert len(t) == 10
     pen = QPen()
     pen.setWidth(t[0])
@@ -524,7 +523,7 @@ class PlotStyle(QObject):
         plotStyle = PlotStyle()
 
         if 'markerPen' in obj.keys():
-            plotStyle.markerPen = tuple2list(obj['markerPen'])
+            plotStyle.markerPen = list2pen(obj['markerPen'])
         if 'markerBrush' in obj.keys():
             plotStyle.markerBrush = list2brush(obj['markerBrush'])
         if 'markerSymbol' in obj.keys():
@@ -532,7 +531,7 @@ class PlotStyle(QObject):
         if 'markerSize' in obj.keys():
             plotStyle.markerSize = obj['markerSize']
         if 'linePen' in obj.keys():
-            plotStyle.linePen = tuple2list(obj['linePen'])
+            plotStyle.linePen = list2pen(obj['linePen'])
         if 'isVisible' in obj.keys():
             plotStyle.setVisibility(obj['isVisible'])
         if 'backgroundColor' in obj.keys():
@@ -1011,6 +1010,7 @@ class PlotStyleWidget(QWidget):
             style.setMarkerSymbol(MarkerSymbol.No_Symbol)
 
         if F.Line in visFlags:
+            style.linePen.setCosmetic(True)  # line width = pixel width
             if F.Type in visFlags:
                 style.linePen.setStyle(self.cbLinePen.penStyle())
             if F.Color in visFlags:

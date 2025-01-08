@@ -258,7 +258,7 @@ class PropertyItem(PropertyItemBase):
         def __init__(self, *args, **kwds):
             super().__init__(*args, **kwds)
 
-    def __init__(self, key: str, *args, labelName: str = None, **kwds):
+    def __init__(self, key: str, *args, labelName: str = None, signals=None, **kwds):
         super().__init__(*args, **kwds)
         assert isinstance(key, str) and ' ' not in key
         self.mKey = key
@@ -268,7 +268,7 @@ class PropertyItem(PropertyItemBase):
         if labelName is None:
             labelName = key
         self.mLabel = PropertyLabel(labelName)
-        self.mSignals = PropertyItem.Signals()
+        self.mSignals = signals if signals else PropertyItem.Signals()
         self.mLabel.mSignals.sigCheckedChanged.connect(self.mSignals.checkedChanged)
 
     def __eq__(self, other):
