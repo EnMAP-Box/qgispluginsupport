@@ -569,7 +569,7 @@ class SpectralProfileEditorWidget(QGroupBox):
         elif w == self.tableEditor:
             return w.profileDict()
         else:
-            raise NotImplementedError()
+            return self.mDefault
 
 
 class SpectralProfileEditorWidgetWrapper(QgsEditorWidgetWrapper):
