@@ -2622,7 +2622,7 @@ def rasterBlockArray(block: QgsRasterBlock, masked: bool = False) -> Union[np.nd
 
 def featureBoundingBox(features) -> QgsRectangle:
     retval = QgsRectangle()
-    retval.setMinimal()
+    retval.setNull()
 
     for feature in features:
         feature: QgsFeature
