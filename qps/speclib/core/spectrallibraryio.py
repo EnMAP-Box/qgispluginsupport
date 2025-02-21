@@ -1091,15 +1091,18 @@ def initSpectralLibraryIOs():
     from ..io.ecosis import EcoSISSpectralLibraryIO
 
     speclibIOs = [
-        GeoPackageSpectralLibraryIO(),
-        GeoJsonSpectralLibraryIO(),
-        EnviSpectralLibraryIO(),
-        ASDSpectralLibraryIO(),
-        SEDSpectralLibraryIO(),
-        RasterLayerSpectralLibraryIO(),
-        SVCSpectralLibraryIO(),
-        EcoSISSpectralLibraryIO(),
+        GeoPackageSpectralLibraryIO,
+        GeoJsonSpectralLibraryIO,
+        EnviSpectralLibraryIO,
+        ASDSpectralLibraryIO,
+        SEDSpectralLibraryIO,
+        RasterLayerSpectralLibraryIO,
+        SVCSpectralLibraryIO,
+        EcoSISSpectralLibraryIO,
     ]
 
     for speclibIO in speclibIOs:
-        SpectralLibraryIO.registerSpectralLibraryIO(speclibIO)
+        try:
+            SpectralLibraryIO.registerSpectralLibraryIO(speclibIO())
+        except Exception as ex:
+            print(ex, file=sys.stderr)

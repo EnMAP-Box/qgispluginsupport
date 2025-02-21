@@ -109,7 +109,7 @@ class EcoSISSpectralLibraryIO(SpectralLibraryIO):
         super(EcoSISSpectralLibraryIO, self).__init__(*args, **kwds)
 
         assert 'delimitedtext' in QgsProviderRegistry.instance().providerList(), \
-            'QGIS runs without "delimitedtext" data drovider '
+            'QGIS runs without "delimitedtext" data provider '
 
     @classmethod
     def formatName(cls) -> str:
