@@ -9,7 +9,7 @@ import numpy as np
 import pystac
 import pystac.extensions.eo
 from osgeo import gdal_array
-from osgeo.gdal import Dataset, Band, VersionInfo, Open
+from osgeo.gdal import Dataset, Band, VersionInfo
 from osgeo.osr import SpatialReference, UseExceptions
 from pystac.extensions.eo import EOExtension
 
@@ -69,7 +69,7 @@ def create_test_datasets(output_dir: Union[str, Path]):
         ds.SetGeoTransform(gt)
         return ds
 
-    if False:
+    if True:
         ds = create_dataset('gdal_no_info.tif')
         ds = create_dataset('gdal_wl_only.tif')
         writeBandMetadata(ds, 'IMAGERY', 'CENTRAL_WAVELENGTH_UM', envi_wl)
@@ -98,42 +98,41 @@ def create_test_datasets(output_dir: Union[str, Path]):
         writeBandMetadata(ds, 'ENVI', 'wavelength units', envi_wlu)
         writeBandMetadata(ds, 'ENVI', 'bbl', [0, 1])
 
-    # metadata stored in a STAC json
-    ds = create_dataset('staclike.tif')
-    path = Path(ds.GetDescription())
-    bn = os.path.splitext(path.name)[0]
-    path_json = path.parent / f'{bn}.stac.json'
-    item = pystac.Item(id=bn,
-                       geometry=None,
-                       bbox=None,
-                       datetime=datetime.datetime.today(),
-                       properties={})
-    EOExtension.add_to(item)
-    bands = []
-    for b, (wl, fwhm) in enumerate(zip(envi_wl, envi_fwhm)):
-        bands.append({
-            'name': f'Band {b + 1} name',
-            'description': f'This is band {b + 1}',
-            'center_wavelength': wl / 100,
-            'full_width_half_max': fwhm / 100,
-        })
+    if True:
+        # metadata stored in a STAC json
+        ds = create_dataset('staclike.tif')
+        path = Path(ds.GetDescription())
+        bn = os.path.splitext(path.name)[0]
+        path_json = path.parent / f'{bn}.stac.json'
+        item = pystac.Item(id=bn,
+                           geometry=None,
+                           bbox=None,
+                           datetime=datetime.datetime.today(),
+                           properties={})
+        EOExtension.add_to(item)
+        bands = []
+        for b, (wl, fwhm) in enumerate(zip(envi_wl, envi_fwhm)):
+            bands.append({
+                'name': f'Band {b + 1} name',
+                'description': f'This is band {b + 1}',
+                'center_wavelength': wl / 100,
+                'full_width_half_max': fwhm / 100,
+            })
 
-    eo_ext = EOExtension.ext(item, add_if_missing=True)
-    eo_ext.bands = [pystac.extensions.eo.Band.create(**band) for band in bands]
+        eo_ext = EOExtension.ext(item, add_if_missing=True)
+        eo_ext.bands = [pystac.extensions.eo.Band.create(**band) for band in bands]
 
-    item.add_asset("image",
-                   pystac.Asset(
-                       href=path.name,
-                       media_type=pystac.MediaType.GEOTIFF,
-                       roles=['data'],
-                   ))
-    item_json = item.to_dict()
-    with open(path_json, 'w') as f:
-        json.dump(item_json, f, indent=2)
+        item.add_asset("image",
+                       pystac.Asset(
+                           href=path.name,
+                           media_type=pystac.MediaType.GEOTIFF,
+                           roles=['data'],
+                       ))
+        item_json = item.to_dict()
+        with open(path_json, 'w') as f:
+            json.dump(item_json, f, indent=2)
 
-    dsTest = Open(f'STACIT:"{path_json}"')
-    s = ""
-    # can we open it with GDAL?
+        # can we open it with GDAL?
 
 
 if __name__ == '__main__':
