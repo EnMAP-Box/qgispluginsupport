@@ -4,7 +4,7 @@ name: qgis_latest
 channels:
   - conda-forge
 dependencies:
-  - qgis>=3.42
+  - qgis>=3.40
   - pip
   - matplotlib
 
