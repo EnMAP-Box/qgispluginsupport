@@ -279,7 +279,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
             dual_view_mode = QgsDualView.ViewMode.AttributeTable
             show_dual_view = True
         elif SpectralLibraryWidget.ViewType.FormView in viewType:
-            dual_view_mode = QgsDualView.ViewMode.AttributeTable
+            dual_view_mode = QgsDualView.ViewMode.AttributeEditor
             show_dual_view = True
 
         self.widgetLeft.setVisible(show_profiles)

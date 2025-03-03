@@ -448,8 +448,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
             return
         if self.updatesBlocked() or self.speclib().isEditCommandActive():
             return
-        # print('## UPDATE PLOT')
-        t0 = datetime.datetime.now()
+
         if not (isinstance(self.mPlotWidget, SpectralProfilePlotWidget) and isinstance(self.speclib(), QgsVectorLayer)):
             return
 
@@ -564,7 +563,8 @@ class SpectralProfilePlotModel(QStandardItemModel):
                 plotContext = QgsExpressionContext(context)
                 plotContext.appendScope(vis.expressionContextScope())
 
-                if fid not in selected_fids and vis.filterProperty().expressionString() != '':
+                is_selected = fid in selected_fids
+                if is_selected and vis.filterProperty().expressionString() != '':
                     b, success = vis.filterProperty().valueAsBool(plotContext, defaultValue=False)
                     if b is False:
                         continue
@@ -645,17 +645,13 @@ class SpectralProfilePlotModel(QStandardItemModel):
             t1 = datetime.datetime.now()
             for p in to_remove:
                 self.mPlotWidget.removeItem(p)
-            #  printCaller(suffix=f'Remove {len(to_remove)} items', dt=t1)
             existing = self.mPlotWidget.items()
-
             to_add = [p for p in PLOT_ITEMS if p not in existing]
 
-            t2 = datetime.datetime.now()
             for p in to_add:
                 self.mPlotWidget.addItem(p)
-            #  t3 = printCaller(suffix=f'Add    {len(to_add)} items', dt=t2)
 
-        n_total = len([i for i in self.mPlotWidget.getPlotItem().items if isinstance(i, SpectralProfilePlotDataItem)])
+        # n_total = len([i for i in self.mPlotWidget.getPlotItem().items if isinstance(i, SpectralProfilePlotDataItem)])
 
         self.updateProfileLabel(len(PLOT_ITEMS), profile_limit_reached)
 
@@ -1591,7 +1587,10 @@ class SpectralLibraryPlotWidget(QWidget):
         for field in profilefields:
             name = field.name()
             if name not in self.mINITIALIZED_VISUALIZATIONS:
-                self.createProfileVisualization(field=field)
+
+                has_checked_vis = any([v.checkState() == Qt.Checked for v in self.profileVisualizations()])
+
+                self.createProfileVisualization(field=field, checked=not has_checked_vis)
                 # keep in mind if a visualization was created at least once for a profile field
                 self.mINITIALIZED_VISUALIZATIONS.add(name)
 
@@ -1614,9 +1613,10 @@ class SpectralLibraryPlotWidget(QWidget):
                                    name: str = None,
                                    field: Union[QgsField, int, str] = None,
                                    color: Union[str, QColor] = None,
-                                   style: PlotStyle = None):
+                                   style: PlotStyle = None,
+                                   checked: bool = True):
         item = ProfileVisualizationGroup()
-
+        item.setCheckState(Qt.Checked if checked else Qt.Unchecked)
         # set defaults
         # set speclib
         item.setSpeclib(self.speclib())

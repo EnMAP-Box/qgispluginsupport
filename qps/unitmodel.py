@@ -4,10 +4,11 @@ import datetime
 import re
 import warnings
 from math import log10
-from typing import List, Union, Iterator
+from typing import Iterator, List, Union
 
 import numpy as np
-from qgis.PyQt.QtCore import Qt, NULL, QAbstractListModel, QModelIndex, QDate, QDateTime
+
+from qgis.PyQt.QtCore import NULL, QAbstractListModel, QDate, QDateTime, QModelIndex, Qt
 from qgis.PyQt.QtGui import QIcon
 
 BAND_INDEX = 'Band Index'
@@ -584,7 +585,10 @@ class UnitLookup(object):
         return UnitLookup.convertLengthUnit(*args, **kwds)
 
     @staticmethod
-    def convertLengthUnit(value: Union[float, np.ndarray], u1: str, u2: str) -> float:
+    def convertLengthUnit(
+            value: Union[float, np.ndarray],
+            u1: str,
+            u2: str) -> Union[None, float, List[float], np.ndarray]:
         """
         Converts a length value `value` from unit `u1` into unit `u2`
         :param value: float | int | might work with numpy arrays as well

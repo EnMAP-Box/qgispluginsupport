@@ -19,7 +19,7 @@
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this software. If not, see <http://www.gnu.org/licenses/>.
+    along with this software. If not, see <https://www.gnu.org/licenses/>.
 ***************************************************************************
 """
 import sys
@@ -27,6 +27,10 @@ from typing import Any, Dict, List, Tuple, Union
 
 import numpy as np
 
+from qgis.PyQt.QtCore import pyqtSignal, QMimeData, QModelIndex, QObject, QSignalBlocker, QSize, Qt
+from qgis.PyQt.QtGui import QColor, QIcon, QPen, QPixmap, QStandardItem, QStandardItemModel
+from qgis.PyQt.QtWidgets import QCheckBox, QComboBox, QDoubleSpinBox, QHBoxLayout, QMenu, QSizePolicy, QSpinBox, QWidget
+from qgis.PyQt.QtXml import QDomDocument, QDomElement
 from qgis.core import Qgis, QgsExpression, QgsExpressionContext, QgsExpressionContextGenerator, \
     QgsExpressionContextScope, QgsExpressionContextUtils, QgsFeature, QgsFeatureRenderer, QgsField, \
     QgsHillshadeRenderer, QgsMultiBandColorRenderer, QgsPalettedRasterRenderer, QgsProperty, QgsPropertyDefinition, \
@@ -34,10 +38,6 @@ from qgis.core import Qgis, QgsExpression, QgsExpressionContext, QgsExpressionCo
     QgsSingleBandColorDataRenderer, QgsSingleBandGrayRenderer, QgsSingleBandPseudoColorRenderer, QgsTextFormat, \
     QgsVectorLayer, QgsWkbTypes, QgsXmlUtils
 from qgis.gui import QgsColorButton, QgsDoubleSpinBox, QgsFieldExpressionWidget, QgsPropertyOverrideButton, QgsSpinBox
-from qgis.PyQt.QtCore import pyqtSignal, QMimeData, QModelIndex, QObject, QSignalBlocker, QSize, Qt
-from qgis.PyQt.QtGui import QColor, QIcon, QPen, QPixmap, QStandardItem, QStandardItemModel
-from qgis.PyQt.QtWidgets import QCheckBox, QComboBox, QDoubleSpinBox, QHBoxLayout, QMenu, QSizePolicy, QSpinBox, QWidget
-from qgis.PyQt.QtXml import QDomDocument, QDomElement
 from .spectrallibraryplotitems import SpectralProfilePlotItem, SpectralProfilePlotLegend
 from ..core import is_profile_field
 from ...externals.htmlwidgets import HTMLComboBox
@@ -245,12 +245,12 @@ class PropertyItem(PropertyItemBase):
     """
     Controls a single property parameter.
     Is paired with a PropertyLabel.
-    .properyRow() -> [PropertyLabel, PropertyItem]
+    .propertyRow() -> [PropertyLabel, PropertyItem]
     """
 
     class Signals(QObject):
         """
-        Signales for the PropertyItem
+        Signals for the PropertyItem
         """
         dataChanged = pyqtSignal()
         checkedChanged = pyqtSignal(bool)
@@ -258,7 +258,7 @@ class PropertyItem(PropertyItemBase):
         def __init__(self, *args, **kwds):
             super().__init__(*args, **kwds)
 
-    def __init__(self, key: str, *args, labelName: str = None, **kwds):
+    def __init__(self, key: str, *args, labelName: str = None, signals=None, **kwds):
         super().__init__(*args, **kwds)
         assert isinstance(key, str) and ' ' not in key
         self.mKey = key
@@ -268,7 +268,7 @@ class PropertyItem(PropertyItemBase):
         if labelName is None:
             labelName = key
         self.mLabel = PropertyLabel(labelName)
-        self.mSignals = PropertyItem.Signals()
+        self.mSignals = signals if signals else PropertyItem.Signals()
         self.mLabel.mSignals.sigCheckedChanged.connect(self.mSignals.checkedChanged)
 
     def __eq__(self, other):
@@ -506,9 +506,6 @@ class PropertyItemGroup(PropertyItemBase):
 
     def data(self, role: int = ...) -> Any:
 
-        if role == Qt.ForegroundRole:
-            if not self.isVisible():
-                return QColor('grey')
         if role == Qt.DecorationRole and self.mMissingValues:
             return QIcon(WARNING_ICON)
 
@@ -1894,7 +1891,8 @@ class ProfileVisualizationGroup(SpectralProfilePlotDataItemGroup):
         model = self.model()
         self.setText(vNode.attribute('name'))
         self.setVisible(vNode.attribute('visible').lower() in ['1', 'true', 'yes'])
-
+        if vNode.hasAttribute('checkState'):
+            self.setCheckState(int(vNode.attribute('checkState')))
         speclibNode = vNode.firstChildElement('speclib')
         speclib: QgsVectorLayer = None
         if not speclibNode.isNull():
@@ -1930,6 +1928,7 @@ class ProfileVisualizationGroup(SpectralProfilePlotDataItemGroup):
         vNode.setAttribute('name', self.name())
         vNode.setAttribute('field', self.fieldName())
         vNode.setAttribute('visible', '1' if self.isVisible() else '0')
+        vNode.setAttribute('checkState', int(self.checkState()))
 
         # add speclib node
         speclib = self.speclib()
