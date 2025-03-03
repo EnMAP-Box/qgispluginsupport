@@ -6,7 +6,7 @@ from typing import Any, List, Optional, Tuple
 
 import numpy as np
 
-from qgis.PyQt.QtCore import NULL, pyqtSignal, QAbstractTableModel, QJsonDocument, QModelIndex, QSortFilterProxyModel, \
+from qgis.PyQt.QtCore import NULL, pyqtSignal, QAbstractTableModel, QModelIndex, QSortFilterProxyModel, \
     Qt, QVariant
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QComboBox, QFrame, QGroupBox, QHBoxLayout, QHeaderView, QLabel, QLineEdit, QSizePolicy, \
@@ -259,6 +259,7 @@ class SpectralProfileJsonEditor(QgsCodeEditorJson):
         self.addWarning(line, msg)
         self.setCursorPosition(line, col - 1)
         self.ensureLineVisible(line)
+
 
 class CustomEncoder(json.JSONEncoder):
     def encode(self, obj):

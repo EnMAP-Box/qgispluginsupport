@@ -585,8 +585,10 @@ class UnitLookup(object):
         return UnitLookup.convertLengthUnit(*args, **kwds)
 
     @staticmethod
-    def convertLengthUnit(value: Union[float, np.ndarray], u1: str, u2: str) -> Union[
-        None, float, List[float], np.ndarray]:
+    def convertLengthUnit(
+            value: Union[float, np.ndarray],
+            u1: str,
+            u2: str) -> Union[None, float, List[float], np.ndarray]:
         """
         Converts a length value `value` from unit `u1` into unit `u2`
         :param value: float | int | might work with numpy arrays as well

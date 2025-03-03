@@ -26,6 +26,11 @@ import sys
 from typing import Any, Dict, List, Tuple, Union
 
 import numpy as np
+
+from qgis.PyQt.QtCore import pyqtSignal, QMimeData, QModelIndex, QObject, QSignalBlocker, QSize, Qt
+from qgis.PyQt.QtGui import QColor, QIcon, QPen, QPixmap, QStandardItem, QStandardItemModel
+from qgis.PyQt.QtWidgets import QCheckBox, QComboBox, QDoubleSpinBox, QHBoxLayout, QMenu, QSizePolicy, QSpinBox, QWidget
+from qgis.PyQt.QtXml import QDomDocument, QDomElement
 from qgis.core import Qgis, QgsExpression, QgsExpressionContext, QgsExpressionContextGenerator, \
     QgsExpressionContextScope, QgsExpressionContextUtils, QgsFeature, QgsFeatureRenderer, QgsField, \
     QgsHillshadeRenderer, QgsMultiBandColorRenderer, QgsPalettedRasterRenderer, QgsProperty, QgsPropertyDefinition, \
@@ -33,11 +38,6 @@ from qgis.core import Qgis, QgsExpression, QgsExpressionContext, QgsExpressionCo
     QgsSingleBandColorDataRenderer, QgsSingleBandGrayRenderer, QgsSingleBandPseudoColorRenderer, QgsTextFormat, \
     QgsVectorLayer, QgsWkbTypes, QgsXmlUtils
 from qgis.gui import QgsColorButton, QgsDoubleSpinBox, QgsFieldExpressionWidget, QgsPropertyOverrideButton, QgsSpinBox
-from qgis.PyQt.QtCore import pyqtSignal, QMimeData, QModelIndex, QObject, QSignalBlocker, QSize, Qt
-from qgis.PyQt.QtGui import QColor, QIcon, QPen, QPixmap, QStandardItem, QStandardItemModel
-from qgis.PyQt.QtWidgets import QCheckBox, QComboBox, QDoubleSpinBox, QHBoxLayout, QMenu, QSizePolicy, QSpinBox, QWidget
-from qgis.PyQt.QtXml import QDomDocument, QDomElement
-
 from .spectrallibraryplotitems import SpectralProfilePlotItem, SpectralProfilePlotLegend
 from ..core import is_profile_field
 from ...externals.htmlwidgets import HTMLComboBox
@@ -1891,7 +1891,8 @@ class ProfileVisualizationGroup(SpectralProfilePlotDataItemGroup):
         model = self.model()
         self.setText(vNode.attribute('name'))
         self.setVisible(vNode.attribute('visible').lower() in ['1', 'true', 'yes'])
-
+        if vNode.hasAttribute('checkState'):
+            self.setCheckState(int(vNode.attribute('checkState')))
         speclibNode = vNode.firstChildElement('speclib')
         speclib: QgsVectorLayer = None
         if not speclibNode.isNull():
@@ -1927,6 +1928,7 @@ class ProfileVisualizationGroup(SpectralProfilePlotDataItemGroup):
         vNode.setAttribute('name', self.name())
         vNode.setAttribute('field', self.fieldName())
         vNode.setAttribute('visible', '1' if self.isVisible() else '0')
+        vNode.setAttribute('checkState', int(self.checkState()))
 
         # add speclib node
         speclib = self.speclib()
