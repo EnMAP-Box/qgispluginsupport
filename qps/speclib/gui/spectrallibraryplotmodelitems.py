@@ -26,7 +26,6 @@ import sys
 from typing import Any, Dict, List, Tuple, Union
 
 import numpy as np
-
 from qgis.core import Qgis, QgsExpression, QgsExpressionContext, QgsExpressionContextGenerator, \
     QgsExpressionContextScope, QgsExpressionContextUtils, QgsFeature, QgsFeatureRenderer, QgsField, \
     QgsHillshadeRenderer, QgsMultiBandColorRenderer, QgsPalettedRasterRenderer, QgsProperty, QgsPropertyDefinition, \
@@ -38,6 +37,7 @@ from qgis.PyQt.QtCore import pyqtSignal, QMimeData, QModelIndex, QObject, QSigna
 from qgis.PyQt.QtGui import QColor, QIcon, QPen, QPixmap, QStandardItem, QStandardItemModel
 from qgis.PyQt.QtWidgets import QCheckBox, QComboBox, QDoubleSpinBox, QHBoxLayout, QMenu, QSizePolicy, QSpinBox, QWidget
 from qgis.PyQt.QtXml import QDomDocument, QDomElement
+
 from .spectrallibraryplotitems import SpectralProfilePlotItem, SpectralProfilePlotLegend
 from ..core import is_profile_field
 from ...externals.htmlwidgets import HTMLComboBox
@@ -506,9 +506,6 @@ class PropertyItemGroup(PropertyItemBase):
 
     def data(self, role: int = ...) -> Any:
 
-        if role == Qt.ForegroundRole:
-            if not self.isVisible():
-                return QColor('grey')
         if role == Qt.DecorationRole and self.mMissingValues:
             return QIcon(WARNING_ICON)
 

@@ -122,6 +122,8 @@ class GenericPropertyTransformer(QgsPropertyTransformer):
             encoding = ProfileEncoding.fromInput(dstField)
             return lambda v, e=encoding: encodeProfileValueDict(decodeProfileValueDict(v), encoding)
         elif dstField.type() == QMETATYPE_QSTRING:
+            if dstField.typeName() == 'JSON':
+                return lambda value: GenericPropertyTransformer.toJson(value)
             return lambda v: GenericPropertyTransformer.toString(v)
         elif dstField.type() == QMETATYPE_QDATETIME:
             return lambda v: GenericPropertyTransformer.toDateTime(v)
@@ -178,6 +180,8 @@ class GenericPropertyTransformer(QgsPropertyTransformer):
     def toJson(v) -> str:
         if isinstance(v, str):
             return v
+        elif isinstance(v, (list, dict)):
+            return json.dumps(v)
         else:
             return str(v)
 
