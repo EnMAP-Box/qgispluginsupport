@@ -24,7 +24,7 @@
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this software. If not, see <http://www.gnu.org/licenses/>.
+    along with this software. If not, see <https://www.gnu.org/licenses/>.
 ***************************************************************************
 """
 import math
@@ -335,7 +335,6 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
                         lines.append(line)
 
                         if self.mCrosshairStyle.mShowDistanceLabel:
-
                             painter.setFont(QFont('Courier', pointSize=10))
                             font = painter.font()
                             ptLabel = QPointF(pt.x(), pt.y() + (ml + font.pointSize() + 3))

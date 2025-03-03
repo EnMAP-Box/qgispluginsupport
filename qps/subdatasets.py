@@ -21,7 +21,7 @@
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this software. If not, see <http://www.gnu.org/licenses/>.
+    along with this software. If not, see <https://www.gnu.org/licenses/>.
 ***************************************************************************
 """
 
@@ -109,7 +109,7 @@ def subLayers(uri: Union[str, pathlib.Path, QgsMapLayer],
               options: QgsProviderSublayerDetails.LayerOptions = None) -> List[QgsMapLayer]:
     if options is None:
         options = QgsProviderSublayerDetails.LayerOptions(
-                  QgsProject.instance().transformContext())
+            QgsProject.instance().transformContext())
     return [s.toLayer(options) for s in subLayerDetails(uri)]
 
 
