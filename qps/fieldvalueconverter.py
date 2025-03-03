@@ -112,8 +112,6 @@ class GenericPropertyTransformer(QgsPropertyTransformer):
     def transform(self, context: QgsExpressionContext, value: Any) -> Any:
         if self.mTransformFunction:
             value = self.mTransformFunction(value)
-        else:
-            s = ""
         return value
 
     @staticmethod
@@ -136,7 +134,7 @@ class GenericPropertyTransformer(QgsPropertyTransformer):
         return lambda v: v
 
     @staticmethod
-    def toMap(value) -> dict:
+    def toMap(value) -> Optional[dict]:
         if isinstance(value, dict):
             return value
         elif isinstance(value, str):
@@ -152,11 +150,17 @@ class GenericPropertyTransformer(QgsPropertyTransformer):
             return None
 
     @staticmethod
-    def toString(value) -> str:
+    def toString(value) -> Optional[str]:
+        if value is None:
+            return None
+        if isinstance(value, (QDateTime, QDate, QTime)):
+            return value.toString(Qt.ISODate)
+        elif isinstance(value, (dict, list)):
+            return str(value)
         return str(value)
 
     @staticmethod
-    def toDateTime(v) -> QDateTime:
+    def toDateTime(v) -> Optional[QDateTime]:
         if isinstance(v, QDateTime):
             return v
         elif isinstance(v, datetime.datetime):
@@ -177,7 +181,9 @@ class GenericPropertyTransformer(QgsPropertyTransformer):
         return None
 
     @staticmethod
-    def toJson(v) -> str:
+    def toJson(v) -> Optional[str]:
+        if v is None:
+            return None
         if isinstance(v, str):
             return v
         elif isinstance(v, (list, dict)):
@@ -186,7 +192,7 @@ class GenericPropertyTransformer(QgsPropertyTransformer):
             return str(v)
 
     @staticmethod
-    def toDate(v) -> QDate:
+    def toDate(v) -> Optional[QDate]:
         if isinstance(v, QDate):
             return v
         elif isinstance(v, (datetime.datetime, QDateTime)):
@@ -208,7 +214,7 @@ class GenericPropertyTransformer(QgsPropertyTransformer):
         return None
 
     @staticmethod
-    def toTime(v) -> QTime:
+    def toTime(v) -> Optional[QTime]:
         if isinstance(v, QTime):
             return v
         elif isinstance(v, datetime.time):
@@ -216,7 +222,6 @@ class GenericPropertyTransformer(QgsPropertyTransformer):
         elif isinstance(v, (QDateTime, datetime.datetime)):
             return GenericPropertyTransformer.toDateTime(v).time()
         elif isinstance(v, str):
-
             for fmt in [Qt.ISODate, Qt.ISODateWithMs, Qt.RFC2822Date]:
                 if (r := QTime.fromString(v, fmt)).isValid():
                     return r

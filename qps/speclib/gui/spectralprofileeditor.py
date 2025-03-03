@@ -240,7 +240,12 @@ class SpectralProfileJsonEditor(QgsCodeEditorJson):
         self.textChanged.connect(self.profileChanged)
 
     def setProfileDict(self, d: dict):
-        jsonText = encodeProfileValueDict(d, ProfileEncoding.Text, jsonFormat=QJsonDocument.Indented)
+        jsonData = encodeProfileValueDict(d, ProfileEncoding.Dict)
+
+        if jsonData:
+            jsonText = json.dumps(jsonData, ensure_ascii=True, allow_nan=True, indent=2)
+        else:
+            jsonText = None
         self.setText(jsonText)
 
     def profileDict(self) -> dict:
@@ -254,6 +259,14 @@ class SpectralProfileJsonEditor(QgsCodeEditorJson):
         self.addWarning(line, msg)
         self.setCursorPosition(line, col - 1)
         self.ensureLineVisible(line)
+
+class CustomEncoder(json.JSONEncoder):
+    def encode(self, obj):
+        if isinstance(obj, dict):
+            obj = {k: (self.encode(v) if isinstance(v, list) else v) for k, v in obj.items()}
+        if isinstance(obj, list):
+            return '[' + ', '.join(map(json.dumps, obj)) + ']'
+        return super().encode(obj)
 
 
 class SpectralProfileTableEditor(QFrame):
@@ -569,7 +582,7 @@ class SpectralProfileEditorWidget(QGroupBox):
         elif w == self.tableEditor:
             return w.profileDict()
         else:
-            raise NotImplementedError()
+            return self.mDefault
 
 
 class SpectralProfileEditorWidgetWrapper(QgsEditorWidgetWrapper):
