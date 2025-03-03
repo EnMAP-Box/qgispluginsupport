@@ -17,24 +17,22 @@
 ***************************************************************************
 """
 import json
-# noinspection PyPep8Naming
 import os
 import unittest
 
 from qgis.PyQt.QtCore import QByteArray, QDataStream, QIODevice, QSize, Qt
-from qgis.PyQt.QtWidgets import QCheckBox, QComboBox, QGridLayout, QHBoxLayout, QLabel, QVBoxLayout, QWidget
 from qgis.PyQt.QtGui import QColor, QPen
+from qgis.PyQt.QtWidgets import QCheckBox, QComboBox, QGridLayout, QHBoxLayout, QLabel, QVBoxLayout, QWidget
 from qgis.PyQt.QtXml import QDomDocument
 from qgis.core import QgsAction, QgsActionManager, QgsAttributeTableConfig, QgsEditorWidgetSetup, QgsFeature, QgsField, \
     QgsVectorLayer
 from qgis.gui import QgsDualView, QgsGui, QgsMapCanvas, QgsSearchWidgetWrapper
-
 from qps.plotstyling.plotstyling import createSetPlotStyleAction, MarkerSymbol, MarkerSymbolComboBox, pen2list, \
     PlotStyle, PlotStyleButton, PlotStyleEditorConfigWidget, PlotStyleEditorWidgetFactory, plotStyleEditorWidgetFactory, \
-    PlotStyleEditorWidgetWrapper, PlotStyleWidget, PlotWidgetStyle, tuple2list, XMLTAG_PLOTSTYLENODE
+    PlotStyleEditorWidgetWrapper, PlotStyleWidget, PlotWidgetStyle, XMLTAG_PLOTSTYLENODE, list2pen
+from qps.pyqtgraph.pyqtgraph.graphicsItems.ScatterPlotItem import Symbols as pgSymbols
 from qps.qgisenums import QMETATYPE_DOUBLE, QMETATYPE_INT, QMETATYPE_QSTRING
 from qps.testing import start_app, TestCase
-from qps.pyqtgraph.pyqtgraph.graphicsItems.ScatterPlotItem import Symbols as pgSymbols
 
 start_app()
 
@@ -82,7 +80,7 @@ class PlotStyleTests(TestCase):
         encoded = pen2list(pen)
         self.assertIsInstance(encoded, list)
         penStr = json.dumps(encoded)
-        pen2 = tuple2list(json.loads(penStr))
+        pen2 = list2pen(json.loads(penStr))
         self.assertIsInstance(pen2, QPen)
         self.assertEqual(pen, pen2)
 
