@@ -9,8 +9,8 @@ from typing import Union
 import numpy as np
 import pystac
 import pystac.extensions.eo
-from osgeo import gdal_array
-from osgeo.gdal import Dataset, Band, VersionInfo, Open
+from osgeo import gdal_array, gdal
+from osgeo.gdal import Dataset, Band, VersionInfo, Open, Info, InfoOptions
 from osgeo.osr import SpatialReference, UseExceptions
 from pystac.extensions.eo import EOExtension
 
@@ -108,55 +108,69 @@ def create_test_datasets(output_dir: Union[str, Path]):
             ds.SetMetadataItem('description', description)
         return ds
 
-    if True:
-        # no wavelength info
-        ds = create_dataset('gdal_no_info.tif',
-                            'no wavelength info')
+    # no wavelength info
+    ds = create_dataset('gdal_no_info.tif',
+                        'no wavelength info')
 
-        # only central wavelength
-        ds = create_dataset('gdal_wl_only.tif',
-                            'gdal 3.10+ with IMAGERY:CENTRAL_WAVELENGTH_UM')
-        writeBandMetadata(ds, 'IMAGERY', 'CENTRAL_WAVELENGTH_UM', envi_wl)
+    # only central wavelength
+    ds = create_dataset('gdal_wl_only.tif',
+                        'gdal 3.10+ with IMAGERY:CENTRAL_WAVELENGTH_UM')
+    writeBandMetadata(ds, 'IMAGERY', 'MYINFO', 'test')
+    writeBandMetadata(ds, 'IMAGERY', 'CENTRAL_WAVELENGTH_UM', [v / 1000 for v in envi_wl])
 
-        ds = create_dataset('gdal_wl_fwhm.tif',
-                            'gdal 3.10+ with IMAGERY:CENTRAL_WAVELENGTH_UM and IMAGERY:FWHM_UM')
-        writeBandMetadata(ds, 'IMAGERY', 'CENTRAL_WAVELENGTH_UM', envi_wl)
-        writeBandMetadata(ds, 'IMAGERY', 'FWHM_UM', envi_fwhm)
+    ds = create_dataset('gdal_wl_fwhm.tif',
+                        'gdal 3.10+ with IMAGERY:CENTRAL_WAVELENGTH_UM and IMAGERY:FWHM_UM')
 
-        # classic ENVI dataset with wl and wlu
-        # see https://www.nv5geospatialsoftware.com/docs/enviheaderfiles.html
-        ds = create_dataset('envi_wl_fwhm.bsq',
-                            'classic ENVI BSQ with wavelength, wavelength units, fwhm, and bbl',
-                            format='ENVI')
-        writeDatasetMetadata(ds, 'ENVI', 'wavelength', wrapEnviList(envi_wl))
-        writeDatasetMetadata(ds, 'ENVI', 'fwhm', wrapEnviList(envi_fwhm))
-        writeDatasetMetadata(ds, 'ENVI', 'wavelength units', envi_wlu)
-        writeDatasetMetadata(ds, 'ENVI', 'bbl', wrapEnviList(envi_bbl))
+    writeBandMetadata(ds, 'IMAGERY', 'CENTRAL_WAVELENGTH_UM', envi_wl)
+    writeBandMetadata(ds, 'IMAGERY', 'FWHM_UM', envi_fwhm)
 
-        # just as above, using tif with ENVI-style metadata at dataset level
-        ds = create_dataset('enmapbox_envidomain_dslevel.tif',
-                            'tif with ENVI domain at dataset level')
-        writeDatasetMetadata(ds, 'ENVI', 'wavelength', envi_wl)
-        writeDatasetMetadata(ds, 'ENVI', 'wavelength units', envi_wlu)
-        writeDatasetMetadata(ds, 'ENVI', 'bbl', [0, 1])
+    # classic ENVI dataset with wl and wlu
+    # see https://www.nv5geospatialsoftware.com/docs/enviheaderfiles.html
+    ds = create_dataset('envi_wl_fwhm.bsq',
+                        'classic ENVI BSQ with wavelength, wavelength units, fwhm, and bbl',
+                        format='ENVI')
+    writeDatasetMetadata(ds, 'ENVI', 'wavelength', wrapEnviList(envi_wl))
+    writeDatasetMetadata(ds, 'ENVI', 'fwhm', wrapEnviList(envi_fwhm))
+    writeDatasetMetadata(ds, 'ENVI', 'wavelength units', envi_wlu)
+    writeDatasetMetadata(ds, 'ENVI', 'bbl', wrapEnviList(envi_bbl))
 
-        # just as above, using tif with ENVI-style metadata at band level
-        ds = create_dataset('enmapbox_envidomain_bandlevel.tif',
-                            'tif with ENVI domain at band level')
-        writeBandMetadata(ds, 'ENVI', 'wavelength', envi_wl)
-        writeBandMetadata(ds, 'ENVI', 'wavelength units', envi_wlu)
-        writeBandMetadata(ds, 'ENVI', 'bbl', [0, 1])
+    # only central wavelength - expect nanometers
+    ds = create_dataset('envi_wl_implicit_nm.bsq',
+                        'ENVI BSQ with missing wavelength units, expect nm')
+    writeDatasetMetadata(ds, 'ENVI', 'wavelength', wrapEnviList(envi_wl))
+
+    # only central wavelength - expect micrometers
+    ds = create_dataset('envi_wl_implicit_um.bsq',
+                        'ENVI BSQ with missing wavelength units, expect micrometers')
+    writeDatasetMetadata(ds, 'ENVI', 'wavelength', wrapEnviList([v / 1000 for v in envi_wl]))
+
+    # just as above, using tif with ENVI-style metadata at dataset level
+    ds = create_dataset('enmapbox_envidomain_dslevel.tif',
+                        'tif with ENVI domain at dataset level')
+    writeDatasetMetadata(ds, 'ENVI', 'wavelength', envi_wl)
+    writeDatasetMetadata(ds, 'ENVI', 'wavelength units', envi_wlu)
+    writeDatasetMetadata(ds, 'ENVI', 'bbl', [0, 1])
+
+    # just as above, using tif with ENVI-style metadata at band level
+    ds = create_dataset('enmapbox_envidomain_bandlevel.tif',
+                        'tif with ENVI domain at band level')
+    writeBandMetadata(ds, 'ENVI', 'wavelength', envi_wl)
+    writeBandMetadata(ds, 'ENVI', 'wavelength units', envi_wlu)
+    writeBandMetadata(ds, 'ENVI', 'bbl', [0, 1])
 
     if True:
         # metadata stored in a STAC json
-        ds = create_dataset('staclike.tif',
-                            'dataset with metadata in stack json')
-        ds.FlushCache()
+        ds = create_dataset('staclike.tif', 'dataset with metadata stored in *.stack.json')
         path = Path(ds.GetDescription())
+
+        infoOptions = InfoOptions(format='json')
+        infos = Info(ds, options=infoOptions)
+        del ds
+        s = ""
         bn = os.path.splitext(path.name)[0]
         path_json = path.parent / f'{bn}.stac.json'
         item = pystac.Item(id=bn,
-                           geometry=None,
+                           geometry=infos['wgs84Extent'],
                            bbox=None,
                            datetime=datetime.datetime.today(),
                            properties={})
@@ -183,15 +197,29 @@ def create_test_datasets(output_dir: Union[str, Path]):
         with open(path_json, 'w') as f:
             json.dump(item_json, f, indent=2)
 
-        # can we open it with GDAL?
-        del ds
-
     summary = dataset_summary(output_dir)
 
     with open(output_dir / 'readme.md', 'w') as file:
         file.write(summary)
 
 
+def read_stac():
+    p0 = Path(__file__).parent / 'tmp/test.json'
+    p1 = Path(__file__).parent / 'staclike.stac.json'
+
+    assert p0.is_file()
+    assert p1.is_file()
+    # see https://gdal.org/en/stable/drivers/raster/stacit.html
+    os.chdir(p0.parent)
+    ds0: Dataset = gdal.Open(p0.name)
+    ds0.RasterYSize
+
+    os.chdir(p1.parent)
+    ds1: Dataset = gdal.Open(f'STACIT:"{p1.name}":asset=image')
+    s = ""
+
+
 if __name__ == '__main__':
     DIR = Path(__file__).parent
+    # read_stac()
     create_test_datasets(DIR)

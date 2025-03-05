@@ -1,16 +1,18 @@
 import re
+import re
 import sys
 from pathlib import Path
-from typing import Any, List, Optional, Pattern, Union
+from typing import Any, List, Optional, Pattern, Union, Dict
 
 import numpy as np
 from osgeo import gdal
-
+from osgeo.gdal import Band
+from qgis.PyQt.QtWidgets import QVBoxLayout, QWidget
+from qgis.PyQt.QtXml import QDomDocument, QDomElement
 from qgis.core import QgsDefaultValue, QgsFeature, QgsField, QgsFieldConstraints, QgsObjectCustomProperties, \
     QgsRasterDataProvider, QgsRasterLayer, QgsVectorLayer, QgsVectorLayerCache
 from qgis.gui import QgsAttributeTableFilterModel, QgsAttributeTableModel, QgsAttributeTableView, QgsMapCanvas
-from qgis.PyQt.QtWidgets import QVBoxLayout, QWidget
-from qgis.PyQt.QtXml import QDomDocument, QDomElement
+
 from .qgisenums import QMETATYPE_BOOL, QMETATYPE_DOUBLE, QMETATYPE_INT, QMETATYPE_QSTRING
 
 rx_bands = re.compile(r'^band[_\s]*(?P<band>\d+)$', re.IGNORECASE)
@@ -51,6 +53,15 @@ def stringToTypeList(value: str) -> List:
         # remove inline comments
 
     return [stringToType(v) for v in re.split(r'[\s,;]+', value)]
+
+
+class SpectralPropertySourceKey(object):
+    """
+    A key that indicates from which metadata source the SpectralPropertyKey was read
+    """
+    Band = 'gdal_band'
+    Dataset = 'gdal_dataset'
+    LayerProperties = 'layer_property'
 
 
 class SpectralPropertyKeys(object):
@@ -250,22 +261,22 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
         1 = True = do use (default)
         values > 1 might be used for other special meanings
 
-        Potentially other values can be used as well, for example to add different mask.
+        Potentially other values can be used as well, for example to add different masks.
         Assumes 1 = True by default.
         """
         return [int(v) for v in self.bandValues(None, SpectralPropertyKeys.BadBand, default=default)]
 
-    def fwhm(self, default: float = float('nan')) -> List[float]:
+    def fwhm(self, default=None) -> List[float]:
         """
         Returns the FWHM values for each band
         """
         return self.bandValues(None, SpectralPropertyKeys.BandWidth, default=default)
 
-    def fullWidthHalfMaximum(self, default: float = float('nan')) -> List[float]:
+    def fullWidthHalfMaximum(self, default=None) -> List[float]:
         """
         Returns the FWHM values for each band
         """
-        return self.bandValues(None, SpectralPropertyKeys.FWHM, default=default)
+        return self.fwhm(default)
 
     def writeXml(self, parentNode: QDomElement, doc: QDomDocument):
         """
@@ -306,46 +317,111 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
 
         # reads metadata from GDAL data sets
         # priority:
+
         # 1. band level first, data set level second
         # 2. default domain first, ENVI domain, other domains
 
         def domainList(mo: gdal.MajorObject) -> List[str]:
+            """
+            Returns a list of domain keys available for the GDAL object
+            :param mo: MajorObject
+            :return: list of domain strings
+            """
             domains = mo.GetMetadataDomainList()
-            if domains is None:
-                domains = []
-            return [d for d in domains if d not in EXCLUDED_GDAL_DOMAINS]
+            domains = [] if domains is None else [d for d in domains if d not in EXCLUDED_GDAL_DOMAINS]
+            return domains
 
-        rx_spectral_property = QgsRasterLayerSpectralProperties.combinedLookupPattern()
+        def singleValue(b: gdal.MajorObject, key: str) -> Optional[str]:
+            """
+            Returns a band value if it matches the regular expression defined by 'key'
+            :param b: gdal.Band
+            :param key: SpectralPropertyKeys.<key>
+            :return: str value or None
+            """
+            rx = self.LOOKUP_PATTERNS[key]
+            for d in domainList(b):
+                md: Dict[str, str] = b.GetMetadata_Dict(d)
+                for k, v in md.items():
+                    if rx.match(k) and v not in ['', None]:
+                        return v
+            return None
 
-        # collect a set of gdal keys we can describe
-        # 1. look at band level
+        def valueList(mo: gdal.MajorObject, key: str) -> Optional[List[str]]:
+            values = singleValue(mo, key)
+            if values:
+                return re.split(r'[, {}]+', values)
+            return None
+
+        # 1- look into IMAGERY domain
+        # https://gdal.org/en/stable/user/raster_data_model.html#imagery-domain-remote-sensing
+
+        band_wl = []
+        band_wlu = []
+        band_fwhm = []
+        band_bbl = []
+        band_offset = []
+        band_scale = []
+        band_ref_scale = []
+        band_ref_offset = []
+
         for b in range(ds.RasterCount):
-            band: gdal.Band = ds.GetRasterBand(b + 1)
-            self.setValue(self.bandItemKey(b + 1, 'offset'), band.GetOffset())
-            self.setValue(self.bandItemKey(b + 1, 'scale'), band.GetOffset())
+            band: Band = ds.GetRasterBand(b + 1)
 
-            # domain specific values
-            for domain in domainList(band):
-                for gdalKey, gdalValue in band.GetMetadata_Dict(domain).items():
-                    if rx_spectral_property.match(gdalKey):
-                        itemKey = self.bandItemKey(b + 1, gdalKey)
-                        if not (self.contains(itemKey) or gdalValue in ['', None]):
-                            self.setValue(itemKey, stringToType(gdalValue))
+            # 1. try IMAGERY domain
+            wl = band.GetMetadataItem('CENTRAL_WAVELENGTH_UM', 'IMAGERY')
+            fwhm = band.GetMetadataItem('FWHM_UM', 'IMAGERY')
+            wlu = None
+            if wl:
+                wlu = 'μm'
 
-        # 2. look at dataset level
-        for domain in domainList(ds):
-            for gdalKey, gdalValue in ds.GetMetadata_Dict(domain).items():
-                # can we split it into n = number of bands values?
-                if rx_spectral_property.match(gdalKey):
-                    itemKey = self.itemKey(gdalKey)
-                    band_defined_values = self.bandValues(None, itemKey)
-                    if not any(band_defined_values):
-                        values = stringToTypeList(gdalValue)
-                        if len(values) == 1:
-                            # map a single values to all bands
-                            self.setBandValues(None, itemKey, values[0])
-                        elif len(values) == self.bandCount():
-                            self.setBandValues(None, itemKey, values)
+            if wl is None:
+                wl = singleValue(band, SpectralPropertyKeys.Wavelength)
+
+            if fwhm is None:
+                fwhm = singleValue(band, SpectralPropertyKeys.FWHM)
+
+            if wlu is None:
+                wlu = singleValue(band, SpectralPropertyKeys.WavelengthUnit)
+
+            bbl = singleValue(band, SpectralPropertyKeys.BadBand)
+            offset = band.GetOffset()
+            scale = band.GetScale()
+
+            refl_offset = singleValue(band, SpectralPropertyKeys.DataReflectanceOffset)
+            refl_scale = singleValue(band, SpectralPropertyKeys.DataReflectanceGain)
+
+            band_wl.append(wl)
+            band_fwhm.append(fwhm)
+            band_wlu.append(wlu)
+            band_bbl.append(bbl)
+            band_offset.append(offset)
+            band_scale.append(scale)
+            band_ref_scale.append(refl_scale)
+            band_ref_offset.append(refl_offset)
+
+        if not any(band_wl):
+            # search in dataset domains
+            band_wl = valueList(ds, SpectralPropertyKeys.Wavelength)
+        if not any(band_wlu):
+            band_wlu = valueList(ds, SpectralPropertyKeys.WavelengthUnit)
+
+        if not any(band_bbl):
+            band_bbl = valueList(ds, SpectralPropertyKeys.BadBand)
+
+        if not any(band_fwhm):
+            band_fwhm = valueList(ds, SpectralPropertyKeys.FWHM)
+
+        if any(band_wl):
+            band_wl = stringToTypeList(band_wl)
+            self.setBandValues('all', SpectralPropertyKeys.Wavelength, wl)
+            self.setBandValues('all', SpectralPropertyKeys.WavelengthUnit, wlu)
+        if any(band_wlu):
+            self.setBandValues('all', SpectralPropertyKeys.WavelengthUnit, wlu)
+
+        if any(fwhm):
+            self.setBandValue('all', SpectralPropertyKeys.FWHM, fwhm)
+
+        md = ds.GetMetadata_Dict('IMAGERY')
 
     def _readFromProvider(self, provider: QgsRasterDataProvider):
         """

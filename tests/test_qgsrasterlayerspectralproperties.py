@@ -1,21 +1,16 @@
 import unittest
 
 from qgis.core import QgsRasterLayer
-from qgis.gui import QgsGui
+
 from qps.qgsrasterlayerproperties import QgsRasterLayerSpectralProperties, QgsRasterLayerSpectralPropertiesTable, \
     QgsRasterLayerSpectralPropertiesTableWidget, stringToType
 from qps.testing import start_app, TestCase, TestObjects
-from qpstestdata import envi_bsq
+from qpstestdata import envi_bsq, DIR_WAVELENGTH
 
 start_app()
 
 
 class TestQgsRasterLayerProperties(TestCase):
-
-    @classmethod
-    def setUpClass(cls, *args, **kwds) -> None:
-        start_app()
-        QgsGui.editorWidgetRegistry().initEditors()
 
     def test_stringToType(self):
         self.assertEqual(stringToType(3.24), 3.24)
@@ -25,6 +20,20 @@ class TestQgsRasterLayerProperties(TestCase):
         self.assertEqual(stringToType('3'), 3)
 
         self.assertEqual(stringToType('3foobar'), '3foobar')
+
+    def test_wavelength(self):
+
+        if False:
+            prop = QgsRasterLayerSpectralProperties.fromRasterLayer(DIR_WAVELENGTH / 'gdal_no_info.tif')
+            self.assertEqual(prop.bandCount(), 2)
+            self.assertEqual(prop.wavelengths(), [None, None])
+            self.assertEqual(prop.wavelengthUnits(), [None, None])
+            self.assertEqual(prop.fwhm(), [None, None])
+
+        prop = QgsRasterLayerSpectralProperties.fromRasterLayer(DIR_WAVELENGTH / 'gdal_wl_only.tif')
+        self.assertEqual(prop.bandCount(), 2)
+        self.assertEqual(prop.wavelengths(), [None, None])
+        s = ""
 
     def test_QgsRasterLayerSpectralProperties(self):
 
