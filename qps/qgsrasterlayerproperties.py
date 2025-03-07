@@ -25,6 +25,29 @@ rx_is_int = re.compile(r'^\s*\d+\s*$')
 EXCLUDED_GDAL_DOMAINS = ['IMAGE_STRUCTURE', 'DERIVED_SUBDATASETS']
 
 
+def stringsToInts(values: List[str]) -> Union[List[Optional[int]]]:
+    results = []
+    for v in values:
+        try:
+            n = int(v)
+            results.append(n)
+        except ValueError:
+            results.append(None)
+    return results
+
+
+def stringsToNums(values: List[str]) -> Union[List[Optional[int]], List[Optional[float]]]:
+    results = []
+    for v in values:
+        try:
+            n = float(v)
+            n = int(n) if n.is_integer() else n
+            results.append(n)
+        except ValueError:
+            results.append(None)
+    return results
+
+
 def stringToType(value: str):
     """
     Converts a string into a matching int, float or string
@@ -208,9 +231,9 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
     def setBandValues(self, bands: Optional[List[int]], itemKey, values):
         """
         Sets the n values to the corresponding n bands
-        if bands = 'all', it is expected values contains either a single value or n = bandCount() values.
+        if bands = None|'all'|'*'|':', it is expected values contains either a single value or n = bandCount() values.
         """
-        if bands in [None, 'all']:
+        if bands in [None, 'all', '*', ':']:
             bands = list(range(1, self.bandCount() + 1))
         for b in bands:
             assert isinstance(b, int) and 0 < b <= self.bandCount()
@@ -411,17 +434,34 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
         if not any(band_fwhm):
             band_fwhm = valueList(ds, SpectralPropertyKeys.FWHM)
 
-        if any(band_wl):
-            band_wl = stringToTypeList(band_wl)
-            self.setBandValues('all', SpectralPropertyKeys.Wavelength, wl)
-            self.setBandValues('all', SpectralPropertyKeys.WavelengthUnit, wlu)
-        if any(band_wlu):
-            self.setBandValues('all', SpectralPropertyKeys.WavelengthUnit, wlu)
+        # set wavelength
+        if band_wl and any(band_wl):
+            band_wl = stringsToNums(band_wl)
+            self.setBandValues(None, SpectralPropertyKeys.Wavelength, band_wl)
+        if band_wlu and any(band_wlu):
+            self.setBandValues(None, SpectralPropertyKeys.WavelengthUnit, band_wlu)
+        elif band_wl and any(band_wl):
+            # derive wavelength unit from wavelength values
+            band_wlu = None
+            for wl in band_wlu:
+                if wl:
+                    s = ""
+            if band_wlu:
+                self.setBandValues(None, SpectralPropertyKeys.WavelengthUnit, band_wlu)
 
-        if any(fwhm):
-            self.setBandValue('all', SpectralPropertyKeys.FWHM, fwhm)
+        if band_bbl and any(band_bbl):
+            self.setBandValues(None, SpectralPropertyKeys.BadBand, stringsToInts(band_bbl))
 
-        md = ds.GetMetadata_Dict('IMAGERY')
+        # set other keys
+        for array, key in [
+            (band_fwhm, SpectralPropertyKeys.FWHM),
+            (band_offset, SpectralPropertyKeys.DataOffset),
+            (band_scale, SpectralPropertyKeys.DataGain),
+            (band_ref_offset, SpectralPropertyKeys.DataReflectanceOffset),
+            (band_ref_scale, SpectralPropertyKeys.DataReflectanceGain),
+        ]:
+            if array and any(array):
+                self.setBandValues(None, key, stringsToNums(array))
 
     def _readFromProvider(self, provider: QgsRasterDataProvider):
         """

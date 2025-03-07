@@ -32,7 +32,11 @@ class TestQgsRasterLayerProperties(TestCase):
 
         prop = QgsRasterLayerSpectralProperties.fromRasterLayer(DIR_WAVELENGTH / 'gdal_wl_only.tif')
         self.assertEqual(prop.bandCount(), 2)
-        self.assertEqual(prop.wavelengths(), [None, None])
+        self.assertEqual(prop.wavelengths(), [0.4, 0.5])
+        self.assertEqual(prop.wavelengthUnits(), ['μm', 'μm'])
+        self.assertEqual(prop.badBands(), [1, 1])
+        self.assertEqual(prop.fwhm(), [None, None])
+        self.assertEqual(prop.dataGains(), [None, None])
         s = ""
 
     def test_QgsRasterLayerSpectralProperties(self):

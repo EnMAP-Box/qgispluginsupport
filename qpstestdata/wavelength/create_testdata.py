@@ -1,6 +1,5 @@
 # Create exemplary files with wavelength information
 import datetime
-import json
 import os
 import re
 from pathlib import Path
@@ -39,6 +38,8 @@ sref.ImportFromEPSG(4326)
 sref.Validate()
 shape = (2, 2, 5)  # bands, heigth, width
 
+rx_image_files = re.compile(r'\.(tiff?|bsq)$')
+
 
 def writeDatasetMetadata(ds: Dataset, domain: str, key: str, values: Union[str, list]):
     if isinstance(values, list):
@@ -57,11 +58,100 @@ def wrapEnviList(values: list):
     return f'{{{values}}}'
 
 
-def dataset_summary(output_dir: Union[str, Path]) -> str:
-    rx_image_files = re.compile(r'\.(tiff?|bsq)$')
+def create_stac_item(path_img: Union[str, Path], stac_root: Union[str, Path]) -> pystac.Item:
+    """
+    :param path_img: path of raster image
+    :param stac_root: path of root into which the final stac.json(s) will be stored
+    :return:
+    """
+    path_img = Path(path_img)
+    stac_root = Path(stac_root)
+    assert path_img.is_file()
+    assert stac_root.is_dir()
+    path_rel = path_img.relative_to(stac_root)
 
-    lines = ['# Wavelength Info Example Datasets',
-             '',
+    ds: Dataset = Open(path_img.as_posix())
+    assert isinstance(ds, Dataset)
+
+    infoOptions = InfoOptions(format='json')
+    infos = Info(ds, options=infoOptions)
+    del ds
+    cc = infos['cornerCoordinates']
+    # bbox = [bounds.left, bounds.bottom, bounds.right, bounds.top]
+    bbox = [min([c[0] for c in cc.values()]),
+            min([c[1] for c in cc.values()]),
+            max([c[0] for c in cc.values()]),
+            max([c[1] for c in cc.values()])
+            ]
+
+    item = pystac.Item(id=path_img.name,
+                       geometry=infos.get('wgs84Extent'),
+                       bbox=bbox,
+                       # collection='MyCollection',
+                       datetime=datetime.datetime.now(tz=datetime.timezone.utc),
+                       properties={})
+
+    EOExtension.add_to(item)
+    bands = []
+    for b, (wl, fwhm) in enumerate(zip(envi_wl, envi_fwhm)):
+        bands.append({
+            'name': f'Band {b + 1} name',
+            'description': f'This is band {b + 1}',
+            'center_wavelength': wl / 100,
+            'full_width_half_max': fwhm / 100,
+        })
+
+    eo_ext = EOExtension.ext(item, add_if_missing=True)
+    eo_ext.bands = [pystac.extensions.eo.Band.create(**band) for band in bands]
+
+    asset = pystac.Asset(
+        title=path_img.name,
+        href=path_rel.as_posix(),
+        media_type=pystac.MediaType.GEOTIFF,
+        roles=['data'],
+    )
+    item.add_asset(path_img.name, asset)
+    eo_on_asset = EOExtension.ext(item.assets[path_img.name])
+    eo_on_asset.apply(bands=eo_ext.bands)
+
+    pystac.validation.validate(item)
+    return item
+
+
+def create_stac_item_collection(output_dir: Union[str, Path], path_json: Union[str, Path]) -> pystac.ItemCollection:
+    path_json = Path(path_json)
+    stac_root = path_json.parent
+    assert stac_root.is_dir()
+    items = []
+    for e in os.scandir(output_dir):
+        if e.is_file() and rx_image_files.search(e.name):
+            items.append(create_stac_item(e.path, stac_root))
+
+    spatial_extent = pystac.SpatialExtent(bboxes=[item.bbox for item in items])
+    dates = sorted([item.datetime for item in items])
+    temporal_extent = pystac.TemporalExtent(intervals=[dates[0], dates[-1]])
+
+    collection_extent = pystac.Extent(spatial=spatial_extent, temporal=temporal_extent)
+
+    collection = pystac.Collection(id='MyCollection',
+                                   description='Test files',
+                                   extent=collection_extent,
+                                   )
+    collection.add_items(items)
+    collection.normalize_hrefs(path_json.as_posix())
+    # collection.catalog_type = pystac.CatalogType.RELATIVE_PUBLISHED
+    # collection.normalize_and_save(root_href=path_json.as_posix(), catalog_type=pystac.CatalogType.SELF_CONTAINED)
+    collection.validate()
+
+    collection.validate_all()
+
+    collection.save_object(path_json.as_posix())
+
+    return collection
+
+
+def dataset_summary(output_dir: Union[str, Path]) -> str:
+    lines = ['# Wavelength Info Example Datasets\n\n',
              'Do not modify images manually, as they are created by create_testdata.py']
 
     col1 = ['Dataset']
@@ -87,9 +177,11 @@ def dataset_summary(output_dir: Union[str, Path]) -> str:
     col1 = format_cols(col1)
     col2 = format_cols(col2)
 
+    # write table
+    lines.append('')
     for c1, c2 in zip(col1, col2):
         lines.append(f"| {c1} | {c2} |")
-
+    lines.append('')
     return '\n'.join(lines)
 
 
@@ -158,44 +250,12 @@ def create_test_datasets(output_dir: Union[str, Path]):
     writeBandMetadata(ds, 'ENVI', 'wavelength units', envi_wlu)
     writeBandMetadata(ds, 'ENVI', 'bbl', [0, 1])
 
+    del ds  # Important! Ensures that all infos are written
     if True:
-        # metadata stored in a STAC json
-        ds = create_dataset('staclike.tif', 'dataset with metadata stored in *.stack.json')
-        path = Path(ds.GetDescription())
-
-        infoOptions = InfoOptions(format='json')
-        infos = Info(ds, options=infoOptions)
-        del ds
-        s = ""
-        bn = os.path.splitext(path.name)[0]
-        path_json = path.parent / f'{bn}.stac.json'
-        item = pystac.Item(id=bn,
-                           geometry=infos['wgs84Extent'],
-                           bbox=None,
-                           datetime=datetime.datetime.today(),
-                           properties={})
-        EOExtension.add_to(item)
-        bands = []
-        for b, (wl, fwhm) in enumerate(zip(envi_wl, envi_fwhm)):
-            bands.append({
-                'name': f'Band {b + 1} name',
-                'description': f'This is band {b + 1}',
-                'center_wavelength': wl / 100,
-                'full_width_half_max': fwhm / 100,
-            })
-
-        eo_ext = EOExtension.ext(item, add_if_missing=True)
-        eo_ext.bands = [pystac.extensions.eo.Band.create(**band) for band in bands]
-
-        item.add_asset("image",
-                       pystac.Asset(
-                           href=path.name,
-                           media_type=pystac.MediaType.GEOTIFF,
-                           roles=['data'],
-                       ))
-        item_json = item.to_dict()
-        with open(path_json, 'w') as f:
-            json.dump(item_json, f, indent=2)
+        # collect all image in a STAC API ItemCollection
+        path_json = output_dir / 'stac.json'
+        collection = create_stac_item_collection(output_dir, path_json)
+        pystac.validation.validate(collection)
 
     summary = dataset_summary(output_dir)
 
@@ -204,22 +264,13 @@ def create_test_datasets(output_dir: Union[str, Path]):
 
 
 def read_stac():
-    p0 = Path(__file__).parent / 'tmp/test.json'
-    p1 = Path(__file__).parent / 'staclike.stac.json'
-
-    assert p0.is_file()
-    assert p1.is_file()
-    # see https://gdal.org/en/stable/drivers/raster/stacit.html
-    os.chdir(p0.parent)
-    ds0: Dataset = gdal.Open(p0.name)
-    ds0.RasterYSize
-
-    os.chdir(p1.parent)
-    ds1: Dataset = gdal.Open(f'STACIT:"{p1.name}":asset=image')
+    path = Path(__file__).parent / 'stac.json'
+    # ds: Dataset = gdal.Open(path.as_posix())
+    ds1: Dataset = gdal.Open(f'STACIT:"{path.as_posix()}":asset=image')
     s = ""
 
 
 if __name__ == '__main__':
     DIR = Path(__file__).parent
-    # read_stac()
     create_test_datasets(DIR)
+    # read_stac()
