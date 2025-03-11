@@ -39,15 +39,9 @@ class TestSubDataSets(TestCase):
     def test_subdatasetDialog(self):
 
         dir_gdal = TestObjects.repoDirGDAL()
-        path_grps = dir_gdal / 'autotest/gdrivers/data/hdf5/groups.h5'
-        path_grps2 = self.createTestOutputDirectory() / 'groups2.h5'
-        if not path_grps2.is_file():
-            shutil.copy(path_grps, path_grps2)
-            self.assertTrue(path_grps2.is_file())
 
         sources = [
-            path_grps,
-            path_grps2,
+            dir_gdal / 'autotest/gdrivers/data/hdf5/groups.h5',
             dir_gdal / 'autotest/gdrivers/data/sentinel2/fake_l1c/S2A_OPER_PRD_MSIL1C.SAFE/S2A_OPER_MTD_SAFL1C.xml',
             dir_gdal / 'autotest/gdrivers/data/sentinel2/fake_l2a/S2A_USER_PRD_MSIL2A.SAFE/S2A_USER_MTD_SAFL2A.xml',
             dir_gdal / 'autotest/gdrivers/data/sentinel2/fake_l2a/S2A_USER_PRD_MSIL2A.SAFE/S2A_USER_MTD_SAFL2A.xml',
@@ -74,6 +68,8 @@ class TestSubDataSets(TestCase):
         if not TestCase.runsInCI():
             if d.exec() == QDialog.Accepted:
                 sublayers = d.selectedSublayerDetails()
+                s = ""
+            else:
                 s = ""
 
 
