@@ -5,8 +5,8 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 from uuid import uuid4
 
-from osgeo import gdal
 import numpy as np
+from osgeo import gdal
 from qgis.PyQt.QtCore import QDate, QDateTime, QLocale, Qt, QTime
 from qgis.core import Qgis, QgsCoordinateReferenceSystem, QgsEditorWidgetSetup, QgsExpressionContext, QgsFeature, \
     QgsField, QgsFields, QgsProject, QgsProperty, QgsPropertyTransformer, QgsRemappingSinkDefinition, \
@@ -47,6 +47,7 @@ def create_vsimemfile(extension, path: Optional[Union[str, Path]] = None) -> str
     options.driverName = driver
     options.layerOptions = defLOptions
     options.datasourceOptions = defDOptions
+    options.fileEncoding = 'utf-8'
 
     wkbType = Qgis.WkbType.Point
     writer: QgsVectorFileWriter = QgsVectorFileWriter.create(path, fields, wkbType, crs,
@@ -73,8 +74,8 @@ def collect_native_types() -> Dict[str, List[QgsVectorDataProvider.NativeType]]:
 
         sid = f'{uuid4()}'
 
-        for i, extension in enumerate(['.shp', '.csv', '.geojson', '.gpkg', '.kml', '.sqlite', ]):
-            tmpDir = Path(__file__).parent
+        for i, extension in enumerate(['.gml', '.shp', '.csv', '.geojson', '.gpkg', '.kml', '.sqlite', ]):
+            # tmpDir = Path(__file__).parent
             # tmpPath = tmpDir / f'example.{i + 1}{extension}'
             tmpPath = Path(r'/vsimem') / f'example.{sid}.{i + 1}{extension}'
             path, drvName = create_vsimemfile(extension, path=tmpPath)
@@ -287,6 +288,7 @@ class GenericFieldValueConverter(QgsVectorFileWriter.FieldValueConverter):
     def compatibleTargetFields(srcFields: QgsFields, targetDriver: str) -> QgsFields:
         NATIVE_TYPES = collect_native_types()
         if targetDriver not in NATIVE_TYPES:
+
             if (t2 := QgsVectorFileWriter.driverForExtension(targetDriver)) and t2 in NATIVE_TYPES:
                 targetDriver = t2
 
@@ -296,7 +298,8 @@ class GenericFieldValueConverter(QgsVectorFileWriter.FieldValueConverter):
         md = QgsVectorFileWriter.MetaData()
 
         native_types = NATIVE_TYPES[targetDriver]
-        tsn_list = [(nt.mType, nt.mSubType, nt.mTypeName) for nt in native_types]
+
+        TSN_LOOKUP = {(nt.mType, nt.mSubType, nt.mTypeName.lower()): nt for nt in native_types}
 
         supports_json: QgsVectorDataProvider.NativeType = None
         supports_map: QgsVectorDataProvider.NativeType = None
@@ -332,8 +335,9 @@ class GenericFieldValueConverter(QgsVectorFileWriter.FieldValueConverter):
 
         for srcF in srcFields:
             dstF = None
-            tsn = (srcF.type(), srcF.subType(), srcF.typeName())
-            if tsn not in tsn_list:
+            tsn = (srcF.type(), srcF.subType(), srcF.typeName().lower())
+
+            if tsn not in TSN_LOOKUP:
                 # this field needs to be transformed
 
                 if is_profile_field(srcF):

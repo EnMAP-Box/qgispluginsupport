@@ -1290,7 +1290,9 @@ def read_vsimem(fn):
 def writeAsVectorFormat(layer: QgsVectorLayer,
                         path: Union[str, Path],
                         options: QgsVectorFileWriter.SaveVectorOptions = None,
-                        feedback: QgsFeedback = None) -> QgsVectorLayer:
+                        feedback: QgsFeedback = None,
+                        field_value_converter: Optional[
+                            QgsVectorFileWriter.FieldValueConverter] = None) -> QgsVectorLayer:
     """
     Writes any vector layer into another format. E.g. to store in-memory vector layers persistently
     :param layer: QgsVectorLayer
@@ -1303,7 +1305,6 @@ def writeAsVectorFormat(layer: QgsVectorLayer,
     assert isinstance(layer, QgsVectorLayer)
     assert layer.isValid()
 
-    field_value_converter = None
     if not isinstance(options, QgsVectorFileWriter.SaveVectorOptions):
 
         options = QgsVectorFileWriter.SaveVectorOptions()
@@ -1321,17 +1322,16 @@ def writeAsVectorFormat(layer: QgsVectorLayer,
             options.includeConstraints = True
             options.layerMetadata = layer.metadata()
 
-            if driver_name in ['GPKG']:
-                from .speclib.io.geopackage import GeoPackageFieldValueConverter
-                field_value_converter = GeoPackageFieldValueConverter(layer.fields())
-            elif driver_name in ['GeoJSON', 'LIBKML', 'KML', 'CSV']:
-                from .speclib.io.geojson import GeoJsonFieldValueConverter
-                field_value_converter = GeoJsonFieldValueConverter(layer.fields())
-            else:
-                s = ""
-            # options.symbologyExport =
+    if isinstance(field_value_converter, QgsVectorFileWriter.FieldValueConverter):
+        options.fieldValueConverter = field_value_converter
+    if not isinstance(options.fieldValueConverter, QgsVectorFileWriter.FieldValueConverter):
+        from .fieldvalueconverter import GenericFieldValueConverter
+        srcFields = layer.fields()
 
-    options.fieldValueConverter = field_value_converter
+        dstFields = GenericFieldValueConverter.compatibleTargetFields(srcFields, options.driverName)
+
+        converter = GenericFieldValueConverter(srcFields, dstFields)
+        options.fieldValueConverter = converter
 
     s = ""
 
