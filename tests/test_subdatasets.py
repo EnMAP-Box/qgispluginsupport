@@ -1,5 +1,4 @@
 import os
-import shutil
 import unittest
 
 from qgis.PyQt.QtWidgets import QDialog
@@ -68,9 +67,7 @@ class TestSubDataSets(TestCase):
         if not TestCase.runsInCI():
             if d.exec() == QDialog.Accepted:
                 sublayers = d.selectedSublayerDetails()
-                s = ""
-            else:
-                s = ""
+                print(f'Sub layers: {sublayers}')
 
 
 if __name__ == '__main__':
