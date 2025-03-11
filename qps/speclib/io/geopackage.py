@@ -2,17 +2,11 @@ import os
 import pathlib
 from typing import Any, List, Union
 
-import numpy as np
-from osgeo.gdalconst import DMD_CREATIONFIELDDATASUBTYPES
-from osgeo.ogr import Driver, GetDriverByName
 from qgis.core import QgsCoordinateReferenceSystem, QgsCoordinateTransformContext, QgsExpressionContext, QgsFeature, \
-    QgsField, QgsFields, QgsProcessingFeedback, QgsVectorFileWriter, QgsVectorLayer
-from qgis.PyQt.QtCore import QVariant
+    QgsFields, QgsProcessingFeedback, QgsVectorFileWriter, QgsVectorLayer
 
-from ..core import is_profile_field
 from ..core.spectrallibraryio import SpectralLibraryExportWidget, SpectralLibraryImportWidget, SpectralLibraryIO
-from ..core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict
-from ...qgisenums import QMETATYPE_QSTRING
+from ...fieldvalueconverter import GenericFieldValueConverter
 
 
 class GeoPackageSpectralLibraryExportWidget(SpectralLibraryExportWidget):
@@ -83,54 +77,6 @@ class GeoPackageSpectralLibraryImportWidget(SpectralLibraryImportWidget):
         return context
 
 
-class GeoPackageFieldValueConverter(QgsVectorFileWriter.FieldValueConverter):
-
-    def __init__(self, fields: QgsFields):
-        super(GeoPackageFieldValueConverter, self).__init__()
-        self.mFields: QgsFields = QgsFields(fields)
-
-        # define converter functions
-        self.mFieldDefinitions = dict()
-        self.mFieldConverters = dict()
-
-        # can it write JSON fields?
-        drv: Driver = GetDriverByName('GPKG')
-        supported_subtypes = drv.GetMetadataItem(DMD_CREATIONFIELDDATASUBTYPES)
-        can_write_json = 'JSON' in supported_subtypes
-
-        for field in self.mFields:
-            name = field.name()
-            idx = self.mFields.lookupField(name)
-            if is_profile_field(field) and field.type() == QVariant.Map and not can_write_json:
-                convertedField = QgsField(name=name, type=QMETATYPE_QSTRING, len=-1)
-                self.mFieldDefinitions[name] = convertedField
-                self.mFieldConverters[idx] = lambda v, f=convertedField: self.convertProfileField(v, f)
-            else:
-                self.mFieldDefinitions[name] = QgsField(super().fieldDefinition(field))
-                self.mFieldConverters[idx] = lambda v: v
-
-    def convertProfileField(self, value, field: QgsField) -> str:
-        d = decodeProfileValueDict(value, numpy_arrays=True)
-        d['y'] = d['y'].astype(np.float32)
-        text = encodeProfileValueDict(d, field)
-        return text
-
-    def clone(self) -> QgsVectorFileWriter.FieldValueConverter:
-        return GeoPackageFieldValueConverter(self.mFields)
-
-    def convert(self, fieldIdxInLayer: int, value: Any) -> Any:
-        return self.mFieldConverters[fieldIdxInLayer](value)
-
-    def fieldDefinition(self, field: QgsField) -> QgsField:
-        return QgsField(self.mFieldDefinitions[field.name()])
-
-    def convertedFields(self) -> QgsFields:
-        fields = QgsFields()
-        for f in self.mFields:
-            fields.append(self.fieldDefinition(f))
-        return fields
-
-
 class GeoPackageSpectralLibraryIO(SpectralLibraryIO):
 
     def __init__(self, *args, **kwds):
@@ -173,7 +119,7 @@ class GeoPackageSpectralLibraryIO(SpectralLibraryIO):
         if isinstance(path, pathlib.Path):
             path = path.as_posix()
 
-        profiles, fields, crs, wkbType = cls.extractWriterInfos(profiles, exportSettings)
+        profiles, srcFields, crs, wkbType = cls.extractWriterInfos(profiles, exportSettings)
         if len(profiles) == 0:
             return []
 
@@ -197,12 +143,12 @@ class GeoPackageSpectralLibraryIO(SpectralLibraryIO):
 
         transformationContext = QgsCoordinateTransformContext()
 
-        converter = GeoPackageFieldValueConverter(fields)
+        dstFields = GenericFieldValueConverter.compatibleTargetFields(srcFields, options.driverName)
+        converter = GenericFieldValueConverter(srcFields, dstFields)
         options.fieldValueConverter = converter
-        convertedFields = converter.convertedFields()
 
         writer: QgsVectorFileWriter = QgsVectorFileWriter.create(path,
-                                                                 convertedFields,
+                                                                 dstFields,
                                                                  # fields,
                                                                  wkbType,
                                                                  crs,
@@ -217,7 +163,7 @@ class GeoPackageSpectralLibraryIO(SpectralLibraryIO):
 
         del writer
 
-        cls.copyEditorWidgetSetup(path, fields)
+        cls.copyEditorWidgetSetup(path, srcFields)
 
         return [path]
 
