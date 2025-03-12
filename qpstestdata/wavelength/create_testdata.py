@@ -8,8 +8,8 @@ from typing import Union
 import numpy as np
 import pystac
 import pystac.extensions.eo
-from osgeo import gdal_array, gdal
-from osgeo.gdal import Dataset, Band, VersionInfo, Open, Info, InfoOptions
+from osgeo import gdal, gdal_array
+from osgeo.gdal import Band, Dataset, Info, InfoOptions, Open, VersionInfo
 from osgeo.osr import SpatialReference, UseExceptions
 from pystac.extensions.eo import EOExtension
 
@@ -17,16 +17,18 @@ UseExceptions()
 
 # mini dataset with 2 bands
 version = VersionInfo('')
-envi_wl = [400, 500]
-envi_wlu = 'nm'
-envi_fwhm = [10, 20]
+envi_wl_nm = [400, 500]
+envi_fwhm_nm = [10, 20]
+
+envi_wl_um = [v / 1000 for v in envi_wl_nm]
+envi_fwhm_um = [v / 1000 for v in envi_fwhm_nm]
 envi_bbl = [0, 1]
 
 settings = {
     'missing.tif': {},
     'envistyle_wl.tif': {
         'dsMD': {'ENVI':
-                     {'wavelength': envi_wl}}
+                     {'wavelength': envi_wl_nm}}
     },
 }
 
@@ -93,7 +95,7 @@ def create_stac_item(path_img: Union[str, Path], stac_root: Union[str, Path]) ->
 
     EOExtension.add_to(item)
     bands = []
-    for b, (wl, fwhm) in enumerate(zip(envi_wl, envi_fwhm)):
+    for b, (wl, fwhm) in enumerate(zip(envi_wl_nm, envi_fwhm_nm)):
         bands.append({
             'name': f'Band {b + 1} name',
             'description': f'This is band {b + 1}',
@@ -167,10 +169,10 @@ def dataset_summary(output_dir: Union[str, Path]) -> str:
             col2.append(info)
 
     def format_cols(col: list) -> list:
-        l = max([len(s) for s in col])
-        values = [s.ljust(l) for s in col]
+        max_len = max([len(s) for s in col])
+        values = [s.ljust(max_len) for s in col]
         # make 1st entry a markdown header
-        values.insert(1, '-' * l)
+        values.insert(1, '-' * max_len)
 
         return values
 
@@ -208,46 +210,48 @@ def create_test_datasets(output_dir: Union[str, Path]):
     ds = create_dataset('gdal_wl_only.tif',
                         'gdal 3.10+ with IMAGERY:CENTRAL_WAVELENGTH_UM')
     writeBandMetadata(ds, 'IMAGERY', 'MYINFO', 'test')
-    writeBandMetadata(ds, 'IMAGERY', 'CENTRAL_WAVELENGTH_UM', [v / 1000 for v in envi_wl])
+    writeBandMetadata(ds, 'IMAGERY', 'CENTRAL_WAVELENGTH_UM', envi_wl_um)
 
     ds = create_dataset('gdal_wl_fwhm.tif',
                         'gdal 3.10+ with IMAGERY:CENTRAL_WAVELENGTH_UM and IMAGERY:FWHM_UM')
 
-    writeBandMetadata(ds, 'IMAGERY', 'CENTRAL_WAVELENGTH_UM', envi_wl)
-    writeBandMetadata(ds, 'IMAGERY', 'FWHM_UM', envi_fwhm)
+    writeBandMetadata(ds, 'IMAGERY', 'CENTRAL_WAVELENGTH_UM', envi_wl_um)
+    writeBandMetadata(ds, 'IMAGERY', 'FWHM_UM', envi_fwhm_um)
 
     # classic ENVI dataset with wl and wlu
     # see https://www.nv5geospatialsoftware.com/docs/enviheaderfiles.html
     ds = create_dataset('envi_wl_fwhm.bsq',
                         'classic ENVI BSQ with wavelength, wavelength units, fwhm, and bbl',
                         format='ENVI')
-    writeDatasetMetadata(ds, 'ENVI', 'wavelength', wrapEnviList(envi_wl))
-    writeDatasetMetadata(ds, 'ENVI', 'fwhm', wrapEnviList(envi_fwhm))
-    writeDatasetMetadata(ds, 'ENVI', 'wavelength units', envi_wlu)
+    writeDatasetMetadata(ds, 'ENVI', 'wavelength', wrapEnviList(envi_wl_nm))
+    writeDatasetMetadata(ds, 'ENVI', 'fwhm', wrapEnviList(envi_fwhm_nm))
+    writeDatasetMetadata(ds, 'ENVI', 'wavelength units', 'nm')
     writeDatasetMetadata(ds, 'ENVI', 'bbl', wrapEnviList(envi_bbl))
 
     # only central wavelength - expect nanometers
     ds = create_dataset('envi_wl_implicit_nm.bsq',
-                        'ENVI BSQ with missing wavelength units, expect nm')
-    writeDatasetMetadata(ds, 'ENVI', 'wavelength', wrapEnviList(envi_wl))
+                        'ENVI BSQ with missing wavelength units, expect nanometers (nm)',
+                        format='ENVI')
+    writeDatasetMetadata(ds, 'ENVI', 'wavelength', wrapEnviList(envi_wl_nm))
 
     # only central wavelength - expect micrometers
     ds = create_dataset('envi_wl_implicit_um.bsq',
-                        'ENVI BSQ with missing wavelength units, expect micrometers')
-    writeDatasetMetadata(ds, 'ENVI', 'wavelength', wrapEnviList([v / 1000 for v in envi_wl]))
+                        'ENVI BSQ with missing wavelength units, expect micrometers (μm)',
+                        format='ENVI')
+    writeDatasetMetadata(ds, 'ENVI', 'wavelength', wrapEnviList(envi_wl_um))
 
     # just as above, using tif with ENVI-style metadata at dataset level
     ds = create_dataset('enmapbox_envidomain_dslevel.tif',
                         'tif with ENVI domain at dataset level')
-    writeDatasetMetadata(ds, 'ENVI', 'wavelength', envi_wl)
-    writeDatasetMetadata(ds, 'ENVI', 'wavelength units', envi_wlu)
+    writeDatasetMetadata(ds, 'ENVI', 'wavelength', envi_wl_nm)
+    writeDatasetMetadata(ds, 'ENVI', 'wavelength units', 'nm')
     writeDatasetMetadata(ds, 'ENVI', 'bbl', [0, 1])
 
     # just as above, using tif with ENVI-style metadata at band level
     ds = create_dataset('enmapbox_envidomain_bandlevel.tif',
                         'tif with ENVI domain at band level')
-    writeBandMetadata(ds, 'ENVI', 'wavelength', envi_wl)
-    writeBandMetadata(ds, 'ENVI', 'wavelength units', envi_wlu)
+    writeBandMetadata(ds, 'ENVI', 'wavelength', envi_wl_nm)
+    writeBandMetadata(ds, 'ENVI', 'wavelength units', 'nm')
     writeBandMetadata(ds, 'ENVI', 'bbl', [0, 1])
 
     del ds  # Important! Ensures that all infos are written
