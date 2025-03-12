@@ -228,12 +228,14 @@ def create_test_datasets(output_dir: Union[str, Path]):
 
     # only central wavelength - expect nanometers
     ds = create_dataset('envi_wl_implicit_nm.bsq',
-                        'ENVI BSQ with missing wavelength units, expect nm')
+                        'ENVI BSQ with missing wavelength units, expect nm',
+                        format='ENVI', )
     writeDatasetMetadata(ds, 'ENVI', 'wavelength', wrapEnviList(envi_wl))
 
     # only central wavelength - expect micrometers
     ds = create_dataset('envi_wl_implicit_um.bsq',
-                        'ENVI BSQ with missing wavelength units, expect micrometers')
+                        'ENVI BSQ with missing wavelength units, expect micrometers',
+                        format='ENVI', )
     writeDatasetMetadata(ds, 'ENVI', 'wavelength', wrapEnviList([v / 1000 for v in envi_wl]))
 
     # just as above, using tif with ENVI-style metadata at dataset level

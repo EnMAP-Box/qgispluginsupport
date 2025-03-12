@@ -23,12 +23,11 @@ class TestQgsRasterLayerProperties(TestCase):
 
     def test_wavelength(self):
 
-        if False:
-            prop = QgsRasterLayerSpectralProperties.fromRasterLayer(DIR_WAVELENGTH / 'gdal_no_info.tif')
-            self.assertEqual(prop.bandCount(), 2)
-            self.assertEqual(prop.wavelengths(), [None, None])
-            self.assertEqual(prop.wavelengthUnits(), [None, None])
-            self.assertEqual(prop.fwhm(), [None, None])
+        prop = QgsRasterLayerSpectralProperties.fromRasterLayer(DIR_WAVELENGTH / 'gdal_no_info.tif')
+        self.assertEqual(prop.bandCount(), 2)
+        self.assertEqual(prop.wavelengths(), [None, None])
+        self.assertEqual(prop.wavelengthUnits(), [None, None])
+        self.assertEqual(prop.fwhm(), [None, None])
 
         prop = QgsRasterLayerSpectralProperties.fromRasterLayer(DIR_WAVELENGTH / 'gdal_wl_only.tif')
         self.assertEqual(prop.bandCount(), 2)
