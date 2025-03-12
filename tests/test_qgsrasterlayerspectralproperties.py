@@ -1,5 +1,7 @@
 import os.path
+import tempfile
 import unittest
+from pathlib import Path
 
 from qgis._core import QgsMapLayer
 
@@ -13,6 +15,33 @@ start_app()
 
 
 class TestQgsRasterLayerProperties(TestCase):
+
+    def setUp(self):
+
+        self.tempDir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tempDir.cleanup)
+
+    def assertEqualProperties(self, p1: QgsRasterLayerSpectralProperties, p2: QgsRasterLayerSpectralProperties,
+                              values_only: bool = True):
+
+        self.assertEqual(p1.keys(), set(p2.keys()))
+
+        for k in p1.keys():
+            v1 = p1.value(k)
+            v2 = p2.value(k)
+
+            assert type(v1) == type(v2)
+
+            if isinstance(v1, dict):
+                if values_only:
+                    for k2 in v1.keys():
+                        if isinstance(k2, int):
+                            assert k2 in v2
+                            self.assertEqual(v1[k2], v2[k2])
+                else:
+                    self.assertEqual(v1, v2)
+            else:
+                self.assertEqual(v1, v2)
 
     def test_stringToType(self):
         self.assertEqual(stringToType(3.24), 3.24)
@@ -123,8 +152,8 @@ class TestQgsRasterLayerProperties(TestCase):
         self.assertEqual(prop3, prop4)
 
         # write into layer properties
-        DIR_TMP = self.createTestOutputDirectory()
-        path_img = DIR_TMP / 'example.tif'
+
+        path_img = Path(self.tempDir.name) / 'example.tif'
 
         lyr = TestObjects.createRasterLayer(nb=2, add_wl=False, path=path_img)
         self.assertTrue(os.path.isfile(path_img))
@@ -135,15 +164,19 @@ class TestQgsRasterLayerProperties(TestCase):
         self.assertEqual([None, None], prop1.wavelengths())
 
         prop1.setBandValues('*', 'wavelength', [355, 455])
+        prop1.setBandValues('*', 'wavelength unit', 'nm')
         prop1.writeToLayer(lyr)
         self.assertTrue(lyr.saveDefaultStyle(categories=QgsMapLayer.StyleCategory.CustomProperties))
 
         del lyr
         lyr = QgsRasterLayer(path_img.as_posix())
         prop3 = QgsRasterLayerSpectralProperties.fromRasterLayer(lyr)
-        if prop1 != prop3:
-            s = ""
-        self.assertEqual(prop1, prop3)
+        prop3b = QgsRasterLayerSpectralProperties.fromRasterLayer(lyr)
+        assert prop3 == prop3b
+
+        self.assertEqualProperties(prop1, prop2)
+
+        self.assertEqualProperties(prop1, prop3)
         self.assertEqual(prop3.value(SpectralPropertyKeys.Wavelength)['_origin_'],
                          SpectralPropertyOrigin.LayerProperties)
 
