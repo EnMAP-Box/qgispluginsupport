@@ -1,11 +1,13 @@
+import os.path
 import unittest
 
-from qgis.core import QgsRasterLayer
+from qgis._core import QgsMapLayer
 
+from qgis.core import QgsRasterLayer
 from qps.qgsrasterlayerproperties import QgsRasterLayerSpectralProperties, QgsRasterLayerSpectralPropertiesTable, \
-    QgsRasterLayerSpectralPropertiesTableWidget, stringToType
+    QgsRasterLayerSpectralPropertiesTableWidget, SpectralPropertyKeys, SpectralPropertyOrigin, stringToType
 from qps.testing import start_app, TestCase, TestObjects
-from qpstestdata import envi_bsq, DIR_WAVELENGTH
+from qpstestdata import DIR_WAVELENGTH, envi_bsq
 
 start_app()
 
@@ -29,16 +31,51 @@ class TestQgsRasterLayerProperties(TestCase):
         self.assertEqual(prop.wavelengthUnits(), [None, None])
         self.assertEqual(prop.fwhm(), [None, None])
 
-        prop = QgsRasterLayerSpectralProperties.fromRasterLayer(DIR_WAVELENGTH / 'gdal_wl_only.tif')
+        lyr = QgsRasterLayer((DIR_WAVELENGTH / 'gdal_wl_only.tif').as_posix())
+        prop = QgsRasterLayerSpectralProperties.fromRasterLayer(lyr)
+        self.assertEqual(lyr.bandCount(), prop.bandCount())
+        self.assertEqual([0.4, 0.5], prop.wavelengths())
+        self.assertEqual(['μm', 'μm'], prop.wavelengthUnits())
+        self.assertEqual([None, None], prop.badBands())
+        self.assertEqual([1, 1], prop.badBands(default=1))
+        self.assertEqual([None, None], prop.fwhm(), )
+        self.assertEqual([None, None], prop.dataGains())
+        self.assertEqual([None, None], prop.dataOffsets())
+
+        prop = QgsRasterLayerSpectralProperties.fromRasterLayer(DIR_WAVELENGTH / 'gdal_wl_fwhm.tif')
         self.assertEqual(prop.bandCount(), 2)
-        self.assertEqual(prop.wavelengths(), [0.4, 0.5])
-        self.assertEqual(prop.wavelengthUnits(), ['μm', 'μm'])
-        self.assertEqual(prop.badBands(), [1, 1])
-        self.assertEqual(prop.fwhm(), [None, None])
-        self.assertEqual(prop.dataGains(), [None, None])
-        s = ""
+        self.assertEqual([0.4, 0.5], prop.wavelengths())
+        self.assertEqual(['μm', 'μm'], prop.wavelengthUnits())
+        self.assertEqual([None, None], prop.badBands())
+        self.assertEqual([0.01, 0.02], prop.fwhm(), )
+        self.assertEqual([None, None], prop.dataGains())
+        self.assertEqual([None, None], prop.dataOffsets())
+
+        prop = QgsRasterLayerSpectralProperties.fromRasterLayer(DIR_WAVELENGTH / 'envi_wl_fwhm.bsq')
+        self.assertEqual(prop.bandCount(), 2)
+        self.assertEqual([0.4, 0.5], prop.wavelengths())
+        self.assertEqual(['μm', 'μm'], prop.wavelengthUnits())
+        self.assertEqual([0, 1], prop.badBands())
+        self.assertEqual([0.01, 0.02], prop.fwhm(), )
+        self.assertEqual([None, None], prop.dataGains())
+        self.assertEqual([None, None], prop.dataOffsets())
+
+        prop = QgsRasterLayerSpectralProperties.fromRasterLayer(DIR_WAVELENGTH / 'envi_wl_implicit_nm.bsq')
+        self.assertEqual(prop.bandCount(), 2)
+        self.assertEqual([400, 500], prop.wavelengths())
+        self.assertEqual(['nm', 'nm'], prop.wavelengthUnits())
+
+        prop = QgsRasterLayerSpectralProperties.fromRasterLayer(DIR_WAVELENGTH / 'envi_wl_implicit_um.bsq')
+        self.assertEqual(prop.bandCount(), 2)
+        self.assertEqual([0.4, 0.5], prop.wavelengths())
+        self.assertEqual(['μm', 'μm'], prop.wavelengthUnits())
 
     def test_QgsRasterLayerSpectralProperties(self):
+
+        lyr = TestObjects.createRasterLayer()
+        prop = QgsRasterLayerSpectralProperties.fromRasterLayer(lyr)
+        self.assertEqual(prop.badBands(), [None])
+        self.assertEqual(prop.badBands(default=1), [1])
 
         lyr = QgsRasterLayer(envi_bsq.as_posix())
         self.assertIsInstance(lyr, QgsRasterLayer)
@@ -56,21 +93,63 @@ class TestQgsRasterLayerProperties(TestCase):
         for name in ['fwHm', 'FWHM']:
             self.assertEqual(properties.itemKey(name), 'fwhm')
 
-        self.assertEqual(properties.itemKey('FWHM/BBL'), 'FWHM/bbl')
+        self.assertEqual(properties.itemKey('BBL'), 'bbl')
 
-        lyr.setCustomProperty('band_3/wavelength', 350)
-        properties = QgsRasterLayerSpectralProperties.fromRasterLayer(lyr)
-        wl = properties.wavelengths()
-        self.assertEqual(wl[2], 350)
+        lyr2 = TestObjects.createRasterLayer(nb=2, add_wl=False)
+        # QgsRasterLayer((DIR_WAVELENGTH / 'gdal_no_info.tif').as_posix())
+        prop = QgsRasterLayerSpectralProperties.fromRasterLayer(lyr2)
+        self.assertEqual([None, None], prop.wavelengths())
+        self.assertEqual([None, None], prop.wavelengthUnits())
+        self.assertEqual([None, None], prop.fwhm())
 
-        wlu = properties.wavelengthUnits()
-        for v in wlu:
-            self.assertEqual(v, 'nm')
-        properties.setBandValues('all', 'wavelength_unit', 'm')
-        wlu2 = properties.wavelengthUnits()
-        self.assertEqual(len(wlu), len(wlu2))
-        for v in wlu2:
-            self.assertEqual(v, 'm')
+        # read wavelength from custom layer properties
+        lyr2.setCustomProperty('wavelengths', [300, 400])
+        prop = QgsRasterLayerSpectralProperties.fromRasterLayer(lyr2)
+        self.assertEqual([300, 400], prop.wavelengths())
+        self.assertEqual(['nm', 'nm'], prop.wavelengthUnits())
+
+        # are custom properties cloned as well?
+        lyr3 = lyr2.clone()
+        prop3 = QgsRasterLayerSpectralProperties.fromRasterLayer(lyr3)
+        self.assertEqual([300, 400], prop3.wavelengths())
+        self.assertEqual(['nm', 'nm'], prop3.wavelengthUnits())
+
+        lyr4 = TestObjects.createRasterLayer(nb=2, add_wl=False)
+        self.assertTrue(prop3.writeToLayer(lyr4))
+
+        prop4 = QgsRasterLayerSpectralProperties.fromRasterLayer(lyr4)
+        self.assertEqual([300, 400], prop4.wavelengths())
+        self.assertEqual(['nm', 'nm'], prop4.wavelengthUnits())
+        self.assertEqual(prop3, prop4)
+
+        # write into layer properties
+        DIR_TMP = self.createTestOutputDirectory()
+        path_img = DIR_TMP / 'example.tif'
+
+        lyr = TestObjects.createRasterLayer(nb=2, add_wl=False, path=path_img)
+        self.assertTrue(os.path.isfile(path_img))
+
+        prop1 = QgsRasterLayerSpectralProperties.fromRasterLayer(path_img)
+        prop2 = QgsRasterLayerSpectralProperties.fromRasterLayer(lyr)
+        self.assertEqual(prop1, prop2)
+        self.assertEqual([None, None], prop1.wavelengths())
+
+        prop1.setBandValues('*', 'wavelength', [355, 455])
+        prop1.writeToLayer(lyr)
+        self.assertTrue(lyr.saveDefaultStyle(categories=QgsMapLayer.StyleCategory.CustomProperties))
+
+        del lyr
+        lyr = QgsRasterLayer(path_img.as_posix())
+        prop3 = QgsRasterLayerSpectralProperties.fromRasterLayer(lyr)
+        if prop1 != prop3:
+            s = ""
+        self.assertEqual(prop1, prop3)
+        self.assertEqual(prop3.value(SpectralPropertyKeys.Wavelength)['_origin_'],
+                         SpectralPropertyOrigin.LayerProperties)
+
+        del lyr
+
+        prop1.writeToSource(lyr)
 
     def test_QgsRasterLayerSpectralPropertiesTable(self):
         rasterLayer = TestObjects.createRasterLayer()

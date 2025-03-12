@@ -32,6 +32,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Match, Pattern, Tuple, Union
 
 from osgeo import gdal, ogr
+
 from qgis.core import edit, Qgis, QgsAttributeTableConfig, QgsDefaultValue, QgsEditorWidgetSetup, QgsFeature, \
     QgsFeatureRequest, QgsField, QgsFieldConstraints, QgsMapLayer, QgsRasterDataProvider, QgsRasterLayer, QgsVectorLayer
 from qgis.gui import QgsAttributeEditorContext, QgsAttributeTableModel, QgsDualView, QgsFieldCalculator, QgsGui, \
@@ -41,7 +42,6 @@ from qgis.PyQt.QtCore import NULL, QAbstractTableModel, QMimeData, QModelIndex, 
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction, QApplication, QCheckBox, QComboBox, QDialog, QDialogButtonBox, QGridLayout, \
     QGroupBox, QHBoxLayout, QLabel, QLineEdit, QMenu, QSizePolicy, QTableView, QWidget
-
 from .core import QpsMapLayerConfigWidget
 from .. import debugLog
 from ..classification.classificationscheme import ClassificationScheme, ClassificationSchemeWidget
@@ -663,8 +663,9 @@ class GDALBandMetadataModel(QgsVectorLayer):
                         if n in KEY2VALUE.keys():
                             value = self.toFieldValue(KEY2VALUE[n](i))
                         else:
-                            itemKey = spectralProperties.bandItemKey(b, field.name())
-                            value = spectralProperties.value(itemKey)
+                            # itemKey = spectralProperties.bandItemKey(b, field.name())
+                            # value = spectralProperties.value(itemKey)
+                            value = spectralProperties.value(field.name())[b]
                             value = self.toFieldValue(value)
 
                         f.setAttribute(n, value)
