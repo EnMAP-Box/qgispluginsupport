@@ -3,12 +3,11 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from qgis._core import QgsMapLayer
-
-from qgis.core import QgsRasterLayer
+from qgis.core import QgsMapLayer, QgsRasterLayer
 from qps.qgsrasterlayerproperties import QgsRasterLayerSpectralProperties, QgsRasterLayerSpectralPropertiesTable, \
     QgsRasterLayerSpectralPropertiesTableWidget, SpectralPropertyKeys, SpectralPropertyOrigin, stringToType
 from qps.testing import start_app, TestCase, TestObjects
+from qps.unitmodel import UnitLookup
 from qpstestdata import DIR_WAVELENGTH, envi_bsq
 
 start_app()
@@ -21,27 +20,42 @@ class TestQgsRasterLayerProperties(TestCase):
         self.tempDir = tempfile.TemporaryDirectory()
         self.addCleanup(self.tempDir.cleanup)
 
-    def assertEqualProperties(self, p1: QgsRasterLayerSpectralProperties, p2: QgsRasterLayerSpectralProperties,
-                              values_only: bool = True):
+    def assertEqualWavelengths(self, wl1: list, wlu1: list, wl2: list, wlu2: list):
 
-        self.assertEqual(p1.keys(), set(p2.keys()))
+        self.assertEqual(len(wl1), len(wl2))
+        if wlu1 != wlu2:
+            wl2 = [UnitLookup.convertLengthUnit(wl, u2, u1) for wl, u2, u1 in zip(wl2, wlu2, wlu1)]
+        self.assertEqual(wl1, wl2)
 
-        for k in p1.keys():
-            v1 = p1.value(k)
-            v2 = p2.value(k)
+    def assertEqualProperties(self,
+                              p1: QgsRasterLayerSpectralProperties,
+                              p2: QgsRasterLayerSpectralProperties,
+                              skip_keys=['_origin_']):
 
-            assert type(v1) == type(v2)
+        self.assertEqual(set(p1.keys()), set(p2.keys()))
 
-            if isinstance(v1, dict):
-                if values_only:
-                    for k2 in v1.keys():
-                        if isinstance(k2, int):
-                            assert k2 in v2
-                            self.assertEqual(v1[k2], v2[k2])
-                else:
-                    self.assertEqual(v1, v2)
-            else:
-                self.assertEqual(v1, v2)
+        if SpectralPropertyKeys.Wavelength in p1.keys():
+            self.assertEqualWavelengths(p1.wavelengths(), p1.wavelengthUnits(),
+                                        p2.wavelengths(), p2.wavelengthUnits())
+
+        if SpectralPropertyKeys.FWHM in p1.keys():
+            self.assertEqualWavelengths(p1.fwhm(), p1.wavelengthUnits(),
+                                        p2.fwhm(), p2.wavelengthUnits())
+
+        if SpectralPropertyKeys.BadBand in p1.keys():
+            self.assertEqual(p1.badBands(), p1.badBands())
+
+        other_keys = [
+            SpectralPropertyKeys.BadBand,
+            SpectralPropertyKeys.DataOffset,
+            SpectralPropertyKeys.DataGain,
+            SpectralPropertyKeys.DataReflectanceGain,
+            SpectralPropertyKeys.DataReflectanceOffset,
+        ]
+        for k in other_keys:
+            values1 = p1.bandValues('*', k)
+            values2 = p2.bandValues('*', k)
+            self.assertEqual(values1, values2)
 
     def test_stringToType(self):
         self.assertEqual(stringToType(3.24), 3.24)
@@ -171,18 +185,29 @@ class TestQgsRasterLayerProperties(TestCase):
         del lyr
         lyr = QgsRasterLayer(path_img.as_posix())
         prop3 = QgsRasterLayerSpectralProperties.fromRasterLayer(lyr)
-        prop3b = QgsRasterLayerSpectralProperties.fromRasterLayer(lyr)
-        assert prop3 == prop3b
-
-        self.assertEqualProperties(prop1, prop2)
 
         self.assertEqualProperties(prop1, prop3)
+
         self.assertEqual(prop3.value(SpectralPropertyKeys.Wavelength)['_origin_'],
                          SpectralPropertyOrigin.LayerProperties)
 
+        prop1.writeToSource(lyr)
         del lyr
 
-        prop1.writeToSource(lyr)
+        # restore saved properties from raster image
+        lyr = QgsRasterLayer(path_img.as_posix())
+        prop3 = QgsRasterLayerSpectralProperties.fromRasterLayer(lyr)
+        self.assertEqualProperties(prop1, prop3)
+        self.assertEqual(prop3.fwhm(), [None, None])
+
+        # change properties at layer custom properties
+        lyr.setCustomProperty('wavelengths', [222, 333])
+        lyr.setCustomProperty('wavelength units', ['nm', 'nm'])
+        lyr.setCustomProperty('fwhm', [0.22, 0.44])
+        prop4 = QgsRasterLayerSpectralProperties.fromRasterLayer(lyr)
+        self.assertEqual(prop4.wavelengthUnits(), ['nm', 'nm'])
+        self.assertEqual(prop4.wavelengths(), [222, 333])
+        self.assertEqual(prop4.fwhm(), [0.22, 0.44])
 
     def test_QgsRasterLayerSpectralPropertiesTable(self):
         rasterLayer = TestObjects.createRasterLayer()

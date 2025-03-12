@@ -1183,6 +1183,7 @@ class TestObjects(object):
         core_wlu = CD['wlu']
         core_gt = CD['gt']
         core_wkt = CD['wkt']
+        core_fwhm = CD['fwhm']
 
         if pixel_size:
             core_gt = (core_gt[0], abs(pixel_size), core_gt[2],
