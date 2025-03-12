@@ -398,8 +398,12 @@ class SpeclibCoreTests(TestCase):
 
     # @unittest.skip('')
     def test_SpectralProfileBlock(self):
-
-        coredata, core_wl, core_wlu, core_gt, core_wkt = TestObjects.coreData()
+        CD = TestObjects.coreData()
+        coredata = CD['data']
+        core_wl = CD['wl']
+        core_wlu = CD['wlu']
+        core_gt = CD['gt']
+        core_wkt = CD['wkt']
 
         setting = SpectralSetting(core_wl, core_wlu)
         block1 = SpectralProfileBlock(coredata, setting)

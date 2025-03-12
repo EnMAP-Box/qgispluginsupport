@@ -42,6 +42,7 @@ from unittest import mock
 import numpy as np
 from osgeo import gdal, gdal_array, ogr, osr
 from osgeo.gdal import UseExceptions
+
 import qgis.utils
 from qgis.PyQt import sip
 from qgis.PyQt.QtCore import pyqtSignal, QMimeData, QObject, QPoint, QPointF, QSize, Qt
@@ -57,8 +58,8 @@ from qgis.core import edit, Qgis, QgsApplication, QgsCoordinateReferenceSystem, 
 from qgis.gui import QgisInterface, QgsAbstractMapToolHandler, QgsBrowserGuiModel, QgsGui, QgsLayerTreeMapCanvasBridge, \
     QgsLayerTreeView, QgsMapCanvas, QgsMapLayerConfigWidgetFactory, QgsMapTool, QgsMessageBar, QgsPluginManagerInterface
 from qgis.testing import QgisTestCase
-
 from .qgisenums import QGIS_WKBTYPE
+from .qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from .resources import initResourceFile
 from .utils import findUpwardPath, px2geo, SpatialPoint
 
@@ -740,7 +741,12 @@ class SpectralProfileDataIterator(object):
         if not isinstance(target_crs, QgsCoordinateReferenceSystem):
             target_crs = QgsCoordinateReferenceSystem('EPSG:4326')
         self.target_crs = target_crs
-        self.coredata, self.wl, self.wlu, self.gt, self.wkt = TestObjects.coreData()
+        coreData = TestObjects.coreData()
+        self.coredata = coreData['data']
+        self.wl = coreData['wl']
+        self.wlu = coreData['wlu']
+        self.gt = coreData['gt']
+        self.wkt = coreData['wkt']
 
         px1 = px2geo(QPoint(0, 0), self.gt, pxCenter=False)
         px2 = px2geo(QPoint(1, 1), self.gt, pxCenter=False)
@@ -811,10 +817,10 @@ class TestObjects(object):
     Creates objects to be used for testing. It is preferred to generate objects in-memory.
     """
 
-    _coreData = _coreDataWL = _coreDataWLU = _coreDataWkt = _coreDataGT = None
+    _coreData = _coreDataWL = _coreDataWLU = _coreDataFWHM = _coreDataWkt = _coreDataGT = None
 
-    @staticmethod
-    def coreData() -> Tuple[np.ndarray, np.ndarray, str, tuple, str]:
+    @classmethod
+    def coreData(cls) -> dict:
         if TestObjects._coreData is None:
             source_raster = Path(__file__).parent / 'enmap.tif'
             assert source_raster.is_file()
@@ -824,14 +830,20 @@ class TestObjects(object):
             TestObjects._coreData = ds.ReadAsArray()
             TestObjects._coreDataGT = ds.GetGeoTransform()
             TestObjects._coreDataWkt = ds.GetProjection()
-            from .utils import parseWavelength
-            TestObjects._coreDataWL, TestObjects._coreDataWLU = parseWavelength(ds)
 
-        results = TestObjects._coreData, \
-            TestObjects._coreDataWL, \
-            TestObjects._coreDataWLU, \
-            TestObjects._coreDataGT, \
-            TestObjects._coreDataWkt
+            prop = QgsRasterLayerSpectralProperties.fromRasterLayer(ds)
+            TestObjects._coreDataWL = np.asarray(prop.wavelengths())
+            TestObjects._coreDataWLU = prop.wavelengthUnits()[0]
+            TestObjects._coreDataFWHM = prop.fwhm()
+
+        results = {
+            'data': cls._coreData,
+            'wl': cls._coreDataWL,
+            'wlu': cls._coreDataWLU,
+            'fwhm': cls._coreDataFWHM,
+            'gt': cls._coreDataGT,
+            'wkt': cls._coreDataWkt,
+        }
         return results
 
     @staticmethod
@@ -846,8 +858,13 @@ class TestObjects(object):
         Returns n random spectral profiles from the test data
         :return: lost of (N,3) array of floats specifying point locations.
         """
+        CD = TestObjects.coreData()
+        coredata = CD['data']
+        wl = CD['wl']
+        wlu = CD['wlu']
+        gt = CD['gt']
+        wkt = CD['wkt']
 
-        coredata, wl, wlu, gt, wkt = TestObjects.coreData()
         cnb, cnl, cns = coredata.shape
         assert n > 0
         if n_bands is None:
@@ -1109,6 +1126,7 @@ class TestObjects(object):
                             drv: Union[str, gdal.Driver] = None,
                             wlu: str = None,
                             pixel_size: float = None,
+                            add_wl: bool = True,
                             no_data_rectangle: int = 0,
                             no_data_value: Union[int, float] = -9999) -> gdal.Dataset:
         """
@@ -1159,7 +1177,12 @@ class TestObjects(object):
                 band: gdal.Band = ds.GetRasterBand(b + 1)
                 band.SetNoDataValue(no_data_value)
 
-        coredata, core_wl, core_wlu, core_gt, core_wkt = TestObjects.coreData()
+        CD = TestObjects.coreData()
+        coredata = CD['data']
+        core_wl = CD['wl']
+        core_wlu = CD['wlu']
+        core_gt = CD['gt']
+        core_wkt = CD['wkt']
 
         if pixel_size:
             core_gt = (core_gt[0], abs(pixel_size), core_gt[2],
@@ -1226,27 +1249,30 @@ class TestObjects(object):
                 arr.fill(no_data_value)
                 ds.WriteRaster(0, 0, no_data_rectangle, no_data_rectangle, arr.tobytes())
 
-            wl = []
-            if nb > cb:
-                wl.extend(core_wl.tolist())
-                for b in range(cb, nb):
-                    wl.append(core_wl[-1])
-            else:
-                wl = core_wl[:nb].tolist()
-            assert len(wl) == nb
+            if add_wl:
+                wl = []
+                fwhm = []
+                if nb > cb:
+                    wl.extend(core_wl.tolist())
+                    fwhm.extend(core_fwhm)
+                    for b in range(cb, nb):
+                        wl.append(core_wl[-1])
+                else:
+                    wl = core_wl[:nb].tolist()
+                assert len(wl) == nb
 
-            if wlu is None:
-                wlu = core_wlu
-            elif wlu != core_wlu:
-                from .unitmodel import UnitLookup
-                wl = UnitLookup.convertLengthUnit(wl, core_wlu, wlu)
+                if wlu is None:
+                    wlu = core_wlu
+                elif wlu != core_wlu:
+                    from .unitmodel import UnitLookup
+                    wl = UnitLookup.convertLengthUnit(wl, core_wlu, wlu)
 
-            domain = None
-            if drv.ShortName == 'ENVI':
-                domain = 'ENVI'
+                domain = None
+                if drv.ShortName == 'ENVI':
+                    domain = 'ENVI'
 
-            ds.SetMetadataItem('wavelength units', wlu, domain)
-            ds.SetMetadataItem('wavelength', ','.join([str(w) for w in wl]), domain)
+                ds.SetMetadataItem('wavelength units', wlu, domain)
+                ds.SetMetadataItem('wavelength', ','.join([str(w) for w in wl]), domain)
 
         ds.FlushCache()
         return ds
