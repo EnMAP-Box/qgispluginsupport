@@ -61,6 +61,7 @@ from qgis.testing import QgisTestCase
 from .qgisenums import QGIS_WKBTYPE
 from .qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from .resources import initResourceFile
+from .unitmodel import UnitLookup
 from .utils import findUpwardPath, px2geo, SpatialPoint
 
 TEST_VECTOR_GEOJSON = Path(__file__).parent / 'testvectordata.4326.geojson'
@@ -663,6 +664,41 @@ class TestCase(QgisTestCase):
         warnings.warn(DeprecationWarning('Use createTestOutputDirectory() instead.'))
         return self.createTestOutputDirectory(subdir, cleanup)
 
+    def assertLengthEqual(self, list1, list2):
+        self.assertEqual(len(list1), len(list2))
+
+    def assertWavelengthsEqual(self, wl1, u1, wl2, u2, precision: int = 5):
+        """
+        Asserts that the wavelengths in wl1 equals those in wl2
+        :param wl1: number|list
+        :param u1: str|list physical unit(s) of values in wl1
+        :param wl2: number|list
+        :param u2: str|list physical unit(s) of values in wl2
+        :param precision: decimal precission used to compare numeric values
+        :return:
+        """
+
+        if not isinstance(wl1, list):
+            wl1 = [wl1]
+        if not isinstance(wl2, list):
+            wl2 = [wl2]
+
+        self.assertLengthEqual(wl1, wl2)
+
+        if not isinstance(u1, list):
+            u1 = [u1 for _ in range(len(wl1))]
+        else:
+            self.assertLengthEqual(wl1, u1)
+        if not isinstance(u2, list):
+            u2 = [u2 for _ in range(len(wl1))]
+        else:
+            self.assertLengthEqual(wl2, u2)
+
+        wl2 = [None if w is None else UnitLookup.convertLengthUnit(w, _u2, _u1) for w, _u2, _u1 in zip(wl2, u2, u1)]
+
+        for w1, w2 in zip(wl1, wl2):
+            self.assertAlmostEqual(w1, w2, precision)
+
     def assertIconsEqual(self, icon1: QIcon, icon2: QIcon):
         self.assertIsInstance(icon1, QIcon)
         self.assertIsInstance(icon2, QIcon)
@@ -1043,14 +1079,14 @@ class TestObjects(object):
                 # slib.endEditCommand()
         return slib
 
-    @staticmethod
-    def inMemoryImage(*args, **kwds):
+    @classmethod
+    def inMemoryImage(cls, *args, **kwds):
 
         warnings.warn(''.join(traceback.format_stack()) + '\nUse createRasterDataset instead')
         return TestObjects.createRasterDataset(*args, **kwds)
 
-    @staticmethod
-    def createMultiMaskExample(*args, **kwds) -> QgsRasterLayer:
+    @classmethod
+    def createMultiMaskExample(cls, *args, **kwds) -> QgsRasterLayer:
 
         path = '/vsimem/testMaskImage.{}.tif'.format(str(uuid.uuid4()))
         ds = TestObjects.createRasterDataset(*args, **kwds)
@@ -1085,8 +1121,8 @@ class TestObjects(object):
 
         return lyr
 
-    @staticmethod
-    def repoDirGDAL(local='gdal') -> Optional[Path]:
+    @classmethod
+    def repoDirGDAL(cls, local='gdal') -> Optional[Path]:
         """
         Returns the path to a local GDAL repository.
         GDAL must be installed into the same path / upward path of this repository
@@ -1097,8 +1133,8 @@ class TestObjects(object):
         else:
             return None
 
-    @staticmethod
-    def repoDirQGIS(local='QGIS') -> Optional[Path]:
+    @classmethod
+    def repoDirQGIS(cls, local='QGIS') -> Optional[Path]:
         """
         Returns the path to a local QGIS repository.
         QGIS must be installed into the same path / upward path of this repository
@@ -1303,8 +1339,8 @@ class TestObjects(object):
         assert lyr.isValid()
         return lyr
 
-    @staticmethod
-    def createVectorDataSet(wkb=ogr.wkbPolygon,
+    @classmethod
+    def createVectorDataSet(cls, wkb=ogr.wkbPolygon,
                             n_features: int = None,
                             path: Union[str, Path] = None) -> ogr.DataSource:
         """
@@ -1442,8 +1478,8 @@ class TestObjects(object):
                         lyr.setEditorWidgetSetup(i, a.editorWidgetSetup())
         return lyr
 
-    @staticmethod
-    def createVectorLayer(wkbType: QgsWkbTypes = QgsWkbTypes.Polygon,
+    @classmethod
+    def createVectorLayer(cls, wkbType: QgsWkbTypes = QgsWkbTypes.Polygon,
                           n_features: int = None,
                           path: Union[str, Path] = None,
                           crs: QgsCoordinateReferenceSystem = None) -> QgsVectorLayer:
@@ -1497,8 +1533,8 @@ class TestObjects(object):
 
         return vl
 
-    @staticmethod
-    def processingAlgorithm():
+    @classmethod
+    def processingAlgorithm(cls):
 
         class TestProcessingAlgorithm(QgsProcessingAlgorithm):
 

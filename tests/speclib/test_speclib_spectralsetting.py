@@ -1,11 +1,8 @@
 import unittest
 
-from osgeo import gdal
-
 from qgis.core import QgsProcessingContext, QgsRasterBlockFeedback, QgsRasterFileWriter, QgsRasterLayer, QgsRasterPipe
 from qps.speclib.core.spectralprofile import SpectralSetting
 from qps.testing import start_app, TestCase, TestObjects
-from qps.utils import parseWavelength
 
 start_app()
 
@@ -52,19 +49,20 @@ class TestCore(TestCase):
 
             del file_writer
             self.assertTrue(error == QgsRasterFileWriter.WriterError.NoError, msg='Error')
-            settingA.writeToLayer(file_name)
+            settingA.writeToSource(file_name)
 
-            self.assertEqual(settingA.n_bands(), lyr.bandCount())
+            self.assertEqual(settingA.bandCount(), lyr.bandCount())
+
             settingB = SpectralSetting.fromRasterLayer(file_name)
             self.assertIsInstance(settingB, SpectralSetting)
 
-            ds: gdal.Dataset = gdal.Open(file_name)
+            self.assertEqual(settingA.keys(), settingB.keys())
 
-            wl, wlu = parseWavelength(ds)
-            del ds
-            self.assertListEqual(settingB.x(), wl.tolist())
-            self.assertEqual(settingB.xUnit(), wlu)
-            self.assertEqual(settingA, settingB)
+            self.assertWavelengthsEqual(settingA.wavelengths(), settingA.wavelengthUnits(),
+                                        settingB.wavelengths(), settingB.wavelengthUnits())
+
+            self.assertWavelengthsEqual(settingA.fwhm(), settingA.wavelengthUnits(),
+                                        settingB.fwhm(), settingB.wavelengthUnits())
 
 
 if __name__ == '__main__':
