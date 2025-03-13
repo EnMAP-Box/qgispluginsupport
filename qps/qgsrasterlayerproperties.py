@@ -137,13 +137,13 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
         SpectralPropertyKeys.EndTime: re.compile(r'^end[ -_]?time$', re.I)
     }
 
-    @staticmethod
-    def combinedLookupPattern() -> Pattern:
+    @classmethod
+    def combinedLookupPattern(cls) -> Pattern:
         patters = '|'.join([rx.pattern for rx in QgsRasterLayerSpectralProperties.LOOKUP_PATTERNS.values()])
         return re.compile(f'({patters})', re.IGNORECASE)
 
-    @staticmethod
-    def fromRasterLayer(layer: Union[QgsRasterLayer, gdal.Dataset, str, Path]) \
+    @classmethod
+    def fromRasterLayer(cls, layer: Union[QgsRasterLayer, gdal.Dataset, str, Path]) \
             -> Optional['QgsRasterLayerSpectralProperties']:
         """
         Returns the QgsRasterLayerSpectralProperties for a raster layer
@@ -158,14 +158,15 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
 
         if isinstance(layer, str):
             options = QgsRasterLayer.LayerOptions(loadDefaultStyle=True)
-            return QgsRasterLayerSpectralProperties.fromRasterLayer(QgsRasterLayer(layer, options=options))
+            return cls.fromRasterLayer(QgsRasterLayer(layer, options=options))
 
         if not (isinstance(layer, QgsRasterLayer)
                 and layer.isValid() and layer.bandCount() > 0):
             return None
-        obj = QgsRasterLayerSpectralProperties(layer.bandCount())
+        obj = cls(layer.bandCount())
+        # read from layer custom properties
         obj.readFromLayer(layer, overwrite=False)
-
+        # read missing properties from data provider / data source
         obj.readFromProvider(layer.dataProvider(), overwrite=False)
 
         return obj
@@ -287,6 +288,20 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
     def dataGains(self, default: Optional[Union[int, float]] = None) -> Optional[List[Optional[float]]]:
         return self.bandValues(None, SpectralPropertyKeys.DataGain, default=default)
 
+    def setWavelengths(self, values):
+        """
+        Shortcut to set the wavlengths for all bands
+        :param values:
+        """
+        self.setBandValues('*', SpectralPropertyKeys.Wavelength, values)
+
+    def setWavelengthUnits(self, units):
+        """
+        Shortcut to set the wavelength units
+        :param units:
+        """
+        self.setBandValues('*', SpectralPropertyKeys.WavelengthUnit, units)
+
     def wavelengths(self) -> Optional[List[Optional[float]]]:
         """
         Returns n = .bandCount() wavelengths.
@@ -325,7 +340,16 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
         """
         return self.fwhm(default)
 
-    def writeToLayer(self, layer: QgsRasterLayer) -> bool:
+    @classmethod
+    def asRasterLayer(cls, layer: Union[QgsRasterLayer, str, Path]) -> QgsRasterLayer:
+        if isinstance(layer, Path):
+            layer = layer.as_posix()
+        if isinstance(layer, str):
+            layer = QgsRasterLayer(layer)
+        assert isinstance(layer, QgsRasterLayer)
+        return layer
+
+    def writeToLayer(self, layer: Union[QgsRasterLayer, str, Path]) -> bool:
         """
         Saves the spectral properties into the custom layer properties of a QgsRasterLayer.
         Does not affect the underlying data source.
@@ -333,7 +357,8 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
         :param layer:
         :return:
         """
-        assert isinstance(layer, QgsRasterLayer)
+
+        layer = self.asRasterLayer(layer)
         assert layer.bandCount() == self.bandCount()
 
         cprop = layer.customProperties()
@@ -361,13 +386,13 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
 
         return True
 
-    def writeToSource(self, layer: QgsRasterLayer) -> bool:
+    def writeToSource(self, layer: [QgsRasterLayer, str, Path]) -> bool:
         """
         Tries to save the spectral properties to a data source
         :param layer:
         :return:
         """
-
+        layer = self.asRasterLayer(layer)
         assert layer.bandCount() == self.bandCount()
 
         src = layer.source()
@@ -666,9 +691,10 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
     @classmethod
     def fromMap(cls, d: dict) -> 'QgsRasterLayerSpectralProperties':
 
-        p = QgsRasterLayerSpectralProperties(d['_bandCount_'])
+        p = cls(d['_bandCount_'])
         for k, v in d.items():
-            p.setValue(k, v)
+            if not k.startswith('_'):
+                p.setValue(k, v)
         return p
 
     def deduceWavelengthUnit(self, wavelength: Union[float, List[float]]) -> str:
