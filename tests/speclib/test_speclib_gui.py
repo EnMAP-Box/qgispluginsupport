@@ -276,9 +276,6 @@ class TestSpeclibWidgets(TestCase):
 
         self.assertTrue(slw.speclib() == sl1)
 
-        # from qps.resources import ResourceBrowser
-        # b = ResourceBrowser()
-
         self.showGui([slw])
 
         QgsProject.instance().removeAllMapLayers()

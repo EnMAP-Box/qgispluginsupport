@@ -3,13 +3,13 @@ import re
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
+
 from qgis.core import Qgis, QgsColorRampShader, QgsCoordinateReferenceSystem, QgsDataProvider, QgsFeature, \
     QgsFeatureRequest, QgsField, QgsFields, QgsMapLayerModel, QgsMessageLog, QgsPointXY, QgsProject, \
     QgsProviderMetadata, QgsProviderRegistry, QgsRaster, QgsRasterBandStats, QgsRasterBlock, QgsRasterBlockFeedback, \
     QgsRasterDataProvider, QgsRasterIdentifyResult, QgsRasterInterface, QgsRasterLayer, QgsRectangle, QgsVectorLayer
 from qgis.PyQt.QtCore import NULL, QByteArray, QDateTime, QMetaType, QModelIndex, QObject, Qt, QUrl, QUrlQuery, QVariant
 from qgis.PyQt.QtGui import QColor, QIcon
-
 from ..core import is_profile_field, profile_fields
 from ..core.spectralprofile import decodeProfileValueDict, groupBySpectralProperties, SpectralSetting
 from ...qgisenums import QGIS_RASTERBANDSTATISTIC, QGIS_RASTERINTERFACECAPABILITY, QMETATYPE_BOOL, QMETATYPE_DOUBLE, \
@@ -62,7 +62,8 @@ def createRasterLayers(features: Union[QgsVectorLayer, List[QgsFeature]],
             GROUPS = groupBySpectralProperties(features, profile_field=field)
 
             for setting, profiles in GROUPS.items():
-                name = f'{field.name()} ({setting.n_bands()} bands, {setting.xUnit()})'
+                setting: SpectralSetting
+                name = f'{field.name()} ({setting.bandCount()} bands, {setting.xUnit()})'
                 layer = QgsRasterLayer('?', name, VectorLayerFieldRasterDataProvider.providerKey())
                 assert layer.isValid()
                 dp: VectorLayerFieldRasterDataProvider = layer.dataProvider()
@@ -97,6 +98,14 @@ def featuresToArrays(speclib: QgsVectorLayer,
                      allow_empty_profiles: bool = False,
                      ) -> \
         Dict[Tuple[SpectralSetting, ...], Tuple[np.ndarray, List[np.ndarray]]]:
+    """
+
+    :param speclib: QgsVectorLayer with one or more spectral profile fields
+    :param spectral_profile_fields: the spectral profile fields to get profiles from
+    :param fids: feature ids to convert profile values into arrays
+    :param allow_empty_profiles: bool, set True to allow for empty profile -> empty pixels
+    :return:
+    """
     assert isinstance(speclib, QgsVectorLayer)
 
     if spectral_profile_fields is None:
@@ -126,12 +135,12 @@ def featuresToArrays(speclib: QgsVectorLayer,
 
     for feature in speclib.getFeatures(request):
         feature: QgsFeature
-        settings: List[SpectralSetting] = list()
+        settings: List[dict] = list()
         profile_dicts: List[dict] = list()
         for i, f in zip(spectral_profile_field_indices, spectral_profile_fields):
             d = decodeProfileValueDict(feature.attribute(i))
             d['fid'] = feature.id()
-            settings.append(SpectralSetting.fromDictionary(d))
+            settings.append(SpectralSetting.fromSpectralProfile(d))
             profile_dicts.append(d)
 
         settings = tuple(settings)
@@ -148,7 +157,7 @@ def featuresToArrays(speclib: QgsVectorLayer,
 
         for i, setting in enumerate(settings):
             if isinstance(setting, SpectralSetting):
-                nb = setting.n_bands()
+                nb = setting.bandCount()
                 array = np.empty((nb, ns), dtype=float)
             else:
                 array = None
@@ -404,7 +413,7 @@ class SpectralProfileValueConverter(FieldToRasterValueConverter):
 
     def bandCount(self) -> int:
         if isinstance(self.mSpectralSetting, SpectralSetting):
-            return self.mSpectralSetting.n_bands()
+            return self.mSpectralSetting.bandCount()
         else:
             return 0
 
@@ -433,13 +442,14 @@ class SpectralProfileValueConverter(FieldToRasterValueConverter):
                 d = s = None
                 try:
                     d = decodeProfileValueDict(v)
-                    s = SpectralSetting.fromDictionary(d, field_name=self.field().name())
+                    s = SpectralSetting.fromSpectralProfile(d)
+                    s.setFieldName(self.field().name())
                 except Exception as ex:
                     _test = ""
                 if isinstance(s, SpectralSetting):
                     if self.mSpectralSetting is None:
                         self.mSpectralSetting = s
-                        nb = s.n_bands()
+                        nb = s.bandCount()
                     if s == self.mSpectralSetting:
                         profileData.append(d['y'])
                         profileIndices.append(i)

@@ -23,27 +23,21 @@
 ***************************************************************************
 """
 import pathlib
-from typing import Union, List
+from typing import List, Union
 
 import numpy as np
-from qgis.core import Qgis
 
+from qgis.core import Qgis, QgsMapLayer, QgsMultiBandColorRenderer, QgsPalettedRasterRenderer, QgsRasterLayer, \
+    QgsRasterRenderer, QgsSingleBandColorDataRenderer, QgsSingleBandGrayRenderer, QgsSingleBandPseudoColorRenderer
 from qgis.PyQt.QtCore import Qt, QTimer
 from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.QtWidgets import QPushButton
-from qgis.PyQt.QtWidgets import QSlider, QWidget, QStackedWidget, QLabel
-from qgis.core import QgsRasterLayer, QgsMapLayer, \
-    QgsRasterRenderer, \
-    QgsSingleBandGrayRenderer, \
-    QgsSingleBandColorDataRenderer, \
-    QgsSingleBandPseudoColorRenderer, \
-    QgsMultiBandColorRenderer, \
-    QgsPalettedRasterRenderer
+from qgis.PyQt.QtWidgets import QLabel, QPushButton, QSlider, QStackedWidget, QWidget
 from qgis.gui import QgsMapCanvas, QgsMapLayerConfigWidget, QgsMapLayerConfigWidgetFactory, QgsRasterBandComboBox
 from ..layerconfigwidgets.core import QpsMapLayerConfigWidget
+from ..qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from ..simplewidgets import FlowLayout
-from ..utils import loadUi, parseWavelength, parseFWHM, LUT_WAVELENGTH, WAVELENGTH_DESCRIPTION, \
-    SignalBlocker, printCaller, rendererXML
+from ..utils import loadUi, LUT_WAVELENGTH, parseWavelength, printCaller, rendererXML, SignalBlocker, \
+    WAVELENGTH_DESCRIPTION
 from ..unitmodel import UnitLookup
 
 
@@ -67,18 +61,20 @@ class RasterBandComboBox(QgsRasterBandComboBox):
         if not (isinstance(layer, QgsRasterLayer) and layer.isValid()):
             return
 
-        WL, WLU = parseWavelength(layer)
-        FWHM = parseFWHM(layer)
+        prop = QgsRasterLayerSpectralProperties.fromRasterLayer(layer)
+        WL = prop.wavelengths()
+        WLU = prop.wavelengthUnits()
+        FWHM = prop.fwhm()
 
         offset = 1 if self.isShowingNotSetOption() else 0
         for b in range(layer.bandCount()):
             idx = b + offset
             bandName = self.itemText(idx)
             tooltip = bandName
-            if WLU and WLU not in bandName:
-                bandName += ' [{} {}]'.format(WL[b], WLU)
-                tooltip += ' {} {}'.format(WL[b], WLU)
-                if isinstance(FWHM, np.ndarray):
+            if WLU[b] and WLU[b] not in bandName:
+                bandName += ' [{} {}]'.format(WL[b], WLU[b])
+                tooltip += ' {} {}'.format(WL[b], WLU[b])
+                if FWHM[b]:
                     tooltip += ' {}'.format(FWHM[b])
 
             self.setItemText(idx, bandName)

@@ -47,4 +47,7 @@ asd_with_gps = DIR_ASD_GPS / 'ww00045.asd'
 
 DIR_ARTMO = DIR_TESTDATA / 'artmo'
 
+# Wavelength detection test data
+DIR_WAVELENGTH = DIR_TESTDATA / 'wavelength'
+
 del _ROOT, _QPS, Path

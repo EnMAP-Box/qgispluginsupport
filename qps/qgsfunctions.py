@@ -31,7 +31,7 @@ import pathlib
 import re
 import sys
 from json import JSONDecodeError
-from typing import Any, Callable, Dict, List, Set, Tuple, Union, Optional
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union
 
 import numpy as np
 
@@ -515,7 +515,7 @@ class ExpressionFunctionUtils(object):
             wl = sp.wavelengths()
             wlu = sp.wavelengthUnits()
 
-            if bbl.count(1) == len(bbl):
+            if bbl.count(None) == len(bbl):
                 bbl = None
 
             if wl.count(None) == len(wl):

@@ -1769,9 +1769,10 @@ def parseFWHM(dataset) -> np.ndarray:
     :return:
     """
     sp = QgsRasterLayerSpectralProperties.fromRasterLayer(dataset)
-    fwhm = sp.fullWidthHalfMaximum()
-    if any([math.isfinite(v) for v in fwhm]):
-        return np.asarray(fwhm)
+    fwhm = sp.fwhm()
+    for v in fwhm:
+        if v is not None:
+            return np.asarray(fwhm)
     else:
         return None
 

@@ -4,24 +4,22 @@ import json
 import math
 import pickle
 import re
-import sys
+import warnings
 from json import JSONDecodeError
 from math import nan
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
 import numpy as np
-from osgeo import gdal
 
-from qgis.PyQt.QtCore import NULL, QByteArray, QDateTime, QJsonDocument, Qt, QVariant
 from qgis.core import QgsCoordinateReferenceSystem, QgsExpressionContext, QgsFeature, QgsField, QgsFields, QgsGeometry, \
-    QgsMapLayer, QgsPointXY, QgsProcessingFeedback, QgsPropertyTransformer, QgsRasterLayer, QgsVectorLayer
+    QgsPointXY, QgsProcessingFeedback, QgsPropertyTransformer, QgsRasterLayer, QgsVectorLayer
+from qgis.PyQt.QtCore import NULL, QByteArray, QDateTime, QJsonDocument, Qt, QVariant
 from . import create_profile_field, is_profile_field, profile_field_indices, profile_fields
 from .. import defaultSpeclibCrs, EMPTY_VALUES
 from ...qgisenums import QMETATYPE_QDATETIME, QMETATYPE_QSTRING, QMETATYPE_QVARIANTMAP
-from ...qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
-from ...unitmodel import BAND_INDEX, BAND_NUMBER
-from ...utils import qgsField, qgsRasterLayer, saveTransform
+from ...qgsrasterlayerproperties import QgsRasterLayerSpectralProperties, SpectralPropertyKeys
+from ...utils import qgsField, saveTransform
 
 # The values that describe a spectral profiles
 # y in 1st position ot show profile values in string representations first
@@ -334,218 +332,88 @@ def decodeProfileValueDict(dump: Union[QByteArray, str, dict], numpy_arrays: boo
     return d
 
 
-class SpectralSetting(object):
-    """
-    A spectral settings describes general "Sensor" properties of one or multiple spectral profiles.
-    n y-values, e.g. reflectance or radiance, by
-    1. n x values, e.g. the wavelength of each band
-    2. an xUnit, e.g. the wavelength unit 'micrometers'
-    3. an yUnit, e.g. 'reflectance'
-    """
+class SpectralSetting(QgsRasterLayerSpectralProperties):
+    KEY_FIELDNAME = 'fieldname'
 
-    @classmethod
-    def fromRasterLayer(cls, layer: QgsRasterLayer) -> Optional['SpectralSetting']:
-        layer = qgsRasterLayer(layer)
-        if not (isinstance(layer, QgsRasterLayer) and layer.isValid()):
-            return None
-
-        props = QgsRasterLayerSpectralProperties.fromRasterLayer(layer)
-
-        wl = props.wavelengths()
-        wlu = props.wavelengthUnits()[0]
-        bbl = props.badBands()
-        del layer
-
-        if wl is None:
-            return None
-        else:
-            return SpectralSetting(wl, xUnit=wlu, bbl=bbl)
-
-    @classmethod
-    def fromDictionary(cls, d: dict, field_name: str = None) -> Optional['SpectralSetting']:
-        if not isinstance(d, dict) or 'y' not in d.keys():
-            # no spectral values no spectral setting
-            return None
-        x = d.get('x', None)
-        xUnit = d.get('xUnit', None)
-        if x is None:
-            if xUnit in [BAND_INDEX, None]:
-                x = list(range(len(d['y'])))
-            elif xUnit == BAND_NUMBER:
-                x = list(range(1, len(d['y']) + 1))
-
-        return SpectralSetting(x,
-                               xUnit=xUnit,
-                               yUnit=d.get('yUnit', None),
-                               bbl=d.get('bbl', None),
-                               field_name=field_name
-                               )
-
-    @classmethod
-    def fromValue(cls, value) -> Optional['SpectralSetting']:
-        d: dict = decodeProfileValueDict(value)
-        if len(d) > 0:
-            return SpectralSetting.fromDictionary(d)
-        else:
-            return None
-
-    def __init__(self,
-                 x: Union[int, tuple, list, np.ndarray],
-                 xUnit: Optional[str] = BAND_INDEX,
-                 yUnit: Optional[str] = None,
-                 bbl: Optional[Union[tuple, list, np.ndarray]] = None,
-                 field: Optional[QgsField] = None,
-                 field_name: Optional[str] = None,
-                 field_encoding: Optional[ProfileEncoding] = None):
-
-        assert isinstance(x, (tuple, list, np.ndarray, int)), f'{x}'
-
-        if isinstance(x, int):
-            x = tuple(list(range(x)))
-            xUnit = BAND_INDEX
-        elif isinstance(x, np.ndarray):
-            x = tuple(x.tolist())
-        elif isinstance(x, list):
-            x = tuple(x)
-
-        if bbl is not None:
-            assert len(bbl) == len(x)
-            bbl = tuple(bbl)
-
-        self.mX: Tuple = x
-        self.mXUnit: str = xUnit
-        self.mYUnit: str = yUnit
-        self.mBadBandList: Tuple = bbl
-        self.mHash = hash((self.mX, self.mXUnit, self.mYUnit, self.mBadBandList))
-
-        # other properties, which will not be used to distinct SpectralSettings from each other
-        self.mFieldEncoding = ProfileEncoding.Text
-        if isinstance(field, QgsField):
-            self.mFieldName = field.name()
-            self.mFieldEncoding = ProfileEncoding.fromInput(field)
-        else:
-            self.mFieldName: str = field_name
-            if field_encoding:
-                self.mFieldEncoding = ProfileEncoding.fromInput(field_encoding)
-
-    def fieldEncoding(self) -> ProfileEncoding:
-        return self.mFieldEncoding
-
-    def fieldName(self) -> str:
-        """
-        Returns the name of the QgsField to which profiles within this setting are linked to
-        :return: str
-        """
-        return self.mFieldName
-
-    def __str__(self):
-        return f'SpectralSetting:({self.n_bands()} bands {self.xUnit()} {self.yUnit()})'.strip()
-
-    def x(self) -> Optional[List]:
-        if self.mX:
-            return list(self.mX)
-        return None
-
-    def n_bands(self) -> int:
-        if self.mX:
-            return len(self.mX)
-        else:
-            return 0
-
-    def yUnit(self) -> str:
-        return self.mYUnit
-
-    def xUnit(self) -> str:
-        return self.mXUnit
-
-    def bbl(self):
-        """
-        Shortcut for bad band list
-        :return:
-        """
-        return self.badBandList()
-
-    def badBandList(self):
-        """
-        Returns the band band list
-        :return:
-        """
-        return self.mBadBandList
-
-    def __eq__(self, other):
-        if not isinstance(other, SpectralSetting):
-            return False
-        return self.mHash == other.mHash
+    def __init__(self, *args, **kwds):
+        super().__init__(*args, **kwds)
+        self.mHash = None
 
     def __hash__(self):
+        if self.mHash is None:
+            self.mHash = hash(frozenset(self.asMap()))
         return self.mHash
 
-    def writeToLayer(self, layer: QgsRasterLayer):
-        """
-        Writes the band and wavelength information to this layer
-        """
-        layer = qgsRasterLayer(layer)
-        assert self.n_bands() == layer.bandCount()
+    def setFieldName(self, name: str):
+        self.setValue(self.KEY_FIELDNAME, name)
 
-        assert isinstance(layer, QgsRasterLayer)
-        assert layer.isValid()
-        properties = QgsRasterLayerSpectralProperties(layer.bandCount())
-        x = self.x()
-        bbl = self.bbl()
-        wlu = self.xUnit()
-        if x:
-            properties.setBandValues(None, 'wl', x)
-        if bbl:
-            properties.setBandValues(None, 'bbl', bbl)
-        if wlu:
-            properties.setBandValues(None, 'wlu', wlu)
+    def fieldName(self):
+        return self.value(self.KEY_FIELDNAME)
 
-        for k in properties.keys():
-            layer.setCustomProperty(k, properties.value(k))
+    def fieldEncoding(self) -> ProfileEncoding:
+        warnings.warn(DeprecationWarning(), stacklevel=2)
+        return ProfileEncoding.Text
 
-        if True:
-            # write to QGISPAM layer metadata
-            # follows https://enmap-box.readthedocs.io/en/latest/dev_section/rfc_list/rfc0002.html
-            for b in range(self.n_bands()):
-                key = f'QGISPAM/band/{b + 1}//wavelength_units'
-                layer.setCustomProperty(key, wlu)
-                key = f'QGISPAM/band/{b + 1}//wavelength'
-                layer.setCustomProperty(key, x[b])
+    def setValue(self, *args, **kwds):
+        if self.mHash:
+            raise Exception('SpectralSetting is now immutable')
+        super().setValue(*args, **kwds)
 
-                if bbl:
-                    key = f'QGISPAM/band/{b + 1}//bad_band_multiplier'
-                    layer.setCustomProperty(key, bbl[b])
-        err, success = layer.saveDefaultStyle(QgsMapLayer.StyleCategory.AllStyleCategories)
-        if not success:
-            print(err, file=sys.stderr)
+    def xUnit(self) -> str:
+        return self.wavelengthUnits()[0]
 
-        if False:
-            # write to GDAL PAM
-            if layer.dataProvider().name() == 'gdal':
-                path = layer.source()
-                del layer
+    def readFromLayer(self, layer: QgsRasterLayer, overwrite: bool = False):
+        super().readFromLayer(layer, overwrite=overwrite)
 
-                ds: gdal.Dataset = gdal.Open(path, gdal.GA_Update)
-                # set at dataset level
-                METADATA = ds.GetMetadata()
-                METADATA['wavelength_units'] = wlu
-                METADATA['wavelength'] = '{' + ','.join([str(v) for v in x]) + '}'
-                ds.SetMetadata(METADATA)
-                ds.SetMetadata(METADATA, 'ENVI')
+        fn = layer.customProperty(f'enmapbox/{self.KEY_FIELDNAME}')
+        if fn:
+            self.setValue(self.KEY_FIELDNAME, fn)
 
-                # set at band level
-                for b in range(ds.RasterCount):
-                    band: gdal.Band = ds.GetRasterBand(b + 1)
-                    METADATA = band.GetMetadata()
-                    METADATA['wavelength_unit'] = wlu
-                    METADATA['wavelength'] = str(x[b])
-                    band.SetMetadata(METADATA)
-                ds.FlushCache()
-                del ds
+    def writeToLayer(self, layer: Union[QgsRasterLayer, str, Path]) -> Optional[QgsRasterLayer]:
+        layer = super().writeToLayer(layer)
+        if isinstance(layer, QgsRasterLayer):
+            fn = self.fieldName()
+            if fn:
+                layer.setCustomProperty(f'enmapbox/{self.KEY_FIELDNAME}', self.fieldName())
+
+            return layer
+
+    @classmethod
+    def fromSpectralProfile(cls, input):
+        d = decodeProfileValueDict(input)
+        n = len(d['y'])
+        prop = SpectralSetting(n)
+
+        wl = d.get('x')
+        wlu = d.get('xUnit')
+        fwhm = d.get('fwhm')
+
+        if wl:
+            prop.setBandValues('*', SpectralPropertyKeys.Wavelength, wl)
+
+        if wlu is None and wl is not None:
+            wlu = QgsRasterLayerSpectralProperties.deduceWavelengthUnit(wl)
+        if wlu is not None:
+            prop.setBandValues('*', SpectralPropertyKeys.WavelengthUnit, wlu)
+
+        if fwhm is not None:
+            prop.setBandValues('*', SpectralPropertyKeys.FWHM, fwhm)
+        return prop
+
+    def n_bands(self):
+        warnings.warn(DeprecationWarning('use .bandCount()'), stacklevel=2)
+        return self.bandCount()
+
+    def x(self):
+        warnings.warn(DeprecationWarning('use .wavelengths()'), stacklevel=2)
+        return self.wavelengths()
+
+    def bbl(self):
+        warnings.warn(DeprecationWarning('use .badBands()'))
+        return self.badBands()
 
 
 def groupBySpectralProperties(profiles: Union[QgsVectorLayer, List[QgsFeature]],
-                              excludeEmptyProfiles: bool = True,
                               profile_field: Union[int, str, QgsField] = None
                               ) -> Dict[SpectralSetting, List[QgsFeature]]:
     """
@@ -586,23 +454,20 @@ def groupBySpectralProperties(profiles: Union[QgsVectorLayer, List[QgsFeature]],
             assert is_profile_field(pField)
             pFieldIdx = p.fields().lookupField(pField.name())
 
-        d: dict = decodeProfileValueDict(p.attribute(pFieldIdx))
+        dump = p.attribute(pFieldIdx)
+        if dump is NULL:
+            continue
 
+        d: dict = decodeProfileValueDict(dump)
         y = d.get('y', [])
-        if excludeEmptyProfiles:
-            if not (isinstance(y, list) and len(y) > 0):
-                continue
+        if not (isinstance(y, list) and len(y) > 0):
+            continue
 
-        x = d.get('x', len(y))
-
-        xUnit = d.get('xUnit', None)
-        yUnit = d.get('yUnit', None)
-
-        key = SpectralSetting(x=x, xUnit=xUnit, yUnit=yUnit, field_name=pField.name())
-
-        if key not in results.keys():
-            results[key] = []
-        results[key].append(p)
+        key = SpectralSetting.fromSpectralProfile(d)
+        key.setFieldName(pField.name())
+        rlist = results.get(key, [])
+        rlist.append(p)
+        results[key] = rlist
     return results
 
 
@@ -800,12 +665,10 @@ class SpectralProfileBlock(object):
         if crs is None:
             crs = defaultSpeclibCrs()
 
-        for spectral_setting, profiles in groupBySpectralProperties(profiles,
-                                                                    profile_field=profile_field,
-                                                                    excludeEmptyProfiles=True).items():
+        for spectral_setting, profiles in groupBySpectralProperties(profiles, profile_field=profile_field).items():
             ns: int = len(profiles)
             fids = [p.id() for p in profiles]
-            nb = spectral_setting.n_bands()
+            nb = spectral_setting.bandCount()
             ref_d: dict = decodeProfileValueDict(profiles[0].attribute(spectral_setting.fieldName()), numpy_arrays=True)
             ref_profile: np.ndarray = ref_d['y']
             dtype = ref_profile.dtype
@@ -849,10 +712,10 @@ class SpectralProfileBlock(object):
             data = data.reshape((data.shape[0], data.shape[1], 1))
         self.mData: np.ndarray = data
 
-        if spectralSetting.x is None:
+        if not any(spectralSetting.wavelengths()) is None:
             xValues = np.arange(data.shape[0])
         else:
-            xValues = np.asarray(spectralSetting.x())
+            xValues = np.asarray(spectralSetting.wavelengths())
 
         assert len(xValues) == self.n_bands()
 
@@ -949,11 +812,7 @@ class SpectralProfileBlock(object):
         kwds['profiledata'] = self.mData
         kwds['geodata'] = (self.mPositionsX, self.mPositionsY, self.mCrs)
         kwds['keys'] = self.mFIDs
-        SS = self.spectralSetting()
-        kwds['x'] = SS.x()
-        kwds['x_unit'] = SS.xUnit()
-        kwds['y_unit'] = SS.yUnit()
-        kwds['bbl'] = SS.bbl()
+        kwds['spectralsetting'] = self.spectralSetting().asMap()
 
         return kwds
 
@@ -962,11 +821,7 @@ class SpectralProfileBlock(object):
         values = kwds['profiledata']
         assert isinstance(values, np.ndarray)
         geodata = kwds.get('geodata', None)
-        SS = SpectralSetting(kwds.get('x', list(range(values.shape[0]))),
-                             xUnit=kwds.get('x_unit', None),
-                             yUnit=kwds.get('y_unit'),
-                             bbl=kwds.get('bbl')
-                             )
+        SS = SpectralSetting.fromMap(kwds.get('spectralsetting'))
         block = SpectralProfileBlock(values, SS,
                                      fids=kwds.get('keys', None),
                                      metadata=kwds.get('metadata', None)
@@ -1075,9 +930,10 @@ class SpectralProfileBlock(object):
         """
         fields = QgsFields()
         fieldName = self.spectralSetting().fieldName()
-        fieldEncoding: ProfileEncoding = self.spectralSetting().fieldEncoding()
+        # fieldEncoding: ProfileEncoding = self.spectralSetting().fieldEncoding()
+        # fields.append(create_profile_field(name=fieldName, encoding=fieldEncoding))
+        fieldEncoding = ProfileEncoding.Dict
         fields.append(create_profile_field(name=fieldName, encoding=fieldEncoding))
-
         for fid, d, geometry in self.profileValueDictionaries():
             profile = QgsFeature(fields)
             profile.setId(fid)
@@ -1097,9 +953,9 @@ class SpectralProfileBlock(object):
         spectral_settings = self.spectralSetting()
 
         xUnit = spectral_settings.xUnit()
-        yUnit = spectral_settings.yUnit()
-        xValues = spectral_settings.x()
-        bbl = spectral_settings.bbl()
+        # yUnit = spectral_settings.yUnit()
+        xValues = spectral_settings.wavelengths()
+        bbl = spectral_settings.badBands()
         hasGeoPositions = self.hasGeoPositions()
 
         fids = self.fids()
@@ -1118,7 +974,8 @@ class SpectralProfileBlock(object):
                                         y=yValues,
                                         bbl=bbl,
                                         xUnit=xUnit,
-                                        yUnit=yUnit)
+                                        # yUnit=yUnit
+                                        )
             if fids:
                 yield fids[i], d, g
             else:

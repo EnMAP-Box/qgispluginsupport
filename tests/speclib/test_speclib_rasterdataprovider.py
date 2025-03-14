@@ -5,10 +5,10 @@ from qgis.core import Qgis, QgsCoordinateReferenceSystem, QgsProject, QgsRasterL
 from qgis.gui import QgsMapCanvas, QgsMapLayerComboBox
 from qps import initResources
 from qps.speclib.core import profile_fields
-from qps.speclib.core.spectrallibraryrasterdataprovider import VectorLayerFieldRasterDataProvider, createRasterLayers, \
-    registerDataProvider
-from qps.speclib.core.spectralprofile import SpectralSetting, decodeProfileValueDict
-from qps.testing import TestCase, TestObjects, start_app
+from qps.speclib.core.spectrallibraryrasterdataprovider import createRasterLayers, registerDataProvider, \
+    VectorLayerFieldRasterDataProvider
+from qps.speclib.core.spectralprofile import decodeProfileValueDict, SpectralSetting
+from qps.testing import start_app, TestCase, TestObjects
 from qps.utils import rasterArray
 
 start_app()
@@ -110,11 +110,11 @@ class RasterDataProviderTests(TestCase):
             self.assertIsInstance(dp, VectorLayerFieldRasterDataProvider)
             setting = dp.spectralSetting()
             self.assertIsInstance(setting, SpectralSetting)
-            self.assertEqual(dp.bandCount(), setting.n_bands())
+            self.assertEqual(dp.bandCount(), setting.bandCount())
 
             # read entire raster image
             array = rasterArray(dp)
-            self.assertEqual(array.shape, (setting.n_bands(), 1, n_total - n_empty))
+            self.assertEqual(array.shape, (setting.bandCount(), 1, n_total - n_empty))
 
             # check for each profile its raster band values
             for iPx, fid in enumerate(dp.activeFeatureIds()):

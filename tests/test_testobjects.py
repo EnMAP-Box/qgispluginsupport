@@ -14,7 +14,7 @@ from qgis.core import Qgis, QgsCoordinateReferenceSystem, QgsFeature, QgsField, 
     QgsWkbTypes
 from qps.qgisenums import QMETATYPE_DOUBLE, QMETATYPE_QSTRING
 from qps.speclib.core import create_profile_field
-from qps.testing import TestCase, TestObjects, start_app
+from qps.testing import start_app, TestCase, TestObjects
 
 start_app()
 
@@ -88,7 +88,12 @@ class TestCasesTestObject(TestCase):
                 self.assertTrue(g.isGeosValid(), msg=f'{f.id()} {f.attributeMap()}')
 
     def test_coredata(self):
-        array, wl, wlu, gt, wkt = TestObjects.coreData()
+        CD = TestObjects.coreData()
+        array = CD['data']
+        wl = CD['wl']
+        wlu = CD['wlu']
+        gt = CD['gt']
+        wkt = CD['wkt']
         self.assertIsInstance(array, np.ndarray)
         self.assertIsInstance(wl, np.ndarray)
         self.assertTrue(len(wl) > 0)

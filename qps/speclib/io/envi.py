@@ -516,7 +516,7 @@ class EnviSpectralLibraryIO(SpectralLibraryIO):
             iGrp += 1
             setting: SpectralSetting
 
-            xValues, wlu, yUnit, bbl = setting.x(), setting.xUnit(), setting.yUnit(), setting.bbl()
+            xValues, wlu, yUnit, bbl = setting.wavelengths(), setting.xUnit(), None, setting.badBands()
 
             # get profile names
             profileNames = []

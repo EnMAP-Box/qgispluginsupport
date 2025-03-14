@@ -33,6 +33,7 @@ import pickle
 import re
 import sys
 import warnings
+from pathlib import Path
 from typing import Any, List, Union
 
 import numpy as np
@@ -1325,12 +1326,13 @@ class ClassificationScheme(QAbstractTableModel):
         raise NotImplementedError()
 
     @staticmethod
-    def fromQml(path: str):
+    def fromQml(path: Union[Path, str]):
         """
         Reads a ClassificationScheme from a QML file.
         :param path: str, path to QML file
         :return: ClassificationScheme
         """
+        path = Path(path)
         raise NotImplementedError()
 
 

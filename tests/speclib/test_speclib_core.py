@@ -398,10 +398,16 @@ class SpeclibCoreTests(TestCase):
 
     # @unittest.skip('')
     def test_SpectralProfileBlock(self):
+        CD = TestObjects.coreData()
+        coredata = CD['data']
+        core_wl = CD['wl']
+        core_wlu = CD['wlu']
+        core_gt = CD['gt']
+        core_wkt = CD['wkt']
 
-        coredata, core_wl, core_wlu, core_gt, core_wkt = TestObjects.coreData()
-
-        setting = SpectralSetting(core_wl, core_wlu)
+        setting = SpectralSetting(len(core_wl))
+        setting.setWavelengths(core_wl)
+        setting.setWavelengthUnits(core_wlu)
         block1 = SpectralProfileBlock(coredata, setting)
 
         self.assertIsInstance(block1, SpectralProfileBlock)
@@ -501,18 +507,19 @@ class SpeclibCoreTests(TestCase):
     def test_groupBySpectralProperties(self):
 
         sl1 = TestObjects.createSpectralLibrary(n_empty=1)
-        groups = SpectralLibraryUtils.groupBySpectralProperties(sl1, excludeEmptyProfiles=False)
+        groups = SpectralLibraryUtils.groupBySpectralProperties(sl1)
         self.assertTrue(len(groups) > 0)
         for key, profiles in groups.items():
+            key: SpectralSetting
             self.assertIsInstance(key, SpectralSetting)
 
-            xvalues = key.x()
+            xvalues = key.wavelengths()
             xunit = key.xUnit()
-            yunit = key.yUnit()
+            # yunit = key.yUnit()
 
             self.assertTrue(xvalues is None or isinstance(xvalues, list) and len(xvalues) > 0)
             self.assertTrue(xunit is None or isinstance(xunit, str) and len(xunit) > 0)
-            self.assertTrue(yunit is None or isinstance(yunit, str) and len(yunit) > 0)
+            # self.assertTrue(yunit is None or isinstance(yunit, str) and len(yunit) > 0)
 
             self.assertIsInstance(profiles, list)
             self.assertTrue(len(profiles) > 0)
@@ -639,7 +646,7 @@ class SpeclibCoreTests(TestCase):
                 self.assertIsInstance(setting, SpectralSetting)
                 array = arrays[j]
                 self.assertIsInstance(array, np.ndarray)
-                self.assertEqual(array.shape[0], setting.n_bands())
+                self.assertEqual(array.shape[0], setting.bandCount())
                 self.assertEqual(array.shape[1], len(fids))
 
     # @unittest.skip('')

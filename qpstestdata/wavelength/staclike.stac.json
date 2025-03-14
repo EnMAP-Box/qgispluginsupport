@@ -1,0 +1,63 @@
+{
+  "type": "Feature",
+  "stac_version": "1.1.0",
+  "stac_extensions": [
+    "https://stac-extensions.github.io/eo/v1.1.0/schema.json"
+  ],
+  "id": "staclike",
+  "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+      [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          -0.5
+        ],
+        [
+          1.25,
+          -0.5
+        ],
+        [
+          1.25,
+          0.0
+        ],
+        [
+          0.0,
+          0.0
+        ]
+      ]
+    ]
+  },
+  "bbox": [],
+  "properties": {
+    "eo:bands": [
+      {
+        "name": "Band 1 name",
+        "description": "This is band 1",
+        "center_wavelength": 4.0,
+        "full_width_half_max": 0.1
+      },
+      {
+        "name": "Band 2 name",
+        "description": "This is band 2",
+        "center_wavelength": 5.0,
+        "full_width_half_max": 0.2
+      }
+    ],
+    "datetime": "2025-03-05T11:11:33.416979Z"
+  },
+  "links": [],
+  "assets": {
+    "image": {
+      "href": "staclike.tif",
+      "type": "image/tiff; application=geotiff",
+      "roles": [
+        "data"
+      ]
+    }
+  }
+}

@@ -42,6 +42,7 @@ from unittest import mock
 import numpy as np
 from osgeo import gdal, gdal_array, ogr, osr
 from osgeo.gdal import UseExceptions
+
 import qgis.utils
 from qgis.PyQt import sip
 from qgis.PyQt.QtCore import pyqtSignal, QMimeData, QObject, QPoint, QPointF, QSize, Qt
@@ -57,9 +58,10 @@ from qgis.core import edit, Qgis, QgsApplication, QgsCoordinateReferenceSystem, 
 from qgis.gui import QgisInterface, QgsAbstractMapToolHandler, QgsBrowserGuiModel, QgsGui, QgsLayerTreeMapCanvasBridge, \
     QgsLayerTreeView, QgsMapCanvas, QgsMapLayerConfigWidgetFactory, QgsMapTool, QgsMessageBar, QgsPluginManagerInterface
 from qgis.testing import QgisTestCase
-
 from .qgisenums import QGIS_WKBTYPE
+from .qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from .resources import initResourceFile
+from .unitmodel import UnitLookup
 from .utils import findUpwardPath, px2geo, SpatialPoint
 
 TEST_VECTOR_GEOJSON = Path(__file__).parent / 'testvectordata.4326.geojson'
@@ -662,6 +664,41 @@ class TestCase(QgisTestCase):
         warnings.warn(DeprecationWarning('Use createTestOutputDirectory() instead.'))
         return self.createTestOutputDirectory(subdir, cleanup)
 
+    def assertLengthEqual(self, list1, list2):
+        self.assertEqual(len(list1), len(list2))
+
+    def assertWavelengthsEqual(self, wl1, u1, wl2, u2, precision: int = 5):
+        """
+        Asserts that the wavelengths in wl1 equals those in wl2
+        :param wl1: number|list
+        :param u1: str|list physical unit(s) of values in wl1
+        :param wl2: number|list
+        :param u2: str|list physical unit(s) of values in wl2
+        :param precision: decimal precission used to compare numeric values
+        :return:
+        """
+
+        if not isinstance(wl1, list):
+            wl1 = [wl1]
+        if not isinstance(wl2, list):
+            wl2 = [wl2]
+
+        self.assertLengthEqual(wl1, wl2)
+
+        if not isinstance(u1, list):
+            u1 = [u1 for _ in range(len(wl1))]
+        else:
+            self.assertLengthEqual(wl1, u1)
+        if not isinstance(u2, list):
+            u2 = [u2 for _ in range(len(wl1))]
+        else:
+            self.assertLengthEqual(wl2, u2)
+
+        wl2 = [None if w is None else UnitLookup.convertLengthUnit(w, _u2, _u1) for w, _u2, _u1 in zip(wl2, u2, u1)]
+
+        for w1, w2 in zip(wl1, wl2):
+            self.assertAlmostEqual(w1, w2, precision)
+
     def assertIconsEqual(self, icon1: QIcon, icon2: QIcon):
         self.assertIsInstance(icon1, QIcon)
         self.assertIsInstance(icon2, QIcon)
@@ -740,7 +777,12 @@ class SpectralProfileDataIterator(object):
         if not isinstance(target_crs, QgsCoordinateReferenceSystem):
             target_crs = QgsCoordinateReferenceSystem('EPSG:4326')
         self.target_crs = target_crs
-        self.coredata, self.wl, self.wlu, self.gt, self.wkt = TestObjects.coreData()
+        coreData = TestObjects.coreData()
+        self.coredata = coreData['data']
+        self.wl = coreData['wl']
+        self.wlu = coreData['wlu']
+        self.gt = coreData['gt']
+        self.wkt = coreData['wkt']
 
         px1 = px2geo(QPoint(0, 0), self.gt, pxCenter=False)
         px2 = px2geo(QPoint(1, 1), self.gt, pxCenter=False)
@@ -811,10 +853,10 @@ class TestObjects(object):
     Creates objects to be used for testing. It is preferred to generate objects in-memory.
     """
 
-    _coreData = _coreDataWL = _coreDataWLU = _coreDataWkt = _coreDataGT = None
+    _coreData = _coreDataWL = _coreDataWLU = _coreDataFWHM = _coreDataWkt = _coreDataGT = None
 
-    @staticmethod
-    def coreData() -> Tuple[np.ndarray, np.ndarray, str, tuple, str]:
+    @classmethod
+    def coreData(cls) -> dict:
         if TestObjects._coreData is None:
             source_raster = Path(__file__).parent / 'enmap.tif'
             assert source_raster.is_file()
@@ -824,14 +866,20 @@ class TestObjects(object):
             TestObjects._coreData = ds.ReadAsArray()
             TestObjects._coreDataGT = ds.GetGeoTransform()
             TestObjects._coreDataWkt = ds.GetProjection()
-            from .utils import parseWavelength
-            TestObjects._coreDataWL, TestObjects._coreDataWLU = parseWavelength(ds)
 
-        results = TestObjects._coreData, \
-            TestObjects._coreDataWL, \
-            TestObjects._coreDataWLU, \
-            TestObjects._coreDataGT, \
-            TestObjects._coreDataWkt
+            prop = QgsRasterLayerSpectralProperties.fromRasterLayer(ds)
+            TestObjects._coreDataWL = np.asarray(prop.wavelengths())
+            TestObjects._coreDataWLU = prop.wavelengthUnits()[0]
+            TestObjects._coreDataFWHM = prop.fwhm()
+
+        results = {
+            'data': cls._coreData,
+            'wl': cls._coreDataWL,
+            'wlu': cls._coreDataWLU,
+            'fwhm': cls._coreDataFWHM,
+            'gt': cls._coreDataGT,
+            'wkt': cls._coreDataWkt,
+        }
         return results
 
     @staticmethod
@@ -846,8 +894,13 @@ class TestObjects(object):
         Returns n random spectral profiles from the test data
         :return: lost of (N,3) array of floats specifying point locations.
         """
+        CD = TestObjects.coreData()
+        coredata = CD['data']
+        wl = CD['wl']
+        wlu = CD['wlu']
+        gt = CD['gt']
+        wkt = CD['wkt']
 
-        coredata, wl, wlu, gt, wkt = TestObjects.coreData()
         cnb, cnl, cns = coredata.shape
         assert n > 0
         if n_bands is None:
@@ -1026,14 +1079,14 @@ class TestObjects(object):
                 # slib.endEditCommand()
         return slib
 
-    @staticmethod
-    def inMemoryImage(*args, **kwds):
+    @classmethod
+    def inMemoryImage(cls, *args, **kwds):
 
         warnings.warn(''.join(traceback.format_stack()) + '\nUse createRasterDataset instead')
         return TestObjects.createRasterDataset(*args, **kwds)
 
-    @staticmethod
-    def createMultiMaskExample(*args, **kwds) -> QgsRasterLayer:
+    @classmethod
+    def createMultiMaskExample(cls, *args, **kwds) -> QgsRasterLayer:
 
         path = '/vsimem/testMaskImage.{}.tif'.format(str(uuid.uuid4()))
         ds = TestObjects.createRasterDataset(*args, **kwds)
@@ -1068,8 +1121,8 @@ class TestObjects(object):
 
         return lyr
 
-    @staticmethod
-    def repoDirGDAL(local='gdal') -> Optional[Path]:
+    @classmethod
+    def repoDirGDAL(cls, local='gdal') -> Optional[Path]:
         """
         Returns the path to a local GDAL repository.
         GDAL must be installed into the same path / upward path of this repository
@@ -1080,8 +1133,8 @@ class TestObjects(object):
         else:
             return None
 
-    @staticmethod
-    def repoDirQGIS(local='QGIS') -> Optional[Path]:
+    @classmethod
+    def repoDirQGIS(cls, local='QGIS') -> Optional[Path]:
         """
         Returns the path to a local QGIS repository.
         QGIS must be installed into the same path / upward path of this repository
@@ -1109,6 +1162,7 @@ class TestObjects(object):
                             drv: Union[str, gdal.Driver] = None,
                             wlu: str = None,
                             pixel_size: float = None,
+                            add_wl: bool = True,
                             no_data_rectangle: int = 0,
                             no_data_value: Union[int, float] = -9999) -> gdal.Dataset:
         """
@@ -1159,7 +1213,13 @@ class TestObjects(object):
                 band: gdal.Band = ds.GetRasterBand(b + 1)
                 band.SetNoDataValue(no_data_value)
 
-        coredata, core_wl, core_wlu, core_gt, core_wkt = TestObjects.coreData()
+        CD = TestObjects.coreData()
+        coredata = CD['data']
+        core_wl = CD['wl']
+        core_wlu = CD['wlu']
+        core_gt = CD['gt']
+        core_wkt = CD['wkt']
+        core_fwhm = CD['fwhm']
 
         if pixel_size:
             core_gt = (core_gt[0], abs(pixel_size), core_gt[2],
@@ -1226,27 +1286,30 @@ class TestObjects(object):
                 arr.fill(no_data_value)
                 ds.WriteRaster(0, 0, no_data_rectangle, no_data_rectangle, arr.tobytes())
 
-            wl = []
-            if nb > cb:
-                wl.extend(core_wl.tolist())
-                for b in range(cb, nb):
-                    wl.append(core_wl[-1])
-            else:
-                wl = core_wl[:nb].tolist()
-            assert len(wl) == nb
+            if add_wl:
+                wl = []
+                fwhm = []
+                if nb > cb:
+                    wl.extend(core_wl.tolist())
+                    fwhm.extend(core_fwhm)
+                    for b in range(cb, nb):
+                        wl.append(core_wl[-1])
+                else:
+                    wl = core_wl[:nb].tolist()
+                assert len(wl) == nb
 
-            if wlu is None:
-                wlu = core_wlu
-            elif wlu != core_wlu:
-                from .unitmodel import UnitLookup
-                wl = UnitLookup.convertLengthUnit(wl, core_wlu, wlu)
+                if wlu is None:
+                    wlu = core_wlu
+                elif wlu != core_wlu:
+                    from .unitmodel import UnitLookup
+                    wl = UnitLookup.convertLengthUnit(wl, core_wlu, wlu)
 
-            domain = None
-            if drv.ShortName == 'ENVI':
-                domain = 'ENVI'
+                domain = None
+                if drv.ShortName == 'ENVI':
+                    domain = 'ENVI'
 
-            ds.SetMetadataItem('wavelength units', wlu, domain)
-            ds.SetMetadataItem('wavelength', ','.join([str(w) for w in wl]), domain)
+                ds.SetMetadataItem('wavelength units', wlu, domain)
+                ds.SetMetadataItem('wavelength', ','.join([str(w) for w in wl]), domain)
 
         ds.FlushCache()
         return ds
@@ -1276,8 +1339,8 @@ class TestObjects(object):
         assert lyr.isValid()
         return lyr
 
-    @staticmethod
-    def createVectorDataSet(wkb=ogr.wkbPolygon,
+    @classmethod
+    def createVectorDataSet(cls, wkb=ogr.wkbPolygon,
                             n_features: int = None,
                             path: Union[str, Path] = None) -> ogr.DataSource:
         """
@@ -1415,8 +1478,8 @@ class TestObjects(object):
                         lyr.setEditorWidgetSetup(i, a.editorWidgetSetup())
         return lyr
 
-    @staticmethod
-    def createVectorLayer(wkbType: QgsWkbTypes = QgsWkbTypes.Polygon,
+    @classmethod
+    def createVectorLayer(cls, wkbType: QgsWkbTypes = QgsWkbTypes.Polygon,
                           n_features: int = None,
                           path: Union[str, Path] = None,
                           crs: QgsCoordinateReferenceSystem = None) -> QgsVectorLayer:
@@ -1470,8 +1533,8 @@ class TestObjects(object):
 
         return vl
 
-    @staticmethod
-    def processingAlgorithm():
+    @classmethod
+    def processingAlgorithm(cls):
 
         class TestProcessingAlgorithm(QgsProcessingAlgorithm):
 
