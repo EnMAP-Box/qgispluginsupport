@@ -34,6 +34,7 @@ from qgis.core import QgsCoordinateReferenceSystem, QgsFeature, QgsFeatureReques
     QgsVectorLayer
 
 from qps.speclib.core import is_spectral_library
+from qps.speclib.core.spectralprofile import decodeProfileValueDict
 from qps.testing import start_app, TestCase, TestObjects
 from qps.unitmodel import UnitLookup
 from qps.utils import aggregateArray, appendItemsToMenu, createQgsField, defaultBands, displayBandNames, dn, \
@@ -289,9 +290,11 @@ class TestUtils(TestCase):
 
         DIR = self.createTestOutputDirectory()
 
-        extensions = ['.gpkg',
+        extensions = ['.gml',
+                      '.gpkg',
                       # '.csv',
-                      '.kml', '.geojson',
+                      '.kml',
+                      '.geojson',
                       ]
         for i, extension in enumerate(extensions):
             path = DIR / f'example_{i + 1}{extension}'
@@ -300,6 +303,13 @@ class TestUtils(TestCase):
             self.assertTrue(lyr2.isValid())
             self.assertEqual(lyr.featureCount(), lyr2.featureCount())
             self.assertTrue(is_spectral_library(lyr2), msg=f'Not a speclib: {lyr2.source()}')
+
+            for f1, f2 in zip(lyr.getFeatures(), lyr2.getFeatures()):
+                f1: QgsFeature
+                p1 = decodeProfileValueDict(f1.attribute('profiles0'))
+                p2 = decodeProfileValueDict(f2.attribute('profiles0'))
+
+                self.assertEqual(p1, p2)
 
         # ESRI Shapefile does not support string fields with unlimited length
         self.assertIsInstance(writeAsVectorFormat(lyr, DIR / 'exampleX.shp'), QgsVectorLayer)

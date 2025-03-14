@@ -1,7 +1,7 @@
 from typing import Dict, List, Union
 
-from qgis.core import QgsFeature, QgsField, QgsFields, QgsVectorLayer
 from qgis.PyQt.QtCore import QVariant
+from qgis.core import QgsFeature, QgsField, QgsFields, QgsVectorLayer
 
 from ...qgisenums import QMETATYPE_QBYTEARRAY, QMETATYPE_QSTRING, QMETATYPE_QVARIANTMAP
 
@@ -21,7 +21,7 @@ def can_store_spectral_profiles(field: QgsField) -> bool:
     text String=10 subType=0 len=0 = unlimited string / varchar
     text10 String=10 subType=0 len=10 length-limited string, not supported!
     """
-    if not (isinstance(field, QgsField) and field.length() in [0, -1]):
+    if not (isinstance(field, QgsField) and field.length() in [0, -1, 2 ** 16 - 1]):
         return False
     b = field.type() in [QMETATYPE_QBYTEARRAY,
                          QMETATYPE_QSTRING,

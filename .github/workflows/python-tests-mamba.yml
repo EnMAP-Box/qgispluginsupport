@@ -28,7 +28,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        mamba_env: [ qgis_latest, qgis_ltr ]
+        mamba_env: [ qgis_latest, qgis_ltr, qgis_gdal3.9 ]
       # python_version : [3.9, 3.10, 3.11]
       # mamba_env: [enmapbox_light_latest, enmapbox_light_longterm, enmapbox_full_latest, enmapbox_full_longterm]
     steps:

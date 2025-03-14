@@ -52,7 +52,6 @@ from osgeo.ogr import OFSTBoolean, OFSTNone, OFTBinary, OFTDate, OFTDateTime, OF
     OFTString, \
     OFTStringList, OFTTime
 from osgeo.osr import SpatialReference
-
 from qgis.PyQt import uic
 from qgis.PyQt.QtCore import NULL, QByteArray, QDirIterator, QMetaType, QObject, QPoint, QPointF, QRect, Qt, QUrl, \
     QVariant
@@ -68,6 +67,7 @@ from qgis.core import Qgis, QgsApplication, QgsCoordinateReferenceSystem, QgsCoo
     QgsRasterLayer, QgsRasterRenderer, QgsRectangle, QgsTask, QgsVector, QgsVectorDataProvider, QgsVectorFileWriter, \
     QgsVectorFileWriterTask, QgsVectorLayer, QgsWkbTypes
 from qgis.gui import QgisInterface, QgsDialog, QgsGui, QgsMapCanvas, QgsMapLayerComboBox, QgsMessageViewer
+
 from .qgisenums import QGIS_LAYERFILTER, QGIS_WKBTYPE, QMETATYPE_BOOL, QMETATYPE_DOUBLE, QMETATYPE_INT, \
     QMETATYPE_QBYTEARRAY, QMETATYPE_QCHAR, QMETATYPE_QDATE, QMETATYPE_QDATETIME, QMETATYPE_QSTRING, \
     QMETATYPE_QSTRINGLIST, \
@@ -1290,7 +1290,9 @@ def read_vsimem(fn):
 def writeAsVectorFormat(layer: QgsVectorLayer,
                         path: Union[str, Path],
                         options: QgsVectorFileWriter.SaveVectorOptions = None,
-                        feedback: QgsFeedback = None) -> QgsVectorLayer:
+                        feedback: QgsFeedback = None,
+                        field_value_converter: Optional[
+                            QgsVectorFileWriter.FieldValueConverter] = None) -> QgsVectorLayer:
     """
     Writes any vector layer into another format. E.g. to store in-memory vector layers persistently
     :param layer: QgsVectorLayer
@@ -1303,7 +1305,6 @@ def writeAsVectorFormat(layer: QgsVectorLayer,
     assert isinstance(layer, QgsVectorLayer)
     assert layer.isValid()
 
-    field_value_converter = None
     if not isinstance(options, QgsVectorFileWriter.SaveVectorOptions):
 
         options = QgsVectorFileWriter.SaveVectorOptions()
@@ -1321,18 +1322,16 @@ def writeAsVectorFormat(layer: QgsVectorLayer,
             options.includeConstraints = True
             options.layerMetadata = layer.metadata()
 
-            if driver_name in ['GPKG']:
-                from .speclib.io.geopackage import GeoPackageFieldValueConverter
+    if isinstance(field_value_converter, QgsVectorFileWriter.FieldValueConverter):
+        options.fieldValueConverter = field_value_converter
+    if not isinstance(options.fieldValueConverter, QgsVectorFileWriter.FieldValueConverter):
+        from .fieldvalueconverter import GenericFieldValueConverter
+        srcFields = layer.fields()
 
-                field_value_converter = GeoPackageFieldValueConverter(layer.fields())
-            elif driver_name in ['GeoJSON', 'LIBKML', 'KML', 'CSV']:
-                from .speclib.io.geojson import GeoJsonFieldValueConverter
-                field_value_converter = GeoJsonFieldValueConverter(layer.fields())
-            else:
-                s = ""
-            # options.symbologyExport =
+        dstFields = GenericFieldValueConverter.compatibleTargetFields(srcFields, options.driverName)
 
-    options.fieldValueConverter = field_value_converter
+        converter = GenericFieldValueConverter(srcFields, dstFields)
+        options.fieldValueConverter = converter
 
     s = ""
 

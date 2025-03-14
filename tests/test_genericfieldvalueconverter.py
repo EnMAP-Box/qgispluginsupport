@@ -3,6 +3,7 @@ import unittest
 
 from qgis.PyQt.QtCore import QDate, QDateTime, QTime
 from qgis.core import edit, QgsField, QgsFields, QgsProject, QgsVectorDataProvider, QgsVectorFileWriter, QgsVectorLayer
+
 from qps.fieldvalueconverter import collect_native_types, create_vsimemfile, GenericFieldValueConverter, \
     GenericPropertyTransformer
 from qps.qgisenums import QMETATYPE_QDATE, QMETATYPE_QDATETIME, QMETATYPE_QSTRING, \
@@ -41,7 +42,7 @@ class GenericFieldValueConverterTests(TestCase):
 
     def test_create_vsimemfile(self):
 
-        for ext in ['.csv', '.geojson', '.gpkg', '.shp', '.kml']:
+        for ext in ['.shp', '.csv', '.geojson', '.gpkg', '.kml']:
             path, drvName = create_vsimemfile(ext)
             lyr = QgsVectorLayer(path)
             assert lyr.isValid()
