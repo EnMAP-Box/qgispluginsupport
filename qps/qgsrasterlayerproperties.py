@@ -398,9 +398,11 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
         :return:
         """
         layer = self.asRasterLayer(layer)
+        assert layer and layer.isValid()
         assert layer.bandCount() == self.bandCount()
 
         src = layer.source()
+        basename = layer.name()
         provider = layer.dataProvider().name()
         layer.setDataSource('', '', '')
 
@@ -408,7 +410,7 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
             with gdal.Open(src) as ds:
                 self.writeToGDALDataset(ds)
 
-        layer.setDataSource(src)
+        layer.setDataSource(src, basename, provider)
         return True
 
     def convertToMicrometers(self,
