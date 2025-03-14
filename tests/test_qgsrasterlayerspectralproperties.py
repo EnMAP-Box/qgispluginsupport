@@ -178,6 +178,7 @@ class TestQgsRasterLayerProperties(TestCase):
 
         del lyr
         lyr = QgsRasterLayer(path_img.as_posix())
+        assert lyr.isValid()
         prop3 = QgsRasterLayerSpectralProperties.fromRasterLayer(lyr)
 
         self.assertEqualProperties(prop1, prop3)

@@ -347,7 +347,10 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
             options = QgsRasterLayer.LayerOptions(loadDefaultStyle=loadDefaultStyle)
             layer = QgsRasterLayer(layer, name=os.path.basename(layer), options=options)
 
-        return layer
+        if isinstance(layer, QgsRasterLayer) and layer.isValid():
+            return layer
+
+        return None
 
     def writeToLayer(self, layer: Union[QgsRasterLayer, str, Path]) -> Optional[QgsRasterLayer]:
         """
@@ -360,6 +363,7 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
         """
 
         layer = self.asRasterLayer(layer)
+        assert layer.isValid()
         assert layer.bandCount() == self.bandCount()
 
         for key in SpectralPropertyKeys:
