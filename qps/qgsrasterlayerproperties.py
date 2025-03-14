@@ -398,7 +398,7 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
 
         src = layer.source()
         provider = layer.dataProvider().name()
-        layer.setDataSource('')
+        layer.setDataSource('', '', '')
 
         if provider == 'gdal':
             with gdal.Open(src) as ds:
