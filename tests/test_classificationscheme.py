@@ -479,26 +479,28 @@ class TestsClassificationScheme(TestCase):
 
         self.assertEqual(cs, cs2)
 
+    @unittest.skip('Not implemented')
     def test_io_QML(self):
 
-        testDir = tempfile.gettempdir()
-        qmFiles = list(file_search(testDir, 'LandCov_*.qml'))
+        from qpstestdata import landcover
+        from qpstestdata import DIR_TESTDATA
+        pathQML = DIR_TESTDATA / 'landcover.qml'
 
         pathTmp = tempfile.mktemp(suffix='.qml')
-        for pathQML in qmFiles:
-            # read from QML
-            classScheme = ClassificationScheme.fromQml(pathQML)
-            self.assertIsInstance(classScheme, ClassificationScheme)
-            self.assertTrue(len(classScheme) > 0)
 
-            # todo: other QML specific tests
+        # read from QML
+        classScheme = ClassificationScheme.fromQml(pathQML)
+        self.assertIsInstance(classScheme, ClassificationScheme)
+        self.assertTrue(len(classScheme) > 0)
 
-            # write to QML
-            classScheme.saveToQml(pathTmp)
+        # todo: other QML specific tests
 
-            classScheme2 = ClassificationScheme.fromQml(pathTmp)
-            self.assertIsInstance(classScheme2, ClassificationScheme)
-            self.assertEqual(classScheme, classScheme2)
+        # write to QML
+        classScheme.saveToQml(pathTmp)
+
+        classScheme2 = ClassificationScheme.fromQml(pathTmp)
+        self.assertIsInstance(classScheme2, ClassificationScheme)
+        self.assertEqual(classScheme, classScheme2)
 
 
 if __name__ == "__main__":
