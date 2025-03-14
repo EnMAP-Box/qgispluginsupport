@@ -20,13 +20,6 @@ class TestQgsRasterLayerProperties(TestCase):
         self.tempDir = tempfile.TemporaryDirectory()
         self.addCleanup(self.tempDir.cleanup)
 
-    def assertEqualWavelengths(self, wl1: list, wlu1: list, wl2: list, wlu2: list):
-
-        self.assertEqual(len(wl1), len(wl2))
-        if wlu1 != wlu2:
-            wl2 = [UnitLookup.convertLengthUnit(wl, u2, u1) for wl, u2, u1 in zip(wl2, wlu2, wlu1)]
-        self.assertEqual(wl1, wl2)
-
     def assertEqualProperties(self,
                               p1: QgsRasterLayerSpectralProperties,
                               p2: QgsRasterLayerSpectralProperties,
@@ -35,11 +28,11 @@ class TestQgsRasterLayerProperties(TestCase):
         self.assertEqual(set(p1.keys()), set(p2.keys()))
 
         if SpectralPropertyKeys.Wavelength in p1.keys():
-            self.assertEqualWavelengths(p1.wavelengths(), p1.wavelengthUnits(),
+            self.assertWavelengthsEqual(p1.wavelengths(), p1.wavelengthUnits(),
                                         p2.wavelengths(), p2.wavelengthUnits())
 
         if SpectralPropertyKeys.FWHM in p1.keys():
-            self.assertEqualWavelengths(p1.fwhm(), p1.wavelengthUnits(),
+            self.assertWavelengthsEqual(p1.fwhm(), p1.wavelengthUnits(),
                                         p2.fwhm(), p2.wavelengthUnits())
 
         if SpectralPropertyKeys.BadBand in p1.keys():
