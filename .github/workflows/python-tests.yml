@@ -15,7 +15,7 @@ on:
       - release-**
 
   release:
-    types: [published]
+    types: [ published ]
 
 jobs:
   # Run unit tests
@@ -24,7 +24,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        qgis_version: ['3.34', '3.38', '3.40']
+        qgis_version: [ '3.38', '3.40', '3.42' ]
     env:
       QGIS_TEST_VERSION: ${{ matrix.qgis_version }}
     steps:
