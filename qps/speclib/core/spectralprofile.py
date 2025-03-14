@@ -12,9 +12,9 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
 import numpy as np
 
-from qgis.PyQt.QtCore import NULL, QByteArray, QDateTime, QJsonDocument, Qt, QVariant
 from qgis.core import QgsCoordinateReferenceSystem, QgsExpressionContext, QgsFeature, QgsField, QgsFields, QgsGeometry, \
-    QgsPointXY, QgsProcessingFeedback, QgsPropertyTransformer, QgsVectorLayer
+    QgsPointXY, QgsProcessingFeedback, QgsPropertyTransformer, QgsRasterLayer, QgsVectorLayer
+from qgis.PyQt.QtCore import NULL, QByteArray, QDateTime, QJsonDocument, Qt, QVariant
 from . import create_profile_field, is_profile_field, profile_field_indices, profile_fields
 from .. import defaultSpeclibCrs, EMPTY_VALUES
 from ...qgisenums import QMETATYPE_QDATETIME, QMETATYPE_QSTRING, QMETATYPE_QVARIANTMAP
@@ -333,6 +333,7 @@ def decodeProfileValueDict(dump: Union[QByteArray, str, dict], numpy_arrays: boo
 
 
 class SpectralSetting(QgsRasterLayerSpectralProperties):
+    KEY_FIELDNAME = 'fieldname'
 
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
@@ -344,10 +345,10 @@ class SpectralSetting(QgsRasterLayerSpectralProperties):
         return self.mHash
 
     def setFieldName(self, name: str):
-        self.setValue('fieldname', name)
+        self.setValue(self.KEY_FIELDNAME, name)
 
     def fieldName(self):
-        return self.value('fieldname')
+        return self.value(self.KEY_FIELDNAME)
 
     def fieldEncoding(self) -> ProfileEncoding:
         warnings.warn(DeprecationWarning(), stacklevel=2)
@@ -360,6 +361,22 @@ class SpectralSetting(QgsRasterLayerSpectralProperties):
 
     def xUnit(self) -> str:
         return self.wavelengthUnits()[0]
+
+    def readFromLayer(self, layer: QgsRasterLayer, overwrite: bool = False):
+        super().readFromLayer(layer, overwrite=overwrite)
+
+        fn = layer.customProperty(f'enmapbox/{self.KEY_FIELDNAME}')
+        if fn:
+            self.setValue(self.KEY_FIELDNAME, fn)
+
+    def writeToLayer(self, layer: Union[QgsRasterLayer, str, Path]) -> Optional[QgsRasterLayer]:
+        layer = super().writeToLayer(layer)
+        if isinstance(layer, QgsRasterLayer):
+            fn = self.fieldName()
+            if fn:
+                layer.setCustomProperty(f'enmapbox/{self.KEY_FIELDNAME}', self.fieldName())
+
+            return layer
 
     @classmethod
     def fromSpectralProfile(cls, input):

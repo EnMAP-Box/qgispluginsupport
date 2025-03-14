@@ -64,6 +64,18 @@ class TestCore(TestCase):
             self.assertWavelengthsEqual(settingA.fwhm(), settingA.wavelengthUnits(),
                                         settingB.fwhm(), settingB.wavelengthUnits())
 
+        lyr = TestObjects.createRasterLayer()
+        setting1 = SpectralSetting.fromRasterLayer(lyr)
+
+        setting1.setFieldName('Field1')
+
+        setting1.writeToLayer(lyr)
+
+        setting2 = SpectralSetting.fromRasterLayer(lyr)
+
+        self.assertEqual(setting1.fieldName(), setting2.fieldName())
+        self.assertEqual(setting1.fieldEncoding(), setting2.fieldEncoding())
+
 
 if __name__ == '__main__':
     unittest.main(buffer=False)

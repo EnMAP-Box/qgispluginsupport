@@ -1,4 +1,5 @@
 import enum
+import os.path
 import re
 import sys
 from pathlib import Path
@@ -149,16 +150,7 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
         Returns the QgsRasterLayerSpectralProperties for a raster layer
         """
 
-        if isinstance(layer, gdal.Dataset):
-            options = QgsRasterLayer.LayerOptions(loadDefaultStyle=True)
-            layer = QgsRasterLayer(layer.GetDescription(), 'lyr', 'gdal', options=options)
-
-        if isinstance(layer, Path):
-            layer = layer.as_posix()
-
-        if isinstance(layer, str):
-            options = QgsRasterLayer.LayerOptions(loadDefaultStyle=True)
-            return cls.fromRasterLayer(QgsRasterLayer(layer, options=options))
+        layer = cls.asRasterLayer(layer)
 
         if not (isinstance(layer, QgsRasterLayer)
                 and layer.isValid() and layer.bandCount() > 0):
@@ -274,8 +266,8 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
             bands = list(range(1, self.bandCount() + 1))
         itemKey = self.itemKey(itemKey)
         data: dict = self.value(itemKey, {})
-        values = [data.get(b, default) for b in bands]
-        return values
+        assert isinstance(data, dict)
+        return [data.get(b, default) for b in bands]
 
         # values = [self.value(f'{self.bandKey(b)}/{itemKey}') for b in bands]
         # if default is not None:
@@ -341,18 +333,27 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
         return self.fwhm(default)
 
     @classmethod
-    def asRasterLayer(cls, layer: Union[QgsRasterLayer, str, Path]) -> QgsRasterLayer:
+    def asRasterLayer(cls,
+                      layer: Union[QgsRasterLayer, str, Path, gdal.Dataset],
+                      loadDefaultStyle: bool = False) -> Optional[QgsRasterLayer]:
+
+        if isinstance(layer, gdal.Dataset):
+            layer = layer.GetDescription()
+
         if isinstance(layer, Path):
             layer = layer.as_posix()
+
         if isinstance(layer, str):
-            layer = QgsRasterLayer(layer)
-        assert isinstance(layer, QgsRasterLayer)
+            options = QgsRasterLayer.LayerOptions(loadDefaultStyle=loadDefaultStyle)
+            layer = QgsRasterLayer(layer, name=os.path.basename(layer), options=options)
+
         return layer
 
-    def writeToLayer(self, layer: Union[QgsRasterLayer, str, Path]) -> bool:
+    def writeToLayer(self, layer: Union[QgsRasterLayer, str, Path]) -> Optional[QgsRasterLayer]:
         """
         Saves the spectral properties into the custom layer properties of a QgsRasterLayer.
         Does not affect the underlying data source.
+        Returns the used QgsRasterLayer instance, e.g. to be used in subclasses.
         See .readFromLayer(layer: QgsRasterLayer)
         :param layer:
         :return:
@@ -361,30 +362,30 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
         layer = self.asRasterLayer(layer)
         assert layer.bandCount() == self.bandCount()
 
-        cprop = layer.customProperties()
+        for key in SpectralPropertyKeys:
+            if key in self.keys():
+                values = self.bandValues(None, key)
+                layer.setCustomProperty(key, values)
 
-        for key in self.keys():
-            values = self.bandValues(None, key)
-            layer.setCustomProperty(key, values)
+        if False:
+            # backward compatibility QGISPAM:
+            # see https://enmap-box.readthedocs.io/en/latest/dev_section/rfc_list/rfc0002.html
 
-        # backward compatibility QGISPAM:
-        # see https://enmap-box.readthedocs.io/en/latest/dev_section/rfc_list/rfc0002.html
+            def writeQGISPAM(attribute_key: str, values: list):
+                for i, v in enumerate(values):
+                    pamkey = f'QGISPAM/band/{i + 1}//{attribute_key}'
+                    layer.setCustomProperty(pamkey, v)
 
-        def writeQGISPAM(attribute_key: str, values: list):
-            for i, v in enumerate(values):
-                pamkey = f'QGISPAM/band/{i + 1}//{attribute_key}'
-                layer.setCustomProperty(pamkey, v)
+            if SpectralPropertyKeys.Wavelength in self.keys():
+                writeQGISPAM('wavelengths', self.wavelengths())
+            if SpectralPropertyKeys.WavelengthUnit in self.keys():
+                writeQGISPAM('wavelength_units', self.wavelengthUnits())
+            if SpectralPropertyKeys.FWHM in self.keys():
+                writeQGISPAM('fwhm', self.wavelengthUnits())
+            if SpectralPropertyKeys.BadBand in self.keys():
+                writeQGISPAM('bad_band_multiplier', self.wavelengthUnits())
 
-        if SpectralPropertyKeys.Wavelength in self.keys():
-            writeQGISPAM('wavelengths', self.wavelengths())
-        if SpectralPropertyKeys.WavelengthUnit in self.keys():
-            writeQGISPAM('wavelength_units', self.wavelengthUnits())
-        if SpectralPropertyKeys.FWHM in self.keys():
-            writeQGISPAM('fwhm', self.wavelengthUnits())
-        if SpectralPropertyKeys.BadBand in self.keys():
-            writeQGISPAM('bad_band_multiplier', self.wavelengthUnits())
-
-        return True
+        return layer
 
     def writeToSource(self, layer: [QgsRasterLayer, str, Path]) -> bool:
         """
@@ -516,7 +517,6 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
                         if len(_values) > 0:
                             self.setBandValues(_bands, _values, origin=SpectralPropertyOrigin.LayerProperties)
 
-            #
             if SpectralPropertyKeys.Wavelength in self.keys() and SpectralPropertyKeys.WavelengthUnit not in self.keys():
                 wlu = self.deduceWavelengthUnit(self.wavelengths())
                 if wlu:
