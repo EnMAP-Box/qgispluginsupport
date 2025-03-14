@@ -7,7 +7,6 @@ from qgis.core import QgsMapLayer, QgsRasterLayer
 from qps.qgsrasterlayerproperties import QgsRasterLayerSpectralProperties, QgsRasterLayerSpectralPropertiesTable, \
     QgsRasterLayerSpectralPropertiesTableWidget, SpectralPropertyKeys, SpectralPropertyOrigin, stringToType
 from qps.testing import start_app, TestCase, TestObjects
-from qps.unitmodel import UnitLookup
 from qpstestdata import DIR_WAVELENGTH, envi_bsq
 
 start_app()

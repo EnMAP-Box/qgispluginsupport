@@ -25,7 +25,6 @@ from qps.classification.classificationscheme import ClassInfo, ClassificationMap
     classificationSchemeEditorWidgetFactory
 from qps.qgisenums import QMETATYPE_INT, QMETATYPE_QSTRING
 from qps.testing import TestCase, TestObjects, start_app
-from qps.utils import file_search
 
 start_app()
 
@@ -482,7 +481,6 @@ class TestsClassificationScheme(TestCase):
     @unittest.skip('Not implemented')
     def test_io_QML(self):
 
-        from qpstestdata import landcover
         from qpstestdata import DIR_TESTDATA
         pathQML = DIR_TESTDATA / 'landcover.qml'
 
