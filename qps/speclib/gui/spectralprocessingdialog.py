@@ -6,16 +6,16 @@ from difflib import SequenceMatcher
 from json import JSONDecodeError
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-from processing import createContext
-from processing.gui.AlgorithmDialogBase import AlgorithmDialogBase
-from processing.gui.wrappers import WidgetWrapper, WidgetWrapperFactory
-from qgis.core import Qgis, QgsApplication, QgsEditorWidgetSetup, QgsFeature, QgsField, QgsFields, QgsMapLayer, \
-    QgsMapLayerModel, QgsPalettedRasterRenderer, QgsProcessing, QgsProcessingAlgorithm, QgsProcessingContext, \
-    QgsProcessingFeedback, QgsProcessingModelAlgorithm, QgsProcessingOutputDefinition, \
+from qgis.core import Qgis, QgsApplication, QgsCoordinateTransformContext, QgsEditorWidgetSetup, QgsFeature, QgsField, \
+    QgsFields, QgsMapLayer, QgsMapLayerModel, QgsPalettedRasterRenderer, QgsProcessing, QgsProcessingAlgorithm, \
+    QgsProcessingContext, QgsProcessingFeedback, QgsProcessingModelAlgorithm, QgsProcessingOutputDefinition, \
     QgsProcessingOutputLayerDefinition, QgsProcessingOutputRasterLayer, QgsProcessingOutputVectorLayer, \
     QgsProcessingParameterDefinition, QgsProcessingParameterMultipleLayers, QgsProcessingParameterRasterDestination, \
     QgsProcessingParameterRasterLayer, QgsProcessingRegistry, QgsProcessingUtils, QgsProject, QgsRasterBlockFeedback, \
     QgsRasterDataProvider, QgsRasterFileWriter, QgsRasterLayer, QgsRasterPipe, QgsVectorLayer
+from processing import createContext
+from processing.gui.AlgorithmDialogBase import AlgorithmDialogBase
+from processing.gui.wrappers import WidgetWrapper, WidgetWrapperFactory
 from qgis.gui import QgsAbstractProcessingParameterWidgetWrapper, QgsGui, QgsMessageBar, QgsPanelWidget, \
     QgsProcessingAlgorithmDialogBase, QgsProcessingContextGenerator, QgsProcessingGui, QgsProcessingHiddenWidgetWrapper, \
     QgsProcessingParametersGenerator, QgsProcessingParametersWidget, QgsProcessingParameterWidgetContext, \
@@ -24,7 +24,6 @@ from qgis.PyQt.QtCore import pyqtSignal, QModelIndex, QObject, Qt, QTimer
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QCheckBox, QComboBox, QDialog, QGridLayout, QLabel, QLineEdit, QPushButton, QSizePolicy, \
     QVBoxLayout, QWidget
-
 from .. import EDITOR_WIDGET_REGISTRY_KEY, speclibSettings
 from ..core import can_store_spectral_profiles, is_profile_field
 from ..core.spectrallibrary import SpectralLibraryUtils
@@ -979,7 +978,11 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
         """
         return self.mTemporaryRaster[:]
 
-    def writeTemporaryRaster(self, dp: QgsRasterDataProvider, file_name, rasterblockFeedback, transformContext):
+    def writeTemporaryRaster(self,
+                             dp: QgsRasterDataProvider,
+                             file_name: str,
+                             rasterblockFeedback: QgsRasterBlockFeedback,
+                             transformContext: QgsCoordinateTransformContext):
 
         file_writer = QgsRasterFileWriter(file_name)
 
@@ -1014,7 +1017,7 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
             field: QgsField = fieldConverter.field()
             if isinstance(fieldConverter, SpectralProfileValueConverter):
                 # write spectral properties like wavelength per band
-                fieldConverter.spectralSetting().writeToLayer(file_name)
+                fieldConverter.spectralSetting().writeToSource(file_name, write_envi=True)
             elif fieldConverter.isClassification():
                 # set a categorical raster renderer with class names and colors
                 layer: QgsRasterLayer = qgsRasterLayer(file_name)
