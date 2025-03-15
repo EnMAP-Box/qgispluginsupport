@@ -391,9 +391,10 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
 
         return layer
 
-    def writeToSource(self, layer: [QgsRasterLayer, str, Path]) -> bool:
+    def writeToSource(self, layer: [QgsRasterLayer, str, Path], write_envi: bool = False) -> bool:
         """
         Tries to save the spectral properties to a data source
+        :param write_envi: bool, set True to write in case of GDAL Datasets values explicitly into the ENVI domain.
         :param layer:
         :return:
         """
@@ -408,7 +409,7 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
 
         if provider == 'gdal':
             with gdal.Open(src) as ds:
-                self.writeToGDALDataset(ds)
+                self.writeToGDALDataset(ds, write_envi=write_envi)
 
         layer.setDataSource(src, basename, provider)
         return True
@@ -434,7 +435,18 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
 
         return wl_um, wlu_um
 
-    def writeToGDALDataset(self, ds: gdal.Dataset):
+    @classmethod
+    def wrapEnviList(cls, values: list):
+        """
+        Converts a list of values into an ENVI Header style list entry string.
+        See https://www.nv5geospatialsoftware.com/docs/ENVIHeaderFiles.html
+        :param values: list of values, e.g. [400, 500, 600]
+        :return: string like '{400, 500, 600}'
+        """
+        values = ','.join([str(v) for v in values])
+        return f'{{{values}}}'
+
+    def writeToGDALDataset(self, ds: gdal.Dataset, write_envi: bool = False):
 
         wl = self.wavelengths()
         wlu = self.wavelengthUnits()
@@ -445,16 +457,16 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
         gains = self.dataGains()
 
         # convert wl and fwhm to micrometers (or None)
-        wl, _ = self.convertToMicrometers(wl, wlu)
-        fwhm, _ = self.convertToMicrometers(fwhm, wlu)
+        wl_um, _ = self.convertToMicrometers(wl, wlu)
+        fwhm_um, _ = self.convertToMicrometers(fwhm, wlu)
 
         for b in range(self.bandCount()):
             band: gdal.Band = ds.GetRasterBand(b + 1)
 
             if wl[b] is not None:
-                band.SetMetadataItem('CENTRAL_WAVELENGTH_UM', str(wl[b]), 'IMAGERY')
+                band.SetMetadataItem('CENTRAL_WAVELENGTH_UM', str(wl_um[b]), 'IMAGERY')
             if fwhm[b] is not None:
-                band.SetMetadataItem('FWHM_UM', str(fwhm[b]), 'IMAGERY')
+                band.SetMetadataItem('FWHM_UM', str(fwhm_um[b]), 'IMAGERY')
             if bbl[b] is not None:
                 band.SetMetadataItem('bbl', str(bbl[b]))
 
@@ -463,6 +475,21 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
 
             if gains[b] is not None:
                 band.SetScale(gains[b])
+
+        if write_envi:
+            if any(wl):
+                ds.SetMetadataItem('wavelengths', self.wrapEnviList(wl), 'ENVI')
+
+            for v in wlu:
+                if v not in [None, '']:
+                    ds.SetMetadataItem('wavelength units', v, 'ENVI')
+                    break
+
+            if any(fwhm):
+                ds.SetMetadataItem('fwhm', self.wrapEnviList(fwhm), 'ENVI')
+
+            if any(bbl):
+                ds.SetMetadataItem('bbl', self.wrapEnviList(bbl), 'ENVI')
 
     def writeXml(self, parentNode: QDomElement, doc: QDomDocument):
         """
