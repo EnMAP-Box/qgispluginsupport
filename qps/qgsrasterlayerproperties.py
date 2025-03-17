@@ -551,13 +551,14 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
                                 _values.append(values[b])
                                 _bands.append(b)
                         if len(_values) > 0:
-                            self.setBandValues(_bands, _values, origin=SpectralPropertyOrigin.LayerProperties)
+                            self.setBandValues(_bands, k, _values, origin=SpectralPropertyOrigin.LayerProperties)
 
-            if SpectralPropertyKeys.Wavelength in self.keys() and SpectralPropertyKeys.WavelengthUnit not in self.keys():
-                wlu = self.deduceWavelengthUnit(self.wavelengths())
-                if wlu:
-                    self.setBandValues(None, SpectralPropertyKeys.WavelengthUnit, wlu,
-                                       origin=SpectralPropertyOrigin.Deduced)
+        # finally, deduce wavelength units, if necessary
+        if SpectralPropertyKeys.Wavelength in self.keys() and SpectralPropertyKeys.WavelengthUnit not in self.keys():
+            wlu = [self.deduceWavelengthUnit(v) for v in self.wavelengths()]
+            if wlu:
+                self.setBandValues(None, SpectralPropertyKeys.WavelengthUnit, wlu,
+                                   origin=SpectralPropertyOrigin.Deduced)
 
     def readFromGDALDataset(self, ds: gdal.Dataset, overwrite: bool = False):
         """
