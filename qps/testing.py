@@ -62,7 +62,7 @@ from .qgisenums import QGIS_WKBTYPE
 from .qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from .resources import initResourceFile
 from .unitmodel import UnitLookup
-from .utils import findUpwardPath, px2geo, SpatialPoint
+from .utils import findUpwardPath, px2geo, SpatialExtent, SpatialPoint
 
 TEST_VECTOR_GEOJSON = Path(__file__).parent / 'testvectordata.4326.geojson'
 
@@ -158,7 +158,10 @@ class QgisMockup(QgisInterface):
         self.mTemporalController = QgsTemporalController()
         self.mCanvas = QgsMapCanvas()
         self.mCanvas.setTemporalController(self.mTemporalController)
-        self.mCanvas.blockSignals(False)
+
+        extent = SpatialExtent.world()
+        self.mCanvas.setDestinationCrs(extent.crs())
+        self.mCanvas.setExtent(extent)
         self.mCanvas.setCanvasColor(Qt.black)
         self.mLayerTreeView = QgsLayerTreeView()
         self.mLayerTreeView.currentLayerChanged.connect(self.activateDeactivateLayerRelatedActions)
