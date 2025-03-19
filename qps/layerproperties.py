@@ -22,9 +22,13 @@ import sys
 import warnings
 from typing import Any, Dict, List, Optional, Union
 
+from qgis.PyQt.QtCore import QTextStream, QByteArray
+from qgis.PyQt.QtCore import pyqtSignal, QMimeData, QModelIndex, QObject, QTimer, QVariant
+from qgis.PyQt.QtGui import QCloseEvent, QIcon
 from qgis.PyQt.QtWidgets import QAction, QApplication, QButtonGroup, QCheckBox, QComboBox, QDialog, QDialogButtonBox, \
     QGridLayout, QHBoxLayout, QLabel, QLineEdit, QMainWindow, QMenu, QMessageBox, QSizePolicy, QSpacerItem, \
     QSpinBox, QTableView, QToolButton, QVBoxLayout, QWidget
+from qgis.PyQt.QtXml import QDomDocument
 from qgis.core import Qgis, QgsAction, QgsApplication, QgsCategorizedSymbolRenderer, QgsContrastEnhancement, \
     QgsDataProvider, QgsDistanceArea, QgsEditFormConfig, QgsEditorWidgetSetup, QgsExpression, QgsExpressionContext, \
     QgsExpressionContextGenerator, QgsExpressionContextScope, QgsExpressionContextUtils, QgsFeature, QgsFeatureRenderer, \
@@ -33,9 +37,7 @@ from qgis.core import Qgis, QgsAction, QgsApplication, QgsCategorizedSymbolRende
     QgsRasterBandStats, QgsRasterDataProvider, QgsRasterLayer, QgsRasterRenderer, QgsReadWriteContext, QgsRectangle, \
     QgsScopedProxyProgressTask, QgsSettings, QgsSingleBandColorDataRenderer, QgsSingleBandGrayRenderer, \
     QgsSingleBandPseudoColorRenderer, QgsSingleSymbolRenderer, QgsVectorDataProvider, QgsVectorLayer, QgsWkbTypes
-from qgis.PyQt.QtCore import pyqtSignal, QMimeData, QModelIndex, QObject, QTimer, QVariant
-from qgis.PyQt.QtGui import QCloseEvent, QIcon
-from qgis.PyQt.QtXml import QDomDocument
+
 from .qgisenums import QGIS_RASTERBANDSTATISTIC
 from .speclib import EDITOR_WIDGET_REGISTRY_KEY
 
@@ -754,27 +756,37 @@ def rendererToXml(layerOrRenderer, geomType: QgsWkbTypes = None):
     return doc
 
 
-def pasteStyleToClipboard(layer: QgsMapLayer):
-    xml = rendererToXml(layer)
-    if isinstance(xml, QDomDocument):
+def pasteStyleToClipboard(layer: QgsMapLayer,
+                          categories: QgsMapLayer.StyleCategory = QgsMapLayer.StyleCategory.Symbology | QgsMapLayer.StyleCategory.Rendering):
+    doc = QDomDocument()
+    err = layer.exportNamedStyle(doc, categories=categories)
+    if err == '':
+        ba = QByteArray()
+        stream = QTextStream(ba)
+        stream.setCodec('utf-8')
+        doc.documentElement().save(stream, 0)
         md = QMimeData()
-        # ['application/qgis.style', 'text/plain']
-
-        md.setData('application/qgis.style', xml.toByteArray())
-        md.setData('text/plain', xml.toByteArray())
+        md.setData('application/qgis.style', ba)
+        md.setText(str(ba, 'utf-8'))
         QApplication.clipboard().setMimeData(md)
+    if err != '':
+        print(err, file=sys.stderr)
 
 
-def pasteStyleFromClipboard(layer: QgsMapLayer):
-    mimeData = QApplication.clipboard().mimeData()
-    renderer = rendererFromXml(mimeData)
-    if isinstance(renderer, QgsRasterRenderer) and isinstance(layer, QgsRasterLayer):
-        layer.setRenderer(renderer)
-        layer.triggerRepaint()
+def pasteStyleFromClipboard(layer: QgsMapLayer,
+                            categories: QgsMapLayer.StyleCategory = QgsMapLayer.StyleCategory.AllStyleCategories):
+    md = QApplication.clipboard().mimeData()
+    if 'application/qgis.style' in md.formats():
 
-    elif isinstance(renderer, QgsFeatureRenderer) and isinstance(layer, QgsVectorLayer):
-        layer.setRenderer(renderer)
-        layer.triggerRepaint()
+        xml = md.data('application/qgis.style')
+        doc = QDomDocument()
+        doc.setContent(xml)
+
+        success, err = layer.importNamedStyle(doc, categories=categories)
+        if success:
+            layer.triggerRepaint()
+        else:
+            print(err, file=sys.stderr)
 
 
 def equal_styles(lyr1: QgsMapLayer, lyr2: QgsMapLayer) -> bool:

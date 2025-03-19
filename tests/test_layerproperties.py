@@ -14,6 +14,7 @@ import unittest
 
 from osgeo import gdal
 from qgis.PyQt.QtWidgets import QDialog, QGridLayout, QWidget
+from qgis.core import QgsMapLayer
 from qgis.core import QgsMultiBandColorRenderer, QgsPalettedRasterRenderer, QgsProject, QgsRasterLayer, \
     QgsSingleBandGrayRenderer, QgsStyle, QgsVectorLayer
 from qgis.gui import QgsMapCanvas, QgsMapLayerConfigWidgetFactory, QgsOptionsDialogBase, QgsRasterLayerProperties, \
@@ -22,7 +23,7 @@ from qgis.gui import QgsMapCanvas, QgsMapLayerConfigWidgetFactory, QgsOptionsDia
 from qps import MAPLAYER_CONFIGWIDGET_FACTORIES
 from qps.layerconfigwidgets.rasterbands import RasterBandConfigWidget
 from qps.layerproperties import AddAttributeDialog, AttributeTableWidget, CopyAttributesDialog, defaultRasterRenderer, \
-    equal_styles, RemoveAttributeDialog, showLayerPropertiesDialog
+    equal_styles, RemoveAttributeDialog, showLayerPropertiesDialog, pasteStyleToClipboard, pasteStyleFromClipboard
 from qps.testing import start_app, TestCase, TestObjects
 from qps.utils import createQgsField
 
@@ -194,6 +195,27 @@ class LayerPropertyTests(TestCase):
 
         d.setName('test')
         self.showGui(d)
+
+    def test_paste_style_to_clipboard(self):
+
+        layer = TestObjects.createRasterLayer(nb=10)
+
+        layer.renderer().setRedBand(5)
+        layer.renderer().setGreenBand(6)
+        layer.renderer().setBlueBand(9)
+        bands = layer.renderer().usesBands()
+        self.assertEqual(layer.renderer().usesBands(), [5, 6, 9])
+        pasteStyleToClipboard(layer)
+
+        layer2 = TestObjects.createRasterLayer(nb=10)
+        self.assertNotEqual(layer2.renderer().usesBands(), bands)
+
+        pasteStyleFromClipboard(layer2)
+        self.assertEqual(layer2.renderer().usesBands(), bands)
+
+        layer3 = TestObjects.createRasterLayer(nb=4)
+        pasteStyleFromClipboard(layer3, categories=QgsMapLayer.StyleCategory.MapTips)
+        self.assertNotEqual(layer3.renderer().usesBands(), bands)
 
     def test_RemoveAttributeDialog(self):
         vl = TestObjects.createVectorLayer()
