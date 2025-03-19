@@ -115,7 +115,7 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
     """
     LOOKUP_PATTERNS = {
         SpectralPropertyKeys.FWHM: re.compile(
-            r'(fwhm|full[ -_]width[ -_]half[ -_]maximum)$', re.I),
+            r'^(fwhm|full[ -_]width[ -_]half[ -_]maximum)$', re.I),
         SpectralPropertyKeys.BadBand: re.compile(
             r'^(bbl|bad[ -_]?Band|bad[ -_]?band[ -_]?multiplier|bad[ -_]?band[ -_]?list)$', re.I),
         SpectralPropertyKeys.WavelengthUnit: re.compile(
@@ -531,7 +531,10 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
                 continue
 
             for k2 in customProperties.keys():
-                if rx.match(k2):
+
+                cleaned_key = re.sub(r'^(enmapbox|qps)/', '', k2, re.I)
+
+                if rx.match(cleaned_key):
                     values = customProperties.value(k2)
 
                     #  stored as list of values
@@ -548,13 +551,14 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
                                 _values.append(values[b])
                                 _bands.append(b)
                         if len(_values) > 0:
-                            self.setBandValues(_bands, _values, origin=SpectralPropertyOrigin.LayerProperties)
+                            self.setBandValues(_bands, k, _values, origin=SpectralPropertyOrigin.LayerProperties)
 
-            if SpectralPropertyKeys.Wavelength in self.keys() and SpectralPropertyKeys.WavelengthUnit not in self.keys():
-                wlu = self.deduceWavelengthUnit(self.wavelengths())
-                if wlu:
-                    self.setBandValues(None, SpectralPropertyKeys.WavelengthUnit, wlu,
-                                       origin=SpectralPropertyOrigin.Deduced)
+        # finally, deduce wavelength units, if necessary
+        if SpectralPropertyKeys.Wavelength in self.keys() and SpectralPropertyKeys.WavelengthUnit not in self.keys():
+            wlu = [self.deduceWavelengthUnit(v) for v in self.wavelengths()]
+            if wlu:
+                self.setBandValues(None, SpectralPropertyKeys.WavelengthUnit, wlu,
+                                   origin=SpectralPropertyOrigin.Deduced)
 
     def readFromGDALDataset(self, ds: gdal.Dataset, overwrite: bool = False):
         """
