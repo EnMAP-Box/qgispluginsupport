@@ -213,9 +213,11 @@ class LayerPropertyTests(TestCase):
         pasteStyleFromClipboard(layer2)
         self.assertEqual(layer2.renderer().usesBands(), bands)
 
-        layer3 = TestObjects.createRasterLayer(nb=4)
+        layer3 = TestObjects.createRasterLayer(nb=10)
+        # copy MapTip style only. This should not change the used bands
+        uses_bands = layer3.renderer().usesBands()
         pasteStyleFromClipboard(layer3, categories=QgsMapLayer.StyleCategory.MapTips)
-        self.assertNotEqual(layer3.renderer().usesBands(), bands)
+        self.assertEqual(layer3.renderer().usesBands(), uses_bands)
 
     def test_RemoveAttributeDialog(self):
         vl = TestObjects.createVectorLayer()
