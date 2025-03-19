@@ -781,7 +781,7 @@ def pasteStyleFromClipboard(layer: QgsMapLayer,
         doc = QDomDocument()
         doc.setContent(xml)
 
-        success, err = layer.importNamedStyle(doc, categories=categories)
+        success, err = layer.importNamedStyle(doc, categories)
         if success:
             layer.triggerRepaint()
         else:
