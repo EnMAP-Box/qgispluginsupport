@@ -25,7 +25,7 @@ from typing import Any, Dict, List, Optional, Union
 from qgis.PyQt.QtCore import QTextStream, QByteArray
 from qgis.PyQt.QtCore import pyqtSignal, QMimeData, QModelIndex, QObject, QTimer, QVariant
 from qgis.PyQt.QtGui import QCloseEvent, QIcon
-from qgis.PyQt.QtWidgets import QAction, QApplication, QButtonGroup, QCheckBox, QComboBox, QDialog, QDialogButtonBox, \
+from qgis.PyQt.QtWidgets import QAction, QButtonGroup, QCheckBox, QComboBox, QDialog, QDialogButtonBox, \
     QGridLayout, QHBoxLayout, QLabel, QLineEdit, QMainWindow, QMenu, QMessageBox, QSizePolicy, QSpacerItem, \
     QSpinBox, QTableView, QToolButton, QVBoxLayout, QWidget
 from qgis.PyQt.QtXml import QDomDocument
@@ -768,16 +768,15 @@ def pasteStyleToClipboard(layer: QgsMapLayer,
         md = QMimeData()
         md.setData('application/qgis.style', ba)
         md.setText(str(ba, 'utf-8'))
-        QApplication.clipboard().setMimeData(md)
+        QgsApplication.instance().clipboard().setMimeData(md)
     if err != '':
         print(err, file=sys.stderr)
 
 
 def pasteStyleFromClipboard(layer: QgsMapLayer,
                             categories: QgsMapLayer.StyleCategory = QgsMapLayer.StyleCategory.AllStyleCategories):
-    md = QApplication.clipboard().mimeData()
+    md = QgsApplication.instance().clipboard().mimeData()
     if 'application/qgis.style' in md.formats():
-
         xml = md.data('application/qgis.style')
         doc = QDomDocument()
         doc.setContent(xml)
