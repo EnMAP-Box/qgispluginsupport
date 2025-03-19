@@ -40,6 +40,7 @@ from qgis.core import QgsAction, QgsField, QgsMessageLog, QgsSymbolLayerUtils, Q
 from qgis.PyQt.QtCore import pyqtSignal, QByteArray, QDataStream, QIODevice, QObject, QSize, Qt
 from qgis.PyQt.QtGui import QBrush, QColor, QIcon, QPainter, QPainterPath, QPen, QPixmap
 from qgis.PyQt.QtXml import QDomDocument, QDomElement
+
 from ..pyqtgraph import pyqtgraph as pg
 from ..pyqtgraph.pyqtgraph.graphicsItems.ScatterPlotItem import drawSymbol, renderSymbol
 from ..qgisenums import QMETATYPE_QSTRING
@@ -342,7 +343,7 @@ class PlotStyle(QObject):
         if plotStyle:
             kwds.pop('plotStyle')
         super(PlotStyle, self).__init__()
-
+        self.mCosmeticPens: bool = True
         self.markerSymbol: str = MarkerSymbol.Circle.value
         self.markerSize: int = 5
         self.markerBrush: QBrush = QBrush()
@@ -380,9 +381,13 @@ class PlotStyle(QObject):
 
     def setMarkerPen(self, *pen):
         self.markerPen = QPen(*pen)
+        if self.mCosmeticPens:
+            self.markerPen.setCosmetic(True)
 
     def setLinePen(self, *pen):
         self.linePen = QPen(*pen)
+        if self.mCosmeticPens:
+            self.linePen.setCosmetic(True)
 
     def setMarkerBrush(self, *brush):
         self.markerBrush = QBrush(*brush)
@@ -634,6 +639,8 @@ class PlotStyle(QObject):
         """
         # log('copyFrom')
         assert isinstance(plotStyle, PlotStyle)
+
+        self.mCosmeticPens = plotStyle.mCosmeticPens
 
         self.markerSymbol = plotStyle.markerSymbol
         self.markerBrush = QBrush(plotStyle.markerBrush)
@@ -977,7 +984,7 @@ class PlotStyleWidget(QWidget):
 
         self.refreshPreview()
 
-    def plotStyle(self):
+    def plotStyle(self) -> PlotStyle:
         style = PlotStyle(plotStyle=self.mLastPlotStyle)
 
         # read plotstyle values from widgets
@@ -1118,7 +1125,7 @@ class PlotStyleButton(QToolButton):
     def onCanceled(self, *args):
         self.mWA.setVisible(False)
 
-    def plotStyle(self):
+    def plotStyle(self) -> PlotStyle:
         ps = self.mDialog.plotStyle()
         if self.isCheckable():
             ps.setVisibility(self.isChecked())
