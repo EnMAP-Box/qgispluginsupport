@@ -8,12 +8,12 @@ from typing import Any, Dict, List, Optional, Pattern, Tuple, Union
 import numpy as np
 from osgeo import gdal
 from osgeo.gdal import Band
-
 from qgis.PyQt.QtWidgets import QVBoxLayout, QWidget
 from qgis.PyQt.QtXml import QDomDocument, QDomElement
 from qgis.core import QgsDefaultValue, QgsFeature, QgsField, QgsFieldConstraints, QgsObjectCustomProperties, \
     QgsRasterDataProvider, QgsRasterLayer, QgsVectorLayer, QgsVectorLayerCache
 from qgis.gui import QgsAttributeTableFilterModel, QgsAttributeTableModel, QgsAttributeTableView, QgsMapCanvas
+
 from .qgisenums import QMETATYPE_BOOL, QMETATYPE_DOUBLE, QMETATYPE_INT, QMETATYPE_QSTRING
 from .unitmodel import UnitLookup
 
@@ -115,7 +115,7 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
     """
     LOOKUP_PATTERNS = {
         SpectralPropertyKeys.FWHM: re.compile(
-            r'(fwhm|full[ -_]width[ -_]half[ -_]maximum)$', re.I),
+            r'^(fwhm|full[ -_]width[ -_]half[ -_]maximum)$', re.I),
         SpectralPropertyKeys.BadBand: re.compile(
             r'^(bbl|bad[ -_]?Band|bad[ -_]?band[ -_]?multiplier|bad[ -_]?band[ -_]?list)$', re.I),
         SpectralPropertyKeys.WavelengthUnit: re.compile(
@@ -171,12 +171,26 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
     def __eq__(self, other):
         if not isinstance(other, QgsRasterLayerSpectralProperties):
             return False
+
         k1 = set(self.keys())
         k2 = set(other.keys())
         if k1 != k2:
             return False
         for k in k1:
             if self.value(k) != other.value(k):
+                return False
+        return True
+
+    def equalBandValues(self, other: 'QgsRasterLayerSpectralProperties') -> bool:
+        """
+        Compares the spectral properties of two layers based on the values retrieved for each band, except the origin info.
+        :param other: QgsRasterLayerSpectralProperties
+        :return: bool
+        """
+        for k in SpectralPropertyKeys:
+            v1 = self.bandValues(None, k)
+            v2 = other.bandValues(None, k)
+            if v1 != v2:
                 return False
         return True
 
@@ -531,7 +545,10 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
                 continue
 
             for k2 in customProperties.keys():
-                if rx.match(k2):
+
+                cleaned_key = re.sub(r'^(enmapbox|qps)/', '', k2, re.I)
+
+                if rx.match(cleaned_key):
                     values = customProperties.value(k2)
 
                     #  stored as list of values
@@ -548,13 +565,14 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
                                 _values.append(values[b])
                                 _bands.append(b)
                         if len(_values) > 0:
-                            self.setBandValues(_bands, _values, origin=SpectralPropertyOrigin.LayerProperties)
+                            self.setBandValues(_bands, k, _values, origin=SpectralPropertyOrigin.LayerProperties)
 
-            if SpectralPropertyKeys.Wavelength in self.keys() and SpectralPropertyKeys.WavelengthUnit not in self.keys():
-                wlu = self.deduceWavelengthUnit(self.wavelengths())
-                if wlu:
-                    self.setBandValues(None, SpectralPropertyKeys.WavelengthUnit, wlu,
-                                       origin=SpectralPropertyOrigin.Deduced)
+        # finally, deduce wavelength units, if necessary
+        if SpectralPropertyKeys.Wavelength in self.keys() and SpectralPropertyKeys.WavelengthUnit not in self.keys():
+            wlu = [self.deduceWavelengthUnit(v) for v in self.wavelengths()]
+            if wlu:
+                self.setBandValues(None, SpectralPropertyKeys.WavelengthUnit, wlu,
+                                   origin=SpectralPropertyOrigin.Deduced)
 
     def readFromGDALDataset(self, ds: gdal.Dataset, overwrite: bool = False):
         """
