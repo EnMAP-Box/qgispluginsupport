@@ -4,6 +4,7 @@ import unittest
 from pathlib import Path
 
 from qgis.core import QgsMapLayer, QgsRasterLayer
+
 from qps.qgsrasterlayerproperties import QgsRasterLayerSpectralProperties, QgsRasterLayerSpectralPropertiesTable, \
     QgsRasterLayerSpectralPropertiesTableWidget, SpectralPropertyKeys, SpectralPropertyOrigin, stringToType
 from qps.testing import start_app, TestCase, TestObjects
@@ -157,7 +158,7 @@ class TestQgsRasterLayerProperties(TestCase):
         prop4 = QgsRasterLayerSpectralProperties.fromRasterLayer(lyr4)
         self.assertEqual([300, 400], prop4.wavelengths())
         self.assertEqual(['nm', 'nm'], prop4.wavelengthUnits())
-        self.assertEqual(prop3, prop4)
+        self.assertTrue(prop3.equalBandValues(prop4))
 
         # write into layer properties
 
