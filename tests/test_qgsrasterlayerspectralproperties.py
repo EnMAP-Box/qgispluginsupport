@@ -4,10 +4,10 @@ import unittest
 from pathlib import Path
 
 from qgis.core import QgsMapLayer, QgsRasterLayer
-
 from qps.qgsrasterlayerproperties import QgsRasterLayerSpectralProperties, QgsRasterLayerSpectralPropertiesTable, \
     QgsRasterLayerSpectralPropertiesTableWidget, SpectralPropertyKeys, SpectralPropertyOrigin, stringToType
 from qps.testing import start_app, TestCase, TestObjects
+from qps.utils import bandClosestToWavelength
 from qpstestdata import DIR_WAVELENGTH, envi_bsq
 
 start_app()
@@ -107,6 +107,21 @@ class TestQgsRasterLayerProperties(TestCase):
         self.assertEqual(prop.bandCount(), 2)
         self.assertWavelengthsEqual([0.4, 0.5], 'μm',
                                     prop.wavelengths(), prop.wavelengthUnits())
+
+    def test_bandClosestToWavelength(self):
+        with tempfile.TemporaryDirectory() as tdir:
+            path = Path(tdir) / 'example.bsq'
+            ds = TestObjects.createRasterDataset(2, 2, nb=5, drv='ENVI', path=path, add_wl=False)
+            self.assertEqual(ds.GetDriver().ShortName, 'ENVI')
+            # set B,G,R,NIR,SWIR bands, but no wavelength unit
+            ds.SetMetadataItem('wavelength', '{450,550,650,800,1600}', 'ENVI')
+            del ds
+
+            lyr = QgsRasterLayer(path.as_posix())
+            self.assertTrue(lyr.isValid())
+            bandsRGB = [bandClosestToWavelength(lyr, s) for s in 'R,G,B'.split(',')]
+            self.assertEqual(bandsRGB, [2, 1, 0])
+            del lyr
 
     def test_QgsRasterLayerSpectralProperties(self):
 
