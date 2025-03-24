@@ -18,6 +18,7 @@ class SimpleWidgetTests(TestCase):
 
         path_logo = DIR_REPO / 'qps/pyqtgraph/tests/images/roi/polylineroi/closed_drag_new_handle.png'
         label = ResizableImageLabel()
+        label.setWindowTitle(label.__class__.__name__)
         label.setPixmap(QPixmap(path_logo.as_posix()))
         label.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
         label.setAlignment(Qt.AlignTop)
