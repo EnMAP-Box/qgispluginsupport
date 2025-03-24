@@ -52,6 +52,7 @@ from osgeo.ogr import OFSTBoolean, OFSTNone, OFTBinary, OFTDate, OFTDateTime, OF
     OFTString, \
     OFTStringList, OFTTime
 from osgeo.osr import SpatialReference
+
 from qgis.PyQt import uic
 from qgis.PyQt.QtCore import NULL, QByteArray, QDirIterator, QMetaType, QObject, QPoint, QPointF, QRect, Qt, QUrl, \
     QVariant
@@ -67,7 +68,6 @@ from qgis.core import Qgis, QgsApplication, QgsCoordinateReferenceSystem, QgsCoo
     QgsRasterLayer, QgsRasterRenderer, QgsRectangle, QgsTask, QgsVector, QgsVectorDataProvider, QgsVectorFileWriter, \
     QgsVectorFileWriterTask, QgsVectorLayer, QgsWkbTypes
 from qgis.gui import QgisInterface, QgsDialog, QgsGui, QgsMapCanvas, QgsMapLayerComboBox, QgsMessageViewer
-
 from .qgisenums import QGIS_LAYERFILTER, QGIS_WKBTYPE, QMETATYPE_BOOL, QMETATYPE_DOUBLE, QMETATYPE_INT, \
     QMETATYPE_QBYTEARRAY, QMETATYPE_QCHAR, QMETATYPE_QDATE, QMETATYPE_QDATETIME, QMETATYPE_QSTRING, \
     QMETATYPE_QSTRINGLIST, \
@@ -1699,13 +1699,13 @@ def defaultBands(dataset) -> List[int]:
         return [1, 1, 1]
 
 
-def bandClosestToWavelength(dataset, wl, wl_unit='nm') -> int:
+def bandClosestToWavelength(dataset, wl, wl_unit: str = 'nm') -> int:
     """
     Returns the band index of an image raster closest to wavelength `wl`.
     :param dataset: str | gdal.Dataset
     :param wl: wavelength to search the closed band for
     :param wl_unit: unit of wavelength. Default = nm
-    :return: band index | 0 if wavelength information is not provided
+    :return: band index (starting with 0) | defaults to 0, e.g. if wavelength information is not provided
     """
     if isinstance(wl, str):
         assert wl.upper() in LUT_WAVELENGTH.keys(), wl
