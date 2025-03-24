@@ -2,9 +2,40 @@ from typing import List
 
 from qgis.PyQt.QtCore import QObject, QRect, QSize, QPoint
 from qgis.PyQt.QtCore import pyqtSignal, Qt
+from qgis.PyQt.QtGui import QPixmap
+from qgis.PyQt.QtWidgets import QLabel
 from qgis.PyQt.QtWidgets import QSizePolicy
 from qgis.PyQt.QtWidgets import QWidget, QAbstractSpinBox, QSpinBox, QDoubleSpinBox, \
     QHBoxLayout, QVBoxLayout, QSlider, QLayout, QLayoutItem, QStyle
+
+
+class ResizableImageLabel(QLabel):
+    """
+    A QLabel that resizes the given pixmap while maintaining the aspect ratio.
+    """
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setScaledContents(False)  # Disable automatic scaling
+        self.setMinimumSize(0, 0)
+        self._pixmap = None  # Placeholder for the pixmap
+
+    def setPixmap(self, pixmap: QPixmap):
+        self._pixmap = pixmap
+        self._updateScaledPixmap()
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._updateScaledPixmap()
+
+    def _updateScaledPixmap(self):
+        if self._pixmap:
+            scaled_pixmap = self._pixmap.scaled(
+                self.size(),
+                Qt.KeepAspectRatio,  # maintains the aspect ratio of the image
+                Qt.SmoothTransformation  # makes resizing look smooth
+            )
+            super().setPixmap(scaled_pixmap)
 
 
 class FlowLayout(QLayout):
