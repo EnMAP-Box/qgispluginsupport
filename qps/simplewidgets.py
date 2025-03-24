@@ -1,10 +1,9 @@
 from typing import List
 
-from PyQt5.QtGui import QPixmap
-from PyQt5.QtWidgets import QLabel
-
 from qgis.PyQt.QtCore import QObject, QRect, QSize, QPoint
 from qgis.PyQt.QtCore import pyqtSignal, Qt
+from qgis.PyQt.QtGui import QPixmap
+from qgis.PyQt.QtWidgets import QLabel
 from qgis.PyQt.QtWidgets import QSizePolicy
 from qgis.PyQt.QtWidgets import QWidget, QAbstractSpinBox, QSpinBox, QDoubleSpinBox, \
     QHBoxLayout, QVBoxLayout, QSlider, QLayout, QLayoutItem, QStyle
