@@ -10,8 +10,9 @@ from pathlib import Path
 
 from qgis.core import QgsApplication, QgsLayerTree, QgsLayerTreeModel, QgsProcessingRegistry, QgsProject
 from qgis.gui import QgisInterface, QgsGui, QgsLayerTreeView
+
 import qps.testing
-from qps.testing import start_app, TestCase
+from qps.testing import QgsOptionsMockup, start_app, TestCase
 from scripts.install_testdata import DIR_REPO
 
 start_app()
@@ -64,6 +65,10 @@ class TestCasesClassTesting(TestCase):
             print('{}={}'.format(k, ENV[k]))
 
         QgsProject.instance().removeAllMapLayers()
+
+    def test_QgsOptionsMockup(self):
+        d = QgsOptionsMockup(None)
+        self.showGui(d)
 
     def test_testfolders(self):
         p = self.createTestOutputDirectory()
