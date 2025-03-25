@@ -2,14 +2,15 @@ import pathlib
 import unittest
 import xml.etree.ElementTree as ET
 
-
 from qgis.PyQt.QtWidgets import QWidget
 from qps import QPS_RESOURCE_FILE
-from qps.resources import scanResources, ResourceBrowser, ResourceTableModel
-from qps.testing import start_app
+from qps.resources import ResourceBrowser, ResourceTableModel, scanResources
+from qps.testing import start_app, TestCase
+
+start_app()
 
 
-class ResourceTests(unittest.TestCase):
+class ResourceTests(TestCase):
 
     def test_qrc(self):
 
@@ -52,7 +53,7 @@ class ResourceTests(unittest.TestCase):
 
         B = ResourceBrowser()
         self.assertIsInstance(B, QWidget)
-        B.show()
+        self.showGui(B)
 
         self.assertIsInstance(B.resourceModel, ResourceTableModel)
 
