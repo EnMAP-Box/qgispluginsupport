@@ -117,6 +117,9 @@ class TestQgsRasterLayerProperties(TestCase):
             ds.SetMetadataItem('wavelength', '{450,550,650,800,1600}', 'ENVI')
             del ds
 
+            props = QgsRasterLayerSpectralProperties.fromRasterLayer(path)
+            assert props.wavelengthUnits()[0] == 'nm'
+
             lyr = QgsRasterLayer(path.as_posix())
             self.assertTrue(lyr.isValid())
             bandsRGB = [bandClosestToWavelength(lyr, s) for s in 'R,G,B'.split(',')]
