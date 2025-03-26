@@ -42,12 +42,13 @@ from unittest import mock
 import numpy as np
 from osgeo import gdal, gdal_array, ogr, osr
 from osgeo.gdal import UseExceptions
+
+from qgis.gui import QgisInterface, QgsAbstractMapToolHandler, QgsBrowserGuiModel, QgsFilterLineEdit, QgsGui, \
+    QgsLayerTreeMapCanvasBridge, QgsLayerTreeView, QgsMapCanvas, QgsMapLayerConfigWidgetFactory, QgsMapTool, \
+    QgsMessageBar, QgsOptionsDialogBase, QgsOptionsPageWidget, QgsOptionsWidgetFactory, QgsPluginManagerInterface
 from qgis.PyQt.QtGui import QDropEvent, QIcon, QImage, QStandardItemModel
 from qgis.PyQt.QtWidgets import QAction, QApplication, QDialogButtonBox, QDockWidget, QFrame, QHBoxLayout, QListWidget, \
     QMainWindow, QMenu, QSplitter, QStackedWidget, QToolBar, QTreeView, QVBoxLayout, QWidget
-from qgis.gui import QgisInterface, QgsAbstractMapToolHandler, QgsBrowserGuiModel, QgsFilterLineEdit, QgsGui, \
-    QgsLayerTreeMapCanvasBridge, QgsLayerTreeView, QgsMapCanvas, QgsMapLayerConfigWidgetFactory, QgsMapTool, \
-    QgsMessageBar, QgsOptionsDialogBase, QgsOptionsWidgetFactory, QgsPluginManagerInterface
 import qgis.utils
 from qgis.PyQt import sip
 from qgis.PyQt.QtCore import pyqtSignal, QMimeData, QObject, QPoint, QPointF, QSize, Qt
@@ -58,7 +59,6 @@ from qgis.core import edit, Qgis, QgsApplication, QgsCoordinateReferenceSystem, 
     QgsProcessingParameterRasterLayer, QgsProcessingProvider, QgsProcessingRegistry, QgsProject, QgsProviderRegistry, \
     QgsPythonRunner, QgsRasterLayer, QgsTemporalController, QgsVectorLayer, QgsVectorLayerUtils, QgsWkbTypes
 from qgis.testing import QgisTestCase
-
 from .qgisenums import QGIS_WKBTYPE
 from .qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from .resources import initResourceFile
@@ -412,18 +412,14 @@ class QgisMockup(QgisInterface):
                           currentPage: str = ''):
 
         optionsDialog = QgsOptionsMockup('Options', parent)
-        optionsDialog.exec_()
-        page_widgets = []
         for f in self.mOptionsWidgetFactories:
             page = f.createWidget(optionsDialog)
             if not isinstance(page, QWidget):
                 continue
-
-            page_widgets.append(page)
             optionsDialog.addPage(f.title(), f.title(), f.icon(), page, f.path(), f.key())
-        if currentPage != '':
-            optionsDialog.setPage(currentPage)
-        optionsDialog.exec_()
+            optionsDialog.setCurrentPage(currentPage)
+        optionsDialog.show()
+        return optionsDialog
 
     def rasterMenu(self) -> QMenu:
         return self.mRasterMenu
@@ -1693,12 +1689,35 @@ class QgsOptionsMockup(QgsOptionsDialogBase):
             c2 = self.findChild(cls, name)
             assert isinstance(c2, cls)
 
+        self.buttonBox: QDialogButtonBox
         self.mOptTreeModel = QStandardItemModel()
         self.mOptionsTreeView.setModel(self.mOptTreeModel)
         self.initOptionsBase(False, self.__class__.__name__)
 
-        tv = self.mOptionsTreeView
-        s = ""
+        self.buttonBox.accepted.connect(self.saveOptions)
+        self._pageWidgets = []
+
+    def pageWidgets(self) -> List[QgsOptionsPageWidget]:
+        return self._pageWidgets[:]
+
+    def saveOptions(self):
+        for page in self.pageWidgets():
+            if isinstance(page, QgsOptionsPageWidget):
+                page.apply()
+
+    def addPage(self, title, tooltip, icon, widget, path, key):
+
+        super().addPage(title, tooltip, icon, widget, path, key)
+        self._pageWidgets.append(widget)
+
+    def setCurrentPage(self, pageName: str = ''):
+        sw: QStackedWidget = self.mOptionsStackedWidget
+        for i in range(sw.count()):
+            page = sw.widget(i)
+            if isinstance(page, QgsOptionsPageWidget) and page.objectName() == pageName:
+                sw.setCurrentIndex(i)
+                return
+        return
 
 
 class QgsClipboardMockup(QObject):
