@@ -264,6 +264,10 @@ class ClassificationScheme(QAbstractTableModel):
 
     sigIsEditableChanged = pyqtSignal(bool)
 
+    cLabel = 0
+    cName = 1
+    cColor = 2
+
     def __init__(self, name: str = 'Classification', zero_based: bool = False):
         super(ClassificationScheme, self).__init__()
         self.mClasses: List[ClassInfo] = []
@@ -272,9 +276,11 @@ class ClassificationScheme(QAbstractTableModel):
 
         self.mZeroBased: bool = zero_based
 
-        self.mColColor = 'Color'
-        self.mColName = 'Name'
-        self.mColLabel = 'Label'
+        self.mColNames = {
+            self.cColor: 'Color',
+            self.cName: 'Name',
+            self.cLabel: 'Label',
+        }
 
     def setIsEditable(self, b: bool):
         """
@@ -293,13 +299,6 @@ class ClassificationScheme(QAbstractTableModel):
         :return: bool
         """
         return self.mIsEditable
-
-    def columnNames(self) -> list:
-        """
-        Returns the column names.
-        :return: [list-of-str]
-        """
-        return [self.mColLabel, self.mColName, self.mColColor]
 
     def dropMimeData(self, mimeData: QMimeData, action: Qt.DropAction, row: int, column: int, parent: QModelIndex):
         if row == -1:
@@ -387,7 +386,7 @@ class ClassificationScheme(QAbstractTableModel):
         return len(self.mClasses)
 
     def columnCount(self, parent: QModelIndex = None):
-        return len(self.columnNames())
+        return len(self.mColNames)
 
     def index2ClassInfo(self, index) -> ClassInfo:
         if isinstance(index, QModelIndex):
@@ -427,43 +426,43 @@ class ClassificationScheme(QAbstractTableModel):
         classInfo = self.index2ClassInfo(row)
 
         if role == Qt.DisplayRole:
-            if col == 0:
+            if col == self.cLabel:
                 return classInfo.label()
-            if col == 1:
+            if col == self.cName:
                 return classInfo.name()
-            if col == 2:
+            if col == self.cColor:
                 return classInfo.color().name()
 
         if role == Qt.ForegroundRole:
-            if col == self.mColColor:
+            if col == self.cColor:
                 return QBrush(getTextColorWithContrast(classInfo.color()))
 
         if role == Qt.BackgroundColorRole:
-            if col == 2:
+            if col == self.cColor:
                 return QBrush(classInfo.color())
 
         if role == Qt.AccessibleTextRole:
-            if col == 0:
+            if col == self.cLabel:
                 return str(classInfo.label())
-            if col == 1:
+            if col == self.cName:
                 return classInfo.name()
-            if col == 2:
+            if col == self.cColor:
                 return classInfo.color().name()
 
         if role == Qt.ToolTipRole:
-            if col == 0:
+            if col == self.cLabel:
                 return 'Class label "{}"'.format(classInfo.label())
-            if col == 1:
+            if col == self.cName:
                 return 'Class name "{}"'.format(classInfo.name())
-            if col == 2:
+            if col == self.cColor:
                 return 'Class color "{}"'.format(classInfo.color().name())
 
         if role == Qt.EditRole:
-            if col == 0:
+            if col == self.cLabel:
                 return classInfo.label()
-            if col == 1:
+            if col == self.cName:
                 return classInfo.name()
-            if col == 2:
+            if col == self.cColor:
                 return classInfo.color()
 
         if role == Qt.UserRole:
@@ -486,13 +485,13 @@ class ClassificationScheme(QAbstractTableModel):
         classInfo = self.index2ClassInfo(row)
         b = False
         if role == Qt.EditRole:
-            if col == 0:
+            if col == self.cLabel:
                 classInfo.setLabel(int(value))
                 b = True
-            if col == 1:
+            if col == self.cName:
                 classInfo.setName(value)
                 b = True
-            if col == 2:
+            if col == self.cColor:
                 classInfo.setColor(value)
                 b = True
         if b:
@@ -508,9 +507,9 @@ class ClassificationScheme(QAbstractTableModel):
         if self.mIsEditable:
             flags |= Qt.ItemIsDragEnabled | Qt.ItemIsDropEnabled
             if self.isEditable():
-                if col == 0 and not self.mZeroBased:
+                if col == self.cLabel and not self.mZeroBased:
                     flags |= Qt.ItemIsEditable
-                elif col == 1:
+                elif col == self.cName:
                     flags |= Qt.ItemIsEditable
         return flags
 
@@ -518,7 +517,7 @@ class ClassificationScheme(QAbstractTableModel):
 
         if role == Qt.DisplayRole:
             if orientation == Qt.Horizontal:
-                return self.columnNames()[section]
+                return self.mColNames[section]
 
         return super(ClassificationScheme, self).headerData(section, orientation, role)
 
@@ -1763,7 +1762,7 @@ class ClassificationSchemeWidget(QWidget):
         model = self.tableClassificationScheme.model()
         assert isinstance(model, ClassificationScheme)
         classInfo = model.index2ClassInfo(idx)
-        if idx.column() == model.columnNames().index(model.mColColor) and model.isEditable():
+        if idx.column() == ClassificationScheme.cColor and model.isEditable():
             c = QColorDialog.getColor(classInfo.mColor, self.tableClassificationScheme,
                                       'Set color for "{}"'.format(classInfo.name()))
             model.setData(idx, c, role=Qt.EditRole)
