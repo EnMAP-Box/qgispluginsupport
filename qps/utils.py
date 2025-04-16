@@ -52,7 +52,6 @@ from osgeo.ogr import OFSTBoolean, OFSTNone, OFTBinary, OFTDate, OFTDateTime, OF
     OFTString, \
     OFTStringList, OFTTime
 from osgeo.osr import SpatialReference
-
 from qgis.PyQt import uic
 from qgis.PyQt.QtCore import NULL, QByteArray, QDirIterator, QMetaType, QObject, QPoint, QPointF, QRect, Qt, QUrl, \
     QVariant
@@ -68,6 +67,7 @@ from qgis.core import Qgis, QgsApplication, QgsCoordinateReferenceSystem, QgsCoo
     QgsRasterLayer, QgsRasterRenderer, QgsRectangle, QgsTask, QgsVector, QgsVectorDataProvider, QgsVectorFileWriter, \
     QgsVectorFileWriterTask, QgsVectorLayer, QgsWkbTypes
 from qgis.gui import QgisInterface, QgsDialog, QgsGui, QgsMapCanvas, QgsMapLayerComboBox, QgsMessageViewer
+
 from .qgisenums import QGIS_LAYERFILTER, QGIS_WKBTYPE, QMETATYPE_BOOL, QMETATYPE_DOUBLE, QMETATYPE_INT, \
     QMETATYPE_QBYTEARRAY, QMETATYPE_QCHAR, QMETATYPE_QDATE, QMETATYPE_QDATETIME, QMETATYPE_QSTRING, \
     QMETATYPE_QSTRINGLIST, \
@@ -272,7 +272,7 @@ def mapLayerStores() -> List[Union[QgsMapLayerStore, QgsProject]]:
     Returns a list of known map layer stores (included QgsProject.instance()
     :return:
     """
-    global _MAP_LAYER_STORES
+    # global _MAP_LAYER_STORES
     return _MAP_LAYER_STORES[:] + [QgsProject.instance()]
 
 
@@ -1135,7 +1135,7 @@ def loadUi(uifile: Union[str, Path],
         assert isinstance(baseinstance, QWidget)
 
     uifile = Path(uifile).resolve()
-    global UI_STORE
+    # global UI_STORE
     assert uifile.is_file(), '*.ui file does not exist: {}'.format(uifile)
     if no_caching or uifile not in UI_STORE.keys():
         from .resources import REGEX_QGIS_IMAGES_QRC

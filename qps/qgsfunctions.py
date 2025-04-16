@@ -34,12 +34,12 @@ from json import JSONDecodeError
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union
 
 import numpy as np
-
 from qgis.PyQt.QtCore import NULL, QByteArray, QCoreApplication, QVariant
 from qgis.core import Qgis, QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsExpression, QgsExpressionContext, \
     QgsExpressionContextScope, QgsExpressionFunction, QgsExpressionNode, QgsExpressionNodeFunction, QgsFeature, \
     QgsFeatureRequest, QgsField, QgsGeometry, QgsMapLayer, QgsMapToPixel, QgsMessageLog, QgsPointXY, QgsProject, \
     QgsRasterDataProvider, QgsRasterLayer
+
 from .qgisenums import QGIS_WKBTYPE
 from .qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from .speclib.core import is_profile_field
@@ -1070,7 +1070,7 @@ def registerQgsExpressionFunctions():
     """
     Registers functions to support SpectraLibrary handling with QgsExpressions
     """
-    global QGIS_FUNCTION_INSTANCES
+    # global QGIS_FUNCTION_INSTANCES
     functions = [Format_Py(), SpectralMath(), SpectralData(), SpectralEncoding(), RasterArray(), RasterProfile()]
     if Qgis.versionInt() > 32400:
         from .speclib.processing.aggregateprofiles import createSpectralProfileFunctions
