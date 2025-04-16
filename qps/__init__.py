@@ -66,7 +66,7 @@ def registerMapLayerConfigWidgetFactory(factory: QgsMapLayerConfigWidgetFactory)
     :type factory:
     :return: QgsMapLayerConfigWidgetFactory or None, if a factory with similar name was registered before by this method
     """
-    global MAPLAYER_CONFIGWIDGET_FACTORIES
+    # global MAPLAYER_CONFIGWIDGET_FACTORIES
     assert isinstance(factory, QgsMapLayerConfigWidgetFactory)
     name: str = factory.__class__.__name__
 
@@ -94,7 +94,7 @@ def unregisterMapLayerConfigWidgetFactory(factory: QgsMapLayerConfigWidgetFactor
     :rtype:
     """
     assert isinstance(factory, QgsMapLayerConfigWidgetFactory)
-    global MAPLAYER_CONFIGWIDGET_FACTORIES
+    # global MAPLAYER_CONFIGWIDGET_FACTORIES
     name: str = factory.__class__.__name__
 
     while factory in MAPLAYER_CONFIGWIDGET_FACTORIES:
@@ -116,7 +116,7 @@ def mapLayerConfigWidgetFactories() -> List[QgsMapLayerConfigWidgetFactory]:
     :return: list of QgsMapLayerConfigWidgetFactories
     :rtype:
     """
-    global MAPLAYER_CONFIGWIDGET_FACTORIES
+    # global MAPLAYER_CONFIGWIDGET_FACTORIES
     return MAPLAYER_CONFIGWIDGET_FACTORIES[:]
 
 

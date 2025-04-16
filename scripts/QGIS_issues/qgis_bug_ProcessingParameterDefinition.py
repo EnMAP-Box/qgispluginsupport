@@ -1,9 +1,7 @@
-from qgis.PyQt import sip
-from qgis.core import QgsApplication, QgsProcessingRegistry, \
-    QgsProcessingModelAlgorithm
-from qgis.core import QgsProcessingParameterType, \
-    QgsProcessingParameterBoolean
+from qgis.core import QgsApplication, QgsProcessingModelAlgorithm, QgsProcessingParameterBoolean, \
+    QgsProcessingParameterType, QgsProcessingRegistry
 from qgis.gui import QgsProcessingParameterDefinitionDialog
+
 from qps.testing import TestCase
 
 REFS = []
@@ -19,11 +17,6 @@ class MyParameter(QgsProcessingParameterBoolean):
     def __init__(self, name='MyParameter', description='My Parameter', optional: bool = False):
         super(MyParameter, self).__init__(name, description=description, optional=optional)
         self.mMyValue: str = 'my_value'
-        s = ""
-        if False:  # keep a python reference on the MyParameter instance
-            global REFS
-            REFS.append([self,
-                         sip.wrapinstance(sip.unwrapinstance(self), MyParameter)])
 
     def isDestination(self):
         return False
@@ -74,7 +67,7 @@ class MyParameterType(QgsProcessingParameterType):
 
     def create(self, name):
         p = MyParameter(name=name)
-        global REFS
+        # global REFS
         REFS.append(p)
         return p
 
