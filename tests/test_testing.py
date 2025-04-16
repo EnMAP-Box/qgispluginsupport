@@ -14,6 +14,7 @@ from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QGroupBox, QLabel, QLineEdit, QVBoxLayout, QWidget
 from qgis.gui import QgisInterface, QgsGui, QgsLayerTreeView, QgsOptionsPageWidget, QgsOptionsWidgetFactory
 from qgis.core import QgsApplication, QgsLayerTree, QgsLayerTreeModel, QgsProcessingRegistry, QgsProject
+
 import qps.testing
 from qps.testing import QgsOptionsMockup, start_app, TestCase
 from scripts.install_testdata import DIR_REPO
@@ -169,7 +170,6 @@ class TestCasesClassTesting(TestCase):
         apply_called = []
 
         def onApply(name):
-            nonlocal apply_called
             apply_called.append(name)
 
         from qgis.utils import iface

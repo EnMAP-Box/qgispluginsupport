@@ -42,7 +42,6 @@ from unittest import mock
 import numpy as np
 from osgeo import gdal, gdal_array, ogr, osr
 from osgeo.gdal import UseExceptions
-
 from qgis.gui import QgisInterface, QgsAbstractMapToolHandler, QgsBrowserGuiModel, QgsFilterLineEdit, QgsGui, \
     QgsLayerTreeMapCanvasBridge, QgsLayerTreeView, QgsMapCanvas, QgsMapLayerConfigWidgetFactory, QgsMapTool, \
     QgsMessageBar, QgsOptionsDialogBase, QgsOptionsPageWidget, QgsOptionsWidgetFactory, QgsPluginManagerInterface
@@ -59,6 +58,7 @@ from qgis.core import edit, Qgis, QgsApplication, QgsCoordinateReferenceSystem, 
     QgsProcessingParameterRasterLayer, QgsProcessingProvider, QgsProcessingRegistry, QgsProject, QgsProviderRegistry, \
     QgsPythonRunner, QgsRasterLayer, QgsTemporalController, QgsVectorLayer, QgsVectorLayerUtils, QgsWkbTypes
 from qgis.testing import QgisTestCase
+
 from .qgisenums import QGIS_WKBTYPE
 from .qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from .resources import initResourceFile
@@ -91,8 +91,8 @@ def start_app(cleanup: bool = True,
 
     UseExceptions()
     providers = QgsApplication.processingRegistry().providers()
-    global _PYTHON_RUNNER
-    global _QGIS_MOCKUP
+    # global _PYTHON_RUNNER
+    # global _QGIS_MOCKUP
 
     if init_iface:
         get_iface()
