@@ -18,13 +18,14 @@ from qgis.core import QgsCategorizedSymbolRenderer, QgsEditorWidgetSetup, QgsFea
     QgsFillSymbol, QgsLineSymbol, QgsMarkerSymbol, QgsPalettedRasterRenderer, QgsProject, QgsRasterLayer, \
     QgsReadWriteContext, QgsRendererCategory, QgsVectorLayer, QgsWkbTypes
 from qgis.gui import QgsDualView, QgsGui, QgsMapCanvas, QgsMapLayerComboBox, QgsSearchWidgetWrapper
-from qps.classification.classificationscheme import ClassInfo, ClassificationMapLayerComboBox, ClassificationScheme, \
+
+from qps.classification.classificationscheme import ClassificationMapLayerComboBox, ClassificationScheme, \
     ClassificationSchemeComboBox, ClassificationSchemeComboBoxModel, ClassificationSchemeEditorConfigWidget, \
-    ClassificationSchemeEditorWidgetWrapper, ClassificationSchemeWidget, ClassificationSchemeWidgetFactory, \
-    DEFAULT_UNCLASSIFIEDCOLOR, EDITOR_WIDGET_REGISTRY_KEY, MIMEDATA_KEY, MIMEDATA_KEY_QGIS_STYLE, \
-    classificationSchemeEditorWidgetFactory
+    classificationSchemeEditorWidgetFactory, ClassificationSchemeEditorWidgetWrapper, ClassificationSchemeWidget, \
+    ClassificationSchemeWidgetFactory, ClassInfo, DEFAULT_UNCLASSIFIEDCOLOR, EDITOR_WIDGET_REGISTRY_KEY, MIMEDATA_KEY, \
+    MIMEDATA_KEY_QGIS_STYLE
 from qps.qgisenums import QMETATYPE_INT, QMETATYPE_QSTRING
-from qps.testing import TestCase, TestObjects, start_app
+from qps.testing import start_app, TestCase, TestObjects
 
 start_app()
 
@@ -179,8 +180,14 @@ class TestsClassificationScheme(TestCase):
         for key in [MIMEDATA_KEY]:
             self.assertTrue(key in mimeData.formats())
 
-    def test_json_pickle(self):
+    def test_json_serialize(self):
         cs = self.createClassSchemeA()
+
+        data = cs.asMap()
+        self.assertIsInstance(data, dict)
+
+        cs2 = ClassificationScheme.fromMap(data)
+        self.assertEqual(cs, cs2)
 
         j = cs.json()
         self.assertIsInstance(j, str)

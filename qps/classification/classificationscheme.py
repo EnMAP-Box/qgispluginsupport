@@ -34,7 +34,7 @@ import re
 import sys
 import warnings
 from pathlib import Path
-from typing import Any, List, Union
+from typing import Any, List, Optional, Union
 
 import numpy as np
 from osgeo import gdal
@@ -541,17 +541,35 @@ class ClassificationScheme(QAbstractTableModel):
         """
         return self.mName
 
+    @classmethod
+    def fromMap(cls, data: dict) -> Optional['ClassificationScheme']:
+
+        try:
+            cs = ClassificationScheme(name=data['name'])
+            classes = []
+            for classData in data['classes']:
+                label, name, colorName = classData
+                classes.append(ClassInfo(label=label, name=name, color=QColor(colorName)))
+            cs.insertClasses(classes)
+            return cs
+        except Exception as ex:
+            print(ex, file=sys.stderr)
+            return None
+
+    def asMap(self) -> dict:
+
+        data = {'name': self.mName,
+                'classes': [(c.label(), c.name(), c.color().name()) for c in self]
+                }
+        return data
+
     def json(self) -> str:
         """
         Returns a JSON string of this ClassificationScheme which can be deserialized
         with ClassificationScheme.fromJSON()
         :return: str, JSON string
         """
-        data = {'name': self.mName,
-                'classes': [(c.label(), c.name(), c.color().name()) for c in self]
-                }
-
-        return json.dumps(data)
+        return json.dumps(self.asMap())
 
     def pickle(self) -> bytes:
         """
@@ -569,44 +587,36 @@ class ClassificationScheme(QAbstractTableModel):
         """
         return QByteArray(self.pickle())
 
-    @staticmethod
-    def fromQByteArray(array: QByteArray):
-        return ClassificationScheme.fromPickle(bytes(array))
+    @classmethod
+    def fromQByteArray(cls, array: QByteArray):
+        return cls.fromPickle(bytes(array))
 
-    @staticmethod
-    def fromPickle(pkl: bytes):
-        return ClassificationScheme.fromJson(pickle.loads(pkl))
+    @classmethod
+    def fromPickle(cls, pkl: bytes):
+        return cls.fromJson(pickle.loads(pkl))
 
-    @staticmethod
-    def fromFile(p: str):
+    @classmethod
+    def fromFile(cls, p: str):
         try:
             if os.path.isfile(p):
                 if p.endswith('.json'):
                     jsonStr = None
                     with open(p, 'r') as f:
                         jsonStr = f.read()
-                    return ClassificationScheme.fromJson(jsonStr)
+                    return cls.fromJson(jsonStr)
                 elif p.endswith('.csv'):
-                    return ClassificationScheme.fromCsv(p)
+                    return cls.fromCsv(p)
                 elif p.endswith('.qml'):
-                    return ClassificationScheme.fromQml(p)
+                    return cls.fromQml(p)
         except Exception as ex:
             print(ex, file=sys.stderr)
         return None
 
-    @staticmethod
-    def fromJson(jsonStr: str):
+    @classmethod
+    def fromJson(cls, jsonStr: str) -> Optional['ClassificationScheme']:
         try:
             data = json.loads(jsonStr)
-
-            s = ""
-            cs = ClassificationScheme(name=data['name'])
-            classes = []
-            for classData in data['classes']:
-                label, name, colorName = classData
-                classes.append(ClassInfo(label=label, name=name, color=QColor(colorName)))
-            cs.insertClasses(classes)
-            return cs
+            return cls.fromMap(data)
         except Exception as ex:
             print(ex, file=sys.stderr)
             return None
@@ -626,8 +636,8 @@ class ClassificationScheme(QAbstractTableModel):
         renderer = QgsPalettedRasterRenderer(None, band, classes)
         return renderer
 
-    @staticmethod
-    def fromRasterRenderer(renderer: QgsRasterRenderer):
+    @classmethod
+    def fromRasterRenderer(cls, renderer: QgsRasterRenderer):
         """
         Extracts a ClassificatonScheme from a QgsRasterRenderer
         :param renderer: QgsRasterRenderer
@@ -676,8 +686,8 @@ class ClassificationScheme(QAbstractTableModel):
             r.addCategory(cat)
         return r
 
-    @staticmethod
-    def fromFeatureRenderer(renderer: QgsCategorizedSymbolRenderer):
+    @classmethod
+    def fromFeatureRenderer(cls, renderer: QgsCategorizedSymbolRenderer):
         """
         Extracts a ClassificationScheme from a QgsCategorizedSymbolRenderer
         :param renderer: QgsCategorizedSymbolRenderer
@@ -1071,8 +1081,8 @@ class ClassificationScheme(QAbstractTableModel):
 
         return None
 
-    @staticmethod
-    def create(n):
+    @classmethod
+    def create(cls, n):
         """
         Create a ClassificationScheme with n classes (including 'Unclassified' with label = 0)
         :param n: number of classes including 'Unclassified'
@@ -1082,14 +1092,14 @@ class ClassificationScheme(QAbstractTableModel):
         s.createClasses(n)
         return s
 
-    @staticmethod
-    def fromMimeData(mimeData: QMimeData):
+    @classmethod
+    def fromMimeData(cls, mimeData: QMimeData):
 
         if not isinstance(mimeData, QMimeData):
             return None
 
         if MIMEDATA_KEY in mimeData.formats():
-            ba = ClassificationScheme.fromQByteArray(mimeData.data(MIMEDATA_KEY))
+            ba = cls.fromQByteArray(mimeData.data(MIMEDATA_KEY))
             if isinstance(ba, ClassificationScheme):
                 return ba
 
@@ -1113,14 +1123,14 @@ class ClassificationScheme(QAbstractTableModel):
                     return ClassificationScheme.fromFeatureRenderer(QgsCategorizedSymbolRenderer.create(node, context))
 
         if MIMEDATA_KEY_TEXT in mimeData.formats():
-            ba = ClassificationScheme.fromQByteArray(mimeData.data(MIMEDATA_KEY_TEXT))
+            ba = cls.fromQByteArray(mimeData.data(MIMEDATA_KEY_TEXT))
             if isinstance(ba, ClassificationScheme):
                 return ba
 
         return None
 
-    @staticmethod
-    def fromUniqueFieldValues(layer: QgsVectorLayer, fieldIndex):
+    @classmethod
+    def fromUniqueFieldValues(cls, layer: QgsVectorLayer, fieldIndex):
         scheme = None
 
         if not isinstance(layer, QgsVectorLayer):
@@ -1150,8 +1160,8 @@ class ClassificationScheme(QAbstractTableModel):
 
         return scheme
 
-    @staticmethod
-    def fromMapLayer(layer: QgsMapLayer):
+    @classmethod
+    def fromMapLayer(cls, layer: QgsMapLayer):
         """
         :param layer:
         :return:
@@ -1161,18 +1171,18 @@ class ClassificationScheme(QAbstractTableModel):
             return scheme
 
         if isinstance(layer, QgsRasterLayer):
-            scheme = ClassificationScheme.fromRasterRenderer(layer.renderer())
+            scheme = cls.fromRasterRenderer(layer.renderer())
             if not isinstance(scheme, ClassificationScheme):
                 if layer.dataProvider().name() == 'gdal':
-                    scheme = ClassificationScheme.fromRasterImage(layer.source())
+                    scheme = cls.fromRasterImage(layer.source())
 
         if isinstance(layer, QgsVectorLayer):
-            scheme = ClassificationScheme.fromFeatureRenderer(layer.renderer())
+            scheme = cls.fromFeatureRenderer(layer.renderer())
 
         return scheme
 
-    @staticmethod
-    def fromRasterBand(band: gdal.Band):
+    @classmethod
+    def fromRasterBand(cls, band: gdal.Band):
         """
         Reads the ClassificationScheme of a gdal.Band
         :param band: gdal.Band
@@ -1201,8 +1211,8 @@ class ClassificationScheme(QAbstractTableModel):
         scheme.insertClasses(classes)
         return scheme
 
-    @staticmethod
-    def fromRasterImage(path, bandIndex=None):
+    @classmethod
+    def fromRasterImage(cls, path, bandIndex=None):
         """
         Reads a ClassificationScheme from a gdal.Dataset
         :param path: str with path to gdal.Dataset or gdal.Dataset instances
@@ -1229,8 +1239,8 @@ class ClassificationScheme(QAbstractTableModel):
         band = ds.GetRasterBand(bandIndex + 1)
         return ClassificationScheme.fromRasterBand(band)
 
-    @staticmethod
-    def fromCsv(pathCSV: str, mode: str = None):
+    @classmethod
+    def fromCsv(cls, pathCSV: str, mode: str = None):
         """
         Read the ClassificationScheme from a CSV table
         :param path: str, path of CSV file
@@ -1293,7 +1303,7 @@ class ClassificationScheme(QAbstractTableModel):
         if nc == 0:
             return None
 
-        cs = ClassificationScheme.create(nc)
+        cs = cls.create(nc)
         for i, row in enumerate(rows):
             c = cs[i]
             assert isinstance(c, ClassInfo)
@@ -1325,8 +1335,8 @@ class ClassificationScheme(QAbstractTableModel):
         """
         raise NotImplementedError()
 
-    @staticmethod
-    def fromQml(path: Union[Path, str]):
+    @classmethod
+    def fromQml(cls, path: Union[Path, str]):
         """
         Reads a ClassificationScheme from a QML file.
         :param path: str, path to QML file
@@ -1833,15 +1843,15 @@ class ClassificationSchemeWidget(QWidget):
 
 
 class ClassificationSchemeDialog(QgsDialog):
-    @staticmethod
-    def getClassificationScheme(*args, **kwds):
+    @classmethod
+    def getClassificationScheme(cls, *args, **kwds):
         """
         Opens a dialog to edit a ClassificationScheme
         :param args:
         :param kwds:
         :return: None | ClassificationScheme
         """
-        d = ClassificationSchemeDialog(*args, **kwds)
+        d = cls(*args, **kwds)
         d.exec_()
 
         if d.result() == QDialog.Accepted:
