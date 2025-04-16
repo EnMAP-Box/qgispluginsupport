@@ -300,7 +300,11 @@ class ClassificationScheme(QAbstractTableModel):
         """
         return self.mIsEditable
 
-    def dropMimeData(self, mimeData: QMimeData, action: Qt.DropAction, row: int, column: int, parent: QModelIndex):
+    def dropMimeData(self,
+                     mimeData: QMimeData,
+                     action: Qt.DropAction,
+                     row: int, column: int,
+                     parent: QModelIndex, **kwargs):
         if row == -1:
             row = parent.row()
         if action == Qt.MoveAction:
@@ -377,7 +381,7 @@ class ClassificationScheme(QAbstractTableModel):
         """
         return [MIMEDATA_KEY, MIMEDATA_INTERNAL_IDs, MIMEDATA_KEY_TEXT]
 
-    def rowCount(self, parent: QModelIndex = None):
+    def rowCount(self, parent: QModelIndex = None, **kwargs) -> int:
         """
         Returns the number of row / ClassInfos.
         :param parent: QModelIndex
@@ -385,7 +389,7 @@ class ClassificationScheme(QAbstractTableModel):
         """
         return len(self.mClasses)
 
-    def columnCount(self, parent: QModelIndex = None):
+    def columnCount(self, parent: QModelIndex = None, **kwargs) -> int:
         return len(self.mColNames)
 
     def index2ClassInfo(self, index) -> ClassInfo:
@@ -892,7 +896,7 @@ class ClassificationScheme(QAbstractTableModel):
         warnings.warn('use insertClasses()', DeprecationWarning, stacklevel=2)
         self.insertClasses(classes, index=index)
 
-    def insertClasses(self, classes, index=None):
+    def insertClasses(self, classes: Union[List[ClassInfo], ClassInfo], index=None):
         """
         Adds / inserts a list of ClassInfos
         :param classes: [list-of-ClassInfo]
@@ -957,7 +961,7 @@ class ClassificationScheme(QAbstractTableModel):
             pass
         return i
 
-    def classFromValue(self, value, matchSimilarity=False) -> ClassInfo:
+    def classFromValue(self, value, matchSimilarity=False) -> Optional[ClassInfo]:
         i = self.classIndexFromValue(value, matchSimilarity=matchSimilarity)
         if i != -1:
             return self[i]
@@ -967,7 +971,7 @@ class ClassificationScheme(QAbstractTableModel):
     def addClass(self, c, index=None):
         warnings.warn('Use insert class', DeprecationWarning, stacklevel=2)
 
-    def insertClass(self, c, index=None):
+    def insertClass(self, c: ClassInfo, index=None):
         """
         Adds a ClassInfo
         :param c: ClassInfo
