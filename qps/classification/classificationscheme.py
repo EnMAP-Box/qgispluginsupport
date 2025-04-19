@@ -38,6 +38,7 @@ from typing import Any, List, Optional, Union
 
 import numpy as np
 from osgeo import gdal
+
 from qgis.core import Qgis, QgsCategorizedSymbolRenderer, QgsField, QgsFillSymbol, QgsLineSymbol, QgsMapLayer, \
     QgsMarkerSymbol, QgsPalettedRasterRenderer, QgsProject, QgsProviderRegistry, QgsRasterLayer, QgsRasterRenderer, \
     QgsReadWriteContext, QgsRendererCategory, QgsVectorLayer
@@ -49,7 +50,6 @@ from qgis.PyQt.QtGui import QBrush, QClipboard, QColor, QIcon, QPixmap
 from qgis.PyQt.QtWidgets import QAction, QApplication, QColorDialog, QComboBox, QDialog, QDialogButtonBox, QFileDialog, \
     QHBoxLayout, QInputDialog, QMenu, QMessageBox, QPushButton, QTableView, QToolButton, QVBoxLayout, QWidget
 from qgis.PyQt.QtXml import QDomDocument, QDomImplementation
-
 from ..qgisenums import QMETATYPE_DOUBLE, QMETATYPE_INT, QMETATYPE_QSTRING
 from ..utils import gdalDataset, loadUi, nextColor, registeredMapLayers
 
@@ -243,14 +243,26 @@ class ClassInfo(QObject):
     def __str__(self):
         return '{} "{}" ({})'.format(self.mLabel, self.mName, self.mColor.name())
 
+    def asMap(self) -> dict:
+
+        return {'label': self.label(),
+                'name': self.name(),
+                'color': self.color().name()}
+
+    @classmethod
+    def fromMap(cls, data: dict) -> 'ClassInfo':
+        assert isinstance(data, dict)
+        return ClassInfo(label=data.get('label'),
+                         name=data.get('name'),
+                         color=data.get('color'))
+
     def json(self) -> str:
-        return json.dumps([self.label(), self.name(), self.color().name()])
+        return json.dumps(self.asMap())
 
     def fromJSON(self, jsonString: str):
         try:
-            label, name, color = json.loads(jsonString)
-            color = QColor(color)
-            return ClassInfo(label=label, name=name, color=color)
+            data = json.loads(jsonString)
+            return ClassInfo.fromMap(data)
         except (TypeError, ValueError, json.decoder.JSONDecodeError):
             return None
 
@@ -551,8 +563,8 @@ class ClassificationScheme(QAbstractTableModel):
             cs = ClassificationScheme(name=data['name'])
             classes = []
             for classData in data['classes']:
-                label, name, colorName = classData
-                classes.append(ClassInfo(label=label, name=name, color=QColor(colorName)))
+                c = ClassInfo.fromMap(classData)
+                classes.append(c)
             cs.insertClasses(classes)
             return cs
         except Exception as ex:
@@ -562,7 +574,7 @@ class ClassificationScheme(QAbstractTableModel):
     def asMap(self) -> dict:
 
         data = {'name': self.mName,
-                'classes': [(c.label(), c.name(), c.color().name()) for c in self]
+                'classes': [c.asMap() for c in self]
                 }
         return data
 
