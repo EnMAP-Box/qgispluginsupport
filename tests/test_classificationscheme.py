@@ -10,6 +10,8 @@ import os
 import tempfile
 import unittest
 
+from qgis._core import QgsObjectCustomProperties
+
 from qgis.PyQt.QtCore import NULL, QMimeData, QModelIndex, QSize, Qt
 from qgis.PyQt.QtGui import QColor
 from qgis.PyQt.QtWidgets import QApplication, QCheckBox, QVBoxLayout, QWidget
@@ -18,7 +20,6 @@ from qgis.core import QgsCategorizedSymbolRenderer, QgsEditorWidgetSetup, QgsFea
     QgsFillSymbol, QgsLineSymbol, QgsMarkerSymbol, QgsPalettedRasterRenderer, QgsProject, QgsRasterLayer, \
     QgsReadWriteContext, QgsRendererCategory, QgsVectorLayer, QgsWkbTypes
 from qgis.gui import QgsDualView, QgsGui, QgsMapCanvas, QgsMapLayerComboBox, QgsSearchWidgetWrapper
-
 from qps.classification.classificationscheme import ClassificationMapLayerComboBox, ClassificationScheme, \
     ClassificationSchemeComboBox, ClassificationSchemeComboBoxModel, ClassificationSchemeEditorConfigWidget, \
     classificationSchemeEditorWidgetFactory, ClassificationSchemeEditorWidgetWrapper, ClassificationSchemeWidget, \
@@ -187,7 +188,13 @@ class TestsClassificationScheme(TestCase):
         self.assertIsInstance(data, dict)
 
         cs2 = ClassificationScheme.fromMap(data)
+        data2 = cs2.asMap()
         self.assertEqual(cs, cs2)
+
+        prop = QgsObjectCustomProperties()
+        prop.setValue('myScheme', data)
+        cs3 = ClassificationScheme.fromMap(prop.value('myScheme'))
+        self.assertEqual(cs, cs3)
 
         j = cs.json()
         self.assertIsInstance(j, str)
