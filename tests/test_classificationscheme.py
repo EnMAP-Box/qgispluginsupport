@@ -10,15 +10,13 @@ import os
 import tempfile
 import unittest
 
-from qgis._core import QgsObjectCustomProperties
-
+from qgis.core import QgsCategorizedSymbolRenderer, QgsEditorWidgetSetup, QgsFeature, QgsFeatureRenderer, QgsField, \
+    QgsFillSymbol, QgsLineSymbol, QgsMarkerSymbol, QgsObjectCustomProperties, QgsPalettedRasterRenderer, QgsProject, \
+    QgsRasterLayer, QgsReadWriteContext, QgsRendererCategory, QgsVectorLayer, QgsWkbTypes
 from qgis.PyQt.QtCore import NULL, QMimeData, QModelIndex, QSize, Qt
 from qgis.PyQt.QtGui import QColor
 from qgis.PyQt.QtWidgets import QApplication, QCheckBox, QVBoxLayout, QWidget
 from qgis.PyQt.QtXml import QDomDocument, QDomElement
-from qgis.core import QgsCategorizedSymbolRenderer, QgsEditorWidgetSetup, QgsFeature, QgsFeatureRenderer, QgsField, \
-    QgsFillSymbol, QgsLineSymbol, QgsMarkerSymbol, QgsPalettedRasterRenderer, QgsProject, QgsRasterLayer, \
-    QgsReadWriteContext, QgsRendererCategory, QgsVectorLayer, QgsWkbTypes
 from qgis.gui import QgsDualView, QgsGui, QgsMapCanvas, QgsMapLayerComboBox, QgsSearchWidgetWrapper
 from qps.classification.classificationscheme import ClassificationMapLayerComboBox, ClassificationScheme, \
     ClassificationSchemeComboBox, ClassificationSchemeComboBoxModel, ClassificationSchemeEditorConfigWidget, \
