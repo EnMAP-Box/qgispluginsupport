@@ -36,7 +36,6 @@ import weakref
 from typing import Dict, List, Optional, Union
 
 from osgeo import gdal, ogr
-
 from qgis.core import edit, Qgis, QgsAction, QgsActionManager, QgsApplication, QgsAttributeTableConfig, \
     QgsCoordinateReferenceSystem, QgsCoordinateTransformContext, QgsEditorWidgetSetup, QgsExpression, \
     QgsExpressionContext, QgsExpressionContextScope, QgsExpressionContextUtils, QgsFeature, QgsFeatureIterator, \
@@ -45,6 +44,7 @@ from qgis.core import edit, Qgis, QgsAction, QgsActionManager, QgsApplication, Q
     QgsWkbTypes
 from qgis.PyQt.QtCore import QDateTime, QMimeData, Qt, QUrl, QVariant
 from qgis.PyQt.QtWidgets import QWidget
+
 from . import can_store_spectral_profiles, create_profile_field, is_profile_field, is_spectral_library, \
     profile_field_list, profile_field_names
 from .spectralprofile import decodeProfileValueDict, encodeProfileValueDict, groupBySpectralProperties, \
@@ -434,7 +434,7 @@ class SpectralLibraryUtils:
         if MIMEDATA_SPECLIB_LINK in mimeData.formats():
             # extract from link
             sid = pickle.loads(mimeData.data(MIMEDATA_SPECLIB_LINK))
-            global SPECLIB_CLIPBOARD
+            # global SPECLIB_CLIPBOARD
             sl = SPECLIB_CLIPBOARD.get(sid)
             if is_spectral_library(sl) and id(sl) == sid:
                 return sl
@@ -608,7 +608,7 @@ class SpectralLibraryUtils:
         for format in formats:
             assert format in [MIMEDATA_SPECLIB_LINK, MIMEDATA_SPECLIB, MIMEDATA_TEXT, MIMEDATA_URL]
             if format == MIMEDATA_SPECLIB_LINK:
-                global SPECLIB_CLIPBOARD
+                # global SPECLIB_CLIPBOARD
                 thisID = id(speclib)
                 SPECLIB_CLIPBOARD[thisID] = speclib
 

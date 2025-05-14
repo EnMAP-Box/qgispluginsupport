@@ -34,10 +34,11 @@ import re
 import sys
 import warnings
 from pathlib import Path
-from typing import Any, List, Union
+from typing import Any, List, Optional, Union
 
 import numpy as np
 from osgeo import gdal
+
 from qgis.core import Qgis, QgsCategorizedSymbolRenderer, QgsField, QgsFillSymbol, QgsLineSymbol, QgsMapLayer, \
     QgsMarkerSymbol, QgsPalettedRasterRenderer, QgsProject, QgsProviderRegistry, QgsRasterLayer, QgsRasterRenderer, \
     QgsReadWriteContext, QgsRendererCategory, QgsVectorLayer
@@ -49,7 +50,6 @@ from qgis.PyQt.QtGui import QBrush, QClipboard, QColor, QIcon, QPixmap
 from qgis.PyQt.QtWidgets import QAction, QApplication, QColorDialog, QComboBox, QDialog, QDialogButtonBox, QFileDialog, \
     QHBoxLayout, QInputDialog, QMenu, QMessageBox, QPushButton, QTableView, QToolButton, QVBoxLayout, QWidget
 from qgis.PyQt.QtXml import QDomDocument, QDomImplementation
-
 from ..qgisenums import QMETATYPE_DOUBLE, QMETATYPE_INT, QMETATYPE_QSTRING
 from ..utils import gdalDataset, loadUi, nextColor, registeredMapLayers
 
@@ -243,14 +243,26 @@ class ClassInfo(QObject):
     def __str__(self):
         return '{} "{}" ({})'.format(self.mLabel, self.mName, self.mColor.name())
 
+    def asMap(self) -> dict:
+
+        return {'label': self.label(),
+                'name': self.name(),
+                'color': self.color().name()}
+
+    @classmethod
+    def fromMap(cls, data: dict) -> 'ClassInfo':
+        assert isinstance(data, dict)
+        return ClassInfo(label=data.get('label'),
+                         name=data.get('name'),
+                         color=data.get('color'))
+
     def json(self) -> str:
-        return json.dumps([self.label(), self.name(), self.color().name()])
+        return json.dumps(self.asMap())
 
     def fromJSON(self, jsonString: str):
         try:
-            label, name, color = json.loads(jsonString)
-            color = QColor(color)
-            return ClassInfo(label=label, name=name, color=color)
+            data = json.loads(jsonString)
+            return ClassInfo.fromMap(data)
         except (TypeError, ValueError, json.decoder.JSONDecodeError):
             return None
 
@@ -264,6 +276,10 @@ class ClassificationScheme(QAbstractTableModel):
 
     sigIsEditableChanged = pyqtSignal(bool)
 
+    cLabel = 0
+    cName = 1
+    cColor = 2
+
     def __init__(self, name: str = 'Classification', zero_based: bool = False):
         super(ClassificationScheme, self).__init__()
         self.mClasses: List[ClassInfo] = []
@@ -272,9 +288,11 @@ class ClassificationScheme(QAbstractTableModel):
 
         self.mZeroBased: bool = zero_based
 
-        self.mColColor = 'Color'
-        self.mColName = 'Name'
-        self.mColLabel = 'Label'
+        self.mColNames = {
+            self.cColor: 'Color',
+            self.cName: 'Name',
+            self.cLabel: 'Label',
+        }
 
     def setIsEditable(self, b: bool):
         """
@@ -294,14 +312,11 @@ class ClassificationScheme(QAbstractTableModel):
         """
         return self.mIsEditable
 
-    def columnNames(self) -> list:
-        """
-        Returns the column names.
-        :return: [list-of-str]
-        """
-        return [self.mColLabel, self.mColName, self.mColColor]
-
-    def dropMimeData(self, mimeData: QMimeData, action: Qt.DropAction, row: int, column: int, parent: QModelIndex):
+    def dropMimeData(self,
+                     mimeData: QMimeData,
+                     action: Qt.DropAction,
+                     row: int, column: int,
+                     parent: QModelIndex, **kwargs):
         if row == -1:
             row = parent.row()
         if action == Qt.MoveAction:
@@ -378,7 +393,7 @@ class ClassificationScheme(QAbstractTableModel):
         """
         return [MIMEDATA_KEY, MIMEDATA_INTERNAL_IDs, MIMEDATA_KEY_TEXT]
 
-    def rowCount(self, parent: QModelIndex = None):
+    def rowCount(self, parent: QModelIndex = None, **kwargs) -> int:
         """
         Returns the number of row / ClassInfos.
         :param parent: QModelIndex
@@ -386,8 +401,8 @@ class ClassificationScheme(QAbstractTableModel):
         """
         return len(self.mClasses)
 
-    def columnCount(self, parent: QModelIndex = None):
-        return len(self.columnNames())
+    def columnCount(self, parent: QModelIndex = None, **kwargs) -> int:
+        return len(self.mColNames)
 
     def index2ClassInfo(self, index) -> ClassInfo:
         if isinstance(index, QModelIndex):
@@ -427,43 +442,43 @@ class ClassificationScheme(QAbstractTableModel):
         classInfo = self.index2ClassInfo(row)
 
         if role == Qt.DisplayRole:
-            if col == 0:
+            if col == self.cLabel:
                 return classInfo.label()
-            if col == 1:
+            if col == self.cName:
                 return classInfo.name()
-            if col == 2:
+            if col == self.cColor:
                 return classInfo.color().name()
 
         if role == Qt.ForegroundRole:
-            if col == self.mColColor:
+            if col == self.cColor:
                 return QBrush(getTextColorWithContrast(classInfo.color()))
 
         if role == Qt.BackgroundColorRole:
-            if col == 2:
+            if col == self.cColor:
                 return QBrush(classInfo.color())
 
         if role == Qt.AccessibleTextRole:
-            if col == 0:
+            if col == self.cLabel:
                 return str(classInfo.label())
-            if col == 1:
+            if col == self.cName:
                 return classInfo.name()
-            if col == 2:
+            if col == self.cColor:
                 return classInfo.color().name()
 
         if role == Qt.ToolTipRole:
-            if col == 0:
+            if col == self.cLabel:
                 return 'Class label "{}"'.format(classInfo.label())
-            if col == 1:
+            if col == self.cName:
                 return 'Class name "{}"'.format(classInfo.name())
-            if col == 2:
+            if col == self.cColor:
                 return 'Class color "{}"'.format(classInfo.color().name())
 
         if role == Qt.EditRole:
-            if col == 0:
+            if col == self.cLabel:
                 return classInfo.label()
-            if col == 1:
+            if col == self.cName:
                 return classInfo.name()
-            if col == 2:
+            if col == self.cColor:
                 return classInfo.color()
 
         if role == Qt.UserRole:
@@ -486,13 +501,13 @@ class ClassificationScheme(QAbstractTableModel):
         classInfo = self.index2ClassInfo(row)
         b = False
         if role == Qt.EditRole:
-            if col == 0:
+            if col == self.cLabel:
                 classInfo.setLabel(int(value))
                 b = True
-            if col == 1:
+            if col == self.cName:
                 classInfo.setName(value)
                 b = True
-            if col == 2:
+            if col == self.cColor:
                 classInfo.setColor(value)
                 b = True
         if b:
@@ -508,9 +523,9 @@ class ClassificationScheme(QAbstractTableModel):
         if self.mIsEditable:
             flags |= Qt.ItemIsDragEnabled | Qt.ItemIsDropEnabled
             if self.isEditable():
-                if col == 0 and not self.mZeroBased:
+                if col == self.cLabel and not self.mZeroBased:
                     flags |= Qt.ItemIsEditable
-                elif col == 1:
+                elif col == self.cName:
                     flags |= Qt.ItemIsEditable
         return flags
 
@@ -518,7 +533,7 @@ class ClassificationScheme(QAbstractTableModel):
 
         if role == Qt.DisplayRole:
             if orientation == Qt.Horizontal:
-                return self.columnNames()[section]
+                return self.mColNames[section]
 
         return super(ClassificationScheme, self).headerData(section, orientation, role)
 
@@ -541,17 +556,35 @@ class ClassificationScheme(QAbstractTableModel):
         """
         return self.mName
 
+    @classmethod
+    def fromMap(cls, data: dict) -> Optional['ClassificationScheme']:
+
+        try:
+            cs = ClassificationScheme(name=data['name'])
+            classes = []
+            for classData in data['classes']:
+                c = ClassInfo.fromMap(classData)
+                classes.append(c)
+            cs.insertClasses(classes)
+            return cs
+        except Exception as ex:
+            print(ex, file=sys.stderr)
+            return None
+
+    def asMap(self) -> dict:
+
+        data = {'name': self.mName,
+                'classes': [c.asMap() for c in self]
+                }
+        return data
+
     def json(self) -> str:
         """
         Returns a JSON string of this ClassificationScheme which can be deserialized
         with ClassificationScheme.fromJSON()
         :return: str, JSON string
         """
-        data = {'name': self.mName,
-                'classes': [(c.label(), c.name(), c.color().name()) for c in self]
-                }
-
-        return json.dumps(data)
+        return json.dumps(self.asMap())
 
     def pickle(self) -> bytes:
         """
@@ -569,44 +602,36 @@ class ClassificationScheme(QAbstractTableModel):
         """
         return QByteArray(self.pickle())
 
-    @staticmethod
-    def fromQByteArray(array: QByteArray):
-        return ClassificationScheme.fromPickle(bytes(array))
+    @classmethod
+    def fromQByteArray(cls, array: QByteArray):
+        return cls.fromPickle(bytes(array))
 
-    @staticmethod
-    def fromPickle(pkl: bytes):
-        return ClassificationScheme.fromJson(pickle.loads(pkl))
+    @classmethod
+    def fromPickle(cls, pkl: bytes):
+        return cls.fromJson(pickle.loads(pkl))
 
-    @staticmethod
-    def fromFile(p: str):
+    @classmethod
+    def fromFile(cls, p: str):
         try:
             if os.path.isfile(p):
                 if p.endswith('.json'):
                     jsonStr = None
                     with open(p, 'r') as f:
                         jsonStr = f.read()
-                    return ClassificationScheme.fromJson(jsonStr)
+                    return cls.fromJson(jsonStr)
                 elif p.endswith('.csv'):
-                    return ClassificationScheme.fromCsv(p)
+                    return cls.fromCsv(p)
                 elif p.endswith('.qml'):
-                    return ClassificationScheme.fromQml(p)
+                    return cls.fromQml(p)
         except Exception as ex:
             print(ex, file=sys.stderr)
         return None
 
-    @staticmethod
-    def fromJson(jsonStr: str):
+    @classmethod
+    def fromJson(cls, jsonStr: str) -> Optional['ClassificationScheme']:
         try:
             data = json.loads(jsonStr)
-
-            s = ""
-            cs = ClassificationScheme(name=data['name'])
-            classes = []
-            for classData in data['classes']:
-                label, name, colorName = classData
-                classes.append(ClassInfo(label=label, name=name, color=QColor(colorName)))
-            cs.insertClasses(classes)
-            return cs
+            return cls.fromMap(data)
         except Exception as ex:
             print(ex, file=sys.stderr)
             return None
@@ -626,8 +651,8 @@ class ClassificationScheme(QAbstractTableModel):
         renderer = QgsPalettedRasterRenderer(None, band, classes)
         return renderer
 
-    @staticmethod
-    def fromRasterRenderer(renderer: QgsRasterRenderer):
+    @classmethod
+    def fromRasterRenderer(cls, renderer: QgsRasterRenderer):
         """
         Extracts a ClassificatonScheme from a QgsRasterRenderer
         :param renderer: QgsRasterRenderer
@@ -676,8 +701,8 @@ class ClassificationScheme(QAbstractTableModel):
             r.addCategory(cat)
         return r
 
-    @staticmethod
-    def fromFeatureRenderer(renderer: QgsCategorizedSymbolRenderer):
+    @classmethod
+    def fromFeatureRenderer(cls, renderer: QgsCategorizedSymbolRenderer):
         """
         Extracts a ClassificationScheme from a QgsCategorizedSymbolRenderer
         :param renderer: QgsCategorizedSymbolRenderer
@@ -883,7 +908,7 @@ class ClassificationScheme(QAbstractTableModel):
         warnings.warn('use insertClasses()', DeprecationWarning, stacklevel=2)
         self.insertClasses(classes, index=index)
 
-    def insertClasses(self, classes, index=None):
+    def insertClasses(self, classes: Union[List[ClassInfo], ClassInfo], index=None):
         """
         Adds / inserts a list of ClassInfos
         :param classes: [list-of-ClassInfo]
@@ -948,7 +973,7 @@ class ClassificationScheme(QAbstractTableModel):
             pass
         return i
 
-    def classFromValue(self, value, matchSimilarity=False) -> ClassInfo:
+    def classFromValue(self, value, matchSimilarity=False) -> Optional[ClassInfo]:
         i = self.classIndexFromValue(value, matchSimilarity=matchSimilarity)
         if i != -1:
             return self[i]
@@ -958,7 +983,7 @@ class ClassificationScheme(QAbstractTableModel):
     def addClass(self, c, index=None):
         warnings.warn('Use insert class', DeprecationWarning, stacklevel=2)
 
-    def insertClass(self, c, index=None):
+    def insertClass(self, c: ClassInfo, index=None):
         """
         Adds a ClassInfo
         :param c: ClassInfo
@@ -1071,8 +1096,8 @@ class ClassificationScheme(QAbstractTableModel):
 
         return None
 
-    @staticmethod
-    def create(n):
+    @classmethod
+    def create(cls, n):
         """
         Create a ClassificationScheme with n classes (including 'Unclassified' with label = 0)
         :param n: number of classes including 'Unclassified'
@@ -1082,14 +1107,14 @@ class ClassificationScheme(QAbstractTableModel):
         s.createClasses(n)
         return s
 
-    @staticmethod
-    def fromMimeData(mimeData: QMimeData):
+    @classmethod
+    def fromMimeData(cls, mimeData: QMimeData):
 
         if not isinstance(mimeData, QMimeData):
             return None
 
         if MIMEDATA_KEY in mimeData.formats():
-            ba = ClassificationScheme.fromQByteArray(mimeData.data(MIMEDATA_KEY))
+            ba = cls.fromQByteArray(mimeData.data(MIMEDATA_KEY))
             if isinstance(ba, ClassificationScheme):
                 return ba
 
@@ -1113,14 +1138,14 @@ class ClassificationScheme(QAbstractTableModel):
                     return ClassificationScheme.fromFeatureRenderer(QgsCategorizedSymbolRenderer.create(node, context))
 
         if MIMEDATA_KEY_TEXT in mimeData.formats():
-            ba = ClassificationScheme.fromQByteArray(mimeData.data(MIMEDATA_KEY_TEXT))
+            ba = cls.fromQByteArray(mimeData.data(MIMEDATA_KEY_TEXT))
             if isinstance(ba, ClassificationScheme):
                 return ba
 
         return None
 
-    @staticmethod
-    def fromUniqueFieldValues(layer: QgsVectorLayer, fieldIndex):
+    @classmethod
+    def fromUniqueFieldValues(cls, layer: QgsVectorLayer, fieldIndex):
         scheme = None
 
         if not isinstance(layer, QgsVectorLayer):
@@ -1150,8 +1175,8 @@ class ClassificationScheme(QAbstractTableModel):
 
         return scheme
 
-    @staticmethod
-    def fromMapLayer(layer: QgsMapLayer):
+    @classmethod
+    def fromMapLayer(cls, layer: QgsMapLayer):
         """
         :param layer:
         :return:
@@ -1161,18 +1186,18 @@ class ClassificationScheme(QAbstractTableModel):
             return scheme
 
         if isinstance(layer, QgsRasterLayer):
-            scheme = ClassificationScheme.fromRasterRenderer(layer.renderer())
+            scheme = cls.fromRasterRenderer(layer.renderer())
             if not isinstance(scheme, ClassificationScheme):
                 if layer.dataProvider().name() == 'gdal':
-                    scheme = ClassificationScheme.fromRasterImage(layer.source())
+                    scheme = cls.fromRasterImage(layer.source())
 
         if isinstance(layer, QgsVectorLayer):
-            scheme = ClassificationScheme.fromFeatureRenderer(layer.renderer())
+            scheme = cls.fromFeatureRenderer(layer.renderer())
 
         return scheme
 
-    @staticmethod
-    def fromRasterBand(band: gdal.Band):
+    @classmethod
+    def fromRasterBand(cls, band: gdal.Band):
         """
         Reads the ClassificationScheme of a gdal.Band
         :param band: gdal.Band
@@ -1201,8 +1226,8 @@ class ClassificationScheme(QAbstractTableModel):
         scheme.insertClasses(classes)
         return scheme
 
-    @staticmethod
-    def fromRasterImage(path, bandIndex=None):
+    @classmethod
+    def fromRasterImage(cls, path, bandIndex=None):
         """
         Reads a ClassificationScheme from a gdal.Dataset
         :param path: str with path to gdal.Dataset or gdal.Dataset instances
@@ -1229,8 +1254,8 @@ class ClassificationScheme(QAbstractTableModel):
         band = ds.GetRasterBand(bandIndex + 1)
         return ClassificationScheme.fromRasterBand(band)
 
-    @staticmethod
-    def fromCsv(pathCSV: str, mode: str = None):
+    @classmethod
+    def fromCsv(cls, pathCSV: str, mode: str = None):
         """
         Read the ClassificationScheme from a CSV table
         :param path: str, path of CSV file
@@ -1293,7 +1318,7 @@ class ClassificationScheme(QAbstractTableModel):
         if nc == 0:
             return None
 
-        cs = ClassificationScheme.create(nc)
+        cs = cls.create(nc)
         for i, row in enumerate(rows):
             c = cs[i]
             assert isinstance(c, ClassInfo)
@@ -1325,8 +1350,8 @@ class ClassificationScheme(QAbstractTableModel):
         """
         raise NotImplementedError()
 
-    @staticmethod
-    def fromQml(path: Union[Path, str]):
+    @classmethod
+    def fromQml(cls, path: Union[Path, str]):
         """
         Reads a ClassificationScheme from a QML file.
         :param path: str, path to QML file
@@ -1763,7 +1788,7 @@ class ClassificationSchemeWidget(QWidget):
         model = self.tableClassificationScheme.model()
         assert isinstance(model, ClassificationScheme)
         classInfo = model.index2ClassInfo(idx)
-        if idx.column() == model.columnNames().index(model.mColColor) and model.isEditable():
+        if idx.column() == ClassificationScheme.cColor and model.isEditable():
             c = QColorDialog.getColor(classInfo.mColor, self.tableClassificationScheme,
                                       'Set color for "{}"'.format(classInfo.name()))
             model.setData(idx, c, role=Qt.EditRole)
@@ -1833,15 +1858,15 @@ class ClassificationSchemeWidget(QWidget):
 
 
 class ClassificationSchemeDialog(QgsDialog):
-    @staticmethod
-    def getClassificationScheme(*args, **kwds):
+    @classmethod
+    def getClassificationScheme(cls, *args, **kwds):
         """
         Opens a dialog to edit a ClassificationScheme
         :param args:
         :param kwds:
         :return: None | ClassificationScheme
         """
-        d = ClassificationSchemeDialog(*args, **kwds)
+        d = cls(*args, **kwds)
         d.exec_()
 
         if d.result() == QDialog.Accepted:

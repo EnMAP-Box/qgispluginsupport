@@ -33,15 +33,15 @@ from typing import Any, Dict, List, Match, Pattern, Tuple, Union
 
 from osgeo import gdal, ogr
 
-from qgis.core import edit, Qgis, QgsAttributeTableConfig, QgsDefaultValue, QgsEditorWidgetSetup, QgsFeature, \
-    QgsFeatureRequest, QgsField, QgsFieldConstraints, QgsMapLayer, QgsRasterDataProvider, QgsRasterLayer, QgsVectorLayer
-from qgis.gui import QgsAttributeEditorContext, QgsAttributeTableModel, QgsDualView, QgsFieldCalculator, QgsGui, \
-    QgsMapCanvas, QgsMapLayerConfigWidgetFactory, QgsMessageBar
 from qgis.PyQt.QtCore import NULL, QAbstractTableModel, QMimeData, QModelIndex, QRegExp, \
     QSortFilterProxyModel, Qt, QTimer, QUrl
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction, QApplication, QCheckBox, QComboBox, QDialog, QDialogButtonBox, QGridLayout, \
     QGroupBox, QHBoxLayout, QLabel, QLineEdit, QMenu, QSizePolicy, QTableView, QWidget
+from qgis.core import edit, Qgis, QgsAttributeTableConfig, QgsDefaultValue, QgsEditorWidgetSetup, QgsFeature, \
+    QgsFeatureRequest, QgsField, QgsFieldConstraints, QgsMapLayer, QgsRasterDataProvider, QgsRasterLayer, QgsVectorLayer
+from qgis.gui import QgsAttributeEditorContext, QgsAttributeTableModel, QgsDualView, QgsFieldCalculator, QgsGui, \
+    QgsMapCanvas, QgsMapLayerConfigWidgetFactory, QgsMessageBar
 from .core import QpsMapLayerConfigWidget
 from .. import debugLog
 from ..classification.classificationscheme import ClassificationScheme, ClassificationSchemeWidget
@@ -69,6 +69,17 @@ class MetadataUtils(object):
     """
     rxSingle = re.compile(r'^(?P<key>[^=\n]+)= *(?P<value>[^{ ][^{}\n]*)', re.M)
     rxArray = re.compile(r'^(?P<key>[^=\n]+)= *{(?P<values>[^{}]+)}', re.M)
+
+    @staticmethod
+    def parseJSON(text: str) -> dict:
+        try:
+            md = json.loads(text)
+            if isinstance(md, dict):
+                return md
+        except json.JSONDecodeError:
+            pass
+
+        return dict()
 
     @staticmethod
     def parseEnviHeader(text: str) -> Dict[str, Union[str, List]]:
@@ -461,7 +472,9 @@ class GDALBandMetadataModel(QgsVectorLayer):
                             with open(path) as f:
                                 STAC = MetadataUtils.parseSTAC(f.read())
         elif mimeData.hasText():
-            text = mimeData.text()
+            md = MetadataUtils.parseJSON(mimeData.text())
+            if isinstance(md, dict) and len(md) > 0:
+                return md
             ENVI = MetadataUtils.parseEnviHeader(mimeData.text())
             STAC = MetadataUtils.parseSTAC(mimeData.text())
 
