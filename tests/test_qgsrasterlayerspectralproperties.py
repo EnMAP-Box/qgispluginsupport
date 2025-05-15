@@ -10,12 +10,12 @@ import numpy as np
 from osgeo import gdal
 
 from qgis.core import QgsMapLayer, QgsRasterLayer
+from qps import DIR_REPO
 from qps.qgsrasterlayerproperties import QgsRasterLayerSpectralProperties, QgsRasterLayerSpectralPropertiesTable, \
     QgsRasterLayerSpectralPropertiesTableWidget, SpectralPropertyKeys, SpectralPropertyOrigin, stringToType
 from qps.testing import start_app, TestCase, TestObjects
 from qps.utils import bandClosestToWavelength, file_search
 from qpstestdata import DIR_WAVELENGTH, envi_bsq
-from scripts.create_plugin import DIR_REPO
 
 start_app()
 
