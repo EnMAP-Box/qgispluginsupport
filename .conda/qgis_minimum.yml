@@ -4,7 +4,8 @@ name: qgis_gdal3.9
 channels:
   - conda-forge
 dependencies:
-  - qgis
+  - qgis=3.38
+  - python=3.10
   - gdal=3.9
   - pip
   - matplotlib
