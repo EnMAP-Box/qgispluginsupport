@@ -4,9 +4,9 @@ import re
 import unittest
 from datetime import datetime
 
+import qpstestdata
 from qgis.PyQt.QtCore import QDateTime, Qt
 from qgis.core import edit, QgsFeature, QgsField
-
 from qps.fieldvalueconverter import collect_native_types
 from qps.qgisenums import QMETATYPE_QDATE, QMETATYPE_QDATETIME
 from qps.speclib.core import is_spectral_feature, profile_field_names
@@ -29,6 +29,22 @@ class TestSpeclibIO_SpectralProfileReaders(TestCase):
 
     def profileFiles(self):
         return list(file_search(DIR_TESTDATA, re.compile(r'.*\.(asd|sed|sig)$'), recursive=True))
+
+    def test_read_svc_de(self):
+
+        path_de = qpstestdata.DIR_TESTDATA / 'svc/250527_0942_R001_T002-de.sig'
+        path_en = qpstestdata.DIR_TESTDATA / 'svc/250527_0942_R001_T002-en.sig'
+
+        svc1 = SVCSigFile(path_de)
+        svc2 = SVCSigFile(path_en)
+
+        self.assertEqual(svc1.mReference, svc2.mReference)
+        self.assertEqual(svc1.mTarget, svc2.mTarget)
+        self.assertEqual(svc1.mReferenceTime, svc2.mReferenceTime)
+        self.assertEqual(svc1.mTargetTime, svc2.mTargetTime)
+
+        self.assertEqual(svc1.mReferenceCoordinate, svc2.mReferenceCoordinate)
+        self.assertEqual(svc1.mTargetCoordinate, svc2.mTargetCoordinate)
 
     def test_readFiles(self):
 
