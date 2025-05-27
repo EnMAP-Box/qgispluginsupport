@@ -1,14 +1,15 @@
 import datetime
 import os
 import re
+from datetime import timezone, timedelta
 from pathlib import Path
 from typing import List, Match, Optional, Union
 
 import numpy as np
 
+from qgis.PyQt.QtCore import QDateTime, Qt
 from qgis.core import QgsEditorWidgetSetup, QgsExpressionContext, QgsFeature, QgsField, QgsFields, QgsPointXY, \
     QgsProcessingFeedback, QgsVectorLayer
-from qgis.PyQt.QtCore import QDateTime, Qt
 from qgis.gui import QgsFileWidget
 from ..core.spectrallibraryio import SpectralLibraryImportWidget, SpectralLibraryIO
 from ..core.spectralprofile import prepareProfileValueDict, SpectralProfileFileReader
@@ -46,7 +47,7 @@ def gpsTime(date: datetime.datetime, gpstime_string: str) -> datetime.datetime:
                             hour=int(m.group('hh')),
                             minute=int(m.group('mm')),
                             second=int(float(m.group('sec'))),
-                            tzinfo=datetime.UTC
+                            tzinfo=timezone(timedelta(0)),  # UTC
                             )
 
     return dtg

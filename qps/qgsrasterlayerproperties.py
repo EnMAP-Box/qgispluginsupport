@@ -91,7 +91,7 @@ class SpectralPropertyOrigin(object):
     LayerProperties = 'layer_property'
 
 
-class SpectralPropertyKeys(enum.StrEnum):
+class SpectralPropertyKeys(str, enum.Enum):
     """
     Enumeration of Spectral Property Keys
     """
