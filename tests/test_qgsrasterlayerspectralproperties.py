@@ -128,6 +128,8 @@ class TestQgsRasterLayerProperties(TestCase):
 
     def test_QgsRasterLayerSpectralProperties(self):
 
+        self.assertTrue(SpectralPropertyKeys.DataGain in SpectralPropertyKeys)
+
         lyr = TestObjects.createRasterLayer()
         prop = QgsRasterLayerSpectralProperties.fromRasterLayer(lyr)
         self.assertEqual(prop.badBands(), [None])

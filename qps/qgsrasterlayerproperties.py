@@ -1,4 +1,4 @@
-import os.path
+import enum
 import os.path
 import re
 import sys
@@ -91,7 +91,7 @@ class SpectralPropertyOrigin(object):
     LayerProperties = 'layer_property'
 
 
-class SpectralPropertyKeys(object):
+class SpectralPropertyKeys(str, enum.Enum):
     """
     Enumeration of Spectral Property Keys
     """
