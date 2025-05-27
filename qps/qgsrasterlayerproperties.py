@@ -1,4 +1,4 @@
-import enum
+import os.path
 import os.path
 import re
 import sys
@@ -8,12 +8,12 @@ from typing import Any, Dict, List, Optional, Pattern, Tuple, Union
 import numpy as np
 from osgeo import gdal
 from osgeo.gdal import Band
+
 from qgis.PyQt.QtWidgets import QVBoxLayout, QWidget
 from qgis.PyQt.QtXml import QDomDocument, QDomElement
 from qgis.core import QgsDefaultValue, QgsFeature, QgsField, QgsFieldConstraints, QgsObjectCustomProperties, \
     QgsRasterDataProvider, QgsRasterLayer, QgsVectorLayer, QgsVectorLayerCache
 from qgis.gui import QgsAttributeTableFilterModel, QgsAttributeTableModel, QgsAttributeTableView, QgsMapCanvas
-
 from .qgisenums import QMETATYPE_BOOL, QMETATYPE_DOUBLE, QMETATYPE_INT, QMETATYPE_QSTRING
 from .unitmodel import UnitLookup
 
@@ -91,7 +91,7 @@ class SpectralPropertyOrigin(object):
     LayerProperties = 'layer_property'
 
 
-class SpectralPropertyKeys(enum.StrEnum):
+class SpectralPropertyKeys(object):
     """
     Enumeration of Spectral Property Keys
     """
