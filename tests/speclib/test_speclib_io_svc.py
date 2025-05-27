@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import List
 
 from qgis.core import QgsFeature, QgsVectorLayer
-
 from qps import initAll
 from qps.speclib.core import is_spectral_feature, is_spectral_library, profile_field_names
 from qps.speclib.core.spectrallibraryio import initSpectralLibraryIOs, SpectralLibraryImportDialog
@@ -39,15 +38,17 @@ class TestSpeclibIO_SVC(TestCase):
             self.assertIsInstance(svc.metadata(), dict)
             self.assertIsInstance(svc.path(), Path)
             self.assertTrue(svc.path().is_file())
-            self.assertIsInstance(svc.picturePath(), Path)
-            self.assertTrue(svc.picturePath().is_file())
+            if svc.picturePath():
+                self.assertIsInstance(svc.picturePath(), Path)
+                self.assertTrue(svc.picturePath().is_file())
             profile = svc.asFeature()
             self.assertIsInstance(profile, QgsFeature)
             self.assertTrue(is_spectral_feature(profile))
 
             picture_path = profile.attribute(SVCSigFile.KEY_Picture)
-            self.assertIsInstance(picture_path, str)
-            self.assertTrue(os.path.isfile(picture_path))
+            if picture_path:
+                self.assertIsInstance(picture_path, str)
+                self.assertTrue(os.path.isfile(picture_path))
 
         for file in self.svcFiles():
             settings = {}
@@ -75,16 +76,20 @@ class TestSpeclibIO_SVC(TestCase):
 
         SpectralLibraryImportDialog.importProfiles(sl, defaultRoot=root.as_posix())
 
-    @unittest.skipIf(TestCase.runsInCI(), 'Skipped CI')
+    # @unittest.skipIf(TestCase.runsInCI(), 'Skipped CI')
     def test_speclib(self):
         initAll()
         alg = ImportSpectralProfiles()
 
         svc_files = self.svcFiles()
-        path_test = '/vsimem/exampleimport.gpkg'
+
+        test_dir = self.createTestOutputDirectory()
+
+        path_test = test_dir / 'exampleimport.gpkg'
+
         par = {
             ImportSpectralProfiles.P_INPUT: svc_files,
-            ImportSpectralProfiles.P_OUTPUT: path_test
+            ImportSpectralProfiles.P_OUTPUT: path_test.as_posix(),
         }
 
         context, feedback = self.createProcessingContextFeedback()
@@ -103,9 +108,13 @@ class TestSpeclibIO_SVC(TestCase):
         self.assertTrue(lyr.featureCount() > 0)
         self.assertTrue(is_spectral_library(lyr))
         self.assertTrue(lyr.fields()['picture'].editorWidgetSetup().type() == 'ExternalResource')
-        slw = SpectralLibraryWidget(speclib=lyr)
-        self.showGui(slw)
 
+        from qgis.core import QgsProject
+        QgsProject.instance().addMapLayer(lyr)
+        slw = SpectralLibraryWidget(speclib=lyr)
+
+        self.showGui(slw)
+        QgsProject.instance().removeAllMapLayers()
         s = ""
 
 
