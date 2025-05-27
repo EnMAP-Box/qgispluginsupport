@@ -144,6 +144,20 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
         return re.compile(f'({patters})', re.IGNORECASE)
 
     @classmethod
+    def fromGDALDataset(cls, ds: Union[str, Path, gdal.Dataset]) \
+            -> Optional['QgsRasterLayerSpectralProperties']:
+        """Returns the QgsRasterLayerSpectralProperties for a gdal.Dataset.
+           Does not read any QgsRasterLayer properties
+        """
+        if isinstance(ds, (str, Path)):
+            ds = gdal.Open(str(ds))
+        assert isinstance(ds, gdal.Dataset)
+
+        obj = cls(ds.RasterCount)
+        obj.readFromGDALDataset(ds, overwrite=True)
+        return obj
+
+    @classmethod
     def fromRasterLayer(cls, layer: Union[QgsRasterLayer, gdal.Dataset, str, Path]) \
             -> Optional['QgsRasterLayerSpectralProperties']:
         """

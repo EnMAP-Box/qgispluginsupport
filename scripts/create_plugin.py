@@ -33,13 +33,12 @@ from typing import Iterator, Optional, Union
 import markdown
 
 from qgis.core import QgsUserProfile, QgsUserProfileManager
-from qps import DIR_QPS
+from qps import DIR_REPO
 # site.addsitedir(pathlib.Path(__file__).parents[2])
 from qps.make.deploy import QGISMetadataFileWriter, userProfileManager
 from qps.utils import zipdir
 
 DIR_TEST_PLUGIN = Path(__file__).parent / 'test_plugin'
-DIR_REPO = DIR_QPS.parent
 print('DIR_REPO={}'.format(DIR_REPO))
 
 # Config Section
