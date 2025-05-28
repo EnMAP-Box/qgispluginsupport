@@ -1,17 +1,18 @@
 import enum
 import sys
-
 import warnings
 from typing import List, Set, Dict, Tuple, Generator, Any, Callable, Optional
-from qgis.PyQt.QtXml import QDomElement, QDomDocument
+
 from qgis.PyQt.QtCore import pyqtSignal, Qt, QModelIndex
 from qgis.PyQt.QtGui import QIcon, QDragEnterEvent, QDropEvent, QColor
 from qgis.PyQt.QtWidgets import QWidget, QVBoxLayout, QAction, QMenu, QToolBar, QWidgetAction, QPushButton, \
     QHBoxLayout, QFrame, QDialog
+from qgis.PyQt.QtXml import QDomElement, QDomDocument
 from qgis.core import (QgsFeature, QgsProject, QgsVectorLayer, QgsReadWriteContext,
                        QgsMapLayer, QgsProcessingOutputFile)
 from qgis.gui import QgsMapCanvas, QgsDualView, QgsAttributeTableView, QgsDockWidget, \
     QgsActionMenu
+
 from .spectrallibraryplotitems import SpectralProfilePlotItem, SpectralProfilePlotWidget
 from .spectrallibraryplotwidget import SpectralLibraryPlotWidget, \
     SpectralProfilePlotModel
@@ -370,8 +371,10 @@ class SpectralLibraryWidget(AttributeTableWidget):
                 lambda *args, fids=selectedFIDs: self.plotWidget().setProfileStyles(None, fids))
 
         psw = PlotStyleWidget(plotStyle=plotStyle)
-        psw.setPreviewVisible(False)
-        psw.cbIsVisible.setVisible(False)
+        psw.setVisibilityFlag(PlotStyleWidget.VisibilityFlags.Preview, False)
+        psw.setVisibilityFlag(PlotStyleWidget.VisibilityFlags.Visibility, False)
+        # psw.setPreviewVisible(False)
+        # psw.cbIsVisible.setVisible(False)
         btnApplyProfileStyle.clicked.connect(lambda *args, fids=selectedFIDs, w=psw:
                                              self.plotWidget().setProfileStyles(psw.plotStyle(), fids))
 

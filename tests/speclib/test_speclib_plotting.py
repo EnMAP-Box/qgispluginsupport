@@ -1,8 +1,8 @@
+import os.path
 import unittest
 
 import numpy as np
 from osgeo import gdal
-
 from qgis.PyQt.QtCore import QEvent, QModelIndex, QPointF, Qt
 from qgis.PyQt.QtGui import QColor, QMouseEvent
 from qgis.PyQt.QtWidgets import QHBoxLayout, QTreeView, QVBoxLayout, QWidget
@@ -13,6 +13,8 @@ from qgis.core import QgsCategorizedSymbolRenderer, QgsClassificationRange, QgsE
     QgsReadWriteContext, QgsRenderContext, QgsRendererCategory, QgsRendererRange, QgsSingleBandGrayRenderer, \
     QgsSingleSymbolRenderer, QgsVectorLayer, edit
 from qgis.gui import QgsDualView, QgsMapCanvas
+
+from qps import initAll
 from qps import registerSpectralLibraryPlotFactories, unregisterSpectralLibraryPlotFactories
 from qps.pyqtgraph.pyqtgraph import InfiniteLine
 from qps.qgisenums import QMETATYPE_DOUBLE, QMETATYPE_INT, QMETATYPE_QSTRING
@@ -29,7 +31,7 @@ from qps.unitmodel import BAND_INDEX, BAND_NUMBER
 from qps.utils import nextColor, nodeXmlString, parseWavelength, writeAsVectorFormat
 
 start_app()
-s = ""
+initAll()
 
 
 class TestSpeclibPlotting(TestCase):
@@ -96,6 +98,17 @@ class TestSpeclibPlotting(TestCase):
         speclib.deleteSelectedFeatures()
         speclib.commitChanges()
 
+        self.showGui(slw)
+
+    def test_SpectralLibraryWidget_large(self):
+        p = r'F:\Temp\SVC_Backup\TEST\speclib_namibia2024.gpkg'
+        if not os.path.isfile(p):
+            return
+        speclib = QgsVectorLayer(p)
+        self.assertIsInstance(speclib, QgsVectorLayer)
+        self.assertTrue(speclib.isValid())
+
+        slw = SpectralLibraryWidget(speclib=speclib)
         self.showGui(slw)
 
     def test_SpectralLibraryWidget_addField(self):
