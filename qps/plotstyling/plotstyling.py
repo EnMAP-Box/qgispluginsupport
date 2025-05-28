@@ -32,14 +32,14 @@ import warnings
 from json import JSONDecodeError
 from typing import Any, Dict, List, Optional, Union
 
-from qgis.PyQt.QtWidgets import QComboBox, QDialog, QDialogButtonBox, QLabel, QMenu, QSpinBox, QToolButton, QVBoxLayout, \
-    QWidget, QWidgetAction
-from qgis.gui import QgsColorButton, QgsDialog, QgsEditorConfigWidget, QgsEditorWidgetFactory, QgsEditorWidgetWrapper, \
-    QgsGui, QgsPenStyleComboBox, QgsSearchWidgetWrapper
-from qgis.core import QgsAction, QgsField, QgsMessageLog, QgsSymbolLayerUtils, QgsVectorLayer
 from qgis.PyQt.QtCore import pyqtSignal, QByteArray, QDataStream, QIODevice, QObject, QSize, Qt
 from qgis.PyQt.QtGui import QBrush, QColor, QIcon, QPainter, QPainterPath, QPen, QPixmap
+from qgis.PyQt.QtWidgets import QComboBox, QDialog, QDialogButtonBox, QLabel, QMenu, QSpinBox, QToolButton, QVBoxLayout, \
+    QWidget, QWidgetAction
 from qgis.PyQt.QtXml import QDomDocument, QDomElement
+from qgis.core import QgsAction, QgsField, QgsMessageLog, QgsSymbolLayerUtils, QgsVectorLayer
+from qgis.gui import QgsColorButton, QgsDialog, QgsEditorConfigWidget, QgsEditorWidgetFactory, QgsEditorWidgetWrapper, \
+    QgsGui, QgsPenStyleComboBox, QgsSearchWidgetWrapper
 
 from ..pyqtgraph import pyqtgraph as pg
 from ..pyqtgraph.pyqtgraph.graphicsItems.ScatterPlotItem import drawSymbol, renderSymbol
@@ -938,7 +938,7 @@ class PlotStyleWidget(QWidget):
         :type b:
         """
         assert isinstance(b, bool)
-        warnings.warn('Use .setVisibilitFlag', DeprecationWarning, stacklevel=2)
+        warnings.warn('Use .setVisibilityFlag', DeprecationWarning, stacklevel=2)
 
         self.plotWidget.setVisible(b)
 
