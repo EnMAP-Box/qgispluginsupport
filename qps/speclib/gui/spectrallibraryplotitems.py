@@ -3,7 +3,7 @@ import datetime
 import sys
 import textwrap
 import warnings
-from typing import Dict, List, Tuple, Union
+from typing import Dict, List, Tuple, Union, Optional
 
 import numpy as np
 
@@ -305,7 +305,12 @@ class SpectralProfilePlotDataItem(pg.PlotDataItem):
         self.mCurveMouseClickNativeFunc = self.curve.mouseClickEvent
         self.curve.mouseClickEvent = self.onCurveMouseClickEvent
         self.scatter.sigClicked.connect(self.onScatterMouseClicked)
-        self.mVisualizationKey: VISUALIZATION_KEY = None
+        self.mVisualizationKey: Optional[VISUALIZATION_KEY] = None
+
+        self.mIsSelected: bool = False
+        self.mLayerID: Optional[str] = None
+        self.mFeatureID: Optional[int] = None
+        self.mField: Optional[str] = None
 
     def setProfileData(self,
                        plot_data: dict,
