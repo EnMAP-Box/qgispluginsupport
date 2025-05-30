@@ -3,22 +3,22 @@ import unittest
 
 import numpy as np
 from osgeo import gdal
+
 from qgis.PyQt.QtCore import QEvent, QModelIndex, QPointF, Qt
 from qgis.PyQt.QtGui import QColor, QMouseEvent
 from qgis.PyQt.QtWidgets import QHBoxLayout, QTreeView, QVBoxLayout, QWidget
 from qgis.PyQt.QtXml import QDomDocument, QDomElement
-from qgis.core import QgsCategorizedSymbolRenderer, QgsClassificationRange, QgsEditorWidgetSetup, \
+from qgis.core import edit, QgsCategorizedSymbolRenderer, QgsClassificationRange, QgsEditorWidgetSetup, \
     QgsExpressionContextScope, QgsFeature, QgsField, QgsGraduatedSymbolRenderer, QgsMarkerSymbol, \
     QgsMultiBandColorRenderer, QgsNullSymbolRenderer, QgsProject, QgsProperty, QgsPropertyDefinition, \
     QgsReadWriteContext, QgsRenderContext, QgsRendererCategory, QgsRendererRange, QgsSingleBandGrayRenderer, \
-    QgsSingleSymbolRenderer, QgsVectorLayer, edit
+    QgsSingleSymbolRenderer, QgsVectorLayer
 from qgis.gui import QgsDualView, QgsMapCanvas
-
-from qps import initAll
-from qps import registerSpectralLibraryPlotFactories, unregisterSpectralLibraryPlotFactories
+from qps import DIR_REPO, initAll, registerSpectralLibraryPlotFactories, unregisterSpectralLibraryPlotFactories
 from qps.pyqtgraph.pyqtgraph import InfiniteLine
 from qps.qgisenums import QMETATYPE_DOUBLE, QMETATYPE_INT, QMETATYPE_QSTRING
 from qps.speclib.core import create_profile_field, profile_field_list, profile_field_names, profile_fields
+from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
 from qps.speclib.core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict, prepareProfileValueDict
 from qps.speclib.gui.spectrallibraryplotitems import SpectralProfilePlotWidget, SpectralXAxis
 from qps.speclib.gui.spectrallibraryplotmodelitems import PlotStyleItem, ProfileCandidateItem, \
@@ -26,9 +26,9 @@ from qps.speclib.gui.spectrallibraryplotmodelitems import PlotStyleItem, Profile
     SpectralProfileColorPropertyWidget
 from qps.speclib.gui.spectrallibraryplotwidget import SpectralLibraryPlotWidget, SpectralProfilePlotModel
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
-from qps.testing import TestCase, TestObjects, start_app
+from qps.testing import start_app, TestCase, TestObjects
 from qps.unitmodel import BAND_INDEX, BAND_NUMBER
-from qps.utils import nextColor, nodeXmlString, parseWavelength, writeAsVectorFormat
+from qps.utils import file_search, nextColor, nodeXmlString, parseWavelength, writeAsVectorFormat
 
 start_app()
 initAll()
@@ -102,11 +102,17 @@ class TestSpeclibPlotting(TestCase):
 
     def test_SpectralLibraryWidget_large(self):
         p = r'F:\Temp\SVC_Backup\TEST\speclib_namibia2024.gpkg'
+        l_dir = DIR_REPO / 'tmp/largespeclib'
+        if l_dir.is_dir():
+            for f in file_search(l_dir, '*.gpkg'):
+                p = f
+                break
         if not os.path.isfile(p):
             return
+
         speclib = QgsVectorLayer(p)
-        self.assertIsInstance(speclib, QgsVectorLayer)
-        self.assertTrue(speclib.isValid())
+
+        self.assertTrue(SpectralLibraryUtils.isSpectralLibrary(speclib))
 
         slw = SpectralLibraryWidget(speclib=speclib)
         self.showGui(slw)

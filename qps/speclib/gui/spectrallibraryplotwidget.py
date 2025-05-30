@@ -4,6 +4,7 @@ import re
 from typing import Callable, Dict, Iterable, Iterator, List, Optional, Set, Tuple, Union
 
 import numpy as np
+
 from qgis.PyQt.QtCore import pyqtSignal, QAbstractItemModel, QItemSelectionModel, QMimeData, QModelIndex, \
     QPoint, QRect, QSize, QSortFilterProxyModel, Qt
 from qgis.PyQt.QtGui import QBrush, QColor, QContextMenuEvent, QDragEnterEvent, QDropEvent, QFontMetrics, QIcon, \
@@ -17,7 +18,6 @@ from qgis.core import QgsApplication, QgsExpressionContext, QgsExpressionContext
     QgsReadWriteContext, QgsRenderContext, QgsSettings, QgsSingleSymbolRenderer, QgsSymbol, QgsVectorLayer, \
     QgsVectorLayerCache
 from qgis.gui import QgsDualView, QgsFilterLineEdit
-
 from .spectrallibraryplotitems import FEATURE_ID, FIELD_INDEX, MODEL_NAME, PlotUpdateBlocker, \
     SpectralProfilePlotDataItem, SpectralProfilePlotWidget
 from .spectrallibraryplotmodelitems import GeneralSettingsGroup, PlotStyleItem, ProfileCandidateGroup, \
@@ -555,6 +555,17 @@ class SpectralProfilePlotModel(QStandardItemModel):
         temporaryFIDs = CANDIDATES.candidateFeatureIds()
         # feature_priority = [fid for fid in feature_priority if fid not in temporaryFIDs]
         # handle other profile visualizations
+
+        DT = dict()
+
+        def add_dt(key: str, t0: datetime.datetime):
+
+            dt = (datetime.datetime.now() - t0).total_seconds()
+
+            dtl = DT.get(key, [])
+            dtl.append(dt)
+            DT[key] = dtl
+
         for iFeature, feature in enumerate(speclib.getFeatures(request)):
             feature: QgsFeature
             fid = feature.id()
@@ -592,17 +603,33 @@ class SpectralProfilePlotModel(QStandardItemModel):
                     if b is False:
                         continue
 
+                t0 = datetime.datetime.now()
                 plot_data: Optional[dict] = self.plotData2(feature, vis.fieldIdx(), xunit)
+
                 # plot_data: dict = self.plotData(feature, vis.fieldIdx(), xunit)
                 if not isinstance(plot_data, dict):
                     # profile data can not be transformed to requested x-unit
                     continue
 
+                add_dt('plotData2', t0)
+
+                t0 = datetime.datetime.now()
+                plot_data: Optional[dict] = self.plotData(feature, vis.fieldIdx(), xunit)
+                add_dt('plotData1', t0)
+
+                t0 = datetime.datetime.now()
                 plot_style: PlotStyle = vis.generatePlotStyle(plotContext)
                 if not plot_style.isVisible():
                     continue
+
+                add_dt('plotStyle', t0)
+
+                t0 = datetime.datetime.now()
                 plot_label: str = vis.generateLabel(plotContext)
                 plot_tooltip: str = vis.generateTooltip(plotContext, label=plot_label)
+                add_dt('label_tooltip', t0)
+
+                t0 = datetime.datetime.now()
                 pdi = pdi_generator.__next__()
                 pdi: SpectralProfilePlotDataItem
                 vis_key = (vis, fid, vis.fieldIdx(), xunit)
@@ -613,8 +640,10 @@ class SpectralProfilePlotModel(QStandardItemModel):
                                    label=plot_label,
                                    tooltip=plot_tooltip,
                                    zValue=-1 * len(PLOT_ITEMS))
+                add_dt('pdi', t0)
 
                 vis.mPlotDataItems.append(pdi)
+
                 PLOT_ITEMS.append(pdi)
                 del plotContext
 
@@ -624,6 +653,8 @@ class SpectralProfilePlotModel(QStandardItemModel):
                 context.popScope()
 
         selectionColor = self.mGeneralSettings.selectionColor()
+
+        t0 = datetime.datetime.now()
         for pdi in PLOT_ITEMS:
             pdi: SpectralProfilePlotDataItem
             fid = pdi.visualizationKey()[1]
@@ -647,6 +678,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
                 # pdi.updateItems()
                 # pdi.setData(pen=pen, symbolPen=symbolPen, symbolBrush=symbolBrush)
                 s = ""
+        add_dt('update items', t0)
 
         # check if x unit was different to this one
         if not self.mXUnitInitialized and len(PLOT_ITEMS) > 0:
@@ -665,6 +697,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
         # printCaller(suffix=f'Prepare', dt=datetime.datetime.now() - t0)
 
+        t0 = datetime.datetime.now()
         with PlotUpdateBlocker(self.mPlotWidget) as blocker:
             t1 = datetime.datetime.now()
             for p in to_remove:
@@ -674,10 +707,15 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
             for p in to_add:
                 self.mPlotWidget.addItem(p)
+        add_dt('add items', t0)
 
         # n_total = len([i for i in self.mPlotWidget.getPlotItem().items if isinstance(i, SpectralProfilePlotDataItem)])
 
         self.updateProfileLabel(len(PLOT_ITEMS), profile_limit_reached)
+
+        for k, dtl in DT.items():
+            dtl = np.asarray(dtl)
+            print(f'{k}: {dtl.sum():.2f} s  {dtl.mean():.3f}s')
 
         printCaller(suffix='Total', dt=t1)
 
