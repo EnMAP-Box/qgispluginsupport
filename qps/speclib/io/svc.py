@@ -69,9 +69,10 @@ def match_to_coordinate(matchLon: Match, matchLat: Match) -> QgsPointXY:
 
 rx_decimal_sep = re.compile(r'integration= \d+([,.])\d+')
 
+rx_sig_file = re.compile(r'\.sig$')
+
 
 class SVCSigFile(SpectralProfileFileReader):
-    KEY_Picture = 'picture'
 
     def __init__(self, path: Union[str, Path]):
         super().__init__(path)
@@ -219,8 +220,10 @@ class SVCSigFile(SpectralProfileFileReader):
                 # g = datetime.datetime(year=1980, month=1, day=1)
                 # gt1, gt2 = g + timedelta(seconds=gps1), g + timedelta(seconds=gps2)
 
+            stem = re.sub(r'_moc$', '', path.stem)
+
             for ext in ['.jpg', '.png']:
-                path_img = path.parent / (path.name + ext)
+                path_img = path.parent / f'{stem}.sig{ext}'
                 if path_img.is_file():
                     self.mPicture = path_img
                     break
