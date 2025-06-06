@@ -8,7 +8,6 @@ start_app()
 initAll()
 
 path_dir = r'F:\Temp\SVC_Backup\20250604_ZALF'
-path_dir = r'F:\Temp\SVC_Backup\20250605_Lasse'
 path_speclib = Path(path_dir) / 'speclib.gpkg'
 
 alg = ImportSpectralProfiles()
@@ -17,7 +16,7 @@ alg.initAlgorithm({})
 param = {
     alg.P_INPUT: path_dir,
     alg.P_OUTPUT: path_speclib.as_posix(),
-    alg.P_USE_RELPATH: True,
+    alg.P_USE_RELPATH: True,  # write SVC file and pictures path relative to output speclib
 }
 
 context, feedback = TestCase.createProcessingContextFeedback()

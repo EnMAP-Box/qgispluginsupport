@@ -3,7 +3,6 @@ import os.path
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union, Tuple
 
-from qgis.PyQt.QtCore import NULL
 from qgis.core import QgsCoordinateReferenceSystem, QgsEditorWidgetSetup, QgsExpressionContext, \
     QgsExpressionContextScope, QgsFeature, QgsFeatureSink, QgsField, QgsFields, QgsMapLayer, QgsProcessing, \
     QgsProcessingAlgorithm, QgsProcessingContext, QgsProcessingException, QgsProcessingFeedback, \
@@ -14,12 +13,13 @@ from qgis.core import QgsCoordinateReferenceSystem, QgsEditorWidgetSetup, QgsExp
 from ..core import profile_field_names
 from ..core.spectralprofile import SpectralProfileFileReader
 from ..io.asd import RX_ASDFILE, ASDBinaryFile
+from ..io.ecosis import EcoSISSpectralLibraryIO
 from ..io.envi import EnviSpectralLibraryIO
 from ..io.envi import canRead as canReadESL
 from ..io.spectralevolution import SEDFile, rx_sed_file
 from ..io.svc import SVCSigFile, rx_sig_file
 from ...fieldvalueconverter import GenericFieldValueConverter, GenericPropertyTransformer
-from ...utils import file_search
+from ...utils import file_search, create_picture_viewer_config
 
 
 class SpectralLibraryOutputDefinition(QgsProcessingOutputLayerDefinition):
@@ -65,6 +65,9 @@ def read_profiles(path: Union[str, Path]) -> Tuple[List[QgsFeature], Optional[st
             features.append(reader.asFeature())
         elif canReadESL(path):
             features.extend(EnviSpectralLibraryIO.importProfiles(path))
+        elif path.name.endswith('.csv'):
+            # try ecosis
+            features.extend(EcoSISSpectralLibraryIO.importProfiles(path))
 
     except Exception as ex:
         error = f'Unable to read {path}:\n\t{ex}'
@@ -83,6 +86,7 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
 
         self._results: Dict = dict()
         self._input_files: List[Path] = []
+        self._use_rel_path: bool = False
         self._output_file: Optional[str] = None
         self._profile_field_names: List[str] = []
         self._dstFields: Optional[QgsFields] = None
@@ -167,6 +171,7 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
         if len(errors) > 0:
             feedback.reportError('\n'.join(errors))
 
+        self._use_rel_path = self.parameterAsBoolean(parameters, self.P_USE_RELPATH, context)
         self._input_files = input_files
         return len(errors) == 0
 
@@ -240,11 +245,10 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
 
         # outputPar.setRemappingDefinition(remapping)
 
-        assert len(PROFILES) > 0, 'No profiles found'
+        if len(PROFILES) == 0:
+            feedback.pushWarning(f'No profiles found')
 
-        use_rel_path = self.parameterAsBoolean(parameters, self.P_USE_RELPATH, context)
-
-        if use_rel_path:
+        if self._use_rel_path:
             path_sink = Path(self.parameterAsFile(parameters, self.P_OUTPUT, context))
             for srcFieldNames, profiles in PROFILES.items():
                 for field in srcFieldNames:
@@ -335,29 +339,8 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
                 for f in self._dstFields:
                     idx = vl.fields().lookupField(f.name())
                     if idx > -1:
-                        setup = None
                         if f.name() == SpectralProfileFileReader.KEY_Picture:
-                            config = {'DocumentViewer': 1,
-                                      'DocumentViewerHeight': 0,
-                                      'DocumentViewerWidth': 300,  # 300 pixel width
-                                      'FileWidget': True,
-                                      'FileWidgetButton': False,
-                                      'FileWidgetFilter': '',
-                                      'PropertyCollection': {
-                                          'name': NULL,
-                                          'properties': {
-                                              'propertyRootPath': {
-                                                  'active': True,
-                                                  'expression': "layer_property(@layer, 'path')",
-                                                  'type': 3}
-                                          },
-                                          'type': 'collection'
-                                      },
-                                      'RelativeStorage': 2,  # relative to layer path
-                                      'StorageAuthConfigId': NULL,
-                                      'StorageMode': 0,
-                                      'StorageType': NULL}
-
+                            config = create_picture_viewer_config(self._use_rel_path, 300)
                             setup = QgsEditorWidgetSetup('ExternalResource', config)
 
                         else:

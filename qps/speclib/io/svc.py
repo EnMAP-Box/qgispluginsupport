@@ -131,12 +131,22 @@ class SVCSigFile(SpectralProfileFileReader):
     @classmethod
     def _readDateTime(cls, text: str) -> datetime.datetime:
         text = text.strip()
+
+        # test for ISO
+        try:
+            dtg = datetime.datetime.fromisoformat(text)
+            return dtg
+        except ValueError as ex:
+            s = ""
+
+        # test non-ISO formats
         formats = [
             '%m/%d/%Y %H:%M:%S%p',  # 5/27/2025 9:39:32AM
             '%m/%d/%Y %H:%M:%S %p',  # 5/27/2025 9:39:32 AM
             '%m/%d/%Y %H:%M:%S',  # 5/27/2025 9:39:32
             '%d.%m.%Y %H:%M:%S',  # 27.05.2025 09:39:32
         ]
+
         for fmt in formats:
             try:
                 dtg = datetime.datetime.strptime(text, fmt)
@@ -144,6 +154,7 @@ class SVCSigFile(SpectralProfileFileReader):
             except ValueError:
                 s = ""
                 pass
+
         raise Exception(f'Unable to extract datetime from {text}')
 
     def _readSIGFile(self, path):
