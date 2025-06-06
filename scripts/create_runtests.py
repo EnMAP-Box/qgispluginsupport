@@ -22,24 +22,26 @@ linesSh = [PREFACE_SH,
            'mkdir -p {}'.format(os.path.dirname(dirOut)),
            'mkdir -p {}'.format(dirOut)]
 
-bnDirTests = os.path.basename(DIR_TESTS)
-files = sorted(file_search(DIR_TESTS, 'test_*.py', recursive=True))
-for i, file in enumerate(files):
-    file = pathlib.Path(file)
-    bn = os.path.basename(file)
-    bn = os.path.splitext(bn)[0]
+if __name__ == "__main__":
 
-    do_append = '' if i == 0 else '--append'
-    pathTest = file.relative_to(DIR_TESTS.parent)
-    if RUN_PYTEST:
-        lineSh = 'pytest -x {}'.format(pathTest.as_posix())
-    else:
-        # lineSh = 'python3 -m coverage run --rcfile=.coveragec {}  {}'.format(do_append, pathTest.as_posix())
-        lineSh = 'python3 -m unittest -f {}'.format(pathTest.as_posix())
-    linesSh.append(lineSh)
+    bnDirTests = os.path.basename(DIR_TESTS)
+    files = sorted(file_search(DIR_TESTS, 'test_*.py', recursive=True))
+    for i, file in enumerate(files):
+        file = pathlib.Path(file)
+        bn = os.path.basename(file)
+        bn = os.path.splitext(bn)[0]
 
-if not RUN_PYTEST:
-    linesSh.append('python3 -m coverage report')
+        do_append = '' if i == 0 else '--append'
+        pathTest = file.relative_to(DIR_TESTS.parent)
+        if RUN_PYTEST:
+            lineSh = 'pytest -x {}'.format(pathTest.as_posix())
+        else:
+            # lineSh = 'python3 -m coverage run --rcfile=.coveragec {}  {}'.format(do_append, pathTest.as_posix())
+            lineSh = 'python3 -m unittest -f {}'.format(pathTest.as_posix())
+        linesSh.append(lineSh)
 
-with open(PATH_RUNTESTS_SH, 'w', encoding='utf-8', newline='\n') as f:
-    f.write('\n'.join(linesSh))
+    if not RUN_PYTEST:
+        linesSh.append('python3 -m coverage report')
+
+    with open(PATH_RUNTESTS_SH, 'w', encoding='utf-8', newline='\n') as f:
+        f.write('\n'.join(linesSh))

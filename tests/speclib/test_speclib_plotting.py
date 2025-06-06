@@ -24,12 +24,12 @@ from qps.speclib.gui.spectrallibraryplotmodelitems import PlotStyleItem, Profile
     SpectralProfileColorPropertyWidget
 from qps.speclib.gui.spectrallibraryplotwidget import SpectralLibraryPlotWidget, SpectralProfilePlotModel
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
-from qps.speclib.gui.spectralprofileeditor import spectralProfileEditorWidgetFactory
 from qps.testing import TestCase, TestObjects, start_app
 from qps.unitmodel import BAND_INDEX, BAND_NUMBER
 from qps.utils import nextColor, nodeXmlString, parseWavelength, writeAsVectorFormat
 
 start_app()
+s = ""
 
 
 class TestSpeclibPlotting(TestCase):
@@ -50,7 +50,7 @@ class TestSpeclibPlotting(TestCase):
         print('Error Message: %s' % (err_msg))
 
     def setUp(self):
-        spectralProfileEditorWidgetFactory(True)
+        # spectralProfileEditorWidgetFactory(True)
         super().setUp()
 
     def test_SpectralProfilePlotVisualization(self):

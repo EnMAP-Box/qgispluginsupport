@@ -24,6 +24,7 @@ from typing import Dict
 
 import numpy as np
 from osgeo import gdal, gdal_array, ogr, osr
+
 from qgis.PyQt.QtCore import NULL, QByteArray, QObject, QPoint, QRect, QUrl, QVariant
 from qgis.PyQt.QtGui import QColor
 from qgis.PyQt.QtWidgets import QDialog, QDockWidget, QGroupBox, QMainWindow, QMenu, QWidget
@@ -32,7 +33,6 @@ from qgis.core import QgsCoordinateReferenceSystem, QgsFeature, QgsFeatureReques
     QgsGeometryParameters, QgsMapLayerProxyModel, QgsMapLayerStore, QgsMapToPixel, QgsPointXY, QgsProcessingFeedback, \
     QgsProject, QgsRaster, QgsRasterDataProvider, QgsRasterIdentifyResult, QgsRasterLayer, QgsRectangle, QgsVector, \
     QgsVectorLayer
-
 from qps.speclib.core import is_spectral_library
 from qps.speclib.core.spectralprofile import decodeProfileValueDict
 from qps.testing import start_app, TestCase, TestObjects
@@ -43,7 +43,7 @@ from qps.utils import aggregateArray, appendItemsToMenu, createQgsField, default
     osrSpatialReference, parseFWHM, parseWavelength, px2geo, px2geocoordinates, px2spatialPoint, qgsField, \
     qgsFieldAttributes2List, qgsRasterLayer, qgsRasterLayers, rasterArray, rasterBlockArray, rasterizeFeatures, \
     relativePath, SelectMapLayerDialog, SelectMapLayersDialog, snapGeoCoordinates, SpatialExtent, SpatialPoint, \
-    spatialPoint2px, value2str, writeAsVectorFormat
+    spatialPoint2px, value2str, writeAsVectorFormat, create_picture_viewer_config
 from qpstestdata import enmap, enmap_multipoint, enmap_multipolygon, enmap_pixel, hymap, landcover
 
 start_app()
@@ -1012,6 +1012,41 @@ class TestUtils(TestCase):
         self.showGui(d)
 
         QgsProject.instance().removeAllMapLayers()
+
+    def test_picture_config(self):
+
+        # relative paths
+        expected = {'DocumentViewer': 1, 'DocumentViewerHeight': 0, 'DocumentViewerWidth': 300, 'FileWidget': True,
+                    'FileWidgetButton': False, 'FileWidgetFilter': '',
+                    'PropertyCollection': {
+                        'name': NULL,
+                        'type': 'collection',
+                        'properties': {
+                            'propertyRootPath': {
+                                'active': True,
+                                'expression': "layer_property(@layer, 'path')",
+                                'type': 3}
+                        },
+
+                    },
+                    'RelativeStorage': 2,
+                    'StorageAuthConfigId': NULL,
+                    'StorageMode': 0,
+                    'StorageType': NULL}
+        self.assertEqual(expected, create_picture_viewer_config(True, 300))
+
+        # absolute paths
+        expected = {'DocumentViewer': 1, 'DocumentViewerHeight': 0, 'DocumentViewerWidth': 300, 'FileWidget': True,
+                    'FileWidgetButton': False, 'FileWidgetFilter': '',
+                    'PropertyCollection': {'name': NULL,
+                                           'properties': {
+                                               'propertyRootPath': {
+                                                   'active': False,
+                                                   'type': 1,
+                                                   'val': NULL}},
+                                           'type': 'collection'},
+                    'RelativeStorage': 0, 'StorageAuthConfigId': NULL, 'StorageMode': 0, 'StorageType': NULL}
+        self.assertDictEqual(expected, create_picture_viewer_config(False, 300))
 
     def test_defaultBands(self):
 

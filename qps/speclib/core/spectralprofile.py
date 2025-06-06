@@ -12,9 +12,9 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
 import numpy as np
 
+from qgis.PyQt.QtCore import NULL, QByteArray, QDateTime, QJsonDocument, Qt, QVariant
 from qgis.core import QgsCoordinateReferenceSystem, QgsExpressionContext, QgsFeature, QgsField, QgsFields, QgsGeometry, \
     QgsPointXY, QgsProcessingFeedback, QgsPropertyTransformer, QgsRasterLayer, QgsVectorLayer
-from qgis.PyQt.QtCore import NULL, QByteArray, QDateTime, QJsonDocument, Qt, QVariant
 from . import create_profile_field, is_profile_field, profile_field_indices, profile_fields
 from .. import defaultSpeclibCrs, EMPTY_VALUES
 from ...qgisenums import QMETATYPE_QDATETIME, QMETATYPE_QSTRING, QMETATYPE_QVARIANTMAP
@@ -483,6 +483,7 @@ class SpectralProfileFileReader(object):
     KEY_Metadata = 'metadata'  # dictionary with more / original / untransformed metadata (file type specific)
     KEY_Name = 'name'  # file name (basename)
     KEY_Path = 'path'  # file path (full path)
+    KEY_Picture = 'picture'  # path of accomanying picture, e.g. made by instrument
 
     _STANDARD_FIELDS = None
 
