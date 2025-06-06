@@ -1,6 +1,7 @@
 # Untracked directories
 .idea/
 deploy/
+benchmark/
 build/
 tmp/
 doc/build/

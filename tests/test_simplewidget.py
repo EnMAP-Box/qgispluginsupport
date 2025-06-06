@@ -5,9 +5,9 @@ from qgis.PyQt.QtGui import QPixmap
 from qgis.PyQt.QtWidgets import QGridLayout, QGroupBox, QPushButton, QWidget
 from qgis.PyQt.QtWidgets import QSizePolicy
 from qgis.gui import QgsSpinBox
+from qps import DIR_REPO
 from qps.simplewidgets import DoubleSliderSpinBox, FlowLayout, SliderSpinBox, ResizableImageLabel
 from qps.testing import TestCase, start_app
-from scripts.create_runtests import DIR_REPO
 
 start_app()
 

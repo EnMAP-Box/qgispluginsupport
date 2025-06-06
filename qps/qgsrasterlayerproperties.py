@@ -8,12 +8,12 @@ from typing import Any, Dict, List, Optional, Pattern, Tuple, Union
 import numpy as np
 from osgeo import gdal
 from osgeo.gdal import Band
+
 from qgis.PyQt.QtWidgets import QVBoxLayout, QWidget
 from qgis.PyQt.QtXml import QDomDocument, QDomElement
 from qgis.core import QgsDefaultValue, QgsFeature, QgsField, QgsFieldConstraints, QgsObjectCustomProperties, \
     QgsRasterDataProvider, QgsRasterLayer, QgsVectorLayer, QgsVectorLayerCache
 from qgis.gui import QgsAttributeTableFilterModel, QgsAttributeTableModel, QgsAttributeTableView, QgsMapCanvas
-
 from .qgisenums import QMETATYPE_BOOL, QMETATYPE_DOUBLE, QMETATYPE_INT, QMETATYPE_QSTRING
 from .unitmodel import UnitLookup
 
@@ -91,7 +91,7 @@ class SpectralPropertyOrigin(object):
     LayerProperties = 'layer_property'
 
 
-class SpectralPropertyKeys(enum.StrEnum):
+class SpectralPropertyKeys(str, enum.Enum):
     """
     Enumeration of Spectral Property Keys
     """
@@ -142,6 +142,20 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
     def combinedLookupPattern(cls) -> Pattern:
         patters = '|'.join([rx.pattern for rx in QgsRasterLayerSpectralProperties.LOOKUP_PATTERNS.values()])
         return re.compile(f'({patters})', re.IGNORECASE)
+
+    @classmethod
+    def fromGDALDataset(cls, ds: Union[str, Path, gdal.Dataset]) \
+            -> Optional['QgsRasterLayerSpectralProperties']:
+        """Returns the QgsRasterLayerSpectralProperties for a gdal.Dataset.
+           Does not read any QgsRasterLayer properties
+        """
+        if isinstance(ds, (str, Path)):
+            ds = gdal.Open(str(ds))
+        assert isinstance(ds, gdal.Dataset)
+
+        obj = cls(ds.RasterCount)
+        obj.readFromGDALDataset(ds, overwrite=True)
+        return obj
 
     @classmethod
     def fromRasterLayer(cls, layer: Union[QgsRasterLayer, gdal.Dataset, str, Path]) \

@@ -37,6 +37,7 @@ MIN_QGIS_VERSION = '3.34'
 __version__ = '1.7'
 
 DIR_QPS = pathlib.Path(__file__).parent
+DIR_REPO = DIR_QPS.parent
 DIR_UI_FILES = DIR_QPS / 'ui'
 DIR_ICONS = DIR_UI_FILES / 'icons'
 QPS_RESOURCE_FILE = DIR_QPS / 'qpsresources_rc.py'

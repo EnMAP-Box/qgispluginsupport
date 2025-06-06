@@ -1,14 +1,16 @@
 import datetime
 import os
 import re
+import typing
+from datetime import timezone, timedelta
 from pathlib import Path
 from typing import List, Match, Optional, Union
 
 import numpy as np
 
+from qgis.PyQt.QtCore import QDateTime, Qt
 from qgis.core import QgsEditorWidgetSetup, QgsExpressionContext, QgsFeature, QgsField, QgsFields, QgsPointXY, \
     QgsProcessingFeedback, QgsVectorLayer
-from qgis.PyQt.QtCore import QDateTime, Qt
 from qgis.gui import QgsFileWidget
 from ..core.spectrallibraryio import SpectralLibraryImportWidget, SpectralLibraryIO
 from ..core.spectralprofile import prepareProfileValueDict, SpectralProfileFileReader
@@ -46,7 +48,7 @@ def gpsTime(date: datetime.datetime, gpstime_string: str) -> datetime.datetime:
                             hour=int(m.group('hh')),
                             minute=int(m.group('mm')),
                             second=int(float(m.group('sec'))),
-                            tzinfo=datetime.UTC
+                            tzinfo=timezone(timedelta(0)),  # UTC
                             )
 
     return dtg
@@ -65,8 +67,12 @@ def match_to_coordinate(matchLon: Match, matchLat: Match) -> QgsPointXY:
     return QgsPointXY(x, y)
 
 
+rx_decimal_sep = re.compile(r'integration= \d+([,.])\d+')
+
+rx_sig_file = re.compile(r'\.sig$')
+
+
 class SVCSigFile(SpectralProfileFileReader):
-    KEY_Picture = 'picture'
 
     def __init__(self, path: Union[str, Path]):
         super().__init__(path)
@@ -77,7 +83,7 @@ class SVCSigFile(SpectralProfileFileReader):
         self.mGpsTimeT: Optional[datetime.datetime] = None
         self._readSIGFile(path)
 
-    def picturePath(self) -> Path:
+    def picturePath(self) -> Optional[Path]:
         return self.mPicture
 
     def standardFields(self) -> QgsFields:
@@ -122,10 +128,46 @@ class SVCSigFile(SpectralProfileFileReader):
 
         return data
 
+    @classmethod
+    def _readDateTime(cls, text: str) -> datetime.datetime:
+        text = text.strip()
+
+        # test for ISO
+        try:
+            dtg = datetime.datetime.fromisoformat(text)
+            return dtg
+        except ValueError as ex:
+            s = ""
+
+        # test non-ISO formats
+        formats = [
+            '%m/%d/%Y %H:%M:%S%p',  # 5/27/2025 9:39:32AM
+            '%m/%d/%Y %H:%M:%S %p',  # 5/27/2025 9:39:32 AM
+            '%m/%d/%Y %H:%M:%S',  # 5/27/2025 9:39:32
+            '%d.%m.%Y %H:%M:%S',  # 27.05.2025 09:39:32
+        ]
+
+        for fmt in formats:
+            try:
+                dtg = datetime.datetime.strptime(text, fmt)
+                return dtg
+            except ValueError:
+                s = ""
+                pass
+
+        raise Exception(f'Unable to extract datetime from {text}')
+
     def _readSIGFile(self, path):
         path: Path = Path(path)
         with open(path) as f:
             lines = f.read()
+
+            decimal_separator = '.'
+
+            match_decimal_sep = rx_decimal_sep.search(lines)
+            if isinstance(match_decimal_sep, typing.Match):
+                decimal_separator = match_decimal_sep.group(1)
+
             lines = re.sub('/[*]{3}.*[*]{3}/', '', lines)
 
             # find regular - one-line tags
@@ -137,6 +179,7 @@ class SVCSigFile(SpectralProfileFileReader):
             # find data
             match = re.search(r'^data=(?P<data>.*)', lines.strip(), re.M | re.DOTALL)
             data = match.group('data').strip()
+            data = data.replace(decimal_separator, '.')
             dataLines = data.split('\n')
             nRows = len(dataLines)
             data = data.split()
@@ -153,6 +196,10 @@ class SVCSigFile(SpectralProfileFileReader):
                 self.mReflectance = prepareProfileValueDict(x=wl, xUnit='nm', y=data[:, 3], yUnit='%')
 
             rx_coord_parts = re.compile(r'(?P<deg>\d{2})(?P<min>(\d|\.)+)(?P<direction>[ENSW])')
+
+            if 'integration' in self.mMetadata:
+                s = ""
+
             # get coordinates
             if 'longitude' in self.mMetadata:
                 longitudes = rxGPSLongitude.finditer(self.mMetadata['longitude'])
@@ -167,12 +214,8 @@ class SVCSigFile(SpectralProfileFileReader):
 
             if 'time' in self.mMetadata:
                 t1, t2 = self.mMetadata['time'].split(',')
-                if 'AM' in t1 or 'PM' in t1:
-                    self.mReferenceTime = datetime.datetime.strptime(t1.strip(), '%d/%m/%Y %H:%M:%S%p')
-                    self.mTargetTime = datetime.datetime.strptime(t2.strip(), '%d/%m/%Y %H:%M:%S%p')
-                else:
-                    self.mReferenceTime = datetime.datetime.strptime(t1.strip(), '%d/%m/%Y %H:%M:%S')
-                    self.mTargetTime = datetime.datetime.strptime(t2.strip(), '%d/%m/%Y %H:%M:%S')
+                self.mReferenceTime = self._readDateTime(t1)
+                self.mTargetTime = self._readDateTime(t2)
 
             if 'gpstime' in self.mMetadata:
                 gpsR, gpsT = [t.strip() for t in self.mMetadata['gpstime'].split(',')]
@@ -188,8 +231,10 @@ class SVCSigFile(SpectralProfileFileReader):
                 # g = datetime.datetime(year=1980, month=1, day=1)
                 # gt1, gt2 = g + timedelta(seconds=gps1), g + timedelta(seconds=gps2)
 
+            stem = re.sub(r'_moc$', '', path.stem)
+
             for ext in ['.jpg', '.png']:
-                path_img = path.parent / (path.name + ext)
+                path_img = path.parent / f'{stem}.sig{ext}'
                 if path_img.is_file():
                     self.mPicture = path_img
                     break

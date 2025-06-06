@@ -1,13 +1,20 @@
+import datetime
+import json
 import os.path
+import re
 import tempfile
 import unittest
 from pathlib import Path
 
+import numpy as np
+from osgeo import gdal
+
 from qgis.core import QgsMapLayer, QgsRasterLayer
+from qps import DIR_REPO
 from qps.qgsrasterlayerproperties import QgsRasterLayerSpectralProperties, QgsRasterLayerSpectralPropertiesTable, \
     QgsRasterLayerSpectralPropertiesTableWidget, SpectralPropertyKeys, SpectralPropertyOrigin, stringToType
 from qps.testing import start_app, TestCase, TestObjects
-from qps.utils import bandClosestToWavelength
+from qps.utils import bandClosestToWavelength, file_search
 from qpstestdata import DIR_WAVELENGTH, envi_bsq
 
 start_app()
@@ -108,6 +115,114 @@ class TestQgsRasterLayerProperties(TestCase):
         self.assertWavelengthsEqual([0.4, 0.5], 'μm',
                                     prop.wavelengths(), prop.wavelengthUnits())
 
+    def test_fromGDALDataset(self):
+
+        path = DIR_WAVELENGTH / 'gdal_wl_only.tif'
+        prop = QgsRasterLayerSpectralProperties.fromGDALDataset(path)
+        ds: gdal.Dataset = gdal.Open(path.as_posix())
+        self.assertEqual(ds.RasterCount, prop.bandCount())
+        self.assertEqual([0.4, 0.5], prop.wavelengths())
+        self.assertEqual(['μm', 'μm'], prop.wavelengthUnits())
+        self.assertEqual([None, None], prop.badBands())
+        self.assertEqual([1, 1], prop.badBands(default=1))
+        self.assertEqual([None, None], prop.fwhm(), )
+        self.assertEqual([None, None], prop.dataGains())
+        self.assertEqual([None, None], prop.dataOffsets())
+
+        path = DIR_WAVELENGTH / 'gdal_wl_fwhm.tif'
+        prop = QgsRasterLayerSpectralProperties.fromGDALDataset(path)
+        self.assertEqual(prop.bandCount(), 2)
+        self.assertEqual([0.4, 0.5], prop.wavelengths())
+        self.assertEqual(['μm', 'μm'], prop.wavelengthUnits())
+        self.assertEqual([None, None], prop.badBands())
+        self.assertEqual([0.01, 0.02], prop.fwhm(), )
+        self.assertEqual([None, None], prop.dataGains())
+        self.assertEqual([None, None], prop.dataOffsets())
+
+        path = DIR_WAVELENGTH / 'envi_wl_fwhm.bsq'
+        prop = QgsRasterLayerSpectralProperties.fromGDALDataset(path)
+        self.assertEqual(prop.bandCount(), 2)
+        self.assertWavelengthsEqual([0.4, 0.5], 'μm',
+                                    prop.wavelengths(), prop.wavelengthUnits())
+        self.assertEqual([0, 1], prop.badBands())
+        self.assertWavelengthsEqual([0.01, 0.02], 'μm',
+                                    prop.fwhm(), prop.wavelengthUnits())
+        self.assertEqual([None, None], prop.dataGains())
+        self.assertEqual([None, None], prop.dataOffsets())
+
+        path = DIR_WAVELENGTH / 'envi_wl_implicit_nm.bsq'
+        prop = QgsRasterLayerSpectralProperties.fromGDALDataset(path)
+        self.assertEqual(prop.bandCount(), 2)
+        self.assertWavelengthsEqual([400, 500], 'nm',
+                                    prop.wavelengths(), prop.wavelengthUnits())
+
+        path = DIR_WAVELENGTH / 'envi_wl_implicit_um.bsq'
+        prop = QgsRasterLayerSpectralProperties.fromGDALDataset(path)
+        self.assertEqual(prop.bandCount(), 2)
+        self.assertWavelengthsEqual([0.4, 0.5], 'μm',
+                                    prop.wavelengths(), prop.wavelengthUnits())
+
+    def test_benchmark(self):
+
+        path_benchmark = DIR_REPO / 'benchmark/spectralpropertyloading.json'
+        os.makedirs(path_benchmark.parent, exist_ok=True)
+
+        DIR_SOURCES = Path(r'X:\dc\deu\ard\mosaic')
+
+        if not DIR_SOURCES.is_dir():
+            return
+
+        n_max = 100
+        files = []
+        for i, f in enumerate(file_search(DIR_SOURCES, re.compile(r'.*_BOA.vrt$'))):
+            files.append(f)
+            if len(files) == n_max:
+                break
+
+        def t1_read_layer(path):
+            t = datetime.datetime.now()
+            QgsRasterLayerSpectralProperties.fromRasterLayer(path)
+            return (datetime.datetime.now() - t).total_seconds()
+
+        def t2_read_gdal(path):
+            t = datetime.datetime.now()
+            QgsRasterLayerSpectralProperties.fromGDALDataset(path)
+            return (datetime.datetime.now() - t).total_seconds()
+
+        dur_lyr = []
+        dur_gdal = []
+        for file in files:
+            dur_lyr.append(t1_read_layer(file))
+            dur_gdal.append(t2_read_gdal(file))
+
+        if path_benchmark.is_file():
+            with open(path_benchmark, 'r') as f:
+
+                JSON = json.load(f)
+        else:
+            JSON = dict()
+
+        dur_lyr = np.asarray(dur_lyr)
+        dur_gdal = np.asarray(dur_gdal)
+        results = {
+            'n_files': len(files),
+            't_lyr_total': dur_lyr.sum(),
+            't_lyr_mean': dur_lyr.mean(),
+            't_lyr_std': dur_lyr.std(),
+            't_lyr_min': dur_lyr.min(),
+            't_lyr_max': dur_lyr.max(),
+            't_gdal_total': dur_gdal.sum(),
+            't_gdal_mean': dur_gdal.mean(),
+            't_gdal_std': dur_gdal.std(),
+            't_gdal_min': dur_gdal.min(),
+            't_gdal_max': dur_gdal.max(),
+        }
+
+        JSON[str(DIR_SOURCES)] = results
+
+        with open(path_benchmark, 'w') as f:
+            json.dump(JSON, f, indent=2, ensure_ascii=False)
+
     def test_bandClosestToWavelength(self):
         with tempfile.TemporaryDirectory() as tdir:
             path = Path(tdir) / 'example.bsq'
@@ -127,6 +242,8 @@ class TestQgsRasterLayerProperties(TestCase):
             del lyr
 
     def test_QgsRasterLayerSpectralProperties(self):
+
+        self.assertTrue(SpectralPropertyKeys.DataGain in SpectralPropertyKeys)
 
         lyr = TestObjects.createRasterLayer()
         prop = QgsRasterLayerSpectralProperties.fromRasterLayer(lyr)
