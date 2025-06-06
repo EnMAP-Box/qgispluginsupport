@@ -246,7 +246,7 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
         # outputPar.setRemappingDefinition(remapping)
 
         if len(PROFILES) == 0:
-            feedback.pushWarning(f'No profiles found')
+            feedback.pushWarning('No profiles found')
 
         if self._use_rel_path:
             path_sink = Path(self.parameterAsFile(parameters, self.P_OUTPUT, context))
