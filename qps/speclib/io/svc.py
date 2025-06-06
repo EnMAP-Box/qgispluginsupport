@@ -69,9 +69,10 @@ def match_to_coordinate(matchLon: Match, matchLat: Match) -> QgsPointXY:
 
 rx_decimal_sep = re.compile(r'integration= \d+([,.])\d+')
 
+rx_sig_file = re.compile(r'\.sig$')
+
 
 class SVCSigFile(SpectralProfileFileReader):
-    KEY_Picture = 'picture'
 
     def __init__(self, path: Union[str, Path]):
         super().__init__(path)
@@ -130,12 +131,22 @@ class SVCSigFile(SpectralProfileFileReader):
     @classmethod
     def _readDateTime(cls, text: str) -> datetime.datetime:
         text = text.strip()
+
+        # test for ISO
+        try:
+            dtg = datetime.datetime.fromisoformat(text)
+            return dtg
+        except ValueError as ex:
+            s = ""
+
+        # test non-ISO formats
         formats = [
             '%m/%d/%Y %H:%M:%S%p',  # 5/27/2025 9:39:32AM
             '%m/%d/%Y %H:%M:%S %p',  # 5/27/2025 9:39:32 AM
             '%m/%d/%Y %H:%M:%S',  # 5/27/2025 9:39:32
             '%d.%m.%Y %H:%M:%S',  # 27.05.2025 09:39:32
         ]
+
         for fmt in formats:
             try:
                 dtg = datetime.datetime.strptime(text, fmt)
@@ -143,6 +154,7 @@ class SVCSigFile(SpectralProfileFileReader):
             except ValueError:
                 s = ""
                 pass
+
         raise Exception(f'Unable to extract datetime from {text}')
 
     def _readSIGFile(self, path):
@@ -219,8 +231,10 @@ class SVCSigFile(SpectralProfileFileReader):
                 # g = datetime.datetime(year=1980, month=1, day=1)
                 # gt1, gt2 = g + timedelta(seconds=gps1), g + timedelta(seconds=gps2)
 
+            stem = re.sub(r'_moc$', '', path.stem)
+
             for ext in ['.jpg', '.png']:
-                path_img = path.parent / (path.name + ext)
+                path_img = path.parent / f'{stem}.sig{ext}'
                 if path_img.is_file():
                     self.mPicture = path_img
                     break

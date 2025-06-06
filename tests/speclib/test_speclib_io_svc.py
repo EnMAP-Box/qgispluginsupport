@@ -76,6 +76,22 @@ class TestSpeclibIO_SVC(TestCase):
 
         SpectralLibraryImportDialog.importProfiles(sl, defaultRoot=root.as_posix())
 
+    def test_parse_datetime(self):
+
+        dt = datetime.now().replace(microsecond=0)
+
+        formats = [
+            '%m/%d/%Y %H:%M:%S%p',  # 5/27/2025 9:39:32AM
+            '%m/%d/%Y %H:%M:%S %p',  # 5/27/2025 9:39:32 AM
+            '%m/%d/%Y %H:%M:%S',  # 5/27/2025 9:39:32
+            '%d.%m.%Y %H:%M:%S',  # 27.05.2025 09:39:32
+        ]
+        self.assertEqual(dt, SVCSigFile._readDateTime(dt.isoformat()))
+        for fmt in formats:
+            text = dt.strftime(fmt)
+            dt2 = SVCSigFile._readDateTime(text)
+            self.assertEqual(dt, dt2)
+
     # @unittest.skipIf(TestCase.runsInCI(), 'Skipped CI')
     def test_speclib(self):
         initAll()
@@ -107,7 +123,10 @@ class TestSpeclibIO_SVC(TestCase):
         self.assertTrue(lyr.isValid())
         self.assertTrue(lyr.featureCount() > 0)
         self.assertTrue(is_spectral_library(lyr))
-        self.assertTrue(lyr.fields()['picture'].editorWidgetSetup().type() == 'ExternalResource')
+
+        setup = lyr.fields()['picture'].editorWidgetSetup()
+        conf = setup.config()
+        self.assertTrue(setup.type() == 'ExternalResource')
 
         from qgis.core import QgsProject
         QgsProject.instance().addMapLayer(lyr)
