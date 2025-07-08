@@ -30,9 +30,11 @@ import sys
 import warnings
 from typing import List
 
+from qgis.PyQt.QtCore import PYQT_VERSION_STR
 from qgis.core import Qgis, QgsApplication
 from qgis.gui import QgisInterface, QgsMapLayerConfigWidgetFactory
 
+os.environ.setdefault('PYQTGRAPH_QT_LIB', f'PyQt{PYQT_VERSION_STR[0]}')
 MIN_QGIS_VERSION = '3.34'
 __version__ = '1.7'
 
