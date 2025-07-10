@@ -16,6 +16,7 @@
 *                                                                         *
 ***************************************************************************
 """
+import datetime
 import os.path
 import re
 # noinspection PyPep8Naming
@@ -271,6 +272,38 @@ class ProcessingToolsTest(TestCase):
         reg.removeProvider(pid)
         QgsProject.instance().removeAllMapLayers()
 
+    def test_spectralprofile_import_many(self):
+
+        p = r"Z:\Namibia2024\SVC\SVC_ALL"
+
+        path_speclib = self.createTestOutputDirectory() / 'svc_all3.gpkg'
+
+        if not os.path.isdir(p):
+            return
+
+        par = {
+            ImportSpectralProfiles.P_INPUT: p,
+            ImportSpectralProfiles.P_OUTPUT: path_speclib.as_posix(),
+            ImportSpectralProfiles.P_USE_RELPATH: True,
+        }
+
+        t0 = datetime.datetime.now()
+        context, feedback = self.createProcessingContextFeedback()
+        conf = {}
+        alg = ImportSpectralProfiles()
+        alg.initAlgorithm(conf)
+
+        results, success = alg.run(par, context, feedback, conf)
+        lyr = results[ImportSpectralProfiles.P_OUTPUT]
+        if isinstance(lyr, str):
+            lyr = QgsVectorLayer(lyr)
+        assert lyr.isValid()
+
+        dt = datetime.datetime.now() - t0
+        seconds = dt.total_seconds()
+        n_total = lyr.featureCount()
+        print(f'Imported {n_total} files in {dt}. {seconds / n_total:.2f} s per file')
+
     def test_spectralprofile_import(self):
 
         provider = ExampleAlgorithmProvider()
@@ -303,7 +336,6 @@ class ProcessingToolsTest(TestCase):
         # test single-filetype import
 
         for i, ext in enumerate(export_formats):
-
             for j, input_file in enumerate(input_files):
                 path_test = DIR_TEST / f'example_from_{input_file.name}{ext}'
                 parameters = {
