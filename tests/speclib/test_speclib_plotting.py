@@ -1,3 +1,4 @@
+ import json
 import os.path
 import unittest
 
@@ -101,7 +102,6 @@ class TestSpeclibPlotting(TestCase):
         self.showGui(slw)
 
     def test_SpectralLibraryWidget_large(self):
-        p = r'F:\Temp\SVC_Backup\TEST\speclib_namibia2024.gpkg'
         l_dir = DIR_REPO / 'tmp/largespeclib'
         if l_dir.is_dir():
             for f in file_search(l_dir, '*.gpkg'):
@@ -443,6 +443,8 @@ class TestSpeclibPlotting(TestCase):
         model.setPlotWidget(pw)
         model.setDualView(dv)
 
+        self.assertIsInstance(json.dumps(model.settingsMap(), ensure_ascii=False), str)
+
         tv = QTreeView()
 
         tv.setModel(model)
@@ -464,13 +466,18 @@ class TestSpeclibPlotting(TestCase):
         for grp in model.visualizations():
             indices.append(grp.index())
 
+        settings1 = model.settingsMap()
+        settings2 = json.loads(json.dumps(settings1, ensure_ascii=False))
+        self.assertIsInstance(settings1, dict)
+        self.assertEqual(settings1, settings2)
+
         mimeData = model.mimeData(indices)
         grps = PropertyItemGroup.fromMimeData(mimeData)
         self.assertTrue(len(grps) > 0)
         self.assertTrue(model.canDropMimeData(mimeData, Qt.CopyAction, 0, 0, QModelIndex()))
         self.assertTrue(model.dropMimeData(mimeData, Qt.CopyAction, 0, 0, QModelIndex()))
 
-        self.showGui(tv)
+        self.showGui([tv, pw])
 
         unregisterSpectralLibraryPlotFactories()
         QgsProject.instance().removeAllMapLayers()

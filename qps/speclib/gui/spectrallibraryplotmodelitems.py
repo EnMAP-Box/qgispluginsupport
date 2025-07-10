@@ -23,7 +23,7 @@
 ***************************************************************************
 """
 import sys
-from typing import Any, Dict, List, Tuple, Union
+from typing import Any, Dict, List, Tuple, Union, Optional
 
 import numpy as np
 
@@ -45,7 +45,7 @@ from ...plotstyling.plotstyling import PlotStyle, PlotStyleButton, PlotWidgetSty
 from ...pyqtgraph.pyqtgraph import InfiniteLine, PlotDataItem
 from ...speclib.core import create_profile_field
 from ...unitmodel import BAND_INDEX, BAND_NUMBER, UnitConverterFunctionModel
-from ...utils import parseWavelength, SignalBlocker
+from ...utils import parseWavelength
 
 WARNING_ICON = QIcon(r':/images/themes/default/mIconWarning.svg')
 
@@ -380,7 +380,7 @@ class PropertyItemGroup(PropertyItemBase):
             super().__init__(*args, **kwds)
 
         requestRemoval = pyqtSignal()
-        requestPlotUpdate = pyqtSignal()
+        # requestPlotUpdate = pyqtSignal()
 
     @staticmethod
     def registerXmlFactory(grp: 'PropertyItemGroup', xml_tag: str = None):
@@ -439,7 +439,13 @@ class PropertyItemGroup(PropertyItemBase):
     def zValue(self) -> int:
         return self.mZValue
 
-    def createPlotStyle(self, feature: QgsFeature, fieldIndex: int) -> PlotStyle:
+    def asMap(self) -> dict:
+        """
+        Returns the settings as dict which can be serialized as JSON string.
+        """
+        raise NotImplementedError(f'Missing .asMap() in {self.__class__.__name__}')
+
+    def createPlotStyle(self, feature: QgsFeature, fieldIndex: int) -> Optional[PlotStyle]:
 
         return None
 
@@ -471,9 +477,9 @@ class PropertyItemGroup(PropertyItemBase):
         self.setDragEnabled(False)
 
         # connect requestPlotUpdate signal
-        for propertyItem in self.propertyItems():
-            propertyItem: PropertyItem
-            propertyItem.signals().dataChanged.connect(self.signals().requestPlotUpdate.emit)
+        # for propertyItem in self.propertyItems():
+        #    propertyItem: PropertyItem
+        # propertyItem.signals().dataChanged.connect(self.signals().requestPlotUpdate.emit)
 
     def signals(self) -> 'PropertyItemGroup.Signals':
         return self.mSignals
@@ -520,8 +526,8 @@ class PropertyItemGroup(PropertyItemBase):
             for item in self.plotDataItems():
                 item.setVisible(is_visible)
             self.emitDataChanged()
-            if is_visible:
-                self.mSignals.requestPlotUpdate.emit()
+            # if is_visible:
+            #    self.mSignals.requestPlotUpdate.emit()
         return value
 
     def update(self):
@@ -647,9 +653,9 @@ class GeneralSettingsGroup(PropertyItemGroup):
         ]:
             self.appendRow(pItem.propertyRow())
 
-        self.mP_MaxProfiles.signals().dataChanged.connect(self.signals().requestPlotUpdate)
-        self.mP_SortBands.signals().dataChanged.connect(self.signals().requestPlotUpdate)
-        self.mP_BadBands.signals().dataChanged.connect(self.signals().requestPlotUpdate)
+        # self.mP_MaxProfiles.signals().dataChanged.connect(self.signals().requestPlotUpdate)
+        # self.mP_SortBands.signals().dataChanged.connect(self.signals().requestPlotUpdate)
+        # self.mP_BadBands.signals().dataChanged.connect(self.signals().requestPlotUpdate)
 
         # self.mPLegend,
         for pItem in [self.mP_BG, self.mP_FG, self.mP_SC, self.mP_CH]:
@@ -660,6 +666,19 @@ class GeneralSettingsGroup(PropertyItemGroup):
         self.mContext: QgsExpressionContext = QgsExpressionContext()
 
         self.mMissingValues = False
+
+    def asMap(self) -> dict:
+
+        d = {
+            'max_profiles': self.maximumProfiles(),
+            'show_bad_bands': self.showBadBands(),
+            'sort_bands': self.sortBands(),
+            'color_bg': self.backgroundColor().name(),
+            'color_fg': self.foregroundColor().name(),
+            'color_sc': self.selectionColor().name(),
+            'color_ch': self.crosshairColor().name(),
+        }
+        return d
 
     def populateContextMenu(self, menu: QMenu):
 
@@ -1718,6 +1737,16 @@ class ProfileCandidateGroup(SpectralProfilePlotDataItemGroup):
         self.mMissingValues = False
         # self.setEditable(False)
 
+    def asMap(self) -> dict:
+
+        candidate_styles = []
+        for (fid, lid), style in self.candidateItems():
+            s = ""
+        d = {'default_style': self.mDefaultPlotStyle.plotStyle().map(),
+             'candidate_styles': candidate_styles}
+
+        return d
+
     def isRemovable(self) -> bool:
         return False
 
@@ -1795,7 +1824,7 @@ class ProfileCandidateGroup(SpectralProfilePlotDataItemGroup):
             if item in to_remove:
                 self.takeRow(r)
 
-        self.signals().requestPlotUpdate.emit()
+        # self.signals().requestPlotUpdate.emit()
 
     def clearCandidates(self):
 
@@ -1864,15 +1893,20 @@ class ProfileVisualizationGroup(SpectralProfilePlotDataItemGroup):
         self.signals().dataChanged.connect(self.update)
         # self.initBasicSettings()
 
-    def expressionContextScope(self) -> QgsExpressionContextScope:
-        """
-        Returns the expression context scope of this visualization
-        """
-        scope = QgsExpressionContextScope(f'ProfileVisualizationGroup {self.name()}')
-        scope.setVariable('field_name', self.fieldName())
-        scope.setVariable('field_index', self.fieldIdx())
-        scope.setVariable('visualization_name', self.name())
-        return scope
+    def asMap(self) -> dict:
+
+        settings = {
+            'name': self.name(),
+            'field_name': self.fieldName(),
+            'layer_id': None,
+            'layer_source': None,
+            'label_expression': self.labelProperty().expressionString(),
+            'filter_expression': self.filterProperty().expressionString(),
+            'color_expression': self.colorProperty().expressionString(),
+            'tooltip_expression': self.labelProperty().expressionString(),
+            'plot_style': self.mPStyle.plotStyle().map()
+        }
+        return settings
 
     def initWithPlotModel(self, model):
         self.setSpeclib(model.speclib())
@@ -2034,13 +2068,7 @@ class ProfileVisualizationGroup(SpectralProfilePlotDataItemGroup):
 
         self.mPField.label().setIcon(QIcon(WARNING_ICON) if valuesMissing else QIcon())
 
-        if False:
-            to_block = [self.signals()] + [item.signals() for item in self.propertyItems()]
-            with SignalBlocker(*to_block) as blocker:
-                # modify without signaling
-                self.setPlotStyle(self.generatePlotStyle())
-
-        self.signals().requestPlotUpdate.emit()
+        # self.signals().requestPlotUpdate.emit()
 
     def speclib(self) -> QgsVectorLayer:
         return self.mSpeclib
