@@ -12,6 +12,7 @@ from qgis.core import QgsCoordinateReferenceSystem, QgsEditorWidgetSetup, QgsExp
     QgsProcessingParameterFeatureSink, QgsProcessingParameterMultipleLayers, QgsProcessingUtils, QgsProject, \
     QgsProperty, QgsRemappingProxyFeatureSink, QgsRemappingSinkDefinition, QgsVectorFileWriter, QgsVectorLayer, \
     QgsWkbTypes
+from qgis.core import QgsProcessingParameterString, QgsProcessingParameterDefinition
 from ..core import profile_field_names
 from ..core.spectralprofile import SpectralProfileFileReader
 from ..io.asd import RX_ASDFILE, ASDBinaryFile
@@ -33,7 +34,7 @@ class SpectralLibraryOutputDefinition(QgsProcessingOutputLayerDefinition):
         return True
 
 
-def file_reader(path: Union[str, Path]) -> Optional[SpectralProfileFileReader]:
+def file_reader(path: Union[str, Path], dtg_fmt: Optional[str] = None) -> Optional[SpectralProfileFileReader]:
     """
     Return a SpectralProfileFileReader to read profiles in the given file
     :param path:
@@ -42,7 +43,7 @@ def file_reader(path: Union[str, Path]) -> Optional[SpectralProfileFileReader]:
     path = Path(path)
     assert path.is_file()
     if rx_sig_file.search(path.name):
-        return SVCSigFile(path)
+        return SVCSigFile(path, dtg_fmt=dtg_fmt)
     elif RX_ASDFILE.search(path.name):
         return ASDBinaryFile(path)
     elif rx_sed_file.search(path.name):
@@ -50,9 +51,11 @@ def file_reader(path: Union[str, Path]) -> Optional[SpectralProfileFileReader]:
     return None
 
 
-def read_profiles(path: Union[str, Path]) -> Tuple[List[QgsFeature], Optional[str]]:
+def read_profiles(path: Union[str, Path],
+                  dtg_fmt: Optional[str] = None) -> Tuple[List[QgsFeature], Optional[str]]:
     """
     Tries to read spectral profiles from the given path
+    :param dtg_fmt:
     :param path:
     :return: List of QgsFeatures, error
     """
@@ -62,9 +65,10 @@ def read_profiles(path: Union[str, Path]) -> Tuple[List[QgsFeature], Optional[st
     path = Path(path)
 
     try:
-        reader = file_reader(path)
+        reader = file_reader(path, dtg_fmt=dtg_fmt)
         if isinstance(reader, SpectralProfileFileReader):
             features.append(reader.asFeature())
+
         elif canReadESL(path):
             features.extend(EnviSpectralLibraryIO.importProfiles(path))
         elif path.name.endswith('.csv'):
@@ -94,6 +98,7 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
     P_RECURSIVE = 'RECURSIVE'
     P_OUTPUT = 'OUTPUT'
     P_USE_RELPATH = 'RELPATH'
+    P_DATETIMEFORMAT = 'DATETIMEFORMAT'
 
     def __init__(self):
         super().__init__()
@@ -101,6 +106,7 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
         self._results: Dict = dict()
         self._input_files: List[Path] = []
         self._use_rel_path: bool = False
+        self._dtg_fmt: Optional[str] = None
         self._output_file: Optional[str] = None
         self._profile_field_names: List[str] = []
         self._dstFields: Optional[QgsFields] = None
@@ -152,6 +158,17 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
             defaultValue=False),
         )
 
+        p = QgsProcessingParameterString(self.P_DATETIMEFORMAT,
+                                         defaultValue=None,
+                                         description='Date-time format code',
+                                         optional=True)
+        p.setHelp('Defines the format code used to read date-time stamps in text files, '
+                  'e.g. "%d.%m.%Y %H:%M:%S" to read "27.05.2025 09:39:32"'
+                  'See <a href="https://docs.python.org/3/library/datetime.html#format-codes">'
+                  'https://docs.python.org/3/library/datetime.html#format-codes</a> for details.')
+        p.setFlags(p.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
+        self.addParameter(p)
+
         self.addParameter(QgsProcessingParameterFeatureSink(
             self.P_OUTPUT,
             description='Spectral library',
@@ -189,7 +206,9 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
 
         self._use_rel_path = self.parameterAsBoolean(parameters, self.P_USE_RELPATH, context)
         self._input_files = input_files
-
+        self._dtg_fmt = self.parameterAsString(parameters, self.P_DATETIMEFORMAT, context)
+        if self._dtg_fmt == '':
+            self._dtg_fmt = None
         return len(errors) == 0
 
     def processAlgorithm(self,
@@ -253,7 +272,7 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
                     pt = datetime.datetime.now()
         else:
             for i, uri in enumerate(self._input_files):
-                profiles, error = read_profiles(uri)
+                profiles, error = read_profiles(uri, dtg_fmt=self._dtg_fmt)
                 if error:
                     feedback.reportError(error)
                 # profiles = SpectralLibraryIO.readProfilesFromUri(uri, feedback=multiFeedback)

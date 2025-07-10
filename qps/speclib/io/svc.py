@@ -75,14 +75,15 @@ def match_to_coordinate(matchLon: Match, matchLat: Match) -> QgsPointXY:
 
 class SVCSigFile(SpectralProfileFileReader):
 
-    def __init__(self, path: Union[str, Path]):
-        super().__init__(path)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
         self.mRemoveOverlap: bool = True
         self.mPicture: Optional[Path] = None
         self.mGpsTimeR: Optional[datetime.datetime] = None
         self.mGpsTimeT: Optional[datetime.datetime] = None
-        self._readSIGFile(path)
+        if self.mPath:
+            self._readSIGFile(self.mPath)
 
     def _parse_coordinates(self) -> None:
         """Parse coordinate information from metadata using precompiled regex"""
@@ -97,13 +98,13 @@ class SVCSigFile(SpectralProfileFileReader):
             elif len(coordinates) == 1:
                 self.mTargetCoordinate = coordinates[0]
 
-    def _parse_times(self) -> None:
+    def _parse_times(self, fmt: Union[str] = None) -> None:
         """Parse time information from metadata efficiently"""
         if 'time' in self.mMetadata:
             # Parse regular timestamps
             t1, t2 = [t.strip() for t in self.mMetadata['time'].split(',')]
-            self.mReferenceTime = self._readDateTime(t1)
-            self.mTargetTime = self._readDateTime(t2)
+            self.mReferenceTime = self._readDateTime(t1, fmt=fmt)
+            self.mTargetTime = self._readDateTime(t2, fmt=fmt)
 
             # Parse GPS times if available
             if 'gpstime' in self.mMetadata:
@@ -160,8 +161,11 @@ class SVCSigFile(SpectralProfileFileReader):
         return data
 
     @staticmethod
-    def _readDateTime(text: str) -> datetime.datetime:
+    def _readDateTime(text: str, fmt: Optional[str] = None) -> datetime.datetime:
         text = text.strip()
+
+        if isinstance(fmt, str):
+            return datetime.datetime.strptime(text, fmt)
 
         # test for ISO
         try:
@@ -171,12 +175,11 @@ class SVCSigFile(SpectralProfileFileReader):
 
         # test non-ISO formats
         formats = [
-            '%d/%m/%Y %H:%M:%S',  # 27/05/2025 09:39:32
+            '%d.%m.%Y %H:%M:%S',  # 27.05.2025 09:39:32
             '%m/%d/%Y %H:%M:%S%p',  # 5/27/2025 9:39:32AM
             '%m/%d/%Y %H:%M:%S %p',  # 5/27/2025 9:39:32 AM
             '%m/%d/%Y %H:%M:%S',  # 5/27/2025 9:39:32
             '%d/%m/%Y %H:%M:%S',  # 27/05/2025 09:39:32
-            '%d.%m.%Y %H:%M:%S',  # 27.05.2025 09:39:32
         ]
 
         for fmt in formats:
@@ -235,7 +238,7 @@ class SVCSigFile(SpectralProfileFileReader):
         self._parse_coordinates()
 
         # Process time information
-        self._parse_times()
+        self._parse_times(fmt=self.dateTimeFormat())
 
         # Find associated image files
         stem = rx_moc_suffix.sub('', path.stem)

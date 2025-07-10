@@ -6,8 +6,10 @@ from typing import List
 
 from console import show_console
 from qgis.PyQt.QtCore import QCoreApplication
+from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction, QWidget
 from qgis.PyQt.QtWidgets import QMenu
+from qgis.core import QgsProcessingProvider, QgsProcessingAlgorithm, QgsApplication
 from qgis.gui import QgisInterface
 
 
@@ -25,6 +27,53 @@ def classFactory(iface):  # pylint: disable=invalid-name
     return QGISPluginsSupportPlugin(iface)
 
 
+class QPSProcessingProvider(QgsProcessingProvider):
+    NAME = 'QPSProcessingProvider'
+
+    def __init__(self, *args, **kwds):
+        super().__init__(*args, **kwds)
+        self._algs = []
+
+    def load(self):
+        self.refreshAlgorithms()
+        return True
+
+    def name(self):
+        return self.NAME
+
+    def longName(self):
+        return self.NAME
+
+    def id(self):
+        return self.NAME.lower()
+
+    def helpId(self):
+        return self.id()
+
+    def icon(self):
+        return QIcon(r':/qps/ui/icons/profile_expression.svg')
+
+    def svgIconPath(self):
+        return r':/qps/ui/icons/profile_expression.svg'
+
+    def loadAlgorithms(self):
+        for a in self._algs:
+            self.addAlgorithm(a.createInstance())
+
+    def supportedOutputRasterLayerExtensions(self):
+        return []
+
+    def supportsNonFileBasedOutput(self) -> True:
+        return True
+
+    def addAlgorithm(self, algorithm: QgsProcessingAlgorithm, **kwargs) -> bool:
+        result = super().addAlgorithm(algorithm)
+        if result:
+            # keep reference
+            self._algs.append(algorithm)
+        return result
+
+
 class QGISPluginsSupportPlugin(object):
     title = 'QPS'
 
@@ -37,6 +86,13 @@ class QGISPluginsSupportPlugin(object):
 
         import qps
         qps.initAll()
+
+        registry = QgsApplication.instance().processingRegistry()
+        self.mProvider = QPSProcessingProvider()
+
+        from qps.speclib.processing.importspectralprofiles import ImportSpectralProfiles
+        self.mProvider.addAlgorithm(ImportSpectralProfiles())
+        registry.addProvider(self.mProvider)
 
     def initGui(self):
         from qgis.utils import iface
@@ -101,6 +157,9 @@ class QGISPluginsSupportPlugin(object):
         if isinstance(iface, QgisInterface):
             for action in self.mToolbarActions:
                 iface.removeToolBarIcon(action)
+
+        registry = QgsApplication.instance().processingRegistry()
+        registry.removeProvider(self.mProvider)
 
     def tr(self, message):
         return QCoreApplication.translate(self.title, message)
