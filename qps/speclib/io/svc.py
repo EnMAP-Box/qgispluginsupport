@@ -1,7 +1,6 @@
 import datetime
 import os
 import re
-import typing
 from datetime import timezone, timedelta
 from pathlib import Path
 from typing import List, Match, Optional, Union
@@ -20,10 +19,17 @@ from ...qgisenums import QMETATYPE_QDATETIME, QMETATYPE_QSTRING
 # GPS Latitude  DDmm.mmmmC
 # GPS Time  HHmmSS.SSS
 
+# Precompiled regular expressions for performance
+rxSIGFile = re.compile(r'\.sig$')
 rxGPSLongitude = re.compile(r'(?P<deg>\d{3})(?P<min>\d{2}.\d+)(?P<quad>[EW])')
 rxGPSLatitude = re.compile(r'(?P<deg>\d{2})(?P<min>\d{2}.\d+)(?P<quad>[NS])')
-
 rxGPSTime = re.compile(r'(?P<hh>\d{2})(?P<mm>\d{2})(?P<sec>\d{2}(\.\d+)?)')
+rx_decimal_sep = re.compile(r'temp= \d+([,.])\d+,')
+rx_sig_file = re.compile(r'\.sig$')
+rx_comment_block = re.compile(r'/[*]{3}.*[*]{3}/', re.DOTALL)
+rx_metadata = re.compile(r'^(?P<tag>[^=]+)=(?P<val>.*)', re.MULTILINE)
+rx_data_block = re.compile(r'^data=(?P<data>.*)', re.MULTILINE | re.DOTALL)
+rx_moc_suffix = re.compile(r'_moc$')
 
 
 def toQDateTime(value) -> QDateTime:
@@ -34,7 +40,7 @@ def toQDateTime(value) -> QDateTime:
     raise NotImplementedError()
 
 
-def gpsTime(date: datetime.datetime, gpstime_string: str) -> datetime.datetime:
+def gpsTime(date: datetime.datetime, gpstime_string: str) -> Optional[datetime.datetime]:
     if not isinstance(date, datetime.datetime):
         return None
     m = rxGPSTime.match(gpstime_string)
@@ -67,11 +73,6 @@ def match_to_coordinate(matchLon: Match, matchLat: Match) -> QgsPointXY:
     return QgsPointXY(x, y)
 
 
-rx_decimal_sep = re.compile(r'integration= \d+([,.])\d+')
-
-rx_sig_file = re.compile(r'\.sig$')
-
-
 class SVCSigFile(SpectralProfileFileReader):
 
     def __init__(self, path: Union[str, Path]):
@@ -82,6 +83,37 @@ class SVCSigFile(SpectralProfileFileReader):
         self.mGpsTimeR: Optional[datetime.datetime] = None
         self.mGpsTimeT: Optional[datetime.datetime] = None
         self._readSIGFile(path)
+
+    def _parse_coordinates(self) -> None:
+        """Parse coordinate information from metadata using precompiled regex"""
+        if 'longitude' in self.mMetadata and 'latitude' in self.mMetadata:
+            longitudes = rxGPSLongitude.finditer(self.mMetadata['longitude'])
+            latitudes = rxGPSLatitude.finditer(self.mMetadata['latitude'])
+            coordinates = [match_to_coordinate(lon, lat) for lon, lat in zip(longitudes, latitudes)]
+
+            if len(coordinates) == 2:
+                self.mReferenceCoordinate = coordinates[0]
+                self.mTargetCoordinate = coordinates[1]
+            elif len(coordinates) == 1:
+                self.mTargetCoordinate = coordinates[0]
+
+    def _parse_times(self) -> None:
+        """Parse time information from metadata efficiently"""
+        if 'time' in self.mMetadata:
+            # Parse regular timestamps
+            t1, t2 = [t.strip() for t in self.mMetadata['time'].split(',')]
+            self.mReferenceTime = self._readDateTime(t1)
+            self.mTargetTime = self._readDateTime(t2)
+
+            # Parse GPS times if available
+            if 'gpstime' in self.mMetadata:
+                gpsR, gpsT = [t.strip() for t in self.mMetadata['gpstime'].split(',')]
+
+                # Only calculate GPS times if we have reference times
+                if self.mReferenceTime:
+                    self.mGpsTimeR = gpsTime(self.mReferenceTime, gpsR)
+                if self.mTargetTime:
+                    self.mGpsTimeT = gpsTime(self.mTargetTime, gpsT)
 
     def picturePath(self) -> Optional[Path]:
         return self.mPicture
@@ -125,123 +157,92 @@ class SVCSigFile(SpectralProfileFileReader):
             data['gpsTimeR'] = toQDateTime(self.mGpsTimeR)
         if self.mGpsTimeT:
             data['gpsTimeT'] = toQDateTime(self.mGpsTimeT)
-
         return data
 
-    @classmethod
-    def _readDateTime(cls, text: str) -> datetime.datetime:
+    @staticmethod
+    def _readDateTime(text: str) -> datetime.datetime:
         text = text.strip()
 
         # test for ISO
         try:
-            dtg = datetime.datetime.fromisoformat(text)
-            return dtg
-        except ValueError as ex:
-            s = ""
+            return datetime.datetime.fromisoformat(text)
+        except ValueError:
+            pass
 
         # test non-ISO formats
         formats = [
-            '%d/%m/%Y %H:%M:%S',  # 27/05/2025 09:39:32
             '%m/%d/%Y %H:%M:%S%p',  # 5/27/2025 9:39:32AM
             '%m/%d/%Y %H:%M:%S %p',  # 5/27/2025 9:39:32 AM
             '%m/%d/%Y %H:%M:%S',  # 5/27/2025 9:39:32
+            '%d/%m/%Y %H:%M:%S',  # 27/05/2025 09:39:32
             '%d.%m.%Y %H:%M:%S',  # 27.05.2025 09:39:32
         ]
 
         for fmt in formats:
             try:
-                dtg = datetime.datetime.strptime(text, fmt)
-                return dtg
+                return datetime.datetime.strptime(text, fmt)
             except ValueError:
-                s = ""
-                pass
+                continue
 
-        raise Exception(f'Unable to extract datetime from {text}')
+        raise ValueError(f'Unable to extract datetime from {text}')
 
     def _readSIGFile(self, path):
+        """Parse SIG file using precompiled regular expressions for improved performance"""
         path: Path = Path(path)
         with open(path) as f:
             lines = f.read()
 
-            decimal_separator = '.'
+        # Remove comment blocks
 
-            match_decimal_sep = rx_decimal_sep.search(lines)
-            if isinstance(match_decimal_sep, typing.Match):
-                decimal_separator = match_decimal_sep.group(1)
+        lines = rx_comment_block.sub('', lines)
+        decimal_separator = rx_decimal_sep.search(lines).group(1)
 
-            lines = re.sub('/[*]{3}.*[*]{3}/', '', lines)
+        # Extract decimal separator
 
-            # find regular - one-line tags
-            for match in re.finditer(r'^(?P<tag>[^=]+)=(?P<val>.*)', lines, re.M):
-                tag = match.group('tag').strip()
-                val = match.group('val').strip()
-                self.mMetadata[tag] = val
+        # Extract metadata tags
+        for match in rx_metadata.finditer(lines):
+            tag = match.group('tag').strip()
+            val = match.group('val').strip()
+            self.mMetadata[tag] = val
 
-            # find data
-            match = re.search(r'^data=(?P<data>.*)', lines.strip(), re.M | re.DOTALL)
-            data = match.group('data').strip()
-            data = data.replace(decimal_separator, '.')
-            dataLines = data.split('\n')
-            nRows = len(dataLines)
-            data = data.split()
-            nCols = int(len(data) / nRows)
-            data = np.asarray([float(d) for d in data]).reshape((nRows, nCols))
-            wl = data[:, 0]
-            if np.all(wl == 0):
-                wl = None  # no wl defined. use band numbers only
-            # get profiles
-            self.mReference = prepareProfileValueDict(x=wl, xUnit='nm', y=data[:, 1])
-            if nCols > 2:
-                self.mTarget = prepareProfileValueDict(x=wl, xUnit='nm', y=data[:, 2])
-            if nCols > 3:
-                self.mReflectance = prepareProfileValueDict(x=wl, xUnit='nm', y=data[:, 3], yUnit='%')
+        # Extract data block
+        match = rx_data_block.search(lines.strip())
+        if not match:
+            raise ValueError(f"Could not find data block in {path}")
 
-            rx_coord_parts = re.compile(r'(?P<deg>\d{2})(?P<min>(\d|\.)+)(?P<direction>[ENSW])')
+        data = match.group('data').strip()
+        data = data.replace(decimal_separator, '.')
+        dataLines = data.split('\n')
+        nRows = len(dataLines)
+        data = data.split()
+        nCols = int(len(data) / nRows)
+        data = np.asarray([float(d) for d in data]).reshape((nRows, nCols))
 
-            if 'integration' in self.mMetadata:
-                s = ""
+        # Process wavelength data
+        wl = data[:, 0]
+        if np.all(wl == 0):
+            wl = None  # no wl defined. use band numbers only
 
-            # get coordinates
-            if 'longitude' in self.mMetadata:
-                longitudes = rxGPSLongitude.finditer(self.mMetadata['longitude'])
-                latitudes = rxGPSLatitude.finditer(self.mMetadata['latitude'])
-                coordinates = [match_to_coordinate(lon, lat) for lon, lat in zip(longitudes, latitudes)]
+        # Create profile value dictionaries
+        self.mReference = prepareProfileValueDict(x=wl, xUnit='nm', y=data[:, 1])
+        if nCols > 2:
+            self.mTarget = prepareProfileValueDict(x=wl, xUnit='nm', y=data[:, 2])
+        if nCols > 3:
+            self.mReflectance = prepareProfileValueDict(x=wl, xUnit='nm', y=data[:, 3], yUnit='%')
 
-                if len(coordinates) == 2:
-                    self.mReferenceCoordinate = coordinates[0]
-                    self.mTargetCoordinate = coordinates[1]
-                elif len(coordinates) == 1:
-                    self.mTargetCoordinate = coordinates[0]
+        # Process coordinates if available
+        self._parse_coordinates()
 
-            if 'time' in self.mMetadata:
-                t1, t2 = self.mMetadata['time'].split(',')
-                self.mReferenceTime = self._readDateTime(t1)
-                self.mTargetTime = self._readDateTime(t2)
+        # Process time information
+        self._parse_times()
 
-            if 'gpstime' in self.mMetadata:
-                gpsR, gpsT = [t.strip() for t in self.mMetadata['gpstime'].split(',')]
-
-                self.mGpsTimeR = gpsTime(self.mReferenceTime, gpsR)
-                self.mGpsTimeT = gpsTime(self.mTargetTime, gpsT)
-
-                s = ""
-                # HHMMSS.SSS
-                # gps1 = datetime.datetime.strptime(gps1.strip(), '%H%M%S.%f')
-                # gps2 = datetime.datetime.strptime(gps2.strip(), '%H%H%S.%f')
-
-                # g = datetime.datetime(year=1980, month=1, day=1)
-                # gt1, gt2 = g + timedelta(seconds=gps1), g + timedelta(seconds=gps2)
-
-            stem = re.sub(r'_moc$', '', path.stem)
-
-            for ext in ['.jpg', '.png']:
-                path_img = path.parent / f'{stem}.sig{ext}'
-                if path_img.is_file():
-                    self.mPicture = path_img
-                    break
-
-
-RX_SIG_FILE = re.compile(r'\.sig$')
+        # Find associated image files
+        stem = rx_moc_suffix.sub('', path.stem)
+        for ext in ['.jpg', '.png']:
+            path_img = path.parent / f'{stem}.sig{ext}'
+            if path_img.is_file():
+                self.mPicture = path_img
+                break
 
 
 class SVCSpectralLibraryImportWidget(SpectralLibraryImportWidget):
@@ -249,7 +250,7 @@ class SVCSpectralLibraryImportWidget(SpectralLibraryImportWidget):
     def __init__(self, *args, **kwds):
         super(SVCSpectralLibraryImportWidget, self).__init__(*args, **kwds)
 
-        self.mSource: QgsVectorLayer = None
+        self.mSource: Optional[QgsVectorLayer] = None
 
     def spectralLibraryIO(cls) -> 'SpectralLibraryIO':
         return SpectralLibraryIO.spectralLibraryIOInstances(SVCSpectralLibraryIO)
@@ -290,16 +291,16 @@ class SVCSpectralLibraryIO(SpectralLibraryIO):
     @classmethod
     def importProfiles(cls,
                        path: Union[str, Path],
-                       importSettings: dict = dict(),
+                       importSettings: Optional[dict] = None,
                        feedback: QgsProcessingFeedback = QgsProcessingFeedback()) -> List[QgsFeature]:
 
+        sources = []
         if isinstance(path, str):
             sources = QgsFileWidget.splitFilePaths(path)
         elif isinstance(path, Path):
-            sources = []
             if path.is_dir():
                 for entry in os.scandir(path):
-                    if entry.is_file() and RX_SIG_FILE.match(entry.name):
+                    if entry.is_file() and rxSIGFile.match(entry.name):
                         sources.append(entry.path)
             elif path.is_file():
                 sources.append(path.as_posix())

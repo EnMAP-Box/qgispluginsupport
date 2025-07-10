@@ -1,5 +1,7 @@
+import concurrent.futures
 import datetime
 import os.path
+import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union, Tuple
 
@@ -72,6 +74,18 @@ def read_profiles(path: Union[str, Path]) -> Tuple[List[QgsFeature], Optional[st
     except Exception as ex:
         error = f'Unable to read {path}:\n\t{ex}'
     return features, error
+
+
+def read_profile_batch(paths: list) -> Tuple[List[QgsFeature], List[str]]:
+    features = []
+    errors = []
+
+    for path in paths:
+        feat, err = read_profiles(path)
+        features.extend(feat)
+        if err:
+            errors.append(err)
+    return features, errors
 
 
 class ImportSpectralProfiles(QgsProcessingAlgorithm):
@@ -153,12 +167,14 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
 
         recursive: bool = self.parameterAsBool(parameters, self.P_RECURSIVE, context)
         input_files = []
+
         for f in input_sources:
             p = Path(f)
             if p.is_dir():
-                for f in file_search(p, '*.*', recursive=recursive):
-                    if os.path.isfile(f):
-                        input_files.append(Path(f))
+                feedback.pushInfo(f'Search for files in : {p}')
+                rx = re.compile(r'.*\.(sed|sig|asd|\d+)$')
+                for f in file_search(p, rx, recursive=recursive):
+                    input_files.append(Path(f))
             elif p.is_file():
                 input_files.append(p)
 
@@ -173,6 +189,7 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
 
         self._use_rel_path = self.parameterAsBoolean(parameters, self.P_USE_RELPATH, context)
         self._input_files = input_files
+
         return len(errors) == 0
 
     def processAlgorithm(self,
@@ -181,48 +198,90 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
                          feedback: QgsProcessingFeedback) -> Dict[str, Any]:
 
         results = dict()
-
         wkbType = None
         crs = QgsCoordinateReferenceSystem('EPSG:4326')
-
         all_fields = QgsFields()
 
-        # collect profiles, ordered by field definition
-        PROFILES: Dict[str, List[QgsFeature]] = dict()
-
-        multiFeedback = QgsProcessingMultiStepFeedback(2, feedback)
-        multiFeedback.setCurrentStep(1)
+        PROFILES: Dict[Tuple, List[QgsFeature]] = dict()
         n_files = len(self._input_files)
 
-        pt = datetime.datetime.now()
+        multiFeedback = QgsProcessingMultiStepFeedback(2, feedback)
 
-        for i, uri in enumerate(self._input_files):
-            profiles, error = read_profiles(uri)
-            if error:
-                feedback.reportError(error)
-            # profiles = SpectralLibraryIO.readProfilesFromUri(uri, feedback=multiFeedback)
-            if len(profiles) > 0:
-                fields: QgsFields = profiles[0].fields()
-                key = tuple(fields.names())
-                PROFILES[key] = PROFILES.get(key, []) + profiles
-                for f in fields:
-                    if f.name() not in all_fields.names():
-                        all_fields.append(QgsField(f))
-                # all_fields.extend(fields)
-                # all_fields.extend(profiles[0].fields())
-            if (datetime.datetime.now() - pt).total_seconds() > 3:
-                multiFeedback.setProgress((i + 1) / n_files * 100)
-                pt = datetime.datetime.now()
+        multiFeedback.setCurrentStep(0)
+        feedback.setProgressText(f'Read {n_files} files ...')
+        t0 = datetime.datetime.now()
 
-        # get wktType
-        if wkbType is None:
-            for k, profiles in PROFILES.items():
-                if wkbType:
+        def measureTime():
+            nonlocal t0
+            dt = datetime.datetime.now() - t0
+            t0 = datetime.datetime.now()
+            return dt
+
+        if False:
+            max_workers = min(os.cpu_count() or 1, 8)
+            pt = datetime.datetime.now()
+            batch_size = n_files // max_workers
+            batch_size = 10
+            batches = [self._input_files[i:i + batch_size] for i in range(0, n_files, batch_size)]
+            # Maximal 8 Threads
+            with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+                future_to_uri = {
+                    executor.submit(read_profile_batch, batch): batch for batch in batches
+                }
+
+                completed = 0
+                for future in concurrent.futures.as_completed(future_to_uri):
+                    # uri = future_to_uri[future]
+                    features, error = future.result()
+
+                    if error:
+                        multiFeedback.reportError(error)
+
+                    if len(features) > 0:
+                        fields: QgsFields = features[0].fields()
+                        key = tuple(fields.names())
+                        PROFILES[key] = PROFILES.get(key, []) + features
+                        for f in fields:
+                            if f.name() not in all_fields.names():
+                                all_fields.append(QgsField(f))
+
+                    completed += 1
+                    # print(f'Completed: {completed}')
+
+                if (datetime.datetime.now() - pt).total_seconds() > 3:
+                    multiFeedback.setProgress(completed / n_files * 100)
+                    pt = datetime.datetime.now()
+        else:
+            for i, uri in enumerate(self._input_files):
+                profiles, error = read_profiles(uri)
+                if error:
+                    feedback.reportError(error)
+                # profiles = SpectralLibraryIO.readProfilesFromUri(uri, feedback=multiFeedback)
+                if len(profiles) > 0:
+                    fields: QgsFields = profiles[0].fields()
+                    key = tuple(fields.names())
+                    PROFILES[key] = PROFILES.get(key, []) + profiles
+                    for f in fields:
+                        if f.name() not in all_fields.names():
+                            all_fields.append(QgsField(f))
+                    # all_fields.extend(fields)
+                    # all_fields.extend(profiles[0].fields())
+                if i % 10 == 0:
+                    multiFeedback.setProgress((i + 1) / n_files * 100)
+                    pt = datetime.datetime.now()
+
+        multiFeedback.pushInfo(f'Reading done {measureTime()}')
+        if len(PROFILES) == 0:
+            multiFeedback.pushWarning('No profiles found')
+
+        for features in PROFILES.values():
+            for feature in features:
+                if feature.hasGeometry():
+                    wkbType = feature.geometry().wkbType()
                     break
-                for p in profiles:
-                    if p.hasGeometry():
-                        wkbType = p.geometry().wkbType()
-                        break
+            if wkbType:
+                break
+
         if wkbType is None:
             wkbType = QgsWkbTypes.Type.NoGeometry
 
@@ -245,21 +304,28 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
 
         # outputPar.setRemappingDefinition(remapping)
 
-        if len(PROFILES) == 0:
-            feedback.pushWarning('No profiles found')
-
         if self._use_rel_path:
+            multiFeedback.pushInfo('Try to convert absolute paths to relative paths')
             path_sink = Path(self.parameterAsFile(parameters, self.P_OUTPUT, context))
-            for srcFieldNames, profiles in PROFILES.items():
+            for srcFieldNames, features in PROFILES.items():
                 for field in srcFieldNames:
                     if field in [SpectralProfileFileReader.KEY_Picture,
                                  SpectralProfileFileReader.KEY_Path]:
-                        for p in profiles:
+                        for p in features:
                             path_abs = p.attribute(field)
                             if path_abs not in [None, '']:
                                 path_abs = Path(path_abs)
-                                path_rel = os.path.relpath(path_abs, path_sink)
+                                try:
+                                    path_rel = os.path.relpath(path_abs, path_sink)
+                                except ValueError:
+                                    path_rel = path_abs
                                 p.setAttribute(field, path_rel)
+
+        n_total = 0
+        for features in PROFILES.values():
+            n_total += len(features)
+        multiFeedback.setCurrentStep(1)
+        multiFeedback.pushInfo(f'Write {n_total} features')
 
         sink, destId = self.parameterAsSink(parameters,
                                             self.P_OUTPUT,
@@ -269,12 +335,9 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
 
         sink: QgsFeatureSink
 
-        multiFeedback.setCurrentStep(2)
-        n_total = len(profiles)
+        for i, (srcFieldNames, features) in enumerate(PROFILES.items()):
 
-        for i, (srcFieldNames, profiles) in enumerate(PROFILES.items()):
-
-            srcFields = profiles[0].fields()
+            srcFields = features[0].fields()
 
             remappingFieldMap = dict()
             transformers = []
@@ -312,7 +375,7 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
             remappingSink = QgsRemappingProxyFeatureSink(remappingDefinition, sink)
             remappingSink.setExpressionContext(expContext)
 
-            if not remappingSink.addFeatures(profiles):
+            if not remappingSink.addFeatures(features):
                 raise QgsProcessingException(self.writeFeatureError(sink, parameters, ''))
 
             if (datetime.datetime.now() - pt).total_seconds() > 3:
@@ -320,7 +383,7 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
                 pt = datetime.datetime.now()
 
         del sink
-
+        multiFeedback.pushInfo(f'Writing done {measureTime()}')
         self._profile_field_names = profile_field_names(all_fields)
         results[self.P_OUTPUT] = destId
         self._dstFields = dst_fields
@@ -358,6 +421,9 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
                 #        setup = QgsEditorWidgetSetup(EDITOR_WIDGET_REGISTRY_KEY, {})
                 #        vl.setEditorWidgetSetup(idx, setup)
                 vl.saveDefaultStyle(QgsMapLayer.StyleCategory.AllStyleCategories)
+                feedback.pushInfo(f'Created {vl.publicSource(True)}\nPost-processing finished.')
             else:
                 feedback.pushWarning(f'Unable to reload {lyr_id} as vectorlayer and set profile fields')
+        feedback.setProgress(100)
+
         return {self.P_OUTPUT: vl}
