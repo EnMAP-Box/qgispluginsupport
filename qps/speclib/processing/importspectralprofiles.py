@@ -163,7 +163,7 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
                                          description='Date-time format code',
                                          optional=True)
         p.setHelp('Defines the format code used to read date-time stamps in text files, '
-                  'e.g. "%d.%m.%Y %H:%M:%S" to read "27.05.2025 09:39:32"'
+                  'e.g. "%d.%m.%Y %H:%M:%S" to read "27.05.2025 09:39:32". '
                   'See <a href="https://docs.python.org/3/library/datetime.html#format-codes">'
                   'https://docs.python.org/3/library/datetime.html#format-codes</a> for details.')
         p.setFlags(p.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
