@@ -28,7 +28,6 @@ from typing import List
 import processing
 import qgis.testing
 import qgis.utils
-from deploy.qgispluginsupport.qps.utils import file_search
 from processing import AlgorithmDialog
 from processing.ProcessingPlugin import ProcessingPlugin
 from qgis.PyQt.QtCore import QModelIndex, QObject, Qt
@@ -49,6 +48,7 @@ from qps.speclib.processing.aggregateprofiles import AggregateProfiles
 from qps.speclib.processing.exportspectralprofiles import ExportSpectralProfiles
 from qps.speclib.processing.importspectralprofiles import ImportSpectralProfiles, read_profiles, read_profile_batch
 from qps.testing import ExampleAlgorithmProvider, get_iface, start_app, TestCase, TestObjects
+from qps.utils import file_search
 from qpstestdata import asd_with_gps, ecosis_csv, spectral_evolution_sed
 
 start_app()
