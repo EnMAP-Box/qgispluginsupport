@@ -16,7 +16,6 @@
 *                                                                         *
 ***************************************************************************
 """
-import concurrent.futures
 import datetime
 import os.path
 import re
@@ -46,9 +45,8 @@ from qps.speclib.core.spectralprofile import decodeProfileValueDict, encodeProfi
     prepareProfileValueDict, ProfileEncoding
 from qps.speclib.processing.aggregateprofiles import AggregateProfiles
 from qps.speclib.processing.exportspectralprofiles import ExportSpectralProfiles
-from qps.speclib.processing.importspectralprofiles import ImportSpectralProfiles, read_profiles, read_profile_batch
+from qps.speclib.processing.importspectralprofiles import ImportSpectralProfiles
 from qps.testing import ExampleAlgorithmProvider, get_iface, start_app, TestCase, TestObjects
-from qps.utils import file_search
 from qpstestdata import asd_with_gps, ecosis_csv, spectral_evolution_sed
 
 start_app()
@@ -273,65 +271,6 @@ class ProcessingToolsTest(TestCase):
         del provider
         reg.removeProvider(pid)
         QgsProject.instance().removeAllMapLayers()
-
-    def test_readtextfiles(self):
-
-        p = r"Z:\Namibia2024\SVC\SVC_ALL"
-        rx = re.compile(r'.*\.(sed|sig|asd|\d+)$')
-        files = list(file_search(p, rx, recursive=True))
-
-        data = []
-        files = files[0:200]
-        n = len(files)
-
-        print('Start reading')
-
-        t0 = datetime.datetime.now()
-        if False:
-            for i, p in enumerate(files):
-                if True:
-                    with open(p) as f:
-                        lines = f.read()
-                    data.append(lines)
-                if False:
-                    # result = SVCSigFile(p)
-                    # result = file_reader(p)
-                    # result = result.asFeature()
-                    result = read_profiles(p)
-                    data.append(result)
-
-                if i % 100 == 0:
-                    print(f'Read {i} files')
-        else:
-            # parallel reading
-            n_threads = 6
-            chunk_size = max(1, len(files) // n_threads)
-            chunks = [files[i:i + chunk_size] for i in range(0, len(files), chunk_size)]
-
-            t0 = datetime.datetime.now()
-            print(f'Reading {len(files)} files using {n_threads} threads')
-            all_features = []
-            all_errors = []
-
-            with concurrent.futures.ThreadPoolExecutor(max_workers=n_threads) as executor:
-                # Submit all chunks for processing
-                future_to_chunk = {
-                    executor.submit(read_profile_batch, chunk): chunk
-                    for chunk in chunks
-                }
-
-                # Process results as they complete
-                for future in concurrent.futures.as_completed(future_to_chunk):
-                    try:
-                        features, errors = future.result()
-                        all_features.extend(features)
-                        all_errors.extend(errors)
-                    except Exception as e:
-                        all_errors.append(f"Thread execution failed: {str(e)}")
-
-            print(all_errors)
-        dt = datetime.datetime.now() - t0
-        print(f'Time to read {n} files: {dt}')
 
     def test_spectralprofile_import_many(self):
 
