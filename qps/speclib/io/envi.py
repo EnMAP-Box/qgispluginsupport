@@ -33,16 +33,16 @@ import tempfile
 import time
 import uuid
 from pathlib import Path
-from typing import List, Tuple, Union
+from typing import List, Tuple, Union, Optional
 
 import numpy as np
 from osgeo import gdal, gdal_array
 
+from qgis.PyQt.QtCore import NULL, QVariant
+from qgis.PyQt.QtWidgets import QFormLayout
 from qgis.core import QgsExpression, QgsExpressionContext, QgsExpressionContextScope, QgsFeature, QgsFeatureIterator, \
     QgsFeatureRequest, QgsField, QgsFields, QgsProcessingFeedback, QgsVectorLayer
 from qgis.gui import QgsFieldComboBox, QgsFieldExpressionWidget
-from qgis.PyQt.QtCore import NULL, QVariant
-from qgis.PyQt.QtWidgets import QFormLayout
 from .. import EMPTY_VALUES, FIELD_FID, FIELD_NAME, FIELD_VALUES
 from ..core import create_profile_field, profile_field_names, profile_fields
 from ..core.spectrallibrary import LUT_IDL2GDAL, VSI_DIR
@@ -614,14 +614,14 @@ REQUIRED_TAGS = ['byte order', 'data type', 'header offset', 'lines', 'samples',
 SINGLE_VALUE_TAGS = REQUIRED_TAGS + ['description', 'wavelength', 'wavelength units']
 
 
-def canRead(pathESL) -> bool:
+def canRead(pathESL: Union[str, Path]) -> bool:
     """
     Checks if a file can be read as SpectraLibrary
     :param pathESL: path to ENVI Spectral Library (ESL)
     :return: True, if pathESL can be read as Spectral Library.
     """
-    pathESL = str(pathESL)
-    if not os.path.isfile(pathESL):
+    pathESL = Path(pathESL)
+    if not pathESL.is_file():
         return False
     hdr = readENVIHeader(pathESL, typeConversion=False)
     if hdr is None or hdr['file type'] != 'ENVI Spectral Library':
@@ -665,7 +665,7 @@ def esl2vrt(pathESL, pathVrt=None) -> gdal.Dataset:
     return ds
 
 
-def readENVIHeader(pathESL: Union[str, Path], typeConversion: bool = False) -> dict:
+def readENVIHeader(pathESL: Union[str, Path], typeConversion: bool = False) -> Optional[dict]:
     """
     Reads an ENVI Header File (*.hdr) and returns its values in a dictionary
     :param pathESL: path to ENVI Header

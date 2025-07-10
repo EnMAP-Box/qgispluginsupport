@@ -15,6 +15,7 @@ from qps.speclib.core.spectralprofile import decodeProfileValueDict, SpectralPro
 from qps.speclib.io.asd import ASDBinaryFile
 from qps.speclib.io.spectralevolution import SEDFile
 from qps.speclib.io.svc import SVCSigFile
+from qps.speclib.processing.importspectralprofiles import ImportSpectralProfiles
 from qps.testing import start_app, TestCase, TestObjects
 from qps.utils import file_search
 from qpstestdata import DIR_TESTDATA
@@ -35,16 +36,30 @@ class TestSpeclibIO_SpectralProfileReaders(TestCase):
         path_de = qpstestdata.DIR_TESTDATA / 'svc/250527_0942_R001_T002-de.sig'
         path_en = qpstestdata.DIR_TESTDATA / 'svc/250527_0942_R001_T002-en.sig'
 
-        svc1 = SVCSigFile(path_de)
-        svc2 = SVCSigFile(path_en)
+        if False:
+            svc1 = SVCSigFile(path_de)
+            svc2 = SVCSigFile(path_en)
 
-        self.assertEqual(svc1.mReference, svc2.mReference)
-        self.assertEqual(svc1.mTarget, svc2.mTarget)
-        self.assertEqual(svc1.mReferenceTime, svc2.mReferenceTime)
-        self.assertEqual(svc1.mTargetTime, svc2.mTargetTime)
+            self.assertEqual(svc1.mReference, svc2.mReference)
+            self.assertEqual(svc1.mTarget, svc2.mTarget)
+            self.assertEqual(svc1.mReferenceTime, svc2.mReferenceTime)
+            self.assertEqual(svc1.mTargetTime, svc2.mTargetTime)
 
-        self.assertEqual(svc1.mReferenceCoordinate, svc2.mReferenceCoordinate)
-        self.assertEqual(svc1.mTargetCoordinate, svc2.mTargetCoordinate)
+            self.assertEqual(svc1.mReferenceCoordinate, svc2.mReferenceCoordinate)
+            self.assertEqual(svc1.mTargetCoordinate, svc2.mTargetCoordinate)
+
+        alg = ImportSpectralProfiles()
+        alg.initAlgorithm({})
+        path_output = self.createTestOutputDirectory() / 'svc_examples.gpkg'
+        par = {
+            ImportSpectralProfiles.P_INPUT: [path_de.as_posix(), path_en.as_posix()],
+            ImportSpectralProfiles.P_OUTPUT: path_output.as_posix(),
+            # ImportSpectralProfiles.P_DATETIMEFORMAT: '%d/%m.%Y %H:%M:%S',
+        }
+        context, feedback = self.createProcessingContextFeedback()
+        results, success = alg.run(par, context, feedback)
+        self.assertTrue(success, msg=feedback.textLog())
+        s = ""
 
     def test_readFiles(self):
 

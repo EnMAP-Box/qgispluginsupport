@@ -12,9 +12,9 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
 import numpy as np
 
+from qgis.PyQt.QtCore import NULL, QByteArray, QDateTime, QJsonDocument, Qt, QVariant
 from qgis.core import QgsCoordinateReferenceSystem, QgsExpressionContext, QgsFeature, QgsField, QgsFields, QgsGeometry, \
     QgsPointXY, QgsProcessingFeedback, QgsPropertyTransformer, QgsRasterLayer, QgsVectorLayer
-from qgis.PyQt.QtCore import NULL, QByteArray, QDateTime, QJsonDocument, Qt, QVariant
 from . import create_profile_field, is_profile_field, profile_field_indices, profile_fields
 from .. import defaultSpeclibCrs, EMPTY_VALUES
 from ...qgisenums import QMETATYPE_QDATETIME, QMETATYPE_QSTRING, QMETATYPE_QVARIANTMAP
@@ -480,19 +480,23 @@ class SpectralProfileFileReader(object):
     KEY_Reflectance = 'reflectance'  # dictionary with reflectance profile values (if defined)
     KEY_ReferenceTime = 'timeR'  # time of reference profile acquisition
     KEY_TargetTime = 'timeT'  # time of target profile acquisition
-    KEY_Metadata = 'metadata'  # dictionary with more / original / untransformed metadata (file type specific)
+    KEY_Metadata = 'metadata'  # dictionary with more / original / untransformed metadata (file-type-specific)
     KEY_Name = 'name'  # file name (basename)
     KEY_Path = 'path'  # file path (full path)
+    KEY_Picture = 'picture'  # path of accompanying picture, e.g. made by an instrument
 
     _STANDARD_FIELDS = None
 
-    def __init__(self, path: Union[str, Path]):
+    def __init__(self,
+                 path: Union[str, Path],
+                 dtg_fmt: Optional[str] = None):
         path = Path(path)
         assert path.is_file()
 
-        # member attributes each profile should be able to descrbied
+        # member attributes each profile should be able to describe
 
         self.mPath = path
+        self._dtg_fmt: Optional[str] = dtg_fmt
 
         self.mReference: Optional[dict] = None
         self.mReferenceTime: Optional[datetime.datetime] = None
@@ -506,6 +510,9 @@ class SpectralProfileFileReader(object):
 
         # store for other values. can be saved in JSON
         self.mMetadata: dict = dict()
+
+    def dateTimeFormat(self) -> Optional[str]:
+        return self._dtg_fmt
 
     @staticmethod
     def standardFields() -> QgsFields:

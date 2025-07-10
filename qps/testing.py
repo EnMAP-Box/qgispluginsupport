@@ -42,23 +42,23 @@ from unittest import mock
 import numpy as np
 from osgeo import gdal, gdal_array, ogr, osr
 from osgeo.gdal import UseExceptions
-from qgis.gui import QgisInterface, QgsAbstractMapToolHandler, QgsBrowserGuiModel, QgsFilterLineEdit, QgsGui, \
-    QgsLayerTreeMapCanvasBridge, QgsLayerTreeView, QgsMapCanvas, QgsMapLayerConfigWidgetFactory, QgsMapTool, \
-    QgsMessageBar, QgsOptionsDialogBase, QgsOptionsPageWidget, QgsOptionsWidgetFactory, QgsPluginManagerInterface
-from qgis.PyQt.QtGui import QDropEvent, QIcon, QImage, QStandardItemModel
-from qgis.PyQt.QtWidgets import QAction, QApplication, QDialogButtonBox, QDockWidget, QFrame, QHBoxLayout, QListWidget, \
-    QMainWindow, QMenu, QSplitter, QStackedWidget, QToolBar, QTreeView, QVBoxLayout, QWidget
+
 import qgis.utils
 from qgis.PyQt import sip
 from qgis.PyQt.QtCore import pyqtSignal, QMimeData, QObject, QPoint, QPointF, QSize, Qt
+from qgis.PyQt.QtGui import QDropEvent, QIcon, QImage, QStandardItemModel
+from qgis.PyQt.QtWidgets import QAction, QApplication, QDialogButtonBox, QDockWidget, QFrame, QHBoxLayout, QListWidget, \
+    QMainWindow, QMenu, QSplitter, QStackedWidget, QToolBar, QTreeView, QVBoxLayout, QWidget
 from qgis.core import edit, Qgis, QgsApplication, QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsFeature, \
     QgsFeatureStore, QgsField, QgsFields, QgsGeometry, QgsLayerTree, QgsLayerTreeLayer, QgsLayerTreeModel, \
     QgsLayerTreeRegistryBridge, QgsMapLayer, QgsProcessingAlgorithm, QgsProcessingContext, QgsProcessingFeedback, \
     QgsProcessingModelAlgorithm, QgsProcessingParameterNumber, QgsProcessingParameterRasterDestination, \
     QgsProcessingParameterRasterLayer, QgsProcessingProvider, QgsProcessingRegistry, QgsProject, QgsProviderRegistry, \
     QgsPythonRunner, QgsRasterLayer, QgsTemporalController, QgsVectorLayer, QgsVectorLayerUtils, QgsWkbTypes
+from qgis.gui import QgisInterface, QgsAbstractMapToolHandler, QgsBrowserGuiModel, QgsFilterLineEdit, QgsGui, \
+    QgsLayerTreeMapCanvasBridge, QgsLayerTreeView, QgsMapCanvas, QgsMapLayerConfigWidgetFactory, QgsMapTool, \
+    QgsMessageBar, QgsOptionsDialogBase, QgsOptionsPageWidget, QgsOptionsWidgetFactory, QgsPluginManagerInterface
 from qgis.testing import QgisTestCase
-
 from .qgisenums import QGIS_WKBTYPE
 from .qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from .resources import initResourceFile
@@ -557,7 +557,7 @@ class TestCase(QgisTestCase):
             if progress == 100:
                 print('')
 
-        feedback = QgsProcessingFeedback()
+        feedback = QgsProcessingFeedback(True)
         feedback.progressChanged.connect(onProgress)
 
         context = QgsProcessingContext()

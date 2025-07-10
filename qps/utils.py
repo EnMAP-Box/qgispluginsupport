@@ -52,6 +52,7 @@ from osgeo.ogr import OFSTBoolean, OFSTNone, OFTBinary, OFTDate, OFTDateTime, OF
     OFTString, \
     OFTStringList, OFTTime
 from osgeo.osr import SpatialReference
+
 from qgis.PyQt import uic
 from qgis.PyQt.QtCore import NULL, QByteArray, QDirIterator, QMetaType, QObject, QPoint, QPointF, QRect, Qt, QUrl, \
     QVariant
@@ -67,7 +68,6 @@ from qgis.core import Qgis, QgsApplication, QgsCoordinateReferenceSystem, QgsCoo
     QgsRasterLayer, QgsRasterRenderer, QgsRectangle, QgsTask, QgsVector, QgsVectorDataProvider, QgsVectorFileWriter, \
     QgsVectorFileWriterTask, QgsVectorLayer, QgsWkbTypes
 from qgis.gui import QgisInterface, QgsDialog, QgsGui, QgsMapCanvas, QgsMapLayerComboBox, QgsMessageViewer
-
 from .qgisenums import QGIS_LAYERFILTER, QGIS_WKBTYPE, QMETATYPE_BOOL, QMETATYPE_DOUBLE, QMETATYPE_INT, \
     QMETATYPE_QBYTEARRAY, QMETATYPE_QCHAR, QMETATYPE_QDATE, QMETATYPE_QDATETIME, QMETATYPE_QSTRING, \
     QMETATYPE_QSTRINGLIST, \
@@ -3827,3 +3827,49 @@ def printCaller(prefix: str = None,
     print(f'#{prefix}{info}{suffix}', flush=True)
 
     return now
+
+
+def create_picture_viewer_config(relative: bool = False,
+                                 px_width: int = 300,
+                                 px_height: int = 0, ) -> dict:
+    """
+    Creates the config dictionary to set a QgsEditorWidgetSetup of type ExternalResource
+    to become a picture viewer
+    :param relative: use path as relative to layer sources
+    :param px_width: minimum width in pixel to display the picture (0 = flexible)
+    :param px_height: minimum height in pixel to display the picture (0 = flexible)
+    :return: dict
+    """
+    if relative:
+        relativeStorage = 2
+        propertyRootPath = {
+            'active': True,
+            'expression': "layer_property(@layer, 'path')",
+            'type': 3, }
+    else:
+        # use absolute path
+        relativeStorage = 0
+        propertyRootPath = {'active': False,
+                            'val': None,
+                            'type': 1, }
+
+    config = {'DocumentViewer': 1,
+              'DocumentViewerHeight': px_height,
+              'DocumentViewerWidth': px_width,  # 300 pixel width
+              'FileWidget': True,
+              'FileWidgetButton': False,
+              'FileWidgetFilter': '',
+              'PropertyCollection': {
+                  'name': NULL,
+                  'type': 'collection',
+                  'properties': {
+                      'propertyRootPath': propertyRootPath,
+
+                  }},
+              'RelativeStorage': relativeStorage,
+              'StorageAuthConfigId': None,
+              'StorageMode': 0,
+              'StorageType': None
+              }
+
+    return config

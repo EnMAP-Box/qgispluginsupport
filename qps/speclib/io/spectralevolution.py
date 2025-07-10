@@ -124,15 +124,12 @@ class SEDFile(SpectralProfileFileReader):
     Wrapper class to access a single SED File.
     """
 
-    def __init__(self, path):
-        super(SEDFile, self).__init__(path)
+    def __init__(self, *args, **kwds):
+        super(SEDFile, self).__init__(*args, *kwds)
         # self.mFeature = QgsFeature(SED_FIELDS)
 
-        if path is not None:
-            self.readFromSEDFile(path)
-
-    def feature(self) -> QgsFeature:
-        return self.mFeature
+        if self.mPath is not None:
+            self.readFromSEDFile(self.mPath)
 
     def readFromSEDFile(self, path: Union[str, pathlib.Path]):
         """
