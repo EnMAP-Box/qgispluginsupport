@@ -1,42 +1,42 @@
 name: Check URLs
 
-on: [push]
+on: [ push ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
-    - name: urls-checker
-      uses: urlstechie/urlchecker-action@master
-      with:
-        # A subfolder or path to navigate to in the present or cloned repository
-        # subfolder: docs
+      - uses: actions/checkout@v3
+      - name: urls-checker
+        uses: urlstechie/urlchecker-action@master
+        with:
+          # A subfolder or path to navigate to in the present or cloned repository
+          # subfolder: docs
 
-        # A comma-separated list of file types to cover in the URL checks
-        file_types: .md,.py,.rst
+          # A comma-separated list of file types to cover in the URL checks
+          file_types: .md,.py,.rst
 
-        # Choose whether to include file with no URLs in the prints.
-        print_all: false
+          # Choose whether to include file with no URLs in the prints.
+          print_all: false
 
-        # The timeout seconds to provide to requests, defaults to 5 seconds
-        timeout: 5
+          # The timeout seconds to provide to requests, defaults to 5 seconds
+          timeout: 5
 
-        # How many times to retry a failed request (each is logged, defaults to 1)
-        retry_count: 1
+          # How many times to retry a failed request (each is logged, defaults to 1)
+          retry_count: 1
 
-        exclude_files:
-          qps/pyqtgraph
+          exclude_files:
+            qps/pyqtgraph
 
-        # A comma separated links to exclude during URL checks
-        exclude_urls: http://mrcc.com/qgis.dtd,https://github.com/EnMAP-Box/qgispluginsupport.git@master#egg=qps,http://www.qtcentre.org/threads/62867-HTML-rich-text-delegate-and-text-centering-aligning-code-amp-pictures,https://bugreports.qt-project.org/browse/QTBUG-18616
+          # A comma separated links to exclude during URL checks
+          exclude_urls: http://mrcc.com/qgis.dtd,https://github.com/EnMAP-Box/qgispluginsupport.git@master#egg=qps,http://www.qtcentre.org/threads/62867-HTML-rich-text-delegate-and-text-centering-aligning-code-amp-pictures,https://bugreports.qt-project.org/browse/QTBUG-18616
 
-        # A comma separated patterns to exclude during URL checks
-        exclude_patterns: https://www.gnu.org
+          # A comma separated patterns to exclude during URL checks
+          exclude_patterns: https://www.gnu.org,https://stackoverflow.com/questions/
 
 
           # https://github.com/SuperKogito/Voice-based-gender-recognition/issues
 
-        # choose if the force pass or not
-        force_pass : false
+          # choose if the force pass or not
+          force_pass: false
