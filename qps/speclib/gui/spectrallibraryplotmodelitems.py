@@ -69,7 +69,7 @@ class SpectralProfileColorPropertyWidget(QWidget):
                 return QgsExpressionContext()
 
             context: QgsExpressionContext = layer.createExpressionContext()
-            feature: QgsFeature = None
+            feature: Optional[QgsFeature] = None
             for f in layer.getFeatures():
                 feature = f
                 break
@@ -476,11 +476,6 @@ class PropertyItemGroup(PropertyItemBase):
         self.setDropEnabled(False)
         self.setDragEnabled(False)
 
-        # connect requestPlotUpdate signal
-        # for propertyItem in self.propertyItems():
-        #    propertyItem: PropertyItem
-        # propertyItem.signals().dataChanged.connect(self.signals().requestPlotUpdate.emit)
-
     def signals(self) -> 'PropertyItemGroup.Signals':
         return self.mSignals
 
@@ -652,10 +647,6 @@ class GeneralSettingsGroup(PropertyItemGroup):
             self.mP_BG, self.mP_FG, self.mP_SC, self.mP_CH
         ]:
             self.appendRow(pItem.propertyRow())
-
-        # self.mP_MaxProfiles.signals().dataChanged.connect(self.signals().requestPlotUpdate)
-        # self.mP_SortBands.signals().dataChanged.connect(self.signals().requestPlotUpdate)
-        # self.mP_BadBands.signals().dataChanged.connect(self.signals().requestPlotUpdate)
 
         # self.mPLegend,
         for pItem in [self.mP_BG, self.mP_FG, self.mP_SC, self.mP_CH]:
@@ -1551,7 +1542,7 @@ class RasterRendererGroup(PropertyItemGroup):
             band = min(band, self.mLayer.bandCount())
         return band
 
-    def bandToXValue(self, band: int) -> float:
+    def bandToXValue(self, band: int) -> Optional[float]:
 
         if not isinstance(self.mLayer, QgsRasterLayer):
             return None
@@ -1824,8 +1815,6 @@ class ProfileCandidateGroup(SpectralProfilePlotDataItemGroup):
             if item in to_remove:
                 self.takeRow(r)
 
-        # self.signals().requestPlotUpdate.emit()
-
     def clearCandidates(self):
 
         self.removeCandidates(self.mCandidateStyleItems.keys())
@@ -1895,11 +1884,19 @@ class ProfileVisualizationGroup(SpectralProfilePlotDataItemGroup):
 
     def asMap(self) -> dict:
 
+        sl = self.speclib()
+        if isinstance(sl, QgsVectorLayer):
+            layer_id = sl.id()
+            layer_source = sl.source()
+        else:
+            layer_id = None
+            layer_source = None
+
         settings = {
             'name': self.name(),
             'field_name': self.fieldName(),
-            'layer_id': None,
-            'layer_source': None,
+            'layer_id': layer_id,
+            'layer_source': layer_source,
             'label_expression': self.labelProperty().expressionString(),
             'filter_expression': self.filterProperty().expressionString(),
             'color_expression': self.colorProperty().expressionString(),
@@ -2067,8 +2064,6 @@ class ProfileVisualizationGroup(SpectralProfilePlotDataItemGroup):
         self.setValuesMissing(valuesMissing)
 
         self.mPField.label().setIcon(QIcon(WARNING_ICON) if valuesMissing else QIcon())
-
-        # self.signals().requestPlotUpdate.emit()
 
     def speclib(self) -> QgsVectorLayer:
         return self.mSpeclib

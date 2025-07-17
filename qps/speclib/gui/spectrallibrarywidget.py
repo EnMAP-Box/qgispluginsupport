@@ -12,7 +12,6 @@ from qgis.core import (QgsFeature, QgsProject, QgsVectorLayer, QgsReadWriteConte
                        QgsMapLayer, QgsProcessingOutputFile)
 from qgis.gui import QgsMapCanvas, QgsDualView, QgsAttributeTableView, QgsDockWidget, \
     QgsActionMenu
-
 from .spectrallibraryplotitems import SpectralProfilePlotItem, SpectralProfilePlotWidget
 from .spectrallibraryplotwidget import SpectralLibraryPlotWidget, \
     SpectralProfilePlotModel
@@ -50,6 +49,9 @@ class SpectralLibraryWidget(AttributeTableWidget):
 
         if not isinstance(speclib, QgsVectorLayer):
             speclib = SpectralLibraryUtils.createSpectralLibrary()
+
+        if profile_fields_check:
+            SpectralLibraryUtils.activateProfileFields(speclib, check=profile_fields_check)
 
         super().__init__(speclib)
         # self.setAttribute(Qt.WA_DeleteOnClose, on=True)
@@ -230,9 +232,9 @@ class SpectralLibraryWidget(AttributeTableWidget):
 
         self.mPostInitHooks: Dict[str, Any] = dict()
 
-        if profile_fields_check:
-            SpectralLibraryUtils.activateProfileFields(self.speclib(), check=profile_fields_check)
-            self._onSaveEdits()
+        # if profile_fields_check:
+        #    SpectralLibraryUtils.activateProfileFields(self.speclib(), check=profile_fields_check)
+        #    # self._onSaveEdits()
         self.runPostInitHooks()
 
         s = ""

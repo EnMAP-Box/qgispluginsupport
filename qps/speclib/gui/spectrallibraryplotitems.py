@@ -3,16 +3,18 @@ import datetime
 import sys
 import textwrap
 import warnings
-from typing import Dict, List, Tuple, Union, Optional
+from typing import Dict, List, Tuple, Union, Optional, Any, Generator
 
 import numpy as np
 
 from qgis.PyQt.QtCore import pyqtSignal, QPoint, QPointF, Qt
-from qgis.PyQt.QtGui import QColor, QDragEnterEvent, QStandardItem
+from qgis.PyQt.QtGui import QColor, QDragEnterEvent
 from qgis.PyQt.QtWidgets import QAction, QApplication, QMenu, QSlider, QWidgetAction
 from qgis.core import QgsProject
 from ...plotstyling.plotstyling import PlotStyle, PlotWidgetStyle
 from ...pyqtgraph import pyqtgraph as pg
+from ...pyqtgraph.pyqtgraph import SpotItem
+from ...pyqtgraph.pyqtgraph.GraphicsScene.mouseEvents import MouseClickEvent
 from ...unitmodel import datetime64, UnitWrapper
 from ...utils import HashablePointF, SignalObjectWrapper
 
@@ -288,29 +290,72 @@ FIELD_INDEX = int
 MODEL_NAME = str
 X_UNIT = str
 PLOT_DATA_KEY = Tuple[FEATURE_ID, FIELD_INDEX, X_UNIT]
-VISUALIZATION_KEY = Tuple[QStandardItem, FEATURE_ID, FIELD_INDEX, X_UNIT]
+
+
+def default_selection_style(style: PlotStyle) -> PlotStyle:
+    style2: PlotStyle = style.clone()
+    style2.setLineWidth(style.lineWidth() + 2)
+    return style2
 
 
 class SpectralProfilePlotDataItem(pg.PlotDataItem):
     """
     A pyqtgraph.PlotDataItem to plot a SpectralProfile
     """
-    sigProfileClicked = pyqtSignal(MouseClickData)
 
     def __init__(self):
         super().__init__()
 
-        # self.curve.sigClicked.connect(self.curveClicked)
-        # self.scatter.sigClicked.connect(self.scatterClicked)
-        self.mCurveMouseClickNativeFunc = self.curve.mouseClickEvent
-        self.curve.mouseClickEvent = self.onCurveMouseClickEvent
-        self.scatter.sigClicked.connect(self.onScatterMouseClicked)
-        self.mVisualizationKey: Optional[VISUALIZATION_KEY] = None
+        self.sigPointsClicked.connect(self.onPointClicked)
+        self.setAcceptedMouseButtons(Qt.LeftButton | Qt.RightButton)
+
+        self.mDefaultStyle: PlotStyle = PlotStyle()
+        self.mSelectedStyle = default_selection_style
 
         self.mIsSelected: bool = False
         self.mLayerID: Optional[str] = None
         self.mFeatureID: Optional[int] = None
         self.mField: Optional[str] = None
+
+    def curveIsSelected(self) -> bool:
+        return self.mIsSelected
+
+    def setCurveIsSelected(self, b: bool = True):
+        self.mIsSelected = b
+        if self.mIsSelected == b:
+            return
+        elif b:
+            if callable(self.mSelectedStyle):
+                selectedStyle = self.mSelectedStyle(self.mDefaultStyle)
+            else:
+                selectedStyle = self.mSelectedStyle
+            assert isinstance(selectedStyle, PlotStyle)
+            self.setPlotStyle(selectedStyle)
+        else:
+            self.setPlotStyle(self.mDefaultStyle)
+
+    def selectPoints(self, point_indices):
+
+        s = ""
+
+    def selectedPoints(self) -> list:
+
+        return []
+
+    def layerID(self) -> Optional[str]:
+        return self.mLayerID
+
+    def featureID(self) -> Optional[int]:
+        return self.mFeatureID
+
+    def field(self) -> Optional[str]:
+        return self.mField
+
+    # On right-click, raise a context menu
+    def mouseClickEvent(self, ev):
+        if ev.button() == Qt.RightButton:
+            if self.raiseContextMenu(ev):
+                ev.accept()
 
     def setProfileData(self,
                        plot_data: dict,
@@ -321,6 +366,7 @@ class SpectralProfilePlotDataItem(pg.PlotDataItem):
                        label: str = None,
                        tooltip: str = None):
 
+        self.mDefaultStyle = plot_style
         y = plot_data.get('y')
 
         if y is None:
@@ -378,29 +424,21 @@ class SpectralProfilePlotDataItem(pg.PlotDataItem):
         self.opts['symbolSize'] = plotStyle.markerSize
         self.updateItems(styleUpdate=True)
 
-    def onCurveMouseClickEvent(self, ev):
-        self.mCurveMouseClickNativeFunc(ev)
+    def onPointClicked(self, item, data, event: MouseClickEvent):
+        print(f'# POINT CLICKED: {item} {data}')
 
-        if ev.accepted:
-            idx, x, y, pxDistance = self.closestDataPoint(ev.pos())
-            data = MouseClickData(idx=idx, xValue=x, yValue=y, pxDistance=pxDistance, pdi=self)
-            self.sigProfileClicked.emit(data)
+        for spotItem in data:
+            spotItem: SpotItem
+            s = ""
 
-    def onScatterMouseClicked(self, pts: pg.ScatterPlotItem):
-
-        if isinstance(pts, pg.ScatterPlotItem):
-            pdi = pts.parentItem()
-            if isinstance(pdi, SpectralProfilePlotDataItem):
-                pt = pts.ptsClicked[0]
-                i = pt.index()
-                data = MouseClickData(idx=i, xValue=pdi.xData[i], yValue=pdi.yData[i], pxDistance=0, pdi=self)
-                self.sigProfileClicked.emit(data)
-
-    def setVisualizationKey(self, key: VISUALIZATION_KEY):
-        self.mVisualizationKey = key
-
-    def visualizationKey(self) -> VISUALIZATION_KEY:
-        return self.mVisualizationKey
+        pass
+        # if isinstance(pts, pg.ScatterPlotItem):
+        #    pdi = pts.parentItem()
+        #    if isinstance(pdi, SpectralProfilePlotDataItem):
+        #        pt = pts.ptsClicked[0]
+        #        i = pt.index()
+        #        data = MouseClickData(idx=i, xValue=pdi.xData[i], yValue=pdi.yData[i], pxDistance=0, pdi=self)
+        #        self.sigProfileClicked.emit(data)
 
     def closestDataPoint(self, pos) -> Tuple[int, float, float, float]:
         x = pos.x()
@@ -579,6 +617,23 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
         # activate option "Visible Data Only" for y-axis to ignore a y-value, when the x-value is nan
         self.setAutoVisible(y=True)
 
+    def spectralProfilePlotDataItems(self,
+                                     is_selected: Optional[bool] = None) \
+            -> Generator[SpectralProfilePlotDataItem, Any, None]:
+        """
+        Returns a generator of SpectralProfilePlotDataItems
+        :return:
+        """
+        if isinstance(is_selected, bool):
+            for item in self.plotItem.listDataItems():
+                if isinstance(item, SpectralProfilePlotDataItem):
+                    if item.curveIsSelected() == is_selected:
+                        yield item
+        else:
+            for item in self.plotItem.listDataItems():
+                if isinstance(item, SpectralProfilePlotDataItem):
+                    yield item
+
     def setProject(self, project: QgsProject):
         self.mProject = project
 
@@ -594,7 +649,7 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
         modifiers = QApplication.keyboardModifiers()
 
         pdi: SpectralProfilePlotDataItem = data.pdi
-        vis, fid, fieldIndex, xUnit = pdi.visualizationKey()
+        # vis, fid, fieldIndex, xUnit = pdi.visualizationKey()
         name = pdi.name()
         if not isinstance(name, str):
             name = ''
@@ -603,6 +658,7 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
             x = data.xValue
             y = data.yValue
             pt = HashablePointF(x, y)
+            xUnit = self.xAxis().mUnit
             if pt not in self.mInfoScatterPointHtml.keys():
 
                 if isinstance(pdi, SpectralProfilePlotDataItem):
@@ -711,10 +767,6 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
         positionInfoHtml += '</body></html>'
         self.mInfoLabelCursor.setHtml(positionInfoHtml)
 
-    def spectralProfilePlotDataItems(self) -> List[SpectralProfilePlotDataItem]:
-        return [item for item in self.plotItem.listDataItems()
-                if isinstance(item, SpectralProfilePlotDataItem)]
-
     def setWidgetStyle(self, style: PlotWidgetStyle):
         warnings.warn(DeprecationWarning(), stacklevel=2)
         self.mInfoLabelCursor.setColor(style.textColor)
@@ -751,6 +803,7 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
         assert isinstance(plotItem, SpectralProfilePlotItem)
         vb = plotItem.vb
         assert isinstance(vb, SpectralViewBox)
+
         if plotItem.sceneBoundingRect().contains(pos) and self.underMouse():
             mousePoint = vb.mapSceneToView(pos)
             self.mCurrentMousePosition = mousePoint

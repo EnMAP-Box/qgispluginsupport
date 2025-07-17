@@ -1,14 +1,14 @@
 import datetime
 import math
 import re
-from typing import Callable, Iterable, Iterator, List, Optional, Set, Tuple, Union, Dict
+from typing import Iterable, Iterator, List, Optional, Set, Tuple, Union, Dict
 
 import numpy as np
 
 from qgis.PyQt.QtCore import pyqtSignal, QAbstractItemModel, QItemSelectionModel, QMimeData, QModelIndex, \
     QPoint, QRect, QSize, QSortFilterProxyModel, Qt
-from qgis.PyQt.QtGui import QBrush, QColor, QContextMenuEvent, QDragEnterEvent, QDropEvent, QFontMetrics, QIcon, \
-    QPainter, QPalette, QPen, QPixmap, QStandardItem, QStandardItemModel
+from qgis.PyQt.QtGui import QColor, QContextMenuEvent, QDragEnterEvent, QDropEvent, QFontMetrics, QIcon, \
+    QPainter, QPalette, QPixmap, QStandardItem, QStandardItemModel
 from qgis.PyQt.QtWidgets import QAbstractItemView, QAction, QApplication, QComboBox, QDialog, QFrame, QHBoxLayout, \
     QMenu, QMessageBox, QStyle, QStyledItemDelegate, QStyleOptionButton, QStyleOptionViewItem, QTableView, QTreeView, \
     QWidget
@@ -18,7 +18,7 @@ from qgis.core import QgsApplication, QgsExpressionContext, QgsExpressionContext
     QgsReadWriteContext, QgsRenderContext, QgsSettings, QgsSingleSymbolRenderer, QgsSymbol, QgsVectorLayer, \
     QgsVectorLayerCache, QgsExpressionContextUtils, QgsExpression
 from qgis.gui import QgsDualView, QgsFilterLineEdit
-from .spectrallibraryplotitems import FEATURE_ID, FIELD_INDEX, MODEL_NAME, PlotUpdateBlocker, \
+from .spectrallibraryplotitems import PlotUpdateBlocker, \
     SpectralProfilePlotDataItem, SpectralProfilePlotWidget
 from .spectrallibraryplotmodelitems import GeneralSettingsGroup, PlotStyleItem, ProfileCandidateGroup, \
     ProfileCandidateItem, ProfileVisualizationGroup, PropertyItem, PropertyItemBase, PropertyItemGroup, PropertyLabel, \
@@ -30,17 +30,14 @@ from ..core import is_spectral_library, profile_field_indices, profile_field_lis
 from ..core.spectralprofile import decodeProfileValueDict
 from ...models import SettingsModel
 from ...plotstyling.plotstyling import PlotStyle, PlotWidgetStyle
-from ...pyqtgraph.pyqtgraph import SignalProxy
+from ...pyqtgraph.pyqtgraph import SignalProxy, PlotCurveItem
+from ...pyqtgraph.pyqtgraph.GraphicsScene.mouseEvents import MouseClickEvent
 from ...qgisenums import QMETATYPE_INT, QMETATYPE_QSTRING
 from ...unitmodel import BAND_INDEX, BAND_NUMBER, datetime64, UnitConverterFunctionModel, UnitWrapper
 from ...utils import convertDateUnit, loadUi, qgsField, SelectMapLayerDialog, SignalObjectWrapper
 
 MAX_PROFILES_DEFAULT: int = 516
 FIELD_NAME = str
-
-ATTRIBUTE_ID = Tuple[FEATURE_ID, FIELD_INDEX]
-MODEL_DATA_KEY = Tuple[FEATURE_ID, FIELD_INDEX, MODEL_NAME]
-PROFILE_DATA_CACHE_KEY = Tuple[FEATURE_ID, FIELD_INDEX]
 
 
 class SpectralProfilePlotModelProxyModel(QSortFilterProxyModel):
@@ -84,14 +81,20 @@ class SpectralProfilePlotModel(QStandardItemModel):
         self.nUpdates: int = 0
         self.mProject: QgsProject = QgsProject.instance()
 
-        self.mSignaleProxies: List[SignalProxy] = []
+        self.mSignalProxies: Dict[str, List[SignalProxy]] = dict()
         self.mModelItems: Set[PropertyItemGroup] = set()
 
         # # workaround https://github.com/qgis/QGIS/issues/45228
         self.mStartedCommitEditWrapper: bool = False
 
-        self.mCACHE_PROFILE_DATA = dict()
-        self.mEnableCaching: bool = False
+        # data cache organized by: level1: layer id (str),
+        #                          level2: attribute field (int),
+        #                          level3: feature id (int)             = raw data
+        #                                  (feature id (int), xUnit (str))  = unit data
+        #                          items
+        self.mCACHE_PROFILE_DATA: Dict[
+            str, Dict[int, Dict[Union[int, Tuple[int, str]], Union[None, dict, int]]]] = dict()
+        self.mEnableCaching: bool = True
         self.mProfileFieldModel: SpectralProfileFieldListModel = SpectralProfileFieldListModel()
 
         self.mPlotWidget: SpectralProfilePlotWidget = None
@@ -118,8 +121,6 @@ class SpectralProfilePlotModel(QStandardItemModel):
             self.PIX_FILTER: 'Filter to exclude/include profiles. If empty, all features are used.'
 
         }"""
-
-        self.mVectorLayerCache: QgsVectorLayerCache = None
 
         self.mChangedFIDs: Set[int] = set()
         self.mChangedAttributes: Set[Tuple[int, int]] = set()
@@ -148,8 +149,9 @@ class SpectralProfilePlotModel(QStandardItemModel):
         self.insertPropertyGroup(1, self.mProfileCandidates)
 
         self.setMaxProfiles(MAX_PROFILES_DEFAULT)
-
-        self.itemChanged.connect(self.onItemChanged)
+        self._update_rate_limit = 60
+        self._sp1 = SignalProxy(self.itemChanged, rateLimit=self._update_rate_limit, slot=self.updatePlotIfChanged)
+        self._sp2 = SignalProxy(self.rowsInserted, rateLimit=self._update_rate_limit, slot=self.updatePlotIfChanged)
 
     def settingsMap(self) -> dict:
         """
@@ -159,22 +161,45 @@ class SpectralProfilePlotModel(QStandardItemModel):
         settings['general'] = self.mGeneralSettings.asMap()
         settings['x_unit'] = str(self.xUnit().unit)
         settings['candidates'] = self.profileCandidates().asMap()
-        settings['visualizations'] = [vis.asMap() for vis in self.visualizations() if
-                                      vis.isVisible() and vis.isComplete()]
+        settings['visualizations'] = [v.asMap() for v in self.visualizations()
+                                      if v.isVisible() and v.isComplete()]
 
         return settings
 
-    def onItemChanged(self, *args):
+    def updatePlotIfChanged(self, *args):
 
         settings = self.settingsMap()
         if settings != self.mLastSettings:
+            if isinstance(settings, dict) and isinstance(self.mLastSettings, dict):
+                print(self.dict_differences(self.mLastSettings, settings))
             self.mLastSettings = settings
+
             self.updatePlot(settings=settings)
 
         # if not self.updatesBlocked():
         # print('#ITEM CHANGED')
         # self.updatePlot()
         #    pass
+
+    def dict_differences(self, dict1, dict2):
+        # Find keys that are in both dictionaries but have different values
+        common_keys = set(dict1.keys()) & set(dict2.keys())
+        diff = {k: (dict1[k], dict2[k]) for k in common_keys if dict1[k] != dict2[k]}
+
+        # Find keys that are only in dict1
+        only_in_dict1 = {k: dict1[k] for k in dict1.keys() - dict2.keys()}
+
+        # Find keys that are only in dict2
+        only_in_dict2 = {k: dict2[k] for k in dict2.keys() - dict1.keys()}
+
+        # Combine all differences into a single dictionary
+        differences = {
+            'changed_values': diff,
+            'only_in_dict1': only_in_dict1,
+            'only_in_dict2': only_in_dict2
+        }
+
+        return differences
 
     def blockUpdates(self, b: bool) -> bool:
         state = self.mBlockUpdates
@@ -232,48 +257,61 @@ class SpectralProfilePlotModel(QStandardItemModel):
         for r in to_remove:
             r.onLayerRemoved()
 
-    def rawData(self, feature: QgsFeature, fieldIndex: int) -> dict:
+    def rawData(self,
+                layer_id: str,
+                fieldIndex: int,
+                feature: Union[int, QgsFeature]) -> Union[None, int, dict]:
         """
-        Returns the raw data struct of a deserialized spectral profile
+        Returns the raw data struct of a spectral profile field, after it has been
+        extracted from a QgsFeature.
         """
         # NA = not initialized
         # None = not available
-        if not feature.isValid():
-            return None
         NI = SpectralProfilePlotModel.NOT_INITIALIZED
 
-        id_attribute = (feature.id(), fieldIndex)
-        rawData = self.mCACHE_PROFILE_DATA.get(id_attribute, NI)
+        if isinstance(feature, int):
+            return self.mCACHE_PROFILE_DATA[layer_id][fieldIndex].get(feature, NI)
 
-        fieldIndex = id_attribute[1]
-        if rawData == NI or not self.mEnableCaching:
-            # load profile data
-            d: dict = decodeProfileValueDict(feature.attribute(fieldIndex))
-            if d is None or len(d) == 0 or 'y' not in d.keys():
-                # no profile
-                rawData = None
-            else:
-                rawData = d
-                if rawData.get('x', None) is None:
-                    rawData['x'] = list(range(len(rawData['y'])))
-                    rawData['xUnit'] = BAND_INDEX
-
-                # convert None values to NaN so that numpy arrays will become numeric
-                rawData['y'] = [np.nan if v is None or not math.isfinite(v) else v for v in rawData['y']]
-
-            self.mCACHE_PROFILE_DATA[id_attribute] = rawData
-        return self.mCACHE_PROFILE_DATA[id_attribute]
-
-    def plotData2(self, feature: QgsFeature, fieldIndex: int, xUnit: str) -> Optional[dict]:
-
-        raw_data = feature.attributes()[fieldIndex]
-        d: dict = decodeProfileValueDict(feature.attribute(fieldIndex))
-        if d == {}:
-            return None
         else:
-            return self.profileDataToXUnit(raw_data, xUnit)
+            if not feature.isValid():
+                return None
 
-    def plotData(self, feature: QgsFeature, fieldIndex: int, xUnit: str) -> Optional[dict]:
+            raw_data = self.mCACHE_PROFILE_DATA[layer_id][fieldIndex].get(feature.id, NI)
+
+            if raw_data == NI or not self.mEnableCaching:
+                # load profile data
+                d: dict = decodeProfileValueDict(feature.attribute(fieldIndex))
+                if d is None or len(d) == 0 or 'y' not in d.keys():
+                    # no profile
+                    raw_data = None
+                else:
+                    raw_data = d
+                    if raw_data.get('x', None) is None:
+                        raw_data['x'] = list(range(len(raw_data['y'])))
+                        raw_data['xUnit'] = BAND_INDEX
+
+                    # convert None values to NaN so that numpy arrays will become numeric
+                    raw_data['y'] = [np.nan if v is None or not math.isfinite(v) else v for v in raw_data['y']]
+
+                self.mCACHE_PROFILE_DATA[layer_id][fieldIndex][feature.id()] = raw_data
+            return raw_data
+
+    def plotData2(self, layer_id: str, fieldIndex: int, feature: QgsFeature, xUnit: str) -> Optional[dict]:
+
+        # raw_data = feature.attributes()[fieldIndex]
+        # if raw_data is None:
+        #    return None
+
+        try:
+            raw_data = self.rawData(layer_id, fieldIndex, feature)
+            # d: dict = decodeProfileValueDict(feature.attribute(fieldIndex))
+            if raw_data in [SpectralProfilePlotModel.NOT_INITIALIZED, None]:
+                return None
+            return self.profileDataToXUnit(raw_data, xUnit)
+        except Exception as e:
+            return None
+
+    def plotData1(self, layer_id: str, fieldIndex: int, feature: QgsFeature, xUnit: str) -> Optional[dict]:
         """
         Returns the data struct of a deserialized spectral profile, converted to xUnit
         """
@@ -282,21 +320,25 @@ class SpectralProfilePlotModel(QStandardItemModel):
         NI = SpectralProfilePlotModel.NOT_INITIALIZED
         # NA = not initialized
         # None = not available
-        id_plot_data = (feature.id(), fieldIndex, xUnit)
-        id_raw_data = (feature.id(), fieldIndex)
-        plotData = self.mCACHE_PROFILE_DATA.get(id_plot_data, NI)
+        id_raw_data = feature.id()
+        id_unit_data = (feature.id(), xUnit)
+
+        FIELD_DATA = self.mCACHE_PROFILE_DATA[layer_id][fieldIndex]
+        plotData = FIELD_DATA.get(id_unit_data, NI)
         if plotData == NI or not self.mEnableCaching:
-            rawData = self.rawData(feature, fieldIndex)
+            rawData = self.rawData(layer_id, fieldIndex, feature)
 
             if rawData is None:
                 # cannot load raw data
-                self.mCACHE_PROFILE_DATA[id_plot_data] = None
+                plotData = None
+
             else:
                 # convert profile data to xUnit
                 # if not possible, entry will be set to None
-                self.mCACHE_PROFILE_DATA[id_plot_data] = self.profileDataToXUnit(rawData, xUnit)
+                plotData = self.profileDataToXUnit(rawData, xUnit)
+            FIELD_DATA[id_unit_data] = plotData
 
-        return self.mCACHE_PROFILE_DATA.get(id_plot_data, None)
+        return plotData
 
     def plotWidget(self) -> SpectralProfilePlotWidget:
         return self.mPlotWidget
@@ -474,11 +516,103 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
             self.updatePlot()
 
+    def selectedProfiles(self) -> Dict[str, Dict[int, int]]:
+        """
+        Returns t
+        :return:
+        """
+        pass
+
+    def selectedCurveFeatures(self) -> Dict[str, set]:
+        """
+        Returns the layer and features ids related to selected profile curves in the plot
+        :return:
+        """
+        result = dict()
+        for item in self.mPlotWidget.spectralProfilePlotDataItems(is_selected=True):
+            layer_id = item.layerID()
+            layer_features = result.get(layer_id, set())
+            layer_features.add(item.featureID())
+            result[layer_id] = layer_features
+
+        return result
+
+    def onCurveClicked(self, item: PlotCurveItem, event: MouseClickEvent):
+        """
+        Handles the selection / unselection of spectral profiles
+        :param item:
+        :param event:
+        :return:
+        """
+        parent = item.parentItem()
+        if isinstance(parent, SpectralProfilePlotDataItem):
+            is_selected = parent.curveIsSelected()
+
+            old_selection = self.selectedCurveFeatures()
+
+            # Check for modifier keys
+            modifiers = event.modifiers()
+            has_ctrl = modifiers & Qt.KeyboardModifier.ControlModifier
+            has_shift = modifiers & Qt.KeyboardModifier.ShiftModifier
+
+            # Select-item logic
+            if has_ctrl:
+                # toggle this item only
+                parent.setCurveIsSelected(not is_selected)
+            elif has_shift:
+                # Handle SHIFT+click
+                # allways add to existing selection
+                parent.setCurveIsSelected(True)
+            else:
+                # this item is the new selection
+                # 1. clear previous
+                for item in self.mPlotWidget.spectralProfilePlotDataItems(is_selected=True):
+                    item.setCurveIsSelected(False)
+                # 2. this item is the new selection
+                parent.setCurveIsSelected(True)
+
+            new_selection = self.selectedCurveFeatures()
+
+            if old_selection != new_selection:
+                layers = set(old_selection.keys()) | set(new_selection.keys())
+
+                # 1. select layer features that have a selected curve
+                for layerID in layers:
+                    layer = self.project().mapLayer(layerID)
+                    if isinstance(layer, QgsVectorLayer):
+                        new_ids = new_selection.get(layerID, set())
+                        old_ids = old_selection.get(layerID, set())
+
+                        layer.selectByIds(new_ids)
+
+                # 2. select curves that have a selected layer feature
+                self.updateCurveSelectionFromLayersFeatures()
+
+    def updateCurveSelectionFromLayersFeatures(self):
+        SELECTED_FEATURES = dict()
+
+        for item in self.mPlotWidget.spectralProfilePlotDataItems():
+            lid = item.layerID()
+            fid = item.featureID()
+            if lid not in SELECTED_FEATURES:
+                layer = self.project().mapLayer(lid)
+                if isinstance(layer, QgsVectorLayer):
+                    SELECTED_FEATURES[lid] = layer.selectedFeatureIds()
+                else:
+                    SELECTED_FEATURES[lid] = []
+            item.setCurveIsSelected(fid in SELECTED_FEATURES[lid])
+
+            s = ""
+
     def updatePlot(self,
                    settings: Optional[dict] = None):  #
 
+        self.mCACHE_PROFILE_DATA.clear()
+
         if settings is None:
             settings = self.settingsMap()
+        elif not isinstance(settings, dict):
+            s = ""
         settings = settings.copy()
 
         if not isinstance(self.speclib(), QgsVectorLayer):
@@ -495,8 +629,14 @@ class SpectralProfilePlotModel(QStandardItemModel):
         xunit: str = settings.get('x_unit', BAND_NUMBER)
         speclib: QgsVectorLayer = self.speclib()
 
-        # Recycle plot items
-        # old_spdis: List[SpectralProfilePlotDataItem] = self.mPlotWidget.spectralProfilePlotDataItems()
+        # sc = QColor(settings['general']['color_sc'])
+        sc = self.mGeneralSettings.selectionColor()
+
+        def func_selected_style(plotStyle: PlotStyle):
+            style2 = plotStyle.clone()
+            style2.setLineWidth(plotStyle.lineWidth() + 2)
+            style2.setLineColor(sc)
+            return style2
 
         CANDIDATES = self.profileCandidates()
 
@@ -509,14 +649,9 @@ class SpectralProfilePlotModel(QStandardItemModel):
         # skip, needs too much time (reads fids 2x)
         # feature_priority = self.featurePriority()
 
-        visualizations = settings['visualizations']
+        visualizations: List[dict] = settings['visualizations']
         layer_ids = []
         for vis in visualizations:
-            if vis['layer_id'] is None:
-                vis['layer_id'] = speclib.id()
-            if vis['layer_source'] is None:
-                vis['layer_source'] = speclib.source()
-
             lid = vis.get('layer_id', speclib.id())
             layer_ids.append(lid)
             if lid in self.mLayerCaches:
@@ -529,6 +664,17 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
                 if isinstance(lyr, QgsVectorLayer) and lyr.isValid():
                     self.mLayerCaches[lid] = QgsVectorLayerCache(lyr, 1024)
+
+        # prepare a profile data cache dict for each layer and spectral profile field
+        for vis in visualizations:
+            layer_cache: QgsVectorLayerCache = self.mLayerCaches[vis['layer_id']]
+            layer = layer_cache.layer()
+            field_name = vis['field_name']
+            field_index = layer.fields().lookupField(field_name)
+            layer_data_cache = self.mCACHE_PROFILE_DATA.get(layer.id(), dict())
+            field_data_cache = layer_data_cache.get(field_index, dict())
+            layer_data_cache[field_index] = field_data_cache
+            self.mCACHE_PROFILE_DATA[layer.id()] = layer_data_cache
 
         # for v in self.visualizations():
         #    v.mPlotDataItems.clear()
@@ -548,7 +694,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
         show_selected_only = self.showSelectedFeaturesOnly()
         vis_context: QgsExpressionContext = self.speclib().createExpressionContext()
 
-        PLOT_ITEMS = []
+        PLOT_ITEMS: List[SpectralProfilePlotDataItem] = []
 
         # handle profile candidates - show them on top -> z-value
         for item in CANDIDATES.candidateItems():
@@ -565,7 +711,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
             if not isinstance(feature, QgsFeature):
                 continue
             plot_item: SpectralProfilePlotDataItem = item.plotItem()
-            plot_data = self.plotData2(feature, fieldIndex, xunit)
+            plot_data = self.plotData2(feature, xunit, fieldIndex, )
             # plot_data = self.plotData(feature, fieldIndex, xunit)
             if plot_data:
 
@@ -600,12 +746,13 @@ class SpectralProfilePlotModel(QStandardItemModel):
         DT = dict()
 
         def add_dt(key: str, t0: datetime.datetime):
-
             dt = (datetime.datetime.now() - t0).total_seconds()
 
             dtl = DT.get(key, [])
             dtl.append(dt)
             DT[key] = dtl
+
+        t0 = datetime.datetime.now()
 
         for i_vis, vis in enumerate(visualizations):
 
@@ -633,9 +780,12 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
             layer_cache: QgsVectorLayerCache = self.mLayerCaches[vis['layer_id']]
             layer = layer_cache.layer()
+            layer_id = layer.id()
             selected_fids = layer.selectedFeatureIds()
 
             request = QgsFeatureRequest()
+            request.setLimit(max_profiles)
+            request.setFlags(QgsFeatureRequest.NoGeometry)
             if filter_expression:
                 request.setFilterExpression(filter_expression.expression())
 
@@ -686,22 +836,17 @@ class SpectralProfilePlotModel(QStandardItemModel):
                         feature_context.appendScope(QgsExpressionContextScope(symbolScope))
                     feature_renderer.stopRender(renderContext)
 
-                s = ""
+                t0 = datetime.datetime.now()
+                plot_data: Optional[dict] = self.plotData1(layer_id, field_index, feature, xunit)
+                add_dt('plotData1', t0)
 
                 t0 = datetime.datetime.now()
-                plot_data: Optional[dict] = self.plotData2(feature, field_index, xunit)
-
-                # plot_data: dict = self.plotData(feature, vis.fieldIdx(), xunit)
-                if not isinstance(plot_data, dict):
-                    s = ""
-                    # profile data can not be transformed to requested x-unit
-                    continue
-
+                plot_data: Optional[dict] = self.plotData2(layer_id, field_index, feature, xunit)
                 add_dt('plotData2', t0)
 
-                t0 = datetime.datetime.now()
-                plot_data: Optional[dict] = self.plotData(feature, field_index, xunit)
-                add_dt('plotData1', t0)
+                if not isinstance(plot_data, dict):
+                    # profile data can not be transformed to requested x-unit
+                    continue
 
                 t0 = datetime.datetime.now()
                 plot_style = vis_plot_style.clone()
@@ -721,20 +866,20 @@ class SpectralProfilePlotModel(QStandardItemModel):
                 plot_tooltip: str = tooltip_expression.evaluate(feature_context)
                 add_dt('label_tooltip', t0)
 
-                t0 = datetime.datetime.now()
-                # pdi = pdi_generator.__next__()
-                # pdi: SpectralProfilePlotDataItem
-                pdi = SpectralProfilePlotDataItem()
-                vis_key = (vis, fid, field_index, xunit)
-                pdi.setVisualizationKey(vis_key)
+                is_selected = fid in selected_fids
 
+                pdi = SpectralProfilePlotDataItem()
+                pdi.setClickable(True, 4)
+                pdi.mLayerID = layer_id
+                pdi.mFeatureID = fid
+                pdi.mFieldIndex = field_index
+                pdi.mSelectedStyle = func_selected_style
                 pdi.setProfileData(plot_data, plot_style,
                                    showBadBands=show_bad_bands,
                                    sortBands=sort_bands,
                                    label=plot_label,
-                                   tooltip=plot_tooltip,
-                                   zValue=-1 * len(PLOT_ITEMS))
-                add_dt('pdi', t0)
+                                   tooltip=plot_tooltip)
+                pdi.setCurveIsSelected(is_selected)
 
                 # vis.mPlotDataItems.append(pdi)
 
@@ -743,76 +888,35 @@ class SpectralProfilePlotModel(QStandardItemModel):
                 if vis_context.lastScope() == symbolScope:
                     vis_context.popScope()
 
-        selectionColor = self.mGeneralSettings.selectionColor()
-
-        t0 = datetime.datetime.now()
-        for pdi in PLOT_ITEMS:
-            pdi: SpectralProfilePlotDataItem
-            fid = pdi.visualizationKey()[1]
-            if fid in selected_fids:
-                # show all profiles, special highlight of selected
-                """
-                pen=linePen,
-                symbol=symbol,
-                symbolPen=symbolPen,
-                symbolBrush=symbolBrush,
-                symbolSize=symbolSize)
-                """
-                pen: QPen = pdi.opts['pen']
-                symbolPen: QPen = pdi.opts['symbolPen']
-                symbolBrush: QBrush = pdi.opts['symbolBrush']
-
-                pen.setColor(selectionColor)
-                symbolPen.setColor(selectionColor)
-                symbolBrush.setColor(selectionColor)
-                pdi.updateItems(styleUpdate=True)
-                # pdi.updateItems()
-                # pdi.setData(pen=pen, symbolPen=symbolPen, symbolBrush=symbolBrush)
-                s = ""
-        add_dt('update items', t0)
-
         # check if x unit was different to this one
         if not self.mXUnitInitialized and len(PLOT_ITEMS) > 0:
-            vis_key = PLOT_ITEMS[0].visualizationKey()
-            id_attribute = (vis_key[1], vis_key[2])
-            rawData = self.mCACHE_PROFILE_DATA.get(id_attribute, None)
+            pdi: SpectralProfilePlotDataItem = PLOT_ITEMS[0]
+            rawData = self.rawData(pdi.mLayerID, pdi.mFieldIndex, pdi.mFeatureID)
+
             if rawData:
                 xunit2 = self.mXUnitModel.findUnit(rawData.get('xUnit', None))
                 if isinstance(xunit2, str) and xunit2 != xunit:
                     self.mXUnitInitialized = True
                     self.setXUnit(xunit2)
-                    # this will call updatePlot again, so we can return afterwards
+                    # this will call updatePlot again, so we can return afterward
                     return
 
-        # to_remove = [p for p in old_spdis if p not in PLOT_ITEMS]
-
-        # printCaller(suffix=f'Prepare', dt=datetime.datetime.now() - t0)
-
         t0 = datetime.datetime.now()
+        self.mPlotWidget.viewBox()._updatingRange = True
         self.mPlotWidget.plotItem.clearPlots()
+        add_dt('clearPlots', t0)
+        t0 = datetime.datetime.now()
         with PlotUpdateBlocker(self.mPlotWidget) as blocker:
             for p in PLOT_ITEMS:
+                p.sigClicked.connect(self.onCurveClicked)
                 self.mPlotWidget.plotItem.addItem(p)
-
-        # with PlotUpdateBlocker(self.mPlotWidget) as blocker:
-        #    t1 = datetime.datetime.now()
-        #    for p in to_remove:
-        #        self.mPlotWidget.removeItem(p)
-        #    existing = self.mPlotWidget.items()
-        #    to_add = [p for p in PLOT_ITEMS if p not in existing]
-        #
-        #    for p in to_add:
-        #        self.mPlotWidget.addItem(p)
-
-        add_dt('add items', t0)
-
-        # n_total = len([i for i in self.mPlotWidget.getPlotItem().items if isinstance(i, SpectralProfilePlotDataItem)])
-
-        self.updateProfileLabel(len(PLOT_ITEMS), profile_limit_reached)
+        add_dt('add plot items', t0)
 
         for k, dtl in DT.items():
             dtl = np.asarray(dtl)
-            print(f'{k}: {dtl.sum():.2f} s  {dtl.mean():.3f}s')
+            print(f'{k}: {dtl.sum():.2f} s  {dtl.mean():.3f}s n = {len(dtl)}')
+
+        self.updateProfileLabel(len(PLOT_ITEMS), profile_limit_reached)
 
     def updateProfileLabel(self, n: int, limit_reached: bool):
         propertyItem = self.generalSettings().mP_MaxProfiles
@@ -876,7 +980,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
     def profileDataToXUnit(self, profileData: dict, xUnit: str) -> Optional[dict]:
         """
         Converts the x values from plotData.get('xUnit') to xUnit.
-        Returns None if a conversion is not possible (e.g. from meters to time)
+        Returns None if a conversion is not possible (e.g., from meters to time)
         :param profileData: profile dictionary
         :param xUnit: str
         :return: dict | None
@@ -977,8 +1081,6 @@ class SpectralProfilePlotModel(QStandardItemModel):
         return self.mDualView
 
     def setDualView(self, dualView: QgsDualView):
-        speclib = None
-        self.mVectorLayerCache = None
 
         if self.mDualView != dualView:
             if isinstance(self.mDualView, QgsDualView):
@@ -994,31 +1096,26 @@ class SpectralProfilePlotModel(QStandardItemModel):
                 # self.mDualView.view()
                 speclib = dualView.masterModel().layer()
 
-        if self.mSpeclib != speclib:
-            if isinstance(self.mSpeclib, QgsVectorLayer):
-                # unregister signals
-                self.disconnectSpeclibSignals()
-
-            self.mSpeclib = speclib
-            self.mProfileFieldModel.setLayer(speclib)
-
-            # connect signals
-            if isinstance(self.mSpeclib, QgsVectorLayer):
-                self.mVectorLayerCache = QgsVectorLayerCache(speclib, 1000)
-                self.connectSpeclibSignals(self.mSpeclib)
-                # self.updatePlot()
+                if speclib.id() not in self.project().mapLayers().keys():
+                    self.project().addMapLayer(speclib)
+                self.connectSpeclibSignals(speclib)
 
     def connectSpeclibSignals(self, speclib: QgsVectorLayer):
 
-        rl = 60
+        rl = self._update_rate_limit
 
-        self.mSignaleProxies.extend([
-            SignalProxy(speclib.attributeValueChanged, rateLimit=rl, slot=self.updatePlot),
-            SignalProxy(speclib.featuresDeleted, rateLimit=rl, slot=self.updatePlot),
-            SignalProxy(speclib.featureAdded, rateLimit=rl, slot=self.updatePlot),
-            SignalProxy(speclib.styleChanged, rateLimit=rl, slot=self.onSpeclibStyleChanged),
-            SignalProxy(speclib.selectionChanged, rateLimit=rl, slot=self.onSpeclibSelectionChanged)
-        ])
+        if speclib.id() not in self.mSignalProxies:
+            proxies = [
+                SignalProxy(speclib.attributeValueChanged, rateLimit=rl, slot=lambda: self.updatePlot),
+                SignalProxy(speclib.featuresDeleted, rateLimit=rl, slot=lambda: self.updatePlot),
+                SignalProxy(speclib.featureAdded, rateLimit=rl, slot=lambda: self.updatePlot),
+                SignalProxy(speclib.styleChanged, rateLimit=rl, slot=self.onSpeclibStyleChanged),
+                SignalProxy(speclib.selectionChanged, rateLimit=rl, slot=self.onSpeclibSelectionChanged),
+                SignalProxy(speclib.updatedFields, rateLimit=rl, slot=lambda: self.onSpeclibFieldsUpdated),
+            ]
+
+            self.mSignalProxies[speclib.id()] = proxies
+            speclib.willBeDeleted.connect(lambda *args, fid=speclib.id(): self.disconnectSpeclibSignals(fid))
 
         # speclib.attributeValueChanged.connect(self.onSpeclibAttributeValueChanged)
         # speclib.editCommandStarted.connect(self.onSpeclibEditCommandStarted)
@@ -1033,10 +1130,15 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
         # speclib.willBeDeleted.connect(lambda *args, sl=speclib: self.disconnectSpeclibSignals(sl))
 
-    def disconnectSpeclibSignals(self, speclib: QgsVectorLayer):
+    def disconnectSpeclibSignals(self, speclib: Union[str, QgsVectorLayer]):
 
-        for proxy in self.mSignaleProxies:
-            proxy.disconnect()
+        if isinstance(speclib, QgsVectorLayer):
+            speclib = speclib.id()
+
+        if speclib in self.mSignalProxies:
+            for proxy in self.mSignalProxies[speclib.id()]:
+                proxy.disconnect()
+            del self.mSignalProxies[speclib.id()]
 
         # speclib.editCommandStarted.disconnect(self.onSpeclibEditCommandStarted)
         # speclib.editCommandEnded.disconnect(self.onSpeclibEditCommandEnded)
@@ -1051,6 +1153,32 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
         # speclib.willBeDeleted.disconnect(self.onSpeclibWillBeDeleted)
 
+    def onSpeclibFieldsUpdated(self, *args, **kwargs):
+
+        profilefields = profile_fields(self.speclib())
+        to_remove = []
+        to_add = []
+
+        # remove visualizations for removed fields
+        for vis in self.profileVisualizations():
+            if not isinstance(vis.field(), QgsField) or vis.field().name() not in profilefields.names():
+                to_remove.append(vis)
+
+        self.mPlotControlModel.removePropertyItemGroups(to_remove)
+
+        for name in list(self.mINITIALIZED_VISUALIZATIONS):
+            if name not in profilefields.names():
+                self.mINITIALIZED_VISUALIZATIONS.remove(name)
+
+        for field in profilefields:
+            name = field.name()
+            if name not in self.mINITIALIZED_VISUALIZATIONS:
+                has_checked_vis = any([v.checkState() == Qt.Checked for v in self.profileVisualizations()])
+
+                self.createProfileVisualization(field=field, checked=not has_checked_vis)
+                # keep in mind if a visualization was created at least once for a profile field
+                self.mINITIALIZED_VISUALIZATIONS.add(name)
+
     def onSpeclibStyleChanged(self, *args):
         # self.loadFeatureColors()
         b = False
@@ -1064,7 +1192,8 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
     def onSpeclibSelectionChanged(self, *args, **kwds):
         s = ""
-        self.updatePlot()
+        self.updateCurveSelectionFromLayersFeatures()
+        # self.updatePlot()
 
     def onDualViewSliderMoved(self, *args):
         pass
@@ -1109,41 +1238,6 @@ class SpectralProfilePlotModel(QStandardItemModel):
     PropertyIndexRole = Qt.UserRole + 1
     PropertyDefinitionRole = Qt.UserRole + 2
     PropertyRole = Qt.UserRole + 3
-
-
-class PDIGenerator(object):
-    """
-    A generator over SpectralProfilePlotData items.
-    Uses existing ones and, if nececessary, creates new ones.
-    """
-
-    def __init__(self, existingPDIs: List[SpectralProfilePlotDataItem] = [],
-                 onProfileClicked: Callable = None):
-        self.pdiList: List[SpectralProfilePlotDataItem] = existingPDIs
-        self.onProfileClicked = onProfileClicked
-        self.mZValue = -1
-
-    def zValue(self) -> int:
-        return self.mZValue
-
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-        self.mZValue += 1
-        if len(self.pdiList) > 0:
-            return self.pdiList.pop(0)
-        else:
-            # create new
-            pdi = SpectralProfilePlotDataItem()
-            if self.onProfileClicked:
-                pdi.setClickable(True)
-                pdi.sigProfileClicked.connect(self.onProfileClicked)
-
-            return pdi
-
-    def remaining(self) -> List[SpectralProfilePlotDataItem]:
-        return self.pdiList[:]
 
 
 class SpectralProfilePlotView(QTreeView):
@@ -1617,6 +1711,7 @@ class SpectralLibraryPlotWidget(QWidget):
     def onMaxProfilesReached(self):
 
         if self.SHOW_MAX_PROFILES_HINT:
+            self.SHOW_MAX_PROFILES_HINT = False
             n = self.mPlotControlModel.maxProfiles()
 
             self.panelVisualization.setVisible(True)
@@ -1631,36 +1726,8 @@ class SpectralLibraryPlotWidget(QWidget):
                                              'Maximum number of profiles',
                                              f'Reached maximum number of profiles to display ({n}).\n'
                                              'Increase this value to display more profiles at same time.\n'
-                                             'Showing large numbers of profiles at same time can reduce '
-                                             'the visualization speed')
-
-            self.SHOW_MAX_PROFILES_HINT = False
-
-    def onSpeclibFieldsUpdated(self, *args):
-
-        profilefields = profile_fields(self.speclib())
-        to_remove = []
-        to_add = []
-
-        # remove visualizations for removed fields
-        for vis in self.profileVisualizations():
-            if not isinstance(vis.field(), QgsField) or vis.field().name() not in profilefields.names():
-                to_remove.append(vis)
-
-        self.mPlotControlModel.removePropertyItemGroups(to_remove)
-
-        for name in list(self.mINITIALIZED_VISUALIZATIONS):
-            if name not in profilefields.names():
-                self.mINITIALIZED_VISUALIZATIONS.remove(name)
-
-        for field in profilefields:
-            name = field.name()
-            if name not in self.mINITIALIZED_VISUALIZATIONS:
-                has_checked_vis = any([v.checkState() == Qt.Checked for v in self.profileVisualizations()])
-
-                self.createProfileVisualization(field=field, checked=not has_checked_vis)
-                # keep in mind if a visualization was created at least once for a profile field
-                self.mINITIALIZED_VISUALIZATIONS.add(name)
+                                             'Showing a large numbers of profiles (and bands) can reduce '
+                                             'visualization speed')
 
     def createLayerBandVisualization(self, *args):
 
@@ -1751,6 +1818,7 @@ class SpectralLibraryPlotWidget(QWidget):
             item.setColor(color)
 
         self.mPlotControlModel.insertPropertyGroup(-1, item)
+        # self.mPlotControlModel.updatePlot()
 
     def profileVisualizations(self) -> List[ProfileVisualizationGroup]:
         return self.mPlotControlModel.visualizations()
@@ -1767,20 +1835,12 @@ class SpectralLibraryPlotWidget(QWidget):
         self.mPlotControlModel.removePropertyItemGroups(to_remove)
 
     def setDualView(self, dualView):
-        sl = self.speclib()
-        if isinstance(sl, QgsVectorLayer):
-            sl.updatedFields.disconnect(self.onSpeclibFieldsUpdated)
-
         self.mDualView = dualView
         self.mPlotControlModel.setDualView(dualView)
 
-        sl = self.speclib()
-        if isinstance(sl, QgsVectorLayer):
-            sl.updatedFields.connect(self.onSpeclibFieldsUpdated)
-        self.onSpeclibFieldsUpdated()
-
     def speclib(self) -> QgsVectorLayer:
-        return self.mPlotControlModel.speclib()
+        # will be removed
+        return self.mDualView.masterModel().layer()
 
     # def addSpectralModel(self, model):
     #    self.mPlotControlModel.addModel(model)

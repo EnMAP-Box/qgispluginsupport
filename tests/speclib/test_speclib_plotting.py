@@ -1,4 +1,4 @@
- import json
+import json
 import os.path
 import unittest
 
@@ -16,6 +16,7 @@ from qgis.core import edit, QgsCategorizedSymbolRenderer, QgsClassificationRange
     QgsSingleSymbolRenderer, QgsVectorLayer
 from qgis.gui import QgsDualView, QgsMapCanvas
 from qps import DIR_REPO, initAll, registerSpectralLibraryPlotFactories, unregisterSpectralLibraryPlotFactories
+from qps.layerproperties import AttributeTableWidget
 from qps.pyqtgraph.pyqtgraph import InfiniteLine
 from qps.qgisenums import QMETATYPE_DOUBLE, QMETATYPE_INT, QMETATYPE_QSTRING
 from qps.speclib.core import create_profile_field, profile_field_list, profile_field_names, profile_fields
@@ -114,7 +115,10 @@ class TestSpeclibPlotting(TestCase):
 
         self.assertTrue(SpectralLibraryUtils.isSpectralLibrary(speclib))
 
-        slw = SpectralLibraryWidget(speclib=speclib)
+        if True:
+            slw = SpectralLibraryWidget(speclib=speclib)
+        else:
+            slw = AttributeTableWidget(speclib)
         self.showGui(slw)
 
     def test_SpectralLibraryWidget_addField(self):
@@ -642,6 +646,13 @@ class TestSpeclibPlotting(TestCase):
         speclib.addFeature(feature)
         self.assertTrue(speclib.commitChanges())
         self.showGui(slw)
+
+    def test_SpectralLibraryPlotWidget_simpled(self):
+        registerSpectralLibraryPlotFactories()
+        speclib = TestObjects.createSpectralLibrary(n_bands=[-1, 12])
+        w = SpectralLibraryWidget(speclib=speclib)
+
+        self.showGui(w)
 
     def test_SpectralLibraryPlotWidget(self):
         registerSpectralLibraryPlotFactories()
