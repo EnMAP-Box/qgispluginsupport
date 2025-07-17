@@ -10,11 +10,10 @@ from qgis.PyQt.QtCore import NULL, pyqtSignal, QAbstractTableModel, QModelIndex,
     Qt, QVariant
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QComboBox, QFrame, QGroupBox, QHBoxLayout, QHeaderView, QLabel, QLineEdit, QSizePolicy, \
-    QSpacerItem, QStackedWidget, QTableView, QToolButton, QVBoxLayout, QWidget
+    QSpacerItem, QTableView, QToolButton, QVBoxLayout, QWidget
 from qgis.core import Qgis, QgsApplication, QgsFeature, QgsField, QgsFieldFormatter, QgsFieldFormatterRegistry, \
     QgsVectorLayer
-from qgis.gui import QgsCodeEditorJson, QgsEditorConfigWidget, QgsEditorWidgetFactory, QgsEditorWidgetWrapper, QgsGui, \
-    QgsMessageBar
+from qgis.gui import QgsCodeEditorJson, QgsEditorConfigWidget, QgsEditorWidgetFactory, QgsEditorWidgetWrapper, QgsGui
 from .spectrallibraryplotunitmodels import SpectralProfilePlotXAxisUnitModel
 from .spectralprofileplotwidget import SpectralProfilePlotWidget
 from .. import EDITOR_WIDGET_REGISTRY_KEY
@@ -239,6 +238,9 @@ class SpectralProfileJsonEditor(QgsCodeEditorJson):
 
         self.textChanged.connect(self.profileChanged)
 
+    def setProfile(self, d: dict):
+        self.setProfileDict(d)
+
     def setProfileDict(self, d: dict):
         jsonData = encodeProfileValueDict(d, ProfileEncoding.Dict)
 
@@ -343,6 +345,9 @@ class SpectralProfileTableEditor(QFrame):
     def yUnit(self) -> str:
         return self.tbYUnit.text()
 
+    def setProfile(self, d: dict):
+        self.setProfileDict(d)
+
     def setProfileDict(self, d: dict):
         assert isinstance(d, dict)
         self.tableModel.setProfileDict(d)
@@ -368,24 +373,25 @@ class SpectralProfileEditorWidget(QGroupBox):
     VIEW_JSON_EDITOR = 2
     VIEW_PLOT = 3
 
+    CNT = 0
+
     profileChanged = pyqtSignal()
 
     def __init__(self, *args, **kwds):
         super(SpectralProfileEditorWidget, self).__init__(*args, **kwds)
         self.setWindowIcon(QIcon(':/qps/ui/icons/profile.svg'))
-        self.mDefault: Optional[dict] = None
 
-        self.messageBar = QgsMessageBar()
+        # self.messageBar = QgsMessageBar()
+        # the default profile (from vector layer)
+        self.mDefaultProfile: Optional[dict] = None
 
-        self.jsonEditor = SpectralProfileJsonEditor()
-        self.jsonEditor.setLineNumbersVisible(True)
-        self.jsonEditor.setFoldingVisible(True)
-        self.jsonEditor.profileChanged.connect(self.editorProfileChanged)
+        # the current widget to show the current profile
+        self.mCurrentWidget: Optional[QWidget] = None
 
-        self.tableEditor = SpectralProfileTableEditor()
-        self.tableEditor.profileChanged.connect(self.editorProfileChanged)
+        # the potentially modified profile
+        self.mCurrentProfile: Optional[dict] = None
 
-        self.plotView = SpectralProfilePlotWidget()
+        self.mReadOnly: bool = True
 
         self.controlBar = QHBoxLayout()
         self.controlBar.setSpacing(1)
@@ -426,7 +432,7 @@ class SpectralProfileEditorWidget(QGroupBox):
         self.controlBar.addWidget(self.btnPlot)
         self.controlBar.addWidget(self.btnJson)
         self.controlBar.addWidget(self.btnTable)
-        self.controlBar.addWidget(self.messageBar)
+        # self.controlBar.addWidget(self.messageBar)
         self.controlBar.addSpacerItem(QSpacerItem(0, 0, hPolicy=QSizePolicy.Expanding))
         self.controlBar.addWidget(self.btnClear)
         self.controlBar.addWidget(self.btnReset)
@@ -434,83 +440,110 @@ class SpectralProfileEditorWidget(QGroupBox):
         for btn in [self.btnPlot, self.btnJson, self.btnTable, self.btnClear, self.btnReset]:
             btn.setAutoRaise(True)
 
-        self.stackedWidget = QStackedWidget()
-        self.stackedWidget.addWidget(self.plotView)
-        self.stackedWidget.addWidget(self.jsonEditor)
-        self.stackedWidget.addWidget(self.tableEditor)
-
         vbox = QVBoxLayout()
         vbox.setSpacing(1)
         vbox.addLayout(self.controlBar)
-        vbox.addWidget(self.stackedWidget)
+        vbox.setContentsMargins(0, 0, 0, 0)
+        vbox.setSpacing(5)
+        self._vbox = vbox
         self.setLayout(vbox)
-
+        self.setViewMode(self.VIEW_JSON_EDITOR)
         s = ""
 
     def setReadOnly(self, read_only: bool):
         """
         Enables / disables the widgets to modify values
-        :param allowed:
+        :param read_only:
         :return:
         """
-        self.jsonEditor.setReadOnly(read_only)
-        self.tableEditor.setReadOnly(read_only)
+        self.mReadOnly = read_only
+
+        if isinstance(self.mCurrentWidget, (SpectralProfileJsonEditor, SpectralProfileTableEditor)):
+            self.mCurrentWidget.setReadOnly(read_only)
         self.btnClear.setDisabled(read_only)
+        self.btnClear.setVisible(not read_only)
+
+    def updateCurrentWidget(self, mode: int):
+
+        current_profile = self.currentProfile()
+
+        if mode == self.VIEW_JSON_EDITOR and not isinstance(self.mCurrentWidget, SpectralProfileJsonEditor):
+            cw_new = SpectralProfileJsonEditor()
+            cw_new.setLineNumbersVisible(True)
+            cw_new.setFoldingVisible(True)
+            if current_profile:
+                cw_new.setProfile(current_profile)
+            cw_new.profileChanged.connect(self.editorProfileChanged)
+
+        elif mode == self.VIEW_TABLE and not isinstance(self.mCurrentWidget, SpectralProfileTableEditor):
+            cw_new = SpectralProfileTableEditor()
+            if current_profile:
+                cw_new.setProfile(current_profile)
+            cw_new.profileChanged.connect(self.editorProfileChanged)
+
+        elif mode == self.VIEW_PLOT and not isinstance(self.mCurrentWidget, SpectralProfilePlotWidget):
+            cw_new = SpectralProfilePlotWidget()
+            if current_profile:
+                cw_new.setProfile(current_profile)
+        else:
+            # no need to create a new widget
+            cw_new = None
+
+        if isinstance(cw_new, QWidget):
+            if isinstance(self.mCurrentWidget, QWidget):
+                self._vbox.removeWidget(self.mCurrentWidget)
+                self.mCurrentWidget.deleteLater()
+            self._vbox.addWidget(cw_new)
+            self.mCurrentWidget = cw_new
+            # remove old CW
 
     def setViewMode(self, mode: int):
 
-        if mode == self.VIEW_JSON_EDITOR:
-            self.stackedWidget.setCurrentWidget(self.jsonEditor)
-        elif mode == self.VIEW_TABLE:
-            self.stackedWidget.setCurrentWidget(self.tableEditor)
-        elif mode == self.VIEW_PLOT:
-            self.stackedWidget.setCurrentWidget(self.plotView)
-
-        cw = self.stackedWidget.currentWidget()
-        self.btnJson.setChecked(cw == self.jsonEditor)
-        self.btnTable.setChecked(cw == self.tableEditor)
-        self.btnPlot.setChecked(cw == self.plotView)
+        self.updateCurrentWidget(mode)
+        cw = self.mCurrentWidget
+        self.btnJson.setChecked(isinstance(cw, SpectralProfileJsonEditor))
+        self.btnTable.setChecked(isinstance(cw, SpectralProfileTableEditor))
+        self.btnPlot.setChecked(isinstance(cw, SpectralProfilePlotWidget))
 
     def viewMode(self) -> int:
-        w = self.stackedWidget.currentWidget()
-        if w == self.jsonEditor:
+        cw = self.mCurrentWidget
+        if isinstance(cw, SpectralProfileJsonEditor):
             return self.VIEW_JSON_EDITOR
-        if w == self.tableView:
+        elif isinstance(cw, SpectralProfileTableEditor):
             return self.VIEW_TABLE
-        raise NotImplementedError()
+        elif isinstance(cw, SpectralProfilePlotWidget):
+            return self.VIEW_PLOT
+        else:
+            raise NotImplementedError()
 
     RX_JSON_ERROR = re.compile(r'(?P<msg>.*): line.*(?P<line>\d+) column.*(?P<col>\d+).*\(char.*(?P<char>\d+)\)', re.I)
 
     def editorProfileChanged(self):
 
-        w = self.stackedWidget.currentWidget()
+        w = self.mCurrentWidget
 
         if self.sender() != w:
             return
 
-        self.messageBar.clearWidgets()
-        self.jsonEditor.clearWarnings()
-        self.jsonEditor.initializeLexer()
-        self.jsonEditor.runPostLexerConfigurationTasks()
-
         success, error, d = self.validate()
+
+        if isinstance(w, SpectralProfileJsonEditor):
+            w.clearWarnings()
+            w.initializeLexer()
+            w.runPostLexerConfigurationTasks()
 
         if not success:
             match = self.RX_JSON_ERROR.match(error)
-            if w == self.jsonEditor and match:
-
+            if isinstance(w, SpectralProfileJsonEditor) and match:
                 eline = int(match.group('line')) - 1
                 ecol = int(match.group('col'))
                 emsg = match.group('msg')
-                self.jsonEditor.addSyntaxWarning(eline, ecol, emsg)
+                w.addSyntaxWarning(eline, ecol, emsg)
 
             else:
-                self.messageBar.pushMessage('Error', error.splitlines()[0], error, Qgis.Warning)
+                QgsApplication.messageLog().logMessage(error, 'SpectralProfileEditorWidget', Qgis.Critical)
+                # self.messageBar.pushMessage('Error', error.splitlines()[0], error, Qgis.Warning)
         else:
-            for editor in [self.jsonEditor, self.tableEditor]:
-                if editor != w:
-                    editor.setProfileDict(d)
-            self.plotView.setProfile(d)
             self.profileChanged.emit()
 
     def initConfig(self, conf: dict):
@@ -518,7 +551,8 @@ class SpectralProfileEditorWidget(QGroupBox):
         Initializes widget elements like QComboBoxes etc.
         :param conf: dict
         """
-
+        SpectralProfileEditorWidget.CNT += 1
+        print(f' SpectralProfileEditorWidget {self.CNT} initConfig')
         pass
 
     def setProfile(self, profile: dict):
@@ -530,16 +564,22 @@ class SpectralProfileEditorWidget(QGroupBox):
         if profile in [None, NULL, QVariant(None)]:
             profile = dict()
         assert isinstance(profile, dict)
-        self.mDefault = profile
-        w = self.stackedWidget.currentWidget()
-        with SignalBlocker(self.jsonEditor, self.tableEditor, self.plotView) as blocker:
-            self.jsonEditor.setProfileDict(profile)
-            self.tableEditor.setProfileDict(profile)
-            self.plotView.setProfile(profile)
+        self.mDefaultProfile = self.mCurrentProfile = profile.copy()
+
+        if isinstance(self.mCurrentWidget,
+                      (SpectralProfileJsonEditor, SpectralProfileTableEditor, SpectralProfilePlotWidget)):
+            with SignalBlocker(self.mCurrentWidget) as blocker:
+                self.mCurrentWidget.setProfile(self.mCurrentProfile)
+
+        # w = self.stackedWidget.currentWidget()
+        # with SignalBlocker(self.jsonEditor, self.tableEditor, self.plotView) as blocker:
+        #    self.jsonEditor.setProfileDict(profile)
+        #    self.tableEditor.setProfileDict(profile)
+        #    self.plotView.setProfile(profile)
 
     def resetProfile(self):
-        if isinstance(self.mDefault, dict):
-            self.setProfile(self.mDefault)
+        if isinstance(self.mDefaultProfile, dict):
+            self.setProfile(self.mDefaultProfile)
 
     def validate(self) -> Tuple[bool, str, dict]:
         """
@@ -550,19 +590,19 @@ class SpectralProfileEditorWidget(QGroupBox):
            dict = profile dictionary if valid or empty ({})
         """
         try:
-            return validateProfileValueDict(self.profileDict(), allowEmpty=True)
+            return validateProfileValueDict(self.currentProfile(), allowEmpty=True)
         except Exception as ex:
             return False, str(ex), dict()
 
     def clear(self):
 
-        self.jsonEditor.clear()
-        self.tableEditor.clear()
+        d = {}
+        self.setProfile(d)
 
     def profile(self) -> Optional[dict]:
         """
         Returns a value spectral profile dictionary collected by profileDict or None, if internal state does not
-        return a valid profile dictionary
+        return a valid profile dictionary,
         the returned value is None (see `validate`).
         """
         success, err, d = self.validate()
@@ -571,19 +611,20 @@ class SpectralProfileEditorWidget(QGroupBox):
         else:
             return d
 
-    def profileDict(self) -> dict:
+    def currentProfile(self) -> dict:
         """
         Return the data as new SpectralProfile
         :return:
         :rtype:
         """
-        w = self.stackedWidget.currentWidget()
-        if w == self.jsonEditor:
-            return w.profileDict()
-        elif w == self.tableEditor:
-            return w.profileDict()
-        else:
-            return self.mDefault
+        cw = self.mCurrentWidget
+        cp = self.mCurrentProfile
+        if isinstance(cw, SpectralProfileJsonEditor):
+            cp = cw.profileDict()
+        elif isinstance(cw, SpectralProfileTableEditor):
+            cp = cw.profileDict()
+        self.mCurrentProfile = cp
+        return cp
 
 
 class SpectralProfileEditorWidgetWrapper(QgsEditorWidgetWrapper):
