@@ -1,7 +1,6 @@
 import enum
 import sys
-import warnings
-from typing import List, Set, Dict, Tuple, Generator, Any, Callable, Optional
+from typing import List, Set, Dict, Tuple, Generator, Any, Optional
 
 from qgis.PyQt.QtCore import pyqtSignal, Qt, QModelIndex
 from qgis.PyQt.QtGui import QIcon, QDragEnterEvent, QDropEvent, QColor
@@ -42,13 +41,14 @@ class SpectralLibraryWidget(AttributeTableWidget):
 
     def __init__(self, *args,
                  speclib: QgsVectorLayer = None,
-                 mapCanvas: QgsMapCanvas = None,
+                 project: QgsProject = QgsProject.instance(),
                  profile_fields_check: str = 'first_feature',
-                 postInitHooks: Dict[str, Callable] = None,
+                 default_style: Optional[PlotStyle] = None,
                  **kwds):
 
         if not isinstance(speclib, QgsVectorLayer):
             speclib = SpectralLibraryUtils.createSpectralLibrary()
+            project.addMapLayer(speclib)
 
         if profile_fields_check:
             SpectralLibraryUtils.activateProfileFields(speclib, check=profile_fields_check)
@@ -63,7 +63,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
         # self.mStatusLabel.setTextFormat(Qt.RichText)
         # self.mQgsStatusBar.addPermanentWidget(self.mStatusLabel, 1, QgsStatusBar.AnchorLeft)
         # self.mQgsStatusBar.setVisible(False)
-        self.mProject = QgsProject.instance()
+        self.mProject = project
         # self.mSpectralProcessingWidget: SpectralProcessingDialog = None
 
         self.mToolbar: QToolBar
@@ -74,10 +74,14 @@ class SpectralLibraryWidget(AttributeTableWidget):
 
         self.mSpeclibPlotWidget: SpectralLibraryPlotWidget = SpectralLibraryPlotWidget()
 
+        if default_style:
+            self.mSpeclibPlotWidget.plotModel().setDefaultProfileStyle(default_style)
+
         assert isinstance(self.mSpeclibPlotWidget, SpectralLibraryPlotWidget)
         self.mSpeclibPlotWidget.setDualView(self.mMainView)
         self.mSpeclibPlotWidget.sigDragEnterEvent.connect(self.dragEnterEvent)
         self.mSpeclibPlotWidget.sigDropEvent.connect(self.dropEvent)
+        self.mSpeclibPlotWidget.createProfileVisualization()
 
         vl = QVBoxLayout()
         vl.addWidget(self.mSpeclibPlotWidget)
@@ -254,8 +258,10 @@ class SpectralLibraryWidget(AttributeTableWidget):
 
     def setProject(self, project: QgsProject):
         assert isinstance(project, QgsProject)
-        self.mProject = project
         self.mSpeclibPlotWidget.setProject(project)
+
+    def project(self) -> QgsProject:
+        return self.mSpeclibPlotWidget.plotModel().project()
 
     def editingToggled(self):
         super().editingToggled()
@@ -356,14 +362,14 @@ class SpectralLibraryWidget(AttributeTableWidget):
         btnResetProfileStyles = QPushButton('Reset')
         btnApplyProfileStyle = QPushButton('Apply')
 
-        plotStyle = self.plotWidget().profileRenderer().profileStyle
+        plotStyle = self.mPlotWidget().profileRenderer().profileStyle
         if n == 0:
             btnResetProfileStyles.setText('Reset All')
-            btnResetProfileStyles.clicked.connect(self.plotWidget().resetProfileStyles)
+            btnResetProfileStyles.clicked.connect(self.mPlotWidget().resetProfileStyles)
             btnResetProfileStyles.setToolTip('Resets all profile styles')
         else:
             for fid in selectedFIDs:
-                ps = self.plotWidget().profileRenderer().profilePlotStyle(fid, ignore_selection=True)
+                ps = self.mPlotWidget().profileRenderer().profilePlotStyle(fid, ignore_selection=True)
                 if isinstance(ps, PlotStyle):
                     plotStyle = ps.clone()
                 break
@@ -404,7 +410,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
         return self.mSpeclibPlotWidget.plotWidget
 
     def plotControl(self) -> SpectralProfilePlotModel:
-        return self.mSpeclibPlotWidget.mPlotControlModel
+        return self.mSpeclibPlotWidget.mPlotModel
 
     def plotItem(self) -> SpectralProfilePlotItem:
         """
@@ -806,12 +812,6 @@ class SpectralLibraryWidget(AttributeTableWidget):
         files = SpectralLibraryExportDialog.exportProfiles(self.speclib(), parent=self)
         if len(files) > 0:
             self.sigFilesCreated.emit(files)
-
-    def clearSpectralLibrary(self):
-        """
-        Removes all SpectralProfiles and additional fields
-        """
-        warnings.warn('Deprectated and desimplemented', DeprecationWarning)
 
 
 class SpectralLibraryPanel(QgsDockWidget):

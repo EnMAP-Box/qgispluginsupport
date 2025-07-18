@@ -123,20 +123,6 @@ def mapLayerConfigWidgetFactories() -> List[QgsMapLayerConfigWidgetFactory]:
     return MAPLAYER_CONFIGWIDGET_FACTORIES[:]
 
 
-def registerSpectralLibraryPlotFactories():
-    from .speclib.gui.spectrallibraryplotwidget import PropertyItemGroup, RasterRendererGroup, ProfileVisualizationGroup
-    PropertyItemGroup.registerXmlFactory(PropertyItemGroup())
-    PropertyItemGroup.registerXmlFactory(RasterRendererGroup())
-    PropertyItemGroup.registerXmlFactory(ProfileVisualizationGroup())
-
-
-def unregisterSpectralLibraryPlotFactories():
-    from .speclib.gui.spectrallibraryplotwidget import PropertyItemGroup, RasterRendererGroup, ProfileVisualizationGroup
-    PropertyItemGroup.unregisterXmlFactory(RasterRendererGroup.__name__)
-    PropertyItemGroup.unregisterXmlFactory(ProfileVisualizationGroup.__name__)
-    PropertyItemGroup.unregisterXmlFactory(PropertyItemGroup.__name__)
-
-
 def registerEditorWidgets():
     """
     Call this function to register QgsEditorWidgetFactories to the QgsEditorWidgetRegistry
@@ -205,7 +191,6 @@ def initResources():
 
 def initAll():
     initResources()
-    registerSpectralLibraryPlotFactories()
     registerEditorWidgets()
     registerExpressionFunctions()
     registerMapLayerConfigWidgetFactories()

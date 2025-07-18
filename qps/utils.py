@@ -3748,19 +3748,9 @@ class QgsTaskMock(QgsTask):
         super(QgsTaskMock, self).__init__()
 
 
-class SignalObjectWrapper(QObject):
-    """
-    A wrapper to transport python objects via signal-slot
-    """
-
-    def __init__(self, obj, *args, **kwds):
-        super(SignalObjectWrapper, self).__init__(*args, **kwds)
-        self.wrapped_object = obj
-
-
 class FeatureReferenceIterator(object):
     """
-    Iterator for QgsFeatures that uses the 1st feature as reference
+    Iterator for QgsFeatures that uses the 1st feature as a reference
     """
 
     def __init__(self, features: Iterable[QgsFeature]):

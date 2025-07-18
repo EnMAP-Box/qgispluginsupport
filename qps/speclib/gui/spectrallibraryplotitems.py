@@ -8,15 +8,13 @@ from typing import Dict, List, Tuple, Union, Optional, Any, Generator
 import numpy as np
 
 from qgis.PyQt.QtCore import pyqtSignal, QPoint, QPointF, Qt
-from qgis.PyQt.QtGui import QColor, QDragEnterEvent
+from qgis.PyQt.QtGui import QColor
+from qgis.PyQt.QtGui import QPen
 from qgis.PyQt.QtWidgets import QAction, QApplication, QMenu, QSlider, QWidgetAction
-from qgis.core import QgsProject
 from ...plotstyling.plotstyling import PlotStyle, PlotWidgetStyle
 from ...pyqtgraph import pyqtgraph as pg
-from ...pyqtgraph.pyqtgraph import SpotItem
-from ...pyqtgraph.pyqtgraph.GraphicsScene.mouseEvents import MouseClickEvent
 from ...unitmodel import datetime64, UnitWrapper
-from ...utils import HashablePointF, SignalObjectWrapper
+from ...utils import HashablePointF
 
 
 class SpectralXAxis(pg.AxisItem):
@@ -117,7 +115,7 @@ class SpectralProfilePlotLegend(pg.LegendItem):
 
 
 class SpectralProfilePlotItem(pg.PlotItem):
-    sigPopulateContextMenuItems = pyqtSignal(SignalObjectWrapper)
+    sigPopulateContextMenuItems = pyqtSignal(object)
 
     def __init__(self, *args, **kwds):
         super(SpectralProfilePlotItem, self).__init__(*args, **kwds)
@@ -145,11 +143,13 @@ class SpectralProfilePlotItem(pg.PlotItem):
             self.legend = None
 
     def getContextMenus(self, event):
-        wrapper = SignalObjectWrapper([])
-        self.sigPopulateContextMenuItems.emit(wrapper)
         self.mTempList.clear()
-        self.mTempList.append(wrapper.wrapped_object)
-        return wrapper.wrapped_object
+        try:
+            self.sigPopulateContextMenuItems.emit(self.mTempList)
+        except Exception as ex:
+            print(ex)
+            pass
+        return self.mTempList[:]
 
     def addItems(self, items: list, *args, **kargs):
         """
@@ -306,7 +306,6 @@ class SpectralProfilePlotDataItem(pg.PlotDataItem):
     def __init__(self):
         super().__init__()
 
-        self.sigPointsClicked.connect(self.onPointClicked)
         self.setAcceptedMouseButtons(Qt.LeftButton | Qt.RightButton)
 
         self.mDefaultStyle: PlotStyle = PlotStyle()
@@ -321,10 +320,12 @@ class SpectralProfilePlotDataItem(pg.PlotDataItem):
         return self.mIsSelected
 
     def setCurveIsSelected(self, b: bool = True):
-        self.mIsSelected = b
+
         if self.mIsSelected == b:
             return
-        elif b:
+
+        self.mIsSelected = b
+        if b:
             if callable(self.mSelectedStyle):
                 selectedStyle = self.mSelectedStyle(self.mDefaultStyle)
             else:
@@ -405,6 +406,8 @@ class SpectralProfilePlotDataItem(pg.PlotDataItem):
                      name=label,
                      connect=connect,
                      pen=linePen,
+                     hoverable=True,
+                     hoverPen=QPen(QColor('yellow')),
                      symbol=symbol,
                      symbolPen=symbolPen,
                      symbolBrush=symbolBrush,
@@ -424,14 +427,6 @@ class SpectralProfilePlotDataItem(pg.PlotDataItem):
         self.opts['symbolSize'] = plotStyle.markerSize
         self.updateItems(styleUpdate=True)
 
-    def onPointClicked(self, item, data, event: MouseClickEvent):
-        print(f'# POINT CLICKED: {item} {data}')
-
-        for spotItem in data:
-            spotItem: SpotItem
-            s = ""
-
-        pass
         # if isinstance(pts, pg.ScatterPlotItem):
         #    pdi = pts.parentItem()
         #    if isinstance(pdi, SpectralProfilePlotDataItem):
@@ -561,8 +556,6 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
     """
     A widget to PlotWidget SpectralProfiles
     """
-
-    sigPopulateContextMenuItems = pyqtSignal(SignalObjectWrapper)
     sigPlotDataItemSelected = pyqtSignal(SpectralProfilePlotDataItem, Qt.Modifier)
 
     def __init__(self, parent=None):
@@ -573,7 +566,6 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
         )
 
         super().__init__(parent, plotItem=plotItem)
-        self.mProject: QgsProject = QgsProject.instance()
         pi: SpectralProfilePlotItem = self.getPlotItem()
         assert isinstance(pi, SpectralProfilePlotItem) and pi == self.plotItem
 
@@ -634,13 +626,6 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
                 if isinstance(item, SpectralProfilePlotDataItem):
                     yield item
 
-    def setProject(self, project: QgsProject):
-        self.mProject = project
-
-    def dragEnterEvent(self, ev: QDragEnterEvent):
-
-        s = ""
-
     def onProfileClicked(self, data: MouseClickData):
         """
         Slot to react to mouse-clicks on SpectralProfilePlotDataItems
@@ -693,7 +678,7 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
         assert isinstance(b, bool)
         self.mShowCrosshair = b
 
-    def setForegroundColor(self, color: QColor):
+    def setForegroundColor(self, color: Union[str, QColor]):
         c = QColor(color)
 
         # set Foreground color
@@ -704,16 +689,15 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
                 ai.setTextPen(c)
                 ai.label.setDefaultTextColor(c)
 
-    def setCrosshairColor(self, color: QColor):
-
+    def setCrosshairColor(self, color: Union[str, QColor]):
         self.mCrosshairLineH.pen.setColor(QColor(color))
         self.mCrosshairLineV.pen.setColor(QColor(color))
 
-    def setSelectionColor(self, color: QColor):
+    def setSelectionColor(self, color: Union[str, QColor]):
         self.mInfoScatterPoints.opts['pen'].setColor(QColor(color))
         self.mInfoScatterPoints.opts['brush'].setColor(QColor(color))
 
-    def setInfoColor(self, color: QColor):
+    def setInfoColor(self, color: Union[str, QColor]):
         self.mInfoLabelCursor.setColor(QColor(color))
 
     def setShowCursorInfo(self, b: bool):
@@ -791,10 +775,6 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
         self.mCrosshairLineH.setVisible(False)
         self.mCrosshairLineV.setVisible(False)
         self.mInfoLabelCursor.setVisible(False)
-
-    def onMouseClicked(self, event):
-        # print(event[0].accepted)
-        s = ""
 
     def onMouseMoved2D(self, evt):
         pos = evt[0]  # using signal proxy turns original arguments into a tuple

@@ -6,7 +6,9 @@ import numpy as np
 from osgeo import gdal
 
 from qgis.PyQt.QtCore import QEvent, QModelIndex, QPointF, Qt
+from qgis.PyQt.QtCore import QMetaType
 from qgis.PyQt.QtGui import QColor, QMouseEvent
+from qgis.PyQt.QtGui import QPen
 from qgis.PyQt.QtWidgets import QHBoxLayout, QTreeView, QVBoxLayout, QWidget
 from qgis.PyQt.QtXml import QDomDocument, QDomElement
 from qgis.core import edit, QgsCategorizedSymbolRenderer, QgsClassificationRange, QgsEditorWidgetSetup, \
@@ -15,8 +17,9 @@ from qgis.core import edit, QgsCategorizedSymbolRenderer, QgsClassificationRange
     QgsReadWriteContext, QgsRenderContext, QgsRendererCategory, QgsRendererRange, QgsSingleBandGrayRenderer, \
     QgsSingleSymbolRenderer, QgsVectorLayer
 from qgis.gui import QgsDualView, QgsMapCanvas
-from qps import DIR_REPO, initAll, registerSpectralLibraryPlotFactories, unregisterSpectralLibraryPlotFactories
+from qps import DIR_REPO, initAll
 from qps.layerproperties import AttributeTableWidget
+from qps.plotstyling.plotstyling import PlotStyle, MarkerSymbol
 from qps.pyqtgraph.pyqtgraph import InfiniteLine
 from qps.qgisenums import QMETATYPE_DOUBLE, QMETATYPE_INT, QMETATYPE_QSTRING
 from qps.speclib.core import create_profile_field, profile_field_list, profile_field_names, profile_fields
@@ -437,7 +440,6 @@ class TestSpeclibPlotting(TestCase):
 
     def test_SpectralProfilePlotModel(self):
 
-        registerSpectralLibraryPlotFactories()
         model = SpectralProfilePlotModel()
         speclib = TestObjects.createSpectralLibrary()
         canvas = QgsMapCanvas()
@@ -483,7 +485,6 @@ class TestSpeclibPlotting(TestCase):
 
         self.showGui([tv, pw])
 
-        unregisterSpectralLibraryPlotFactories()
         QgsProject.instance().removeAllMapLayers()
 
     def test_QgsPropertyItems(self):
@@ -545,8 +546,6 @@ class TestSpeclibPlotting(TestCase):
         self.assertNotEqual(item1, item2)
 
     def test_plotitems_xml(self):
-
-        registerSpectralLibraryPlotFactories()
 
         grp = PropertyItemGroup()
 
@@ -628,6 +627,7 @@ class TestSpeclibPlotting(TestCase):
         speclib.addFeature(feature)
         self.assertTrue(speclib.commitChanges())
         self.showGui(slw)
+        QgsProject.instance().removeAllMapLayers()
 
     def test_badBands(self):
 
@@ -646,16 +646,25 @@ class TestSpeclibPlotting(TestCase):
         speclib.addFeature(feature)
         self.assertTrue(speclib.commitChanges())
         self.showGui(slw)
+        QgsProject.instance().removeAllMapLayers()
 
     def test_SpectralLibraryPlotWidget_simpled(self):
-        registerSpectralLibraryPlotFactories()
-        speclib = TestObjects.createSpectralLibrary(n_bands=[-1, 12])
-        w = SpectralLibraryWidget(speclib=speclib)
 
+        speclib = TestObjects.createSpectralLibrary(n_bands=[-1, 12])
+        with edit(speclib):
+            speclib.addAttribute(QgsField('color', QMetaType.QString))
+
+        style = PlotStyle()
+        style.setLinePen(QPen(QColor('red')))
+        style.setMarkerSymbol(MarkerSymbol.Circle)
+
+        w = SpectralLibraryWidget(speclib=speclib, default_style=style)
+        w.plotControl()
         self.showGui(w)
+        QgsProject.instance().removeAllMapLayers()
 
     def test_SpectralLibraryPlotWidget(self):
-        registerSpectralLibraryPlotFactories()
+
         speclib = TestObjects.createSpectralLibrary(n_bands=[-1, 12])
         canvas = QgsMapCanvas()
         dv = QgsDualView()
@@ -689,7 +698,7 @@ class TestSpeclibPlotting(TestCase):
         rl2.setName('SingleBand')
 
         proj = QgsProject()
-        proj.addMapLayers([rl1, rl2])
+        proj.addMapLayers([rl1, rl2, speclib])
         w.setProject(proj)
 
         speclib.startEditing()
