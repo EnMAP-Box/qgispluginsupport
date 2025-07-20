@@ -22,6 +22,7 @@
     along with this software. If not, see <https://www.gnu.org/licenses/>.
 ***************************************************************************
 """
+import json
 import sys
 from typing import Any, Dict, List, Tuple, Union, Optional
 
@@ -366,6 +367,7 @@ class PropertyItemGroup(PropertyItemBase):
     """
     Represents a group of properties.
     """
+
     class Signals(PropertyItem.Signals):
         """
         Signals for PropertyItemGroup
@@ -424,6 +426,9 @@ class PropertyItemGroup(PropertyItemBase):
         Returns the settings as dict which can be serialized as JSON string.
         """
         raise NotImplementedError(f'Missing .asMap() in {self.__class__.__name__}')
+
+    def fromMap(self, settings: dict):
+        raise NotImplementedError(f'Missing .fromMap() in {self.__class__.__name__}')
 
     def createPlotStyle(self, feature: QgsFeature, fieldIndex: int) -> Optional[PlotStyle]:
 
@@ -516,14 +521,13 @@ class PropertyItemGroup(PropertyItemBase):
         root = doc.createElement('PropertyItemGroups')
         doc.appendChild(root)
         for grp in propertyGroups:
-            for xml_tag, cl in PropertyItemGroup.XML_FACTORIES.items():
-                if cl == grp.__class__:
-                    grpNode = doc.createElement(xml_tag)
-                    root.appendChild(grpNode)
-                    grp.writeXml(grpNode, context)
-                    break
-                s = ""
-        # print(nodeXmlString(doc))
+            if isinstance(grp, PropertyItemGroup):
+                data = grp.asMap()
+                node = doc.createElement('PropertyItemGroup')
+                node.setAttribute('type', grp.__class__.__name__)
+                tn = doc.createTextNode(json.dumps(data))
+                node.appendChild(tn)
+                root.appendChild(node)
         md.setData(PropertyItemGroup.MIME_TYPE, doc.toByteArray())
         return md
 
@@ -542,13 +546,22 @@ class PropertyItemGroup(PropertyItemBase):
                 # print(nodeXmlString(root))
                 grpNode = root.firstChild().toElement()
                 while not grpNode.isNull():
-                    classname = grpNode.nodeName()
-                    class_ = PropertyItemGroup.XML_FACTORIES.get(classname)
-                    if class_:
-                        grp = class_()
-                        if isinstance(grp, PropertyItemGroup):
-                            grp.readXml(grpNode, context)
-                        groups.append(grp)
+                    if grpNode.nodeName() == 'PropertyItemGroup':
+                        grpNode = grpNode.toElement()
+                        t = grpNode.attribute('type')
+                        grp = None
+                        if t == ProfileVisualizationGroup.__name__:
+                            grp = ProfileVisualizationGroup()
+                            data = grpNode.text()
+                            data = json.loads(data)
+                            grp.fromMap(data)
+
+                        if grp:
+                            groups.append(grp)
+                        else:
+                            s = ""
+                        s = ""
+
                     grpNode = grpNode.nextSibling()
         return groups
 
@@ -566,7 +579,6 @@ class GeneralSettingsGroup(PropertyItemGroup):
         self.setEnabled(True)
         self.setEditable(False)
         self.setIcon(QIcon(':/images/themes/default/console/iconSettingsConsole.svg'))
-
 
         self.mP_SortBands = QgsPropertyItem('SortBands')
         self.mP_SortBands.setDefinition(
@@ -1687,6 +1699,9 @@ class ProfileVisualizationGroup(SpectralProfilePlotDataItemGroup):
 
         self.mPlotDataItems: List[PlotDataItem] = []
 
+        self.mPLayer = QgsPropertyItem('Layer')
+        self.mPLayer.setEditable(True)
+
         self.mPField = QgsPropertyItem('Field')
         self.mPField.setDefinition(QgsPropertyDefinition(
             'Field', 'Name of the field that contains the spectral profiles',
@@ -1728,6 +1743,11 @@ class ProfileVisualizationGroup(SpectralProfilePlotDataItemGroup):
             propertyItem.signals().dataChanged.connect(self.update)
         # self.initBasicSettings()
 
+    def fromMap(self, data: dict):
+        self.setName(data.get('name', 'Visualization'))
+        self.setField(data.get('field', None))
+        s = ""
+
     def asMap(self) -> dict:
 
         sl = self.speclib()
@@ -1746,7 +1766,6 @@ class ProfileVisualizationGroup(SpectralProfilePlotDataItemGroup):
                 color_expression = f"'{color_expression.name()}'"
         else:
             color_expression = "'white'"
-
 
         settings = {
             'name': self.name(),
@@ -1973,7 +1992,7 @@ class ProfileVisualizationGroup(SpectralProfilePlotDataItemGroup):
         p.setField(field.name())
         self.mPField.setProperty(p)
 
-    def field(self) -> QgsField:
+    def field(self) -> Optional[QgsField]:
         if isinstance(self.speclib(), QgsVectorLayer):
             fields = self.speclib().fields()
             i = fields.lookupField(self.fieldName())
