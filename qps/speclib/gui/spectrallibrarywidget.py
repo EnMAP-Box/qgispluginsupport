@@ -731,7 +731,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
                 else:
                     color = None
 
-                self.spectralLibraryPlotWidget().createProfileVisualization(field=attribute, color=color)
+                self.spectralLibraryPlotWidget().createProfileVisualization(field_name=attribute, color=color)
 
         plotModel.updatePlot()
         self.updateActions()

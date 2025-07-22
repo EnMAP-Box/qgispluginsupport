@@ -38,10 +38,11 @@ from qgis.core import Qgis, QgsExpression, QgsExpressionContext, QgsExpressionCo
     QgsRasterContourRenderer, QgsRasterLayer, QgsRasterRenderer, QgsReadWriteContext, QgsRenderContext, \
     QgsSingleBandColorDataRenderer, QgsSingleBandGrayRenderer, QgsSingleBandPseudoColorRenderer, QgsTextFormat, \
     QgsVectorLayer, QgsWkbTypes, QgsXmlUtils
+from qgis.core import QgsProject, QgsMapLayer
 from qgis.gui import QgsColorButton, QgsDoubleSpinBox, QgsFieldExpressionWidget, QgsPropertyOverrideButton, QgsSpinBox
 from .spectrallibraryplotitems import SpectralProfilePlotItem, SpectralProfilePlotLegend
-from ..core import is_profile_field
-from ...externals.htmlwidgets import HTMLComboBox
+from ..core import is_spectral_library, is_profile_field
+from ...layerfielddialog import LayerFieldWidget
 from ...plotstyling.plotstyling import PlotStyle, PlotStyleButton, PlotWidgetStyle
 from ...pyqtgraph.pyqtgraph import InfiniteLine, PlotDataItem
 from ...speclib.core import create_profile_field
@@ -298,12 +299,6 @@ class PropertyItem(PropertyItemBase):
 
     def signals(self):
         return self.mSignals
-
-    def speclib(self) -> Optional[QgsVectorLayer]:
-        parent = self.parent()
-        if isinstance(parent, ProfileVisualizationGroup):
-            return parent.speclib()
-        return None
 
     def createEditor(self, parent):
 
@@ -879,6 +874,94 @@ class PlotStyleItem(PropertyItem):
                 self.setPlotStyle(style)
 
 
+class SpectralProfileFieldItem(PropertyItem):
+
+    def __init__(self, *args, **kwds):
+
+        self.mFieldName: Optional[str] = None
+        self.mLayerID: Optional[str] = None
+        self.mProject = QgsProject().instance()
+
+        super().__init__(*args, **kwds)
+        self.mEditor = None
+        self.setEditable(True)
+
+    def layer(self) -> Optional[QgsVectorLayer]:
+
+        lyr = self.mProject.mapLayer(self.mLayerID)
+        if isinstance(lyr, QgsVectorLayer):
+            return lyr
+        return None
+
+    def setProject(self, project: QgsProject):
+        self.mProject = project
+
+    def createEditor(self, parent):
+        w = LayerFieldWidget(parent=parent)
+
+        # w = QLabel('TEST', parent=parent)
+        return w
+
+    def setEditorData(self, editor: QWidget, index: QModelIndex):
+        parentItem = self.parent()
+
+        # if isinstance(parentItem, ProfileVisualizationGroup):
+        if isinstance(editor, LayerFieldWidget):
+            editor.setProject(self.mProject)
+            editor.setLayerFilter(lambda lyr: is_spectral_library(lyr))
+            editor.setFieldFilter(lambda field: is_profile_field(field))
+
+            lyr = self.layer()
+            if isinstance(lyr, QgsVectorLayer):
+                editor.setLayerField(lyr, self.mFieldName)
+
+    def setModelData(self, editor: QWidget, bridge, index: QModelIndex):
+
+        if isinstance(editor, LayerFieldWidget):
+            layer, field = editor.layerField()
+            self.mLayerID = layer.id()
+            self.mFieldName = field
+            self.emitDataChanged()
+
+    def setLayerField(self,
+                      layer_id: Union[None, str, QgsVectorLayer],
+                      field_name: Union[None, str, QgsField]):
+        if isinstance(field_name, QgsField):
+            field_name = field_name.name()
+
+        if isinstance(layer_id, QgsVectorLayer):
+            layer_id = layer_id.id()
+
+        if layer_id != self.mLayerID or field_name != self.mFieldName:
+            self.mLayerID = layer_id
+            self.mFieldName = field_name
+
+            self.emitDataChanged()
+
+    def field(self) -> Optional[str]:
+        return self.mFieldName
+
+    def data(self, role: int = ...) -> Any:
+
+        missing_layer = self.mLayerID in ['', None]
+        missing_field = self.mFieldName in ['', None]
+        if role == Qt.DisplayRole:
+
+            if missing_layer:
+                return '<select layer>'
+            elif missing_field:
+                return '<select field>'
+            else:
+                return self.mFieldName
+
+        if role == Qt.ForegroundRole:
+
+            if missing_field or missing_layer:
+                return QColor('red')
+
+        return super().data(role)
+
+
 class QgsTextFormatItem(PropertyItem):
 
     def __init__(self, *args, **kwds):
@@ -895,8 +978,6 @@ class QgsPropertyItem(PropertyItem):
         self.mProperty: QgsProperty = None
         self.mDefinition: QgsPropertyDefinition = None
         self.setEditable(True)
-
-        self.mIsSpectralProfileField: bool = False
 
     def update(self):
         self.setText(self.mProperty.valueAsString(QgsExpressionContext()))
@@ -986,32 +1067,16 @@ class QgsPropertyItem(PropertyItem):
 
         return super().data(role)
 
-    def setIsProfileFieldProperty(self, b: bool):
-        self.mIsSpectralProfileField = b is True
-
-    def isProfileFieldProperty(self) -> bool:
-        return self.mIsSpectralProfileField
-
     def isColorProperty(self) -> bool:
         return self.definition().standardTemplate() in [QgsPropertyDefinition.ColorWithAlpha,
                                                         QgsPropertyDefinition.ColorNoAlpha]
 
     def createEditor(self, parent):
-        speclib: Optional[QgsVectorLayer] = self.speclib()
+        # speclib: Optional[QgsVectorLayer] = self.speclib()
         template = self.definition().standardTemplate()
 
         if self.isColorProperty():
             w = SpectralProfileColorPropertyWidget(parent=parent)
-
-        elif self.isProfileFieldProperty():
-            w = HTMLComboBox(parent=parent)
-            model = self.model()
-            from ...speclib.gui.spectrallibraryplotwidget import SpectralProfilePlotModel
-            if isinstance(model, SpectralProfilePlotModel):
-                # emit updatedFields to apply latest changes
-                speclib.updatedFields.emit()
-                w.setModel(model.profileFieldsModel())
-            w.setToolTip(self.definition().description())
 
         elif template == QgsPropertyDefinition.StandardPropertyTemplate.Boolean:
             w = QComboBox(parent=parent)
@@ -1036,24 +1101,24 @@ class QgsPropertyItem(PropertyItem):
             w.setToolTip(self.definition().description())
             w.setExpression(self.property().expressionString())
 
-            if isinstance(speclib, QgsVectorLayer):
-                w.setLayer(speclib)
-
         return w
 
     def setEditorData(self, editor: QWidget, index: QModelIndex):
 
-        speclib: QgsVectorLayer = self.speclib()
-
+        grp = self.parent()
+        if isinstance(grp, ProfileVisualizationGroup):
+            lyr = grp.layer()
+        else:
+            lyr = None
         if isinstance(editor, QgsFieldExpressionWidget):
             editor.setProperty('lastexpr', self.property().expressionString())
-            if isinstance(speclib, QgsVectorLayer):
-                editor.setLayer(speclib)
+            if isinstance(lyr, QgsVectorLayer):
+                editor.setLayer(lyr)
 
         elif isinstance(editor, SpectralProfileColorPropertyWidget):
             editor.setToProperty(self.property())
-            if isinstance(speclib, QgsVectorLayer):
-                editor.setLayer(speclib)
+            if isinstance(lyr, QgsVectorLayer):
+                editor.setLayer(lyr)
 
         elif isinstance(editor, (QSpinBox, QgsSpinBox)):
             template = self.definition().standardTemplate()
@@ -1695,19 +1760,12 @@ class ProfileVisualizationGroup(SpectralProfilePlotDataItemGroup):
         self.setName('Visualization')
         self.setIcon(QIcon(':/qps/ui/icons/profile.svg'))
         self.mFirstColumnSpanned = False
-        self.mSpeclib: Optional[QgsVectorLayer] = None
+
+        self.mProject: QgsProject = QgsProject.instance()
 
         self.mPlotDataItems: List[PlotDataItem] = []
 
-        self.mPLayer = QgsPropertyItem('Layer')
-        self.mPLayer.setEditable(True)
-
-        self.mPField = QgsPropertyItem('Field')
-        self.mPField.setDefinition(QgsPropertyDefinition(
-            'Field', 'Name of the field that contains the spectral profiles',
-            QgsPropertyDefinition.StandardPropertyTemplate.String))
-        self.mPField.setProperty(QgsProperty.fromField('profiles', True))
-        self.mPField.setIsProfileFieldProperty(True)
+        self.mPField = SpectralProfileFieldItem('Field')
 
         self.mPStyle = PlotStyleItem('Style')
         self.mPStyle.setEditColors(False)
@@ -1745,18 +1803,18 @@ class ProfileVisualizationGroup(SpectralProfilePlotDataItemGroup):
 
     def fromMap(self, data: dict):
         self.setName(data.get('name', 'Visualization'))
-        self.setField(data.get('field', None))
+        self.setLayerField(data.get('field', None))
         s = ""
 
     def asMap(self) -> dict:
 
-        sl = self.speclib()
-        if isinstance(sl, QgsVectorLayer):
-            layer_id = sl.id()
-            layer_source = sl.source()
-        else:
-            layer_id = None
-            layer_source = None
+        layer_id = self.layerId()
+        layer_src = layer_name = None
+        if layer_id:
+            lyr = self.project().mapLayer(layer_id)
+            if isinstance(lyr, QgsVectorLayer):
+                layer_src = lyr.source()
+                layer_name = lyr.name()
 
         if self.colorProperty().propertyType() == Qgis.PropertyType.Expression:
             color_expression = self.colorProperty().expressionString()
@@ -1771,7 +1829,7 @@ class ProfileVisualizationGroup(SpectralProfilePlotDataItemGroup):
             'name': self.name(),
             'field_name': self.fieldName(),
             'layer_id': layer_id,
-            'layer_source': layer_source,
+            'layer_source': layer_src,
             'label_expression': self.labelProperty().expressionString(),
             'filter_expression': self.filterProperty().expressionString(),
             'color_expression': color_expression,
@@ -1813,9 +1871,9 @@ class ProfileVisualizationGroup(SpectralProfilePlotDataItemGroup):
             fieldName = vNode.attribute('field')
             speclib = self.speclib()
             if isinstance(speclib, QgsVectorLayer) and fieldName in speclib.fields().names():
-                self.setField(fieldName)
+                self.setLayerField(fieldName)
             else:
-                self.setField(create_profile_field(fieldName))
+                self.setLayerField(create_profile_field(fieldName))
 
         self.mPLabel.readXml(vNode, context)
         self.mPFilter.readXml(vNode, context)
@@ -1848,6 +1906,13 @@ class ProfileVisualizationGroup(SpectralProfilePlotDataItemGroup):
         self.mPColor.writeXml(vNode, context)
         self.mPFilter.writeXml(vNode, context)
         self.mPStyle.writeXml(vNode, context)
+
+    def setProject(self, project: QgsProject):
+        assert isinstance(project, QgsProject)
+        self.mProject = project
+
+    def project(self) -> QgsProject:
+        return self.mProject
 
     def createExpressionContextScope(self) -> QgsExpressionContextScope:
 
@@ -1930,26 +1995,16 @@ class ProfileVisualizationGroup(SpectralProfilePlotDataItemGroup):
         self.update()
 
     def update(self):
-        valuesMissing = False
-
-        if not (isinstance(self.speclib(), QgsVectorLayer)
-                and isinstance(self.field(), QgsField)
-                and self.field().name() in self.speclib().fields().names()):
-            valuesMissing = True
-        self.setValuesMissing(valuesMissing)
-
-        self.mPField.label().setIcon(QIcon(WARNING_ICON) if valuesMissing else QIcon())
-
-    def speclib(self) -> Optional[QgsVectorLayer]:
-        return self.mSpeclib
+        is_complete = self.isComplete()
+        self.setValuesMissing(not is_complete)
+        self.mPField.label().setIcon(QIcon() if is_complete else QIcon(WARNING_ICON))
 
     def isComplete(self) -> bool:
-        speclib = self.speclib()
-        field = self.field()
-        b = isinstance(speclib, QgsVectorLayer) \
-            and is_profile_field(field) \
-            and field.name() in speclib.fields().names()
-        return b
+
+        has_layer = isinstance(self.layerId(), str)
+        has_field = isinstance(self.fieldName(), str)
+
+        return has_layer and has_field
 
     def setFilterExpression(self, expression):
         if isinstance(expression, QgsExpression):
@@ -1981,30 +2036,17 @@ class ProfileVisualizationGroup(SpectralProfilePlotDataItemGroup):
         """
         return self.mPLabel.property()
 
-    def setField(self, field: Union[QgsField, str]):
-
-        if isinstance(field, str):
-            speclib = self.speclib()
-            assert isinstance(speclib, QgsVectorLayer), 'Speclib undefined'
-            field = speclib.fields().field(field)
-        assert isinstance(field, QgsField)
-        p = self.mPField.property()
-        p.setField(field.name())
-        self.mPField.setProperty(p)
-
-    def field(self) -> Optional[QgsField]:
-        if isinstance(self.speclib(), QgsVectorLayer):
-            fields = self.speclib().fields()
-            i = fields.lookupField(self.fieldName())
-            if i >= 0:
-                return fields.at(i)
-        return None
+    def setLayerField(self, layer: Union[QgsVectorLayer, str], field: Union[QgsField, str]):
+        self.mPField.setLayerField(layer, field)
 
     def fieldName(self) -> str:
-        return self.mPField.property().field()
+        return self.mPField.mFieldName
 
-    def fieldIdx(self) -> int:
-        return self.speclib().fields().lookupField(self.field().name())
+    def layerId(self) -> str:
+        return self.mPField.mLayerID
+
+    def layer(self) -> QgsMapLayer:
+        self.project().mapLayer(self.layerId())
 
     def setPlotStyle(self, style: PlotStyle):
         self.mPStyle.setPlotStyle(style)
