@@ -1,4 +1,5 @@
 import datetime
+import json
 import math
 import re
 from typing import Iterable, Iterator, List, Optional, Set, Tuple, Union, Dict
@@ -35,7 +36,7 @@ from ...pyqtgraph.pyqtgraph import SignalProxy, PlotCurveItem, PlotDataItem, Spo
 from ...pyqtgraph.pyqtgraph.GraphicsScene.mouseEvents import MouseClickEvent, HoverEvent
 from ...qgisenums import QMETATYPE_INT, QMETATYPE_QSTRING
 from ...unitmodel import BAND_INDEX, BAND_NUMBER, datetime64, UnitConverterFunctionModel, UnitWrapper
-from ...utils import convertDateUnit, loadUi, qgsField, SelectMapLayerDialog
+from ...utils import convertDateUnit, loadUi, SelectMapLayerDialog
 
 MAX_PROFILES_DEFAULT: int = 516
 FIELD_NAME = str
@@ -225,9 +226,9 @@ class SpectralProfilePlotModel(QStandardItemModel):
                     update_heavy = True
 
             # doing the heavy work
-            if (update_heavy or
-                    old_settings.get('visualizations', {}) != new_settings.get('visualizations', {}) or
-                    old_settings.get('candidates', {}) != new_settings.get('candidates', {})):
+            if update_heavy \
+                    or old_settings.get('visualizations', {}) != new_settings.get('visualizations', {}) \
+                    or old_settings.get('candidates', {}) != new_settings.get('candidates', {}):
                 self.updatePlot(settings=new_settings)
 
         # if not self.updatesBlocked():
@@ -928,7 +929,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
                 if isinstance(line_color, str):
                     try:
                         line_color = QColor(line_color)
-                    except:
+                    except Exception:
                         pass
 
                 if isinstance(line_color, QColor):
@@ -1667,6 +1668,62 @@ class SpectralProfilePlotViewDelegate(QStyledItemDelegate):
             super().setModelData(w, model, index)
 
 
+def copy_items(items: List[SpectralProfilePlotDataItem],
+               mode: str = 'json',
+               xUnit: Optional[str] = None):
+    mode = mode.lower()
+    assert mode in ['json', 'csv', 'json_raw']
+
+    txt = None
+    if mode == 'json':
+        s = ""
+        data = []
+        for item in items:
+            item: SpectralProfilePlotDataItem
+
+            d = {'x': item.xData.tolist(),
+                 'y': item.yData.tolist(),
+
+                 }
+            data.append(d)
+            s = ""
+        if xUnit is not None:
+            for item in data:
+                item['xUnit'] = xUnit
+        txt = json.dumps(data, ensure_ascii=False)
+    elif mode == 'csv':
+        # make one big CSV table
+        # sort by x vector
+        x_values = np.asarray([])
+        for item in items:
+            item: SpectralProfilePlotDataItem
+            x_values = np.unique(np.concatenate((x_values, item.xData)))
+
+        ncol = len(items) + 2
+        nrow = len(x_values) + 1
+        arr = np.empty((nrow, ncol), dtype=object)
+        arr[0, 0] = 'x'
+        arr[1:, 0] = x_values
+        arr[0, 1] = 'x unit'
+        arr[1:, 1] = xUnit
+
+        for c, item in enumerate(items):
+            name = item.name()
+            if name in ['', None]:
+                name = f'profile_{c + 1}'
+            c += 2
+            arr[0, c] = name
+            for x, y in zip(item.xData, item.yData):
+                r = x_values.index(x)
+                arr[r + 1, c] = y
+        txt = ""
+
+    if txt:
+        md = QMimeData()
+        md.setText(txt)
+        QApplication.clipboard().setMimeData(md)
+
+
 class SpectralLibraryPlotWidget(QWidget):
     sigDragEnterEvent = pyqtSignal(QDragEnterEvent)
     sigDropEvent = pyqtSignal(QDropEvent)
@@ -1797,14 +1854,20 @@ class SpectralLibraryPlotWidget(QWidget):
         items = list(self.plotWidget().spectralProfilePlotDataItems(is_selected=True))
         n = len(items)
 
-        m = QMenu('Copy')
+        m = QMenu('Copy ...')
         m.setToolTipsVisible(True)
         m.setEnabled(n > 0)
         if n > 0:
-            a = m.addAction(f'as JSON')
-            a.setToolTip(f'Copy {n} selected profiles as JSON')
+            a = m.addAction('JSON')
+            a.setToolTip(f'Copy {n} selected profile(s) as JSON')
+            a.setIcon(QIcon(r':/images/themes/default/mIconFieldJson.svg'))
+
+            a.triggered.connect(lambda *args, itm=items: self.copyItems(itm, 'json'))
+
+            a = m.addAction('CSV')
             a.setIcon(QIcon(r':/qps/ui/icons/speclib_copy.svg'))
-            a.triggered.connect(lambda *args: self.copyItems(items))
+            a.setToolTip(f'Copy {n} selected profile(s) in CSV format')
+            a.triggered.connect(lambda *args, itm=items: self.copyItems(itm, 'csv'))
 
         menu_list.append(m)
         # update current renderer
@@ -1868,35 +1931,55 @@ class SpectralLibraryPlotWidget(QWidget):
 
     def createProfileVisualization(self, *args,
                                    name: str = None,
-                                   field: Union[QgsField, int, str] = None,
+                                   layer_id: Union[QgsVectorLayer, str, None] = None,
+                                   field_name: Union[QgsField, int, str] = None,
                                    color: Union[str, QColor] = None,
                                    style: PlotStyle = None,
                                    checked: bool = True):
+        """
+        Creates a new profile visualization
+        :param args:
+        :param name:
+        :param field_name:
+        :param color:
+        :param style:
+        :param checked:
+        :return:
+        """
         item = ProfileVisualizationGroup()
         item.setCheckState(Qt.Checked if checked else Qt.Unchecked)
         # set defaults
-        # set speclib
-        item.setSpeclib(self.speclib())
+
+        if isinstance(layer_id, QgsVectorLayer):
+            layer_id = layer_id.id()
+        if isinstance(field_name, QgsField):
+            field_name = field_name.name()
+
+        existing_fields = [(v.layerId(), v.field())
+                           for v in self.plotModel().visualizations()
+                           if isinstance(v.fieldName(), str) and isinstance(v.layerId(), str)]
+
+        if layer_id is None and field_name is None:
+            last_speclib = self.speclib()
+            if isinstance(last_speclib, QgsVectorLayer):
+
+                layer_id = last_speclib.id()
+
+                for field in profile_field_list(last_speclib):
+                    k = (layer_id, field.name())
+                    if k not in existing_fields:
+                        layer_id, field_name = k
+                        break
+        if layer_id is None and field_name is None and len(existing_fields) > 0:
+            layer_id, field_name = existing_fields[-1]
 
         # set profile source in speclib
-        if field:
-            item.setField(qgsField(item.speclib(), field))
-        else:
-            existing_fields = [v.field()
-                               for v in self.plotModel().visualizations()
-                               if isinstance(v.field(), QgsField)]
-
-            for fld in profile_field_list(item.speclib()):
-                if fld not in existing_fields:
-                    item.setField(fld)
-                    break
-
-            if not isinstance(item.field(), QgsField) and len(existing_fields) > 0:
-                item.setField(existing_fields[-1])
+        if isinstance(layer_id, str) and isinstance(field_name, str):
+            item.setLayerField(layer_id, field_name)
 
         if name is None:
-            if isinstance(item.field(), QgsField):
-                _name = f'Group "{item.field().name()}"'
+            if isinstance(item.fieldName(), str):
+                _name = f'Group "{item.fieldName()}"'
             else:
                 _name = 'Group'
 
@@ -1909,28 +1992,30 @@ class SpectralLibraryPlotWidget(QWidget):
 
         item.setName(name)
 
-        if isinstance(item.speclib(), QgsVectorLayer):
+        if item.layerId() and item.fieldName():
             # get a good guess for the name expression
             # 1. "<source_field_name>_name"
             # 2. "name"
             # 3. $id (fallback)
 
-            name_field = None
-            source_field_name = item.fieldName()
-            rx1 = re.compile(source_field_name + '_?name', re.I)
-            rx2 = re.compile('name', re.I)
-            rx3 = re.compile('fid', re.I)
-            for rx in [rx1, rx2, rx3]:
-                for field in item.speclib().fields():
-                    if field.type() in [QMETATYPE_QSTRING, QMETATYPE_INT] and rx.search(field.name()):
-                        name_field = field
+            layer = self.project().mapLayer(item.layerId())
+            if isinstance(layer, QgsVectorLayer):
+                name_field = None
+                source_field_name = item.fieldName()
+                rx1 = re.compile(source_field_name + '_?name', re.I)
+                rx2 = re.compile('name', re.I)
+                rx3 = re.compile('fid', re.I)
+                for rx in [rx1, rx2, rx3]:
+                    for field_name in layer.fields():
+                        if field_name.type() in [QMETATYPE_QSTRING, QMETATYPE_INT] and rx.search(field_name.name()):
+                            name_field = field_name
+                            break
+                    if name_field:
                         break
-                if name_field:
-                    break
-            if isinstance(name_field, QgsField):
-                item.setLabelExpression(f'"{name_field.name()}"')
-            else:
-                item.setLabelExpression('$id')
+                if isinstance(name_field, QgsField):
+                    item.setLabelExpression(f'"{name_field.name()}"')
+                else:
+                    item.setLabelExpression('$id')
 
         if not isinstance(style, PlotStyle):
             style = self.plotModel().defaultProfileStyle()

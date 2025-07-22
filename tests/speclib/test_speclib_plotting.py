@@ -11,6 +11,7 @@ from qgis.PyQt.QtGui import QColor, QMouseEvent
 from qgis.PyQt.QtGui import QPen
 from qgis.PyQt.QtWidgets import QHBoxLayout, QTreeView, QVBoxLayout, QWidget
 from qgis.PyQt.QtXml import QDomDocument, QDomElement
+from qgis.core import QgsApplication
 from qgis.core import edit, QgsCategorizedSymbolRenderer, QgsClassificationRange, QgsEditorWidgetSetup, \
     QgsExpressionContextScope, QgsFeature, QgsField, QgsGraduatedSymbolRenderer, QgsMarkerSymbol, \
     QgsMultiBandColorRenderer, QgsNullSymbolRenderer, QgsProject, QgsProperty, QgsPropertyDefinition, \
@@ -25,11 +26,12 @@ from qps.qgisenums import QMETATYPE_DOUBLE, QMETATYPE_INT, QMETATYPE_QSTRING
 from qps.speclib.core import create_profile_field, profile_field_list, profile_field_names, profile_fields
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
 from qps.speclib.core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict, prepareProfileValueDict
-from qps.speclib.gui.spectrallibraryplotitems import SpectralProfilePlotWidget, SpectralXAxis
+from qps.speclib.gui.spectrallibraryplotitems import SpectralProfilePlotWidget, SpectralXAxis, \
+    SpectralProfilePlotDataItem
 from qps.speclib.gui.spectrallibraryplotmodelitems import PlotStyleItem, ProfileCandidateItem, \
     ProfileVisualizationGroup, PropertyItem, PropertyItemGroup, QgsPropertyItem, RasterRendererGroup, \
     SpectralProfileColorPropertyWidget
-from qps.speclib.gui.spectrallibraryplotwidget import SpectralLibraryPlotWidget, SpectralProfilePlotModel
+from qps.speclib.gui.spectrallibraryplotwidget import SpectralLibraryPlotWidget, SpectralProfilePlotModel, copy_items
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
 from qps.testing import start_app, TestCase, TestObjects
 from qps.unitmodel import BAND_INDEX, BAND_NUMBER
@@ -650,18 +652,53 @@ class TestSpeclibPlotting(TestCase):
 
     def test_SpectralLibraryPlotWidget_simpled(self):
 
-        speclib = TestObjects.createSpectralLibrary(n_bands=[-1, 12])
-        with edit(speclib):
-            speclib.addAttribute(QgsField('color', QMetaType.QString))
+        sl1 = TestObjects.createSpectralLibrary(n=10, n_bands=[-1, 12], name='Speclib1')
+        with edit(sl1):
+            sl1.addAttribute(QgsField('color', QMetaType.QString))
 
+        sl2 = TestObjects.createSpectralLibrary(n=3, n_bands=[50, 200], name='Speclib2',
+                                                profile_field_names=['p1', 'p2'])
         style = PlotStyle()
         style.setLinePen(QPen(QColor('red')))
         style.setMarkerSymbol(MarkerSymbol.Circle)
 
-        w = SpectralLibraryWidget(speclib=speclib, default_style=style)
+        QgsProject.instance().addMapLayers([sl1, sl2])
+
+        w = SpectralLibraryWidget(speclib=sl1, default_style=style)
         w.plotControl()
         self.showGui(w)
         QgsProject.instance().removeAllMapLayers()
+
+    def test_copy_plotdataitems(self):
+
+        x1 = [1, 2, 3]
+        y1 = [4, 5, 6]
+
+        x2 = [0, 1, 3, 5]
+        y2 = [3.4, 2.3, 3, np.NaN]
+
+        item1 = SpectralProfilePlotDataItem()
+        item1.setData(x=x1, y=y1)
+        item2 = SpectralProfilePlotDataItem()
+        item2.setData(x=x2, y=y2)
+        items = [
+            item1, item2
+        ]
+
+        copy_items(items, 'JSON')
+
+        dump = QgsApplication.instance().clipboard().mimeData().text()
+        data = json.loads(dump)
+        self.assertIsInstance(data, list)
+        self.assertEqual(len(data), 2)
+        self.assertListEqual(data[0]['x'], x1)
+        self.assertListEqual(data[0]['y'], y1)
+        self.assertListEqual(data[1]['x'], x2)
+        self.assertListEqual(data[1]['y'], np.asarray(y2).tolist())
+
+        copy_items(items, 'CSV')
+        data = QgsApplication.instance().clipboard().mimeData().text()
+        print(data)
 
     def test_SpectralLibraryPlotWidget(self):
 
