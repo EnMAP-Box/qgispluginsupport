@@ -1033,6 +1033,7 @@ class TestObjects(object):
     def createSpectralLibrary(n: int = 10,
                               n_empty: int = 0,
                               n_bands: Union[int, List[int], np.ndarray] = [-1],
+                              name: Optional[str] = None,
                               profile_field_names: List[str] = None,
                               wlu: str = None,
                               crs: QgsCoordinateReferenceSystem = None) -> QgsVectorLayer:
@@ -1077,6 +1078,10 @@ class TestObjects(object):
             profile_field_names = [f'{FIELD_VALUES}{i}' for i in range(n_profile_columns)]
 
         slib: QgsVectorLayer = SpectralLibraryUtils.createSpectralLibrary(profile_fields=profile_field_names, crs=crs)
+
+        name = name if name else os.path.basename(slib.source())
+        slib.setName(name)
+
         with edit(slib):
 
             pfield_indices = profile_field_indices(slib)
@@ -1353,7 +1358,7 @@ class TestObjects(object):
         return alg
 
     @staticmethod
-    def createRasterLayer(*args, **kwds) -> QgsRasterLayer:
+    def createRasterLayer(*args, name: Optional[str] = None, **kwds) -> QgsRasterLayer:
         """
         Creates an in-memory raster layer.
         See arguments & keyword for `inMemoryImage()`
@@ -1363,7 +1368,8 @@ class TestObjects(object):
         assert isinstance(ds, gdal.Dataset)
         path = ds.GetDescription()
 
-        lyr = QgsRasterLayer(path, os.path.basename(path), 'gdal')
+        name = name if name else os.path.basename(path)
+        lyr = QgsRasterLayer(path, name, 'gdal')
         assert lyr.isValid()
         return lyr
 
@@ -1510,6 +1516,7 @@ class TestObjects(object):
     def createVectorLayer(cls, wkbType: QgsWkbTypes = QgsWkbTypes.Polygon,
                           n_features: int = None,
                           path: Union[str, Path] = None,
+                          name: Optional[str] = None,
                           crs: QgsCoordinateReferenceSystem = None) -> QgsVectorLayer:
         """
         Create a QgsVectorLayer
@@ -1536,7 +1543,9 @@ class TestObjects(object):
         # uri = '{}|{}'.format(dsSrc.GetName(), lyr.GetName())
         uri = dsSrc.GetName()
 
-        vl = QgsVectorLayer(uri, 'testlayer', 'ogr', lyrOptions)
+        name = name if name else os.path.basename(uri)
+
+        vl = QgsVectorLayer(uri, name, 'ogr', lyrOptions)
         assert isinstance(vl, QgsVectorLayer)
         assert vl.isValid()
         if not vl.crs().isValid():
