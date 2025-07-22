@@ -1,13 +1,94 @@
 from typing import Callable, Dict, Union, Optional
 
-from PyQt5.QtWidgets import QSizePolicy
-
 from qgis.PyQt.QtCore import Qt
-from qgis.PyQt.QtWidgets import QComboBox, QGridLayout, QLabel, QDialogButtonBox, QHBoxLayout, QCheckBox
+from qgis.PyQt.QtCore import pyqtSignal, QAbstractListModel
+from qgis.PyQt.QtGui import QIcon
+from qgis.PyQt.QtWidgets import QComboBox, QGridLayout, QLabel, QDialogButtonBox, QHBoxLayout, QCheckBox, QAction
 from qgis.PyQt.QtWidgets import QDialog
+from qgis.PyQt.QtWidgets import QSizePolicy, QWidget, QToolButton
 from qgis.core import QgsMapLayer, QgsField, QgsFieldProxyModel, QgsMapLayerProxyModel, QgsFieldModel, \
     QgsMapLayerModel, QgsVectorLayer, QgsFields
 from qgis.core import QgsProject
+
+
+class FilteredProjectFieldsModel(QAbstractListModel):
+
+    def __init__(self, *args, **kwds):
+        super().__init__(*args, **kwds)
+        self.mProject = None
+        self.mLayerFields = []
+        self.mLayerFilterFunc: Optional[Callable] = None
+        self.mFieldFilterFunc: Optional[Callable] = None
+
+        self.setProject(QgsProject.instance())
+
+    def setFieldFilter(self, func: Optional[Callable]):
+        self.mFieldFilterFunc = func
+        self.updateModel()
+
+    def setLayerFilter(self, func: Optional[Callable]):
+        self.mLayerFilterFunc = func
+        self.updateModel()
+
+    def rowCount(self, parent=None):
+        return len(self.mLayerFields)
+
+    def columnCount(self, parent=None):
+        return 1
+
+    def data(self, index, role):
+
+        if not index.isValid():
+            return None
+
+        lid, field = self.mLayerFields[index.row()]
+
+        lyr = self.mProject.mapLayer(lid)
+        if isinstance(lyr, QgsMapLayer):
+            if role == Qt.DisplayRole:
+                if isinstance(field, QgsField):
+                    return f'{lyr.name()}:{field.name()}'
+                else:
+                    return f'{lyr.name()}'
+            if role == Qt.ToolTipRole:
+                if isinstance(field, QgsField):
+                    return f'Layer {lyr.source()}<br>Field {field.name()}'
+                else:
+                    return f'Layer {lyr.source()}'
+            if role == Qt.UserRole:
+                return lyr, field
+        return None
+
+    def updateModel(self):
+        self.beginResetModel()
+        self.mLayerFields.clear()
+        if isinstance(self.mProject, QgsProject):
+
+            for layer in self.mProject.mapLayers().values():
+                if isinstance(layer, QgsMapLayer) and layer.isValid():
+                    if self.mLayerFilterFunc is None or self.mLayerFilterFunc(layer):
+                        if isinstance(layer, QgsVectorLayer):
+                            fields = layer.fields()
+                            for i in range(fields.count()):
+                                field = fields.at(i)
+                                if self.mFieldFilterFunc is None or self.mFieldFilterFunc(field):
+                                    self.mLayerFields.append((layer.id(), field))
+                        else:
+                            self.mLayerFields.append((layer.id(), None))
+        self.endResetModel()
+
+    def setProject(self, project: QgsProject):
+        assert isinstance(project, QgsProject)
+        if self.mProject != project:
+
+            if isinstance(self.mProject, QgsProject):
+                self.mProject.layersAdded.disconnect(self.updateModel)
+                self.mProject.layersRemoved.disconnect(self.updateModel)
+
+            self.mProject = project
+            project.layersAdded.connect(self.updateModel)
+            project.layersRemoved.connect(self.updateModel)
+            self.updateModel()
 
 
 class FilteredFieldProxyModel(QgsFieldProxyModel):
@@ -89,7 +170,7 @@ class FilteredMapLayerProxyModel(QgsMapLayerProxyModel):
             return self.mFilterFunc(lyr)
 
 
-class SelectLayerFieldDialog(QDialog):
+class LayerFieldDialog(QDialog):
 
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
@@ -159,9 +240,8 @@ class SelectLayerFieldDialog(QDialog):
             lyr = self.mLayerModel.data(self.mLayerModel.index(i, 0), QgsMapLayerModel.CustomRole.Layer)
             if layer in [lyr, lyr.id(), lyr.name()]:
                 self.mLayerComboBox.setCurrentIndex(i)
-                new_lyr = self.layer()
-                last_field = self.mLastFields.get(new_lyr.id(), None)
-                self.setField(last_field)
+                self.onLayerChanged(i)
+                self.validate()
                 return True
 
         self.validate()
@@ -232,11 +312,123 @@ class SelectLayerFieldDialog(QDialog):
     def validate(self) -> bool:
 
         lyr = self.layer()
-        b = isinstance(lyr, QgsMapLayer)
 
-        if self.mFieldComboBox.isVisible():
-            b &= isinstance(lyr, QgsVectorLayer) and self.field() in lyr.fields().names()
-
+        b = isinstance(lyr, QgsMapLayer) and lyr.isValid()
+        has_fields = isinstance(lyr, QgsVectorLayer) and lyr.isValid()
+        if self.mShowFieldFilter:
+            b &= has_fields and self.field() in lyr.fields().names()
         self.mButtonBox.button(QDialogButtonBox.Ok).setEnabled(b)
 
+        self.mFieldComboBox.setEnabled(has_fields)
+        self.mLabelField.setEnabled(has_fields)
+
         return b
+
+
+class LayerFieldWidget(QWidget):
+    """
+    A widget to show the selected layer and field, with a button to open the LayerFieldDialog
+    """
+    layerFieldChanged = pyqtSignal(QgsMapLayer, str)
+
+    def __init__(self, *args, **kwds):
+        super().__init__(*args, **kwds)
+
+        self.setMinimumSize(5, 5)
+        self.setMaximumHeight(75)
+
+        self.mLayerFilterFunc = lambda layer: isinstance(layer, QgsMapLayer) and layer.isValid()
+        self.mFieldFilterFunc = lambda field: isinstance(field, QgsField)
+
+        self.mLayer = None
+        self.mField = None
+        self.mProject: QgsProject = QgsProject.instance()
+        layout = QHBoxLayout()
+
+        p = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+        p.setHorizontalStretch(2)
+        self.mComboBox = QComboBox(parent=self)
+        self.mComboBox.setSizePolicy(p)
+
+        self.mComboBoxModel = FilteredProjectFieldsModel()
+        self.mComboBoxModel.setFieldFilter(self.mFieldFilterFunc)
+        self.mComboBoxModel.setLayerFilter(self.mLayerFilterFunc)
+        self.mComboBoxModel.setProject(self.mProject)
+        self.mComboBox.setModel(self.mComboBoxModel)
+        self.mComboBox.currentIndexChanged.connect(self.onComboBoxChanged)
+
+        self.mBtnAction = QAction('...')
+        self.mBtnAction.setIcon(QIcon(':/images/themes/default/mSourceFields.svg'))
+        self.mBtnAction.setText('...')
+        self.mBtn = QToolButton(parent=self)
+        self.mBtn.setDefaultAction(self.mBtnAction)
+
+        # layout.addWidget(self.mLabel)
+        layout.addWidget(self.mComboBox)
+        layout.addWidget(self.mBtn)
+        layout.setSpacing(2)
+
+        layout.setContentsMargins(0, 0, 0, 0)
+
+        self.setLayout(layout)
+        self.sizePolicy().setHorizontalPolicy(QSizePolicy.Preferred)
+        self.mBtn.clicked.connect(self.onClicked)
+
+    def setLayerFilter(self, func: Optional[Callable]):
+        self.mLayerFilterFunc = func
+        self.mComboBoxModel.setLayerFilter(func)
+
+    def setFieldFilter(self, func: Optional[Callable]):
+        self.mFieldFilterFunc = func
+        self.mComboBoxModel.setFieldFilter(func)
+
+    def onComboBoxChanged(self, index):
+
+        data = self.mComboBox.currentData(Qt.UserRole)
+        if isinstance(data, tuple):
+            lyr, field = data
+
+            self.setLayerField(lyr, field)
+
+    def onClicked(self, *args):
+
+        d = LayerFieldDialog()
+        d.setProject(self.mProject)
+        d.setLayerFilter(self.mLayerFilterFunc)
+        d.setFieldFilter(self.mFieldFilterFunc)
+
+        d.setLayer(self.mLayer)
+        d.setField(self.mField)
+
+        if d.exec_() == d.Accepted:
+            self.setLayerField(d.layer(), d.field())
+
+    def setLayerField(self, layer: QgsMapLayer, field: Union[None, str, QgsField] = None):
+        assert isinstance(layer, QgsMapLayer)
+        if isinstance(field, QgsField):
+            field = field.name()
+        changed = self.mLayer != layer or self.mField != field
+
+        if changed:
+            self.mLayer = layer
+            self.mField = field
+
+            for i in range(self.mComboBox.count()):
+                cLyr, cField = self.mComboBox.itemData(i, Qt.UserRole)
+                if isinstance(cField, QgsField):
+                    cField = cField.name()
+                if cLyr == layer and cField == field:
+                    self.mComboBox.setCurrentIndex(i)
+                    break
+            self.layerFieldChanged.emit(layer, field)
+
+    def layerField(self) -> (Optional[QgsMapLayer], Optional[str]):
+        return self.mLayer, self.mField
+
+    def project(self):
+        return self.mProject
+
+    def setProject(self, project):
+        assert isinstance(project, QgsProject)
+        self.mProject = project
+        self.mComboBoxModel.setProject(project)
