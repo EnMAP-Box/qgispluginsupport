@@ -20,6 +20,7 @@ import re
 import unittest
 import warnings
 import xml.etree.ElementTree as ET
+from math import nan
 from typing import Dict
 
 import numpy as np
@@ -33,6 +34,7 @@ from qgis.core import QgsCoordinateReferenceSystem, QgsFeature, QgsFeatureReques
     QgsGeometryParameters, QgsMapLayerProxyModel, QgsMapLayerStore, QgsMapToPixel, QgsPointXY, QgsProcessingFeedback, \
     QgsProject, QgsRaster, QgsRasterDataProvider, QgsRasterIdentifyResult, QgsRasterLayer, QgsRectangle, QgsVector, \
     QgsVectorLayer
+from qgis.core import QgsWkbTypes, QgsExpressionContextUtils
 from qps.speclib.core import is_spectral_library
 from qps.speclib.core.spectralprofile import decodeProfileValueDict
 from qps.testing import start_app, TestCase, TestObjects
@@ -43,7 +45,7 @@ from qps.utils import aggregateArray, appendItemsToMenu, createQgsField, default
     osrSpatialReference, parseFWHM, parseWavelength, px2geo, px2geocoordinates, px2spatialPoint, qgsField, \
     qgsFieldAttributes2List, qgsRasterLayer, qgsRasterLayers, rasterArray, rasterBlockArray, rasterizeFeatures, \
     relativePath, SelectMapLayerDialog, SelectMapLayersDialog, snapGeoCoordinates, SpatialExtent, SpatialPoint, \
-    spatialPoint2px, value2str, writeAsVectorFormat, create_picture_viewer_config
+    spatialPoint2px, value2str, writeAsVectorFormat, create_picture_viewer_config, xy_pair_matrix, featureSymbolScope
 from qpstestdata import enmap, enmap_multipoint, enmap_multipolygon, enmap_pixel, hymap, landcover
 
 start_app()
@@ -313,6 +315,29 @@ class TestUtils(TestCase):
 
         # ESRI Shapefile does not support string fields with unlimited length
         self.assertIsInstance(writeAsVectorFormat(lyr, DIR / 'exampleX.shp'), QgsVectorLayer)
+
+    def test_profile_matrix(self):
+
+        # x values:  1    2   3   4    7
+        # y1        10   20  10  --   --
+        # y2        -- None  20  10  NaN
+        # -> sum    10   20  30  10  NaN
+        # -> mean   10   20  15  10  NaN
+
+        p1 = ([1, 2, 3],
+              [10, 20, 10])
+        p2 = {'x': [2, 3, 4, 7],
+              'y': np.asarray([None, 20, 10, nan])}
+
+        x, Y = xy_pair_matrix([p1, p2])
+
+        self.assertTrue(np.all(x == np.asarray([1, 2, 3, 4, 7])))
+
+        y_sum = np.nansum(Y, axis=1)
+        y_mean = np.nanmean(Y, axis=1)
+        # Numpy <= 1.90 returns nansum([NaN, NaN]) == NaN
+        self.assertTrue(np.array_equal(y_sum, np.asarray([10, 20, 30, 10, 0]), equal_nan=True))
+        self.assertTrue(np.array_equal(y_mean, np.asarray([10, 20, 15, 10, np.nan]), equal_nan=True))
 
     def test_fid2pixelIndices(self):
 
@@ -715,6 +740,28 @@ class TestUtils(TestCase):
         self.assertEqual(px, QPoint(-1, -1))
         s = ""
         s = ""
+
+    def test_feature_symbol_scope(self):
+
+        layers = [
+            TestObjects.createVectorLayer(wkbType=QgsWkbTypes.NoGeometry),
+            TestObjects.createVectorLayer(wkbType=QgsWkbTypes.Point),
+            TestObjects.createVectorLayer(wkbType=QgsWkbTypes.Polygon),
+            TestObjects.createVectorLayer(wkbType=QgsWkbTypes.LineGeometry),
+        ]
+
+        for lyr in layers:
+            assert lyr.featureCount() > 0
+            renderer = lyr.renderer()
+
+            for f in lyr.getFeatures():
+                context = QgsExpressionContextUtils.createFeatureBasedContext(f, f.fields())
+                scope1 = featureSymbolScope(f)
+                scope2 = featureSymbolScope(f, renderer=renderer)
+                scope3 = featureSymbolScope(f, context=context)
+                scope4 = featureSymbolScope(f, renderer=renderer, context=context)
+
+                break
 
     def test_aggregateArray(self):
 

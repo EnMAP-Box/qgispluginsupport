@@ -67,6 +67,8 @@ from qgis.core import Qgis, QgsApplication, QgsCoordinateReferenceSystem, QgsCoo
     QgsRasterBlock, QgsRasterBlockFeedback, QgsRasterDataProvider, QgsRasterIdentifyResult, QgsRasterInterface, \
     QgsRasterLayer, QgsRasterRenderer, QgsRectangle, QgsTask, QgsVector, QgsVectorDataProvider, QgsVectorFileWriter, \
     QgsVectorFileWriterTask, QgsVectorLayer, QgsWkbTypes
+from qgis.core import QgsExpressionContextScope, QgsExpressionContext, QgsFeatureRenderer, QgsSingleSymbolRenderer, \
+    QgsMarkerSymbol, QgsExpressionContextUtils, QgsRenderContext, QgsSymbol
 from qgis.gui import QgisInterface, QgsDialog, QgsGui, QgsMapCanvas, QgsMapLayerComboBox, QgsMessageViewer
 from .qgisenums import QGIS_LAYERFILTER, QGIS_WKBTYPE, QMETATYPE_BOOL, QMETATYPE_DOUBLE, QMETATYPE_INT, \
     QMETATYPE_QBYTEARRAY, QMETATYPE_QCHAR, QMETATYPE_QDATE, QMETATYPE_QDATETIME, QMETATYPE_QSTRING, \
@@ -957,6 +959,53 @@ def qgsVectorLayer(source) -> QgsVectorLayer:
     raise Exception('Unable to transform {} into QgsVectorLayer'.format(source))
 
 
+DEFAULT_RENDERER = QgsSingleSymbolRenderer(QgsMarkerSymbol.createSimple({'name': 'square', 'color': 'white'}))
+
+
+def featureSymbolScope(feature: QgsFeature,
+                       renderer: Optional[QgsFeatureRenderer] = None,
+                       context: Optional[QgsExpressionContext] = None,
+                       default_color: Union[None, str, QColor] = None) -> QgsExpressionContextScope:
+    """
+    Returns a QgsExpressionContextScope with variables 'symbol_color' and 'symbol_angle'.
+    """
+    assert isinstance(feature, QgsFeature)
+    feature = QgsFeature(feature)
+    if not feature.hasGeometry():
+        symbolScope = QgsExpressionContextScope()
+        default_color = QColor(default_color) if default_color else QColor('grey')
+        symbolScope.setVariable('symbol_color', default_color)
+        symbolScope.setVariable('symbol_angle', 0)
+        return symbolScope
+
+    if renderer is None:
+        renderer = DEFAULT_RENDERER
+
+    renderer = renderer.clone()
+    if context is None:
+        context = QgsExpressionContext()
+        context.appendScope(QgsExpressionContextUtils.globalScope())
+    else:
+        context = QgsExpressionContext(context)
+
+    context.setFeature(feature)
+
+    renderContext = QgsRenderContext()
+    renderContext.setExpressionContext(context)
+
+    renderer.startRender(renderContext, feature.fields())
+
+    symbol = renderer.symbolForFeature(feature, renderContext)
+    if isinstance(symbol, QgsSymbol):
+        symbolScope = QgsExpressionContextScope(symbol.symbolRenderContext().expressionContextScope())
+    else:
+        symbolScope = QgsExpressionContextScope()
+        symbolScope.setVariable('symbol_color', QColor('grey'))
+        symbolScope.setVariable('symbol_angle', 0)
+    renderer.stopRender(renderContext)
+    return symbolScope
+
+
 def qgsRasterLayer(source) -> QgsRasterLayer:
     """
     Returns a QgsRasterLayer from different source types
@@ -976,6 +1025,40 @@ def qgsRasterLayer(source) -> QgsRasterLayer:
         return qgsRasterLayer(Path(source.toString(QUrl.PreferLocalFile | QUrl.RemoveQuery)).resolve())
 
     raise Exception('Unable to transform {} into QgsRasterLayer'.format(source))
+
+
+def xy_pair_matrix(pairs: List[Union[Tuple, Dict]]) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Takes arbitrary number of (x, y) pairs of 1D lists or numpy arrays.
+    Returns:
+      result1: 1D numpy array of all unique x values (sorted, ordered by first occurrence)
+      result2: 2D numpy array (len(result1), n_pairs) containing y values matched to x,
+               np.nan fills if x doesn't exist in the pair.
+    """
+    # Flatten all xs and collect unique in order of first appearance
+    x_values = set()
+    pairs2 = []
+    for pair in pairs:
+        if isinstance(pair, dict):
+            x, y = pair['x'], pair['y']
+        else:
+            x, y = pair
+
+        assert len(x) == len(y), f'Input arrays must be of the same length: {len(x)} != {len(y)}'
+        pairs2.append((x, y))
+        for xi in x:
+            x_values.add(xi)
+
+    # list of unique x values
+    x_values = list(x_values)
+
+    n_pairs = len(pairs2)
+    Y_VALUES = np.full((len(x_values), n_pairs), np.nan)
+    for i, (xvec, yvec) in enumerate(pairs2):
+        for x, y in zip(xvec, yvec):
+            j = x_values.index(x)
+            Y_VALUES[j, i] = y
+    return np.asarray(x_values), Y_VALUES
 
 
 def qgsFields(source: Union[List[QgsField], QgsFeature, QgsFields, QgsVectorLayer]) -> QgsFields:
