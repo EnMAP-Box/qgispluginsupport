@@ -26,10 +26,10 @@
 import copy
 import enum
 import json
-import pathlib
 import sys
 import warnings
 from json import JSONDecodeError
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
 from qgis.PyQt.QtCore import pyqtSignal, QByteArray, QDataStream, QIODevice, QObject, QSize, Qt
@@ -40,11 +40,10 @@ from qgis.PyQt.QtXml import QDomDocument, QDomElement
 from qgis.core import QgsAction, QgsField, QgsMessageLog, QgsSymbolLayerUtils, QgsVectorLayer
 from qgis.gui import QgsColorButton, QgsDialog, QgsEditorConfigWidget, QgsEditorWidgetFactory, QgsEditorWidgetWrapper, \
     QgsGui, QgsPenStyleComboBox, QgsSearchWidgetWrapper
-
 from ..pyqtgraph import pyqtgraph as pg
 from ..pyqtgraph.pyqtgraph.graphicsItems.ScatterPlotItem import drawSymbol, renderSymbol
 from ..qgisenums import QMETATYPE_QSTRING
-from ..utils import findMapLayer, loadUi
+from ..utils import findMapLayer, loadUi, SignalBlocker
 
 DEBUG = False
 
@@ -344,6 +343,9 @@ class PlotStyle(QObject):
             kwds.pop('plotStyle')
         super(PlotStyle, self).__init__()
         self.mCosmeticPens: bool = True
+
+        self.antialias: bool = False
+
         self.markerSymbol: str = MarkerSymbol.Circle.value
         self.markerSize: int = 5
         self.markerBrush: QBrush = QBrush()
@@ -542,6 +544,8 @@ class PlotStyle(QObject):
         if 'backgroundColor' in obj.keys():
             plotStyle.backgroundColor = QgsSymbolLayerUtils.decodeColor(obj['backgroundColor'])
         # log('END fromJSON')
+        if 'antialias' in obj.keys():
+            plotStyle.antialias = obj['antialias'] in [True, 1, 'true']
         return plotStyle
 
     @classmethod
@@ -594,9 +598,19 @@ class PlotStyle(QObject):
         style['linePen'] = pen2list(self.linePen)
         style['isVisible'] = self.mIsVisible
         style['backgroundColor'] = QgsSymbolLayerUtils.encodeColor(self.backgroundColor)
+        style['antialias'] = self.antialias
         return style
 
-    def setVisibility(self, b):
+    def setAntialias(self, b: bool):
+        """
+        Set the antialias flag
+        :param b:
+        :return:
+        """
+        assert isinstance(b, bool)
+        self.antialias = b
+
+    def setVisibility(self, b: bool):
         """
         Sets the visibility of a plot item
         :param b: bool
@@ -659,7 +673,11 @@ class PlotStyle(QObject):
         """
         return QIcon(self.createPixmap(size=size))
 
-    def createPixmap(self, size: QSize = None, hline: bool = False, bc: QColor = None) -> QPixmap:
+    def createPixmap(self,
+                     size: QSize = None,
+                     hline: bool = False,
+                     bc: Optional[QColor] = None,
+                     antialias: Optional[bool] = None) -> QPixmap:
         """
         Creates a QPixmap to show this PlotStyle
         :param size: QSize
@@ -672,11 +690,17 @@ class PlotStyle(QObject):
         if bc is None:
             bc = self.backgroundColor
 
+        if antialias is None:
+            antialias = self.antialias
+
         pm = QPixmap(size)
         if self.isVisible():
             pm.fill(bc)
 
             p = QPainter(pm)
+            if antialias:
+                p.setRenderHint(QPainter.Antialiasing, True)
+                p.setRenderHint(QPainter.SmoothPixmapTransform, True)
             # draw the line
 
             p.setPen(self.linePen)
@@ -782,7 +806,7 @@ class PlotStyleWidget(QWidget):
                  plotStyle: PlotStyle = PlotStyle()):
         super(PlotStyleWidget, self).__init__(parent)
 
-        ui_file = pathlib.Path(__file__).parent / 'plotstylewidget.ui'
+        ui_file = Path(__file__).parent / 'plotstylewidget.ui'
         assert ui_file.is_file()
         loadUi(ui_file, self)
 
@@ -1143,7 +1167,8 @@ class PlotStyleButton(QToolButton):
         oldStyle = self.plotStyle()
 
         if isinstance(plotStyle, PlotStyle):
-            self.mDialog.setPlotStyle(plotStyle)
+            with SignalBlocker(self.mDialog) as block:
+                self.mDialog.setPlotStyle(plotStyle)
             self.updateIcon()
 
             if oldStyle != plotStyle:
@@ -1214,9 +1239,11 @@ class PlotStyleDialog(QgsDialog):
             self.activateWindow()
 
     def setColorWidgetVisibility(self, b: bool):
+        warnings.warn(DeprecationWarning('Use setVisibilityFlags'))
         self.w.setColorWidgetVisibility(b)
 
     def setVisibilityCheckboxVisible(self, b: bool):
+        warnings.warn(DeprecationWarning('Use setVisibilityFlags'))
         self.w.setVisibilityCheckboxVisible(b)
 
     def plotStyleWidget(self) -> PlotStyleWidget:
@@ -1247,6 +1274,7 @@ class PlotStyleDialog(QgsDialog):
             self.sigPlotStyleChanged.emit(ps)
 
     def setPreviewVisible(self, b: bool):
+        warnings.warn(DeprecationWarning('Use setVisibilityFlags'))
         self.w.setPreviewVisible(b)
 
 
@@ -1601,7 +1629,7 @@ class PlotWidgetStyle(object):
 
     @staticmethod
     def writeJson(path, styles: List['PlotWidgetStyle']):
-        path = pathlib.Path(path)
+        path = Path(path)
 
         JSON = []
         for s in styles:
@@ -1613,7 +1641,7 @@ class PlotWidgetStyle(object):
 
     @staticmethod
     def fromJson(path) -> List['PlotWidgetStyle']:
-        path = pathlib.Path(path)
+        path = Path(path)
         styles = []
         with open(path, 'r', encoding='utf8') as fp:
             JSON = json.load(fp)
@@ -1626,7 +1654,7 @@ class PlotWidgetStyle(object):
     @staticmethod
     def initializeStandardStyles():
         # initialize standard styles
-        pathStandardStyle = pathlib.Path(__file__).parent / 'standardstyles.json'
+        pathStandardStyle = Path(__file__).parent / 'standardstyles.json'
 
         if not pathStandardStyle.is_file():
             warnings.warn(f'Missing file: {pathStandardStyle}')
