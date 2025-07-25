@@ -1383,7 +1383,7 @@ class TestObjects(object):
         """
         # ogr.RegisterAll()
         # ogr.UseExceptions()
-        assert wkb in [ogr.wkbPoint, ogr.wkbPolygon, ogr.wkbLineString]
+        assert wkb in [ogr.wkbPoint, ogr.wkbPolygon, ogr.wkbLineString, ogr.wkbNone]
 
         # find the QGIS world_map.shp
         # pkgPath = QgsApplication.instance().pkgDataPath()
@@ -1426,6 +1426,9 @@ class TestObjects(object):
             elif wkb == ogr.wkbLineString:
                 lname = 'lines'
                 pathDst = prefix + '.test.line.gpkg'
+            elif wkb == ogr.wkbNone:
+                lname = 'no_geometry'
+                pathDst = prefix + '.test.nogeometry.gpkg'
             else:
                 raise NotImplementedError()
 
@@ -1464,10 +1467,12 @@ class TestObjects(object):
                     g = g.Centroid()
                 elif wkb == ogr.wkbLineString:
                     g = g.GetBoundary()
+                elif wkb == ogr.wkbNone:
+                    g = None
                 else:
                     raise NotImplementedError()
-
-            fDst.SetGeometry(g)
+            if g:
+                fDst.SetGeometry(g)
 
             for i in range(ldef.GetFieldCount()):
                 fDst.SetField(i, fSrc.GetField(i))
@@ -1532,6 +1537,8 @@ class TestObjects(object):
             wkb = ogr.wkbLineString
         elif wkbType in [QgsWkbTypes.Polygon, QgsWkbTypes.PolygonGeometry]:
             wkb = ogr.wkbPolygon
+        elif wkbType == QgsWkbTypes.NoGeometry:
+            wkb = ogr.wkbNone
 
         assert wkb is not None
         dsSrc = TestObjects.createVectorDataSet(wkb=wkb, n_features=n_features, path=path)
@@ -1548,14 +1555,15 @@ class TestObjects(object):
         vl = QgsVectorLayer(uri, name, 'ogr', lyrOptions)
         assert isinstance(vl, QgsVectorLayer)
         assert vl.isValid()
-        if not vl.crs().isValid():
-            srs = lyr.GetSpatialRef()
-            srs_wkt = srs.ExportToWkt()
-            crs2 = QgsCoordinateReferenceSystem(srs_wkt)
-            assert crs2.isValid()
-            s = ""
+        if wkb != ogr.wkbNone:
+            if not vl.crs().isValid():
+                srs = lyr.GetSpatialRef()
+                srs_wkt = srs.ExportToWkt()
+                crs2 = QgsCoordinateReferenceSystem(srs_wkt)
+                assert crs2.isValid()
+                s = ""
 
-        assert vl.crs().isValid()
+            assert vl.crs().isValid()
         assert vl.featureCount() == lyr.GetFeatureCount()
 
         if isinstance(crs, QgsCoordinateReferenceSystem) and vl.crs() != crs:
