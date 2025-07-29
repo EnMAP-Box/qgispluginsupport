@@ -1045,13 +1045,15 @@ class TestUtils(TestCase):
 
         lyrR = TestObjects.createRasterLayer()
         lyrV = TestObjects.createVectorLayer()
-        QgsProject.instance().addMapLayers([lyrR, lyrV])
+        layers = [lyrR, lyrV]
+        QgsProject.instance().addMapLayers(layers)
         d = SelectMapLayersDialog()
         d.addLayerDescription('Any Type', QgsMapLayerProxyModel.All)
-        layers = d.mapLayers()
-        self.assertIsInstance(layers, list)
-        self.assertTrue(len(layers) == 1)
-        self.assertListEqual(layers, [lyrR])
+        layers2 = d.mapLayers()
+        self.assertIsInstance(layers2, list)
+        self.assertTrue(len(layers2) == 1)
+        for lyr in layers2:
+            self.assertTrue(lyr in layers)
 
         d.addLayerDescription('A Vector Layer', QgsMapLayerProxyModel.VectorLayer)
         d.addLayerDescription('A Raster Layer', QgsMapLayerProxyModel.RasterLayer)

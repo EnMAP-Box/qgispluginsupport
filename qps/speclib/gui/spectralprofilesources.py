@@ -1389,7 +1389,7 @@ class SpectralFeatureGeneratorNode(ValidateNode):
 
     def onPlotWidgetStyleChanged(self):
         if isinstance(self.speclibWidget(), SpectralLibraryWidget):
-            backgroundColor = self.speclibWidget().plotControl().generalSettings().backgroundColor()
+            backgroundColor = self.speclibWidget().plotModel().generalSettings().backgroundColor()
             for n in self.spectralProfileGeneratorNodes():
                 n.mProfileStyleNode.value().setBackgroundColor(QColor(backgroundColor))
                 n.mProfileStyleNode.sigUpdated.emit(n.mProfileStyleNode)
@@ -1462,9 +1462,10 @@ class SpectralFeatureGeneratorNode(ValidateNode):
                 slw = self.speclibWidget()
                 if isinstance(slw, SpectralLibraryWidget):
                     color = QColor('green')
-                    for vis in slw.plotControl().visualizations():
-                        if vis.field().name() == fname:
-                            color = nextColor(vis.color(), 'brighter')
+                    for vis in slw.plotModel().visualizations():
+                        if vis.fieldName() == fname:
+                            plotStyle = vis.plotStyle()
+                            color = nextColor(plotStyle.lineColor(), 'brighter')
                             break
                     new_node.setColor(color)
 

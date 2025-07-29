@@ -98,6 +98,8 @@ class SpectralProcessingTests(TestCase):
 
         self.showGui([canvas, panel, slw])
 
+        QgsProject.instance().removeAllMapLayers()
+
     def test_SpectralProfileSources(self):
 
         lyr1 = TestObjects.createRasterLayer()
@@ -380,10 +382,6 @@ class SpectralProcessingTests(TestCase):
         self.showGui(splitH)
         QgsProject.instance().removeAllMapLayers()
 
-    def test_profile_source(self):
-
-        pass
-
     def validate_profile_data(self, profileData, lyr: QgsRasterLayer, ptR: QgsPointXY):
 
         array = rasterArray(lyr)
@@ -659,6 +657,8 @@ class SpectralProcessingTests(TestCase):
         delegate.setItemDelegates(tv)
         delegate.setBridge(model)
         self.showGui(tv)
+
+        QgsProject.instance().removeAllMapLayers()
 
 
 if __name__ == '__main__':

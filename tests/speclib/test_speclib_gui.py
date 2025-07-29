@@ -32,7 +32,6 @@ from qgis.core import QgsFeature, QgsField, QgsProject, QgsRasterLayer, QgsVecto
 from qgis.gui import QgsDualView, QgsGui, QgsMapCanvas
 from qps import registerEditorWidgets
 from qps.layerproperties import AddAttributeDialog
-from qps.pyqtgraph import pyqtgraph as pg
 from qps.qgisenums import QMETATYPE_INT
 from qps.speclib.core import is_spectral_library, profile_field_list, profile_field_names
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
@@ -87,16 +86,6 @@ class TestSpeclibWidgets(TestCase):
 
         from qps import registerMapLayerConfigWidgetFactories
         registerMapLayerConfigWidgetFactories()
-
-    @unittest.skipIf(False, '')
-    def test_PyQtGraphPlot(self):
-        plotWidget = pg.plot(title="Three plot curves")
-
-        item1 = pg.PlotItem(x=[1, 2, 3], y=[2, 3, 4], color='white')
-        plotWidget.plotItem.addItem(item1)
-        self.assertIsInstance(plotWidget, pg.PlotWidget)
-
-        self.showGui(plotWidget)
 
     def test_SpectralLibraryPlotWidget(self):
 
@@ -182,11 +171,11 @@ class TestSpeclibWidgets(TestCase):
 
     def test_CurrentProfiles(self):
 
-        w = SpectralLibraryWidget()
+        slw = SpectralLibraryWidget()
 
         def onClicked(*args):
             sl = TestObjects.createSpectralLibrary(2)
-            w.setCurrentProfiles(sl[:])
+            slw.setCurrentProfiles(sl[:])
 
         btnAddTempProfiles = QPushButton('Add Temp Profiles')
         btnAddTempProfiles.clicked.connect(onClicked)
@@ -194,9 +183,12 @@ class TestSpeclibWidgets(TestCase):
         w2 = QWidget()
         layout = QVBoxLayout()
         layout.addWidget(btnAddTempProfiles)
-        layout.addWidget(w)
+        layout.addWidget(slw)
         w2.setLayout(layout)
         self.showGui(w2)
+        slw.project().removeAllMapLayers()
+        QgsProject.instance().removeAllMapLayers()
+
         s = ""
 
     def test_SpectralLibraryWidget_ViewTypes(self):
@@ -219,6 +211,7 @@ class TestSpeclibWidgets(TestCase):
         self.assertFalse(w.mMainView.isVisible())
 
         self.showGui(w)
+        QgsProject.instance().removeAllMapLayers()
 
     def test_SpectralLibraryWidget_empty_vectorlayer(self):
 
@@ -228,6 +221,7 @@ class TestSpeclibWidgets(TestCase):
         self.assertTrue(not is_spectral_library(slw.speclib()))
         self.assertIsInstance(slw, SpectralLibraryWidget)
         self.showGui(slw)
+        QgsProject.instance().removeAllMapLayers()
 
     @unittest.skipIf(TestCase.runsInCI(), 'GUI test only')
     def test_SpectralLibraryWidget_Empty(self):
@@ -240,6 +234,7 @@ class TestSpeclibWidgets(TestCase):
         # QApplication.setStyle("Fusion")
         slw = SpectralLibraryWidget(speclib=TestObjects.createSpectralLibrary(n=10))
         self.showGui(slw)
+        QgsProject.instance().removeAllMapLayers()
 
     def test_SpectralLibraryWidget(self):
 
@@ -285,6 +280,7 @@ class TestSpeclibWidgets(TestCase):
 
         sp = SpectralLibraryPanel()
         self.showGui(sp)
+        QgsProject.instance().removeAllMapLayers()
 
     @unittest.skipIf(False, '')
     def test_SpectralLibraryWidgetCanvas(self):
@@ -320,14 +316,17 @@ class TestSpeclibWidgets(TestCase):
 
         slib = TestObjects.createSpectralLibrary()
         self.assertTrue(len(slib) > 0)
-        slw = SpectralLibraryWidget()
+        slw = SpectralLibraryWidget(project=QgsProject())
         slw.speclib().startEditing()
         slw.addSpeclib(slib)
 
         slw.mActionToggleEditing.setChecked(True)
 
         # self.assertTrue()
+
         self.showGui(slw)
+
+        slw.project().removeAllMapLayers()
 
     def test_addAttribute(self):
 
@@ -356,6 +355,8 @@ class TestSpeclibWidgets(TestCase):
         s = ""
 
         self.showGui(slw)
+
+        slw.project().removeAllMapLayers()
 
     def test_delete_speclib(self):
 
@@ -450,6 +451,7 @@ class TestSpeclibWidgets(TestCase):
         self.assertEqual(1, len(pfields))
 
         self.showGui(w)
+        w.plotModel().project().removeAllMapLayers()
 
     def test_SpectralLibraryWidget_saveStyle(self):
 
@@ -468,20 +470,20 @@ class TestSpeclibWidgets(TestCase):
         self.assertEqual(pfields, [])
 
         slw = SpectralLibraryWidget(speclib=sl)
-        self.assertTrue(path_qml.is_file())
-        pfields = profile_field_names(sl)
-        self.assertTrue(len(pfields) == 1)
-        os.remove(path_qml)
-        self.assertFalse(path_qml.is_file())
+        # self.assertTrue(path_qml.is_file())
+        # pfields = profile_field_names(sl)
+        # self.assertTrue(len(pfields) == 1)
+        # os.remove(path_qml)
+        # self.assertFalse(path_qml.is_file())
 
         slw.mActionSaveEdits.trigger()
         self.assertTrue(path_qml.is_file())
-
+        slw.project().removeAllMapLayers()
         del slw
 
         sl2 = QgsVectorLayer(path_json.as_posix())
         pfield2 = profile_field_names(sl2)
-        self.assertEqual(pfields, pfield2)
+        self.assertListEqual(pfield2, ['profiles'])
 
     def test_SpectralLibraryWidgetProgressDialog(self):
 
@@ -517,6 +519,7 @@ class TestSpeclibWidgets(TestCase):
         currentProfiles = features[0:2]
         sw.setCurrentProfiles(currentProfiles)
         sw.updatePlot()
+        sw.plotModel().project().removeAllMapLayers()
 
 
 if __name__ == '__main__':

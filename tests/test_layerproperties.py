@@ -254,7 +254,7 @@ class LayerPropertyTests(TestCase):
             s = ""
 
         w.mActionZoomMapToSelectedRows.triggered.connect(onAction)
-        w.mUpdateExpressionText.setLayerField("'dummy'")
+        w.mUpdateExpressionText.setField("'dummy'")
 
         self.showGui(w)
         w.close()

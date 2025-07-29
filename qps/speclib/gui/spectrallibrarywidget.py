@@ -1,9 +1,11 @@
 import enum
+import json
 import sys
+import warnings
 from typing import List, Set, Dict, Tuple, Generator, Any, Optional
 
 from qgis.PyQt.QtCore import pyqtSignal, Qt, QModelIndex
-from qgis.PyQt.QtGui import QIcon, QDragEnterEvent, QDropEvent, QColor
+from qgis.PyQt.QtGui import QIcon, QDragEnterEvent, QDropEvent
 from qgis.PyQt.QtWidgets import QWidget, QVBoxLayout, QAction, QMenu, QToolBar, QWidgetAction, QPushButton, \
     QHBoxLayout, QFrame, QDialog
 from qgis.PyQt.QtXml import QDomElement, QDomDocument
@@ -12,16 +14,15 @@ from qgis.core import (QgsFeature, QgsProject, QgsVectorLayer, QgsReadWriteConte
 from qgis.gui import QgsMapCanvas, QgsDualView, QgsAttributeTableView, QgsDockWidget, \
     QgsActionMenu
 from .spectrallibraryplotitems import SpectralProfilePlotItem, SpectralProfilePlotWidget
-from .spectrallibraryplotwidget import SpectralLibraryPlotWidget, \
-    SpectralProfilePlotModel
+from .spectrallibraryplotwidget import SpectralLibraryPlotWidget
 from .spectralprocessingdialog import SpectralProcessingDialog
 from .spectralprofilefieldmodel import SpectralProfileFieldActivatorDialog
-from ..core import is_spectral_library, profile_fields
+from .spectralprofileplotmodel import SpectralProfilePlotModel
+from ..core import is_spectral_library
 from ..core.spectrallibrary import SpectralLibraryUtils
 from ..core.spectrallibraryio import SpectralLibraryImportDialog, SpectralLibraryExportDialog
 from ...layerproperties import AttributeTableWidget, showLayerPropertiesDialog, CopyAttributesDialog
 from ...plotstyling.plotstyling import PlotStyle, PlotStyleWidget
-from ...utils import nextColor  # , nodeXmlString
 
 
 class SpectralLibraryWidget(AttributeTableWidget):
@@ -41,17 +42,28 @@ class SpectralLibraryWidget(AttributeTableWidget):
 
     def __init__(self, *args,
                  speclib: QgsVectorLayer = None,
-                 project: QgsProject = QgsProject.instance(),
+                 project: Optional[QgsProject] = None,
+                 plot_model: Optional[SpectralProfilePlotModel] = None,
                  profile_fields_check: str = 'first_feature',
                  default_style: Optional[PlotStyle] = None,
                  **kwds):
 
-        if not isinstance(speclib, QgsVectorLayer):
-            speclib = SpectralLibraryUtils.createSpectralLibrary()
-            project.addMapLayer(speclib)
+        if isinstance(plot_model, SpectralProfilePlotModel):
+            for vis in plot_model.visualizations():
+                speclib = vis.layer()
+                assert isinstance(speclib, QgsVectorLayer) and speclib.isValid()
+                break
+        else:
+            plot_model = SpectralProfilePlotModel()
+            if isinstance(project, QgsProject):
+                plot_model.setProject(project)
 
-        if profile_fields_check:
-            SpectralLibraryUtils.activateProfileFields(speclib, check=profile_fields_check)
+            if not isinstance(speclib, QgsVectorLayer):
+                speclib = SpectralLibraryUtils.createSpectralLibrary()
+                plot_model.project().addMapLayer(speclib)
+
+            if profile_fields_check:
+                SpectralLibraryUtils.activateProfileFields(speclib, check=profile_fields_check)
 
         super().__init__(speclib)
         # self.setAttribute(Qt.WA_DeleteOnClose, on=True)
@@ -63,8 +75,10 @@ class SpectralLibraryWidget(AttributeTableWidget):
         # self.mStatusLabel.setTextFormat(Qt.RichText)
         # self.mQgsStatusBar.addPermanentWidget(self.mStatusLabel, 1, QgsStatusBar.AnchorLeft)
         # self.mQgsStatusBar.setVisible(False)
-        self.mProject = project
         # self.mSpectralProcessingWidget: SpectralProcessingDialog = None
+
+        # to be removed
+        self.mLayer = speclib
 
         self.mToolbar: QToolBar
         self.mIODialogs: List[QWidget] = list()
@@ -72,7 +86,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.tableView().willShowContextMenu.connect(self.onWillShowContextMenuAttributeTable)
         self.mMainView.showContextMenuExternally.connect(self.onShowContextMenuAttributeEditor)
 
-        self.mSpeclibPlotWidget: SpectralLibraryPlotWidget = SpectralLibraryPlotWidget()
+        self.mSpeclibPlotWidget: SpectralLibraryPlotWidget = SpectralLibraryPlotWidget(plot_model=plot_model)
 
         if default_style:
             self.mSpeclibPlotWidget.plotModel().setDefaultProfileStyle(default_style)
@@ -261,7 +275,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.mSpeclibPlotWidget.setProject(project)
 
     def project(self) -> QgsProject:
-        return self.mSpeclibPlotWidget.plotModel().project()
+        return self.plotModel().project()
 
     def editingToggled(self):
         super().editingToggled()
@@ -407,10 +421,14 @@ class SpectralLibraryWidget(AttributeTableWidget):
         d.exec_()
 
     def plotWidget(self) -> SpectralProfilePlotWidget:
-        return self.mSpeclibPlotWidget.plotWidget
+        return self.mSpeclibPlotWidget.plotWidget()
+
+    def plotModel(self) -> SpectralProfilePlotModel:
+        return self.mSpeclibPlotWidget.mPlotModel
 
     def plotControl(self) -> SpectralProfilePlotModel:
-        return self.mSpeclibPlotWidget.mPlotModel
+        warnings.warn(DeprecationWarning('Use .plotModel()'))
+        return self.plotModel()
 
     def plotItem(self) -> SpectralProfilePlotItem:
         """
@@ -435,7 +453,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
         nVIS: QDomElement = nSLW.firstChildElement('Visualizations')
 
         if not nVIS.isNull():
-            self.plotControl().readXml(nVIS, context)
+            self.plotModel().readXml(nVIS, context)
         return True
         s = ""
 
@@ -443,72 +461,51 @@ class SpectralLibraryWidget(AttributeTableWidget):
         doc: QDomDocument = parent.ownerDocument()
         assert isinstance(doc, QDomDocument)
 
-        sl: QgsVectorLayer = self.speclib()
-
         nSLW = doc.createElement('SpectralLibraryWidget')
-        # layer node needs to be named 'maplayer'
-        # see qgsvectorlayer.cpp -> bool QgsVectorLayer::writeXml(...)
-        nS: QDomElement = doc.createElement('source')
-        nSL: QDomElement = doc.createElement('maplayer')
-        nVIS: QDomElement = doc.createElement('Visualizations')
+
+        model = self.mSpeclibPlotWidget.plotModel()
+        settings = model.settingsMap()
+        nModel = doc.createElement('PlotModel')
+        nModel.appendChild(doc.createTextNode(json.dumps(settings)))
+        nSLW.appendChild(nModel)
         parent.appendChild(nSLW)
-        for n in [nS, nSL, nVIS]:
-            nSLW.appendChild(n)
-
-        nS.setAttribute('provider', sl.providerType())
-        nS.setAttribute('source', sl.source())
-        nS.setAttribute('name', sl.name())
-        nS.setAttribute('id', sl.id())
-
-        assert self.speclib().writeXml(nSL, doc, context)
-        self.plotControl().writeXml(nVIS, context)
-
         return nSLW
 
     @staticmethod
-    def fromXml(node: QDomElement, context: QgsReadWriteContext, speclib: QgsVectorLayer = None,
-                project: QgsProject = None) -> 'SpectralLibraryWidget':
-        nSLW: QDomElement = node if node.tagName() == 'SpectralLibraryWidget' else (
-            node.firstChildElement('SpectralLibraryWidget').toElement())
+    def fromXml(node: QDomElement,
+                context: QgsReadWriteContext,
+                project: QgsProject = None) -> List['SpectralLibraryWidget']:
+        """
+        Creates one or more SpectralLibrary widgets
+        :param node:
+        :param context:
+        :param project:
+        :return:
+        """
+        slwNodes: List[QDomElement] = []
+        if node.tagName() == 'SpectralLibraryWidget':
+            slwNodes.append(node.toElement())
+        else:
+            nList = node.elementsByTagName('SpectralLibraryWidget')
+            for i in range(nList.count()):
+                slwNode = nList.item(i).toElement()
+                slwNodes.append(slwNode)
 
-        if nSLW.isNull():
-            return None
+        slw_widgets: List[SpectralLibraryWidget] = []
 
         if not isinstance(project, QgsProject):
             project = QgsProject.instance()
 
-        if nSLW.isNull():
-            return None
+        for node in slwNodes:
+            modelNode = node.firstChildElement('PlotModel')
+            if not modelNode.isNull():
+                dump = modelNode.text()
+                modelSettings = json.loads(dump)
+                model = SpectralProfilePlotModel.fromSettingsMap(modelSettings, project=project)
+                slw = SpectralLibraryWidget(plot_model=model)
+                slw_widgets.append(slw)
 
-        if not isinstance(speclib, QgsVectorLayer):
-            nS: QDomElement = nSLW.firstChildElement('source').toElement()
-            nSL: QDomElement = nSLW.firstChildElement('maplayer').toElement()
-
-            source = nS.attribute('source')
-            provider = nS.attribute('provider')
-            name = nS.attribute('name')
-            sid = nS.attribute('id')
-
-            # find layer in project
-            speclib = project.mapLayer(sid)
-            if not isinstance(speclib, QgsVectorLayer):
-                for lyr in project.mapLayersByName(name):
-                    speclib = lyr
-                    break
-            if not isinstance(speclib, QgsVectorLayer):
-                c = QgsVectorLayer(source, name, provider)
-                if isinstance(c, QgsVectorLayer) and c.isValid():
-                    project.addMapLayer(c)
-                    speclib = c
-
-        if not isinstance(speclib, QgsVectorLayer):
-            return None
-
-        slw = SpectralLibraryWidget(speclib=speclib)
-        pm = slw.plotControl()
-        pm.readXml(node.firstChildElement('Visualizations'), context)
-
-        return slw
+        return slw_widgets
 
     def updateActions(self):
         """
@@ -516,7 +513,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
         :return:
         :rtype:
         """
-        self.actionAddCurrentProfiles.setEnabled(self.plotControl().profileCandidates().count() > 0)
+        self.actionAddCurrentProfiles.setEnabled(len(self.plotModel().mPROFILE_CANDIDATES) > 0)
         dual_view_mode = self.mMainView.view()
 
         has_editor = self.widgetCenter.isVisibleTo(self) and dual_view_mode == QgsDualView.AttributeEditor
@@ -528,7 +525,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.actionShowProfileView.setChecked(has_profiles)
 
     def updatePlot(self):
-        self.plotControl().updatePlot()
+        self.plotModel().updatePlot()
 
     def speclib(self) -> QgsVectorLayer:
         return self.mLayer
@@ -601,7 +598,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
         """
         Adds all current spectral profiles to the "persistent" SpectralLibrary
         """
-        plotModel: SpectralProfilePlotModel = self.plotControl()
+        plotModel: SpectralProfilePlotModel = self.plotModel()
         plotModel.profileCandidates().clearCandidates()
 
         # fids = list(self.plotControl().mTemporaryProfileIDs)
@@ -611,14 +608,14 @@ class SpectralLibraryWidget(AttributeTableWidget):
         # self.updateActions()
 
     def temporaryProfileIDs(self) -> Set[int]:
-        return self.plotControl().profileCandidates().count()
+        return self.plotModel().profileCandidates().count()
         # return self.plotControl().mTemporaryProfileIDs
 
     def deleteCurrentProfilesFromSpeclib(self, *args):
         # delete previous current profiles
         speclib = self.speclib()
         if is_spectral_library(speclib):
-            oldCurrentIDs = list(self.plotControl().profileCandidates().candidateFeatureIds())
+            oldCurrentIDs = list(self.plotModel().profileCandidates().candidateFeatureIds())
             restart_editing: bool = not speclib.startEditing()
             speclib.beginEditCommand('Remove temporary')
             speclib.deleteFeatures(oldCurrentIDs)
@@ -633,107 +630,29 @@ class SpectralLibraryWidget(AttributeTableWidget):
         return self.mSpeclibPlotWidget
 
     def setCurrentProfiles(self,
-                           currentProfiles: List[QgsFeature],
+                           currentProfiles: Dict[str, List[QgsFeature]],
                            make_permanent: bool = None,
                            currentProfileStyles: Dict[Tuple[int, str], PlotStyle] = None,
                            ):
         """
         Sets temporary profiles for the spectral library.
-        If not made permanent, they will be removes when adding the next set of temporary profiles
+        If not made permanent, they will be removed when adding the next set of temporary profiles
         :param make_permanent: bool, if not note, overwrite the value returned by optionAddCurrentProfilesAutomatically
         :type make_permanent:
         :param currentProfiles:
         :return:
         """
+        warnings.warn(
+            DeprecationWarning('Will be removed. use .plotModel().addProfileCandidates(...) instead'), stacklevel=2)
         if isinstance(currentProfiles, Generator):
             currentProfiles = list(currentProfiles)
-        assert isinstance(currentProfiles, (list,))
+        if isinstance(currentProfiles, list):
+            currentProfiles = {self.speclib().id(): currentProfiles}
+        assert isinstance(currentProfiles, dict)
 
-        speclib: QgsVectorLayer = self.speclib()
-        plotModel: SpectralProfilePlotModel = self.plotControl()
+        plotModel: SpectralProfilePlotModel = self.plotModel()
+        plotModel.addProfileCandidates(currentProfiles)
 
-        with SpectralProfilePlotModel.UpdateBlocker(plotModel) as blocker:
-            restart_editing: bool = not speclib.startEditing()
-
-            addAuto: bool = make_permanent \
-                if isinstance(make_permanent, bool) \
-                else self.optionAddCurrentProfilesAutomatically.isChecked()
-
-            if addAuto:
-                self.addCurrentProfilesToSpeclib()
-            else:
-                self.deleteCurrentProfilesFromSpeclib()
-
-                # now there shouldn't be any PDI or style ref related to an old ID
-            plotModel.profileCandidates().clearCandidates()
-            # self.plotControl().mTemporaryProfileIDs.clear()
-            # self.plotControl().mTemporaryProfileColors.clear()
-
-            # if necessary, convert QgsFeatures to SpectralProfiles
-            # for i in range(len(currentProfiles)):
-            #    p = currentProfiles[i]
-            #    assert isinstance(p, QgsFeature)
-            #    if not isinstance(p, SpectralProfile):
-            #        p = SpectralProfile.fromQgsFeature(p)
-            #        currentProfiles[i] = p
-
-            # add current profiles to speclib
-            oldIDs = set(speclib.allFeatureIds())
-
-            speclib.beginEditCommand('Add current profiles')
-            inputFIDs = [f.id() for f in currentProfiles]
-            addedFIDs = SpectralLibraryUtils.addProfiles(speclib, currentProfiles)
-            speclib.endEditCommand()
-
-            affected_profile_fields = set()
-
-            p_fields = profile_fields(self.speclib())
-            for profile in currentProfiles:
-                for fieldname in p_fields.names():
-                    if profile.fieldNameIndex(fieldname) >= 0 and profile.attribute(fieldname) is not None:
-                        affected_profile_fields.add(fieldname)
-
-            if not addAuto:
-                # give current spectra the current spectral style
-                # self.plotControl().mTemporaryProfileIDs.update(addedFIDs)
-
-                # affected_profile_fields: Dict[str, QColor] = dict()
-
-                # find a profile style for each profile candidate
-
-                if isinstance(currentProfileStyles, dict):
-                    currentProfilesStyles = {(addedFIDs[inputFIDs.index(fid)], field): style
-                                             for (fid, field), style in currentProfileStyles.items()}
-
-                else:
-                    if isinstance(currentProfileStyles, PlotStyle):
-                        style = currentProfileStyles
-                    else:
-                        style = PlotStyle()
-                        style.setLineColor('green')
-                        style.setMarkerColor('green')
-                    currentProfilesStyles = {}
-                    for f in self.speclib().getFeatures(addedFIDs):
-                        for n in profile_fields(f).names():
-                            currentProfilesStyles[f.id(), n] = style
-
-                plotModel.profileCandidates().setCandidates(currentProfilesStyles)
-
-            visualized_attributes = [v.field().name() for v in self.plotControl().visualizations() if v.isComplete()]
-            missing_visualization = [a for a in affected_profile_fields if a not in visualized_attributes]
-
-            for attribute in missing_visualization:
-                if False:
-                    # create new vis color similar to temporal profile overly
-                    color: QColor = affected_profile_fields[attribute]
-                    # make the default color a bit darker
-                    color = nextColor(color, 'darker')
-                else:
-                    color = None
-
-                self.spectralLibraryPlotWidget().createProfileVisualization(field_name=attribute, color=color)
-
-        plotModel.updatePlot()
         self.updateActions()
         self.speclib().triggerRepaint()
 
@@ -773,7 +692,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
             self.spectralLibraryPlotWidget().createProfileVisualization()
 
         # update plot
-        self.plotControl().updatePlot()
+        self.plotModel().updatePlot()
 
     def onImportFromRasterSource(self):
         from ..io.rastersources import SpectralProfileImportPointsDialog

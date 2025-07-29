@@ -9,7 +9,6 @@ import numpy as np
 
 from qgis.PyQt.QtCore import pyqtSignal, QPoint, QPointF, Qt
 from qgis.PyQt.QtGui import QColor
-from qgis.PyQt.QtGui import QPen
 from qgis.PyQt.QtWidgets import QAction, QApplication, QMenu, QSlider, QWidgetAction
 from ...plotstyling.plotstyling import PlotStyle, PlotWidgetStyle
 from ...pyqtgraph import pyqtgraph as pg
@@ -303,8 +302,8 @@ class SpectralProfilePlotDataItem(pg.PlotDataItem):
     A pyqtgraph.PlotDataItem to plot a SpectralProfile
     """
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, *args, **kwds):
+        super().__init__(*args, **kwds)
 
         self.setAcceptedMouseButtons(Qt.LeftButton | Qt.RightButton)
 
@@ -406,16 +405,10 @@ class SpectralProfilePlotDataItem(pg.PlotDataItem):
                      name=label,
                      connect=connect,
                      pen=linePen,
-                     hoverable=True,
-                     hoverPen=QPen(QColor('yellow')),
                      symbol=symbol,
                      symbolPen=symbolPen,
                      symbolBrush=symbolBrush,
                      symbolSize=symbolSize)
-
-        self.setToolTip(tooltip)
-        self.curve.setToolTip(tooltip)
-        self.scatter.setToolTip(tooltip)
 
     def setPlotStyle(self, plotStyle: PlotStyle):
         assert isinstance(plotStyle, PlotStyle)
@@ -577,6 +570,7 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
         self.mCrosshairLineH = pg.InfiniteLine(angle=0, movable=False)
 
         self.mInfoLabelCursor = pg.TextItem(text='<cursor position>', anchor=(1.0, 0.0))
+        self.mInfoHover = pg.TextItem(text='<hover info>', anchor=QPointF(0.5, 0.0))
         self.mInfoScatterPoints: pg.ScatterPlotItem = pg.ScatterPlotItem()
         self.mInfoScatterPoints.sigClicked.connect(self.onInfoScatterClicked)
         self.mInfoScatterPoints.setZValue(9999999)
@@ -589,8 +583,11 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
         self.mCrosshairLineH.setZValue(9999999)
         self.mCrosshairLineV.setZValue(9999999)
         self.mInfoLabelCursor.setZValue(9999999)
+        self.mInfoHover.setZValue(9999999)
 
         self.scene().addItem(self.mInfoLabelCursor)
+        self.scene().addItem(self.mInfoHover)
+        self.mInfoHover.setParentItem(self.getPlotItem())
         self.mInfoLabelCursor.setParentItem(self.getPlotItem())
 
         pi.addItem(self.mCrosshairLineV, ignoreBounds=True)
@@ -682,6 +679,7 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
         c = QColor(color)
 
         # set Foreground color
+        self.mInfoLabelCursor.setColor(c)
         for axis in self.plotItem.axes.values():
             ai: pg.AxisItem = axis['item']
             if isinstance(ai, pg.AxisItem):
@@ -694,8 +692,11 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
         self.mCrosshairLineV.pen.setColor(QColor(color))
 
     def setSelectionColor(self, color: Union[str, QColor]):
-        self.mInfoScatterPoints.opts['pen'].setColor(QColor(color))
-        self.mInfoScatterPoints.opts['brush'].setColor(QColor(color))
+        c = QColor(color)
+        self.mInfoScatterPoints.opts['pen'].setColor(c)
+        self.mInfoScatterPoints.opts['brush'].setColor(c)
+
+        self.mInfoHover.setColor(c)
 
     def setInfoColor(self, color: Union[str, QColor]):
         self.mInfoLabelCursor.setColor(QColor(color))
