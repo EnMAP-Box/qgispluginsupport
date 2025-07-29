@@ -74,14 +74,15 @@ class TestSpeclibPlotting(TestCase):
 
     def test_SpectralLibraryWidget_large(self):
         l_dir = DIR_REPO / 'tmp/largespeclib'
+        p_large = None
         if l_dir.is_dir():
             for f in file_search(l_dir, '*.gpkg'):
-                p = f
+                p_large = f
                 break
-        if not os.path.isfile(p):
+        if not (p_large and os.path.isfile(p_large)):
             return
 
-        speclib = QgsVectorLayer(p)
+        speclib = QgsVectorLayer(p_large)
 
         self.assertTrue(SpectralLibraryUtils.isSpectralLibrary(speclib))
 
