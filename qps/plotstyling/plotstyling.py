@@ -394,7 +394,7 @@ class PlotStyle(QObject):
     def setMarkerBrush(self, *brush):
         self.markerBrush = QBrush(*brush)
 
-    def setMarkerColor(self, *color: QColor):
+    def setMarkerColor(self, *color: Union[str, QColor]):
         """
         Sets the marker symbol color
         :param color:
@@ -438,6 +438,12 @@ class PlotStyle(QObject):
         :param width: line width in px
         """
         self.linePen.setWidth(width)
+
+    def setLineStyle(self, style: Qt.PenStyle):
+        """
+        Sets the profile line style
+        """
+        self.linePen.setStyle(style)
 
     def lineColor(self) -> QColor:
         """

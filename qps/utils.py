@@ -2119,6 +2119,12 @@ def chunks(iterable, size=10):
 
 
 def nodeXmlString(node: QDomElement, indent: int = 1) -> str:
+    """
+    Represent the QDomElement as string
+    :param node: QDomElement
+    :param indent:
+    :return: str
+    """
     if isinstance(node, QDomDocument):
         node = node.documentElement()
     assert isinstance(node, QDomElement)
