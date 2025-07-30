@@ -680,7 +680,7 @@ class TreeNode(QObject):
         """Returns the number of child nodes"""
         return len(self.mChildren)
 
-    def childNodes(self) -> Iterator['TreeNode']:
+    def childNodes(self) -> List['TreeNode']:
         """
         Returns the child nodes
         :return: [list-of-TreeNodes]

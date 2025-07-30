@@ -47,10 +47,11 @@ class SpectralProfilePlotModel(QStandardItemModel):
     sigProgressChanged = pyqtSignal(float)
     sigPlotWidgetStyleChanged = pyqtSignal()
     sigMaxProfilesExceeded = pyqtSignal()
+    sigOpenAttributeTableRequest = pyqtSignal(str)
     NOT_INITIALIZED = -1
 
     class UpdateBlocker(object):
-        """Blocks plot updates"""
+        """Blocks plot updates and proxy signals"""
 
         def __init__(self, plotModel: 'SpectralProfilePlotModel'):
             self.mPlotModel = plotModel
@@ -59,8 +60,16 @@ class SpectralProfilePlotModel(QStandardItemModel):
         def __enter__(self):
             self.mWasBlocked = self.mPlotModel.blockUpdates(True)
 
+            for lid, signals in self.mPlotModel.mSignalProxies.items():
+                for signal in signals:
+                    signal.blockSignal = True
+
         def __exit__(self, exc_type, exc_value, tb):
             self.mPlotModel.blockUpdates(self.mWasBlocked)
+
+            for lid, signals in self.mPlotModel.mSignalProxies.items():
+                for signal in signals:
+                    signal.blockSignal = False
 
     def __init__(self, *args, **kwds):
 
@@ -799,7 +808,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
         if not isinstance(self.mPlotWidget, SpectralProfilePlotWidget):
             return
 
-        print(f'# UPDATE PLOT {self.nUpdates}')
+        print(f'# UPDATE PLOT {self.nUpdates} {self}')
 
         self.nUpdates += 1
         xunit: str = self.xUnit().unit
@@ -1023,8 +1032,8 @@ class SpectralProfilePlotModel(QStandardItemModel):
                 add_dt('plotStyle', t0)
 
                 t0 = datetime.datetime.now()
-                plot_label: str = str(label_expression.evaluate(feature_context))
-                plot_tooltip: str = str(tooltip_expression.evaluate(feature_context))
+                plot_label = label_expression.evaluate(feature_context)
+                plot_tooltip = tooltip_expression.evaluate(feature_context)
 
                 is_selected = fid in selected_fids
 
@@ -1116,16 +1125,16 @@ class SpectralProfilePlotModel(QStandardItemModel):
         propertyItem = self.generalSettings().mP_MaxProfiles
 
         # with SignalBlocker(propertyItem.signals()) as blocker:
-        with SpectralProfilePlotModel.UpdateBlocker(self) as blocker:
-            if limit_reached:
-                fg = QColor('red')
-                tt = 'Profile limit reached. Increase to show more profiles at the same time (decreases speed)'
-            else:
-                fg = None
-                tt = propertyItem.definition().description()
-            propertyItem.setData(tt, Qt.ToolTipRole)
-            propertyItem.setData(fg, Qt.ForegroundRole)
-            propertyItem.emitDataChanged()
+        # with SpectralProfilePlotModel.UpdateBlocker(self) as blocker:
+        if limit_reached:
+            fg = QColor('red')
+            tt = 'Profile limit reached. Increase to show more profiles at the same time (decreases speed)'
+        else:
+            fg = None
+            tt = propertyItem.definition().description()
+        propertyItem.setData(tt, Qt.ToolTipRole)
+        propertyItem.setData(fg, Qt.ForegroundRole)
+        propertyItem.emitDataChanged()
 
         if limit_reached:
             self.sigMaxProfilesExceeded.emit()
@@ -1265,43 +1274,63 @@ class SpectralProfilePlotModel(QStandardItemModel):
     def setDefaultProfileStyle(self, style: PlotStyle):
         self.mDefaultProfileStyle = style
 
+    def confirmProfileCandidates(self, update_plot: bool = True):
+        """
+        Confirms the profile candidates, so that they will not be removed
+        when new candidates are added calling addProfileCandidates().
+        """
+        self.mPROFILE_CANDIDATES.clear()
+        if update_plot:
+            self.updatePlot()
+
     def addProfileCandidates(self,
                              candidates: Dict[str, List[QgsFeature]],
-                             styles: Optional[Dict[Tuple[str, str], PlotStyle]] = None):
+                             styles: Optional[Dict[str, Dict[str, PlotStyle]]] = None):
         """
         Adds QgsFeatures to be considered as profile candidates.
-        :param candidates: Dictionary with profile candidates as Dict[(layer id, field name)] = [List of QgsFeatures].
-        :param styles: optional, the Dict[(layer id, field name)] = PlotStyle to be used for candidate profiles.
+        :param candidates: Dictionary with profile candidates as {layer id:[List of QgsFeatures]}.
+        :param styles: optional, Dictionary with profile styles for candidate profiles,
+                       as {layer id: {field name: PlotStyle}}
 
         """
         assert isinstance(candidates, dict)
 
-        if self.mAddProfileCandidates:
-            self.mPROFILE_CANDIDATES.clear()
-        else:
-            self.clearProfileCandidates()
+        with SpectralProfilePlotModel.UpdateBlocker(self) as blocker:
+            if self.mAddProfileCandidates:
+                self.confirmProfileCandidates(update_plot=False)
+            else:
+                self.clearProfileCandidates()
 
-        visualized_layer_ids = [v.layerId() for v in self.visualizations()]
+            visualized_layer_ids = [v.layerId() for v in self.visualizations()]
 
-        # add profile candidates
-        for layer_id, features in candidates.items():
-            if layer_id in visualized_layer_ids:
-                layer = self.project().mapLayer(layer_id)
-                if isinstance(layer, QgsVectorLayer) and layer.isValid():
-                    # insert
-                    s = ""
-                    stop_editing = layer.startEditing()
+            # add profile candidates
+            for layer_id, features in candidates.items():
+                if layer_id in visualized_layer_ids:
+                    layer = self.project().mapLayer(layer_id)
+                    if isinstance(layer, QgsVectorLayer) and layer.isValid():
+                        # insert
+                        s = ""
+                        stop_editing = layer.startEditing()
+                        if not isinstance(features, list):
+                            features = list(features)
+                        layer.beginEditCommand('Add {} profiles'.format(len(features)))
+                        new_fids = SpectralLibraryUtils.addProfiles(layer, features, addMissingFields=True)
+                        layer.endEditCommand()
 
-                    layer.beginEditCommand('Add {} profiles'.format(len(features)))
-                    SpectralLibraryUtils.addProfiles(layer, features, addMissingFields=True)
-                    layer.endEditCommand()
+                        def check_commited_features_added(layer_id, idmap_2):
+                            new_fids.clear()
+                            new_fids.extend([f.id() for f in idmap_2])
 
-                    def check_commited_features_added(layer_id, idmap_2):
-                        self.mPROFILE_CANDIDATES[layer_id] = [f.id() for f in idmap_2]
-
-                    layer.committedFeaturesAdded.connect(check_commited_features_added)
-                    layer.commitChanges(stopEditing=stop_editing)
-                    layer.committedFeaturesAdded.disconnect(check_commited_features_added)
+                        layer.committedFeaturesAdded.connect(check_commited_features_added)
+                        layer.commitChanges(stopEditing=stop_editing)
+                        layer.committedFeaturesAdded.disconnect(check_commited_features_added)
+                        self.mPROFILE_CANDIDATES[layer_id] = new_fids
+                        if isinstance(styles, dict):
+                            layer_styles = styles.get(layer_id, {})
+                            for field_name, plot_style in layer_styles.items():
+                                fid_styles = {fid: plot_style for fid in new_fids}
+                                self.mPROFILE_CANDIDATE_STYLES[(layer_id, field_name)] = fid_styles
+        self.updatePlot()
 
     def clearProfileCandidates(self):
         for layer_id, old_fids in list(self.mPROFILE_CANDIDATES.items()):
@@ -1314,6 +1343,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
                 def onFeaturesRemoved(lid: str, fids):
                     s = ""
 
+                del self.mPROFILE_CANDIDATES[layer_id]
                 layer.committedFeaturesRemoved.connect(onFeaturesRemoved)
                 b = layer.deleteFeatures(old_fids)
                 layer.endEditCommand()

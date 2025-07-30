@@ -89,16 +89,6 @@ class SpectralProfilePlotView(QTreeView):
                 item = item.propertyItem()
             if isinstance(item, PropertyItemBase):
                 item.populateContextMenu(menu)
-            if isinstance(item, PropertyItem):
-                # add menu of parent group
-                group = item.parent()
-                if isinstance(group, PropertyItemBase):
-                    if len(menu.actions()) > 0 and menu.actions()[-1].text() != '':
-                        menu.addSeparator()
-                    group.populateContextMenu(menu)
-                s = ""
-
-            s = ""
 
         elif len(selected_indices) > 0:
             selected_items = []

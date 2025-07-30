@@ -29,7 +29,7 @@ from typing import Any, List, Union, Optional
 import numpy as np
 
 from qgis.PyQt.QtCore import QAbstractItemModel
-from qgis.PyQt.QtCore import QMimeData, QModelIndex, QSignalBlocker, QSize, Qt
+from qgis.PyQt.QtCore import QMimeData, QModelIndex, QSize, Qt
 from qgis.PyQt.QtGui import QColor, QIcon, QPen, QPixmap, QStandardItem, QStandardItemModel
 from qgis.PyQt.QtWidgets import QCheckBox, QComboBox, QDoubleSpinBox, QHBoxLayout, QMenu, QSizePolicy, QSpinBox, QWidget
 from qgis.PyQt.QtXml import QDomDocument, QDomElement
@@ -43,7 +43,6 @@ from qgis.core import QgsFeatureRequest
 from qgis.core import QgsProject, QgsMapLayer
 from qgis.gui import QgsColorButton, QgsDoubleSpinBox, QgsFieldExpressionWidget, QgsPropertyOverrideButton, QgsSpinBox
 from qgis.gui import QgsMapLayerComboBox
-from .spectrallibraryplotitems import SpectralProfilePlotItem, SpectralProfilePlotLegend
 from ..core import is_spectral_library, is_profile_field
 from ...layerfielddialog import LayerFieldWidget
 from ...plotstyling.plotstyling import PlotStyle, PlotStyleButton, PlotWidgetStyle
@@ -550,9 +549,6 @@ class GeneralSettingsGroup(PropertyItemGroup):
         )
         self.mP_Antialiasing.setProperty(QgsProperty.fromValue(False))
 
-        self.mPLegend = LegendGroup()
-        self.mPLegend.setVisible(False)
-
         self.mP_BG = QgsPropertyItem('BG')
         self.mP_BG.setDefinition(QgsPropertyDefinition(
             'Background', 'Plot background color', QgsPropertyDefinition.StandardPropertyTemplate.ColorWithAlpha))
@@ -578,8 +574,8 @@ class GeneralSettingsGroup(PropertyItemGroup):
 
         self.mProfileCandidates = PlotStyleItem('candidate_style', labelName='Candidates')
 
-        tt = 'Show profile candidates with this style,<br>' \
-             'unless other defined.'
+        tt = 'Highlight profile candidates using a different style<br>' \
+             'If activated and unless other defined, use the style defined here.'
 
         self.mProfileCandidates.setToolTip(tt)
 
@@ -737,99 +733,6 @@ class GeneralSettingsGroup(PropertyItemGroup):
         return True
 
 
-class SpectralProfilePlotDataItemGroup(PropertyItemGroup):
-    """
-    A PropertyItemGroup that controls SpectralProfilePlotDataItems
-    """
-
-    def __init__(self, *args, **kwds):
-        super().__init__(*args, **kwds)
-
-    def generateLabel(self, context: QgsExpressionContext) -> str:
-        raise NotImplementedError()
-
-    def generatePlotStyle(self, context: QgsExpressionContext) -> PlotStyle:
-        raise NotImplementedError()
-
-    def generateTooltip(self, context: QgsExpressionContext) -> str:
-        raise NotImplementedError()
-
-
-class LegendGroup(PropertyItemGroup):
-    """
-    Settings for the plot legend
-    """
-
-    def __init__(self, *args, **kwds):
-        super(LegendGroup, self).__init__(*args, **kwds)
-        self.setText('Legend')
-        self.setCheckable(True)
-        self.setCheckState(Qt.Unchecked)
-
-        self.mLegendOffset = (-1, 10)
-
-        if False:
-            self.mOffsetX = QgsPropertyItem('OffsetX')
-            self.mOffsetX.setDefinition(
-                QgsPropertyDefinition('Offset X', 'Legend offset X',
-                                      QgsPropertyDefinition.StandardPropertyTemplate.Integer))
-            self.mOffsetX.setProperty(QgsProperty.fromValue(0))
-
-            self.mOffsetY = QgsPropertyItem('OffsetY')
-            self.mOffsetY.setDefinition(
-                QgsPropertyDefinition('Offset Y', 'Legend offset Y',
-                                      QgsPropertyDefinition.StandardPropertyTemplate.Integer))
-            self.mOffsetY.setProperty(QgsProperty.fromValue(0))
-
-        self.mHSpacing = QgsPropertyItem('HSpacing')
-        self.mHSpacing.setDefinition(
-            QgsPropertyDefinition('H. Spacing',
-                                  'Specifies the spacing between the line symbol and the label',
-                                  QgsPropertyDefinition.StandardPropertyTemplate.Integer)
-        )
-        self.mHSpacing.setProperty(QgsProperty.fromValue(25))
-
-        self.mVSpacing = QgsPropertyItem('VSpacing')
-        self.mVSpacing.setDefinition(
-            QgsPropertyDefinition('V. Spacing',
-                                  'Specifies the spacing between individual entries of the legend vertically. '
-                                  + '(Can also be negative to have them really close)',
-                                  QgsPropertyDefinition.StandardPropertyTemplate.Integer)
-        )
-        self.mVSpacing.setProperty(QgsProperty.fromValue(0))
-
-        self.mColCount = QgsPropertyItem('Columns')
-        self.mColCount.setDefinition(
-            QgsPropertyDefinition('Columns',
-                                  'Number of legend columns',
-                                  QgsPropertyDefinition.StandardPropertyTemplate.Integer)
-        )
-        self.mColCount.setProperty(QgsProperty.fromValue(1))
-
-        for pItem in [self.mHSpacing,
-                      self.mVSpacing,
-                      self.mColCount]:
-            self.appendRow(pItem.propertyRow())
-            # pItem.signals().dataChanged.connect(self.signals().dataChanged)
-
-    def setData(self, value: Any, role: int = ...) -> None:
-        super().setData(value, role)
-
-    def plotItem(self) -> SpectralProfilePlotItem:
-        return self.model().mPlotWidget.getPlotItem()
-
-    def legend(self) -> SpectralProfilePlotLegend:
-        return self.plotItem().legend
-
-    def updateLegendAnchor(self, x: int, y: int):
-
-        offset = (self.mOffsetX.value(), self.mOffsetY.value())
-        if offset != (x, y):
-            with QSignalBlocker(self.signals()) as blocker:
-                self.mOffsetX.setValue(x)
-                self.mOffsetY.setValue(y)
-
-
 class PlotStyleItem(PropertyItem):
     """
     A property item to control a PlotStyle
@@ -920,6 +823,24 @@ class SpectralProfileLayerFieldItem(PropertyItem):
 
     def setProject(self, project: QgsProject):
         self.mProject = project
+
+    def populateContextMenu(self, menu: QMenu):
+
+        a = menu.addAction('Open attribute table')
+
+        layer = self.layer()
+
+        def onOpenAttributeTableRequest(layer_id: str):
+            from .spectralprofileplotmodel import SpectralProfilePlotModel
+            model = self.model()
+            if isinstance(model, SpectralProfilePlotModel):
+                model.sigOpenAttributeTableRequest.emit(layer_id)
+
+        if isinstance(layer, QgsVectorLayer):
+            a.setToolTip(f'Open the attribute table of layer "{layer.name()}"')
+            a.triggered.connect(lambda *args, lid=self.mLayerID: onOpenAttributeTableRequest(lid))
+        else:
+            a.setEnabled(False)
 
     def createEditor(self, parent):
         w = LayerFieldWidget(parent=parent)
@@ -1685,7 +1606,7 @@ class RasterRendererGroup(PropertyItemGroup):
         return [self.mBarR, self.mBarG, self.mBarB, self.mBarA]
 
 
-class ProfileVisualizationGroup(SpectralProfilePlotDataItemGroup):
+class ProfileVisualizationGroup(PropertyItemGroup):
     """
     Controls the visualization for a set of profiles
     """
@@ -1930,6 +1851,11 @@ class ProfileVisualizationGroup(SpectralProfilePlotDataItemGroup):
         self.mPStyle.setPlotStyle(style)
         # trigger update of group icon
         self.emitDataChanged()
+
+    def populateContextMenu(self, menu: QMenu):
+
+        for item in [self.mPField, self.mPColor]:
+            item.populateContextMenu(menu)
 
     def plotStyle(self, add_symbol_scope: bool = False) -> PlotStyle:
         """

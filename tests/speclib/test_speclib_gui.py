@@ -257,7 +257,7 @@ class TestSpeclibWidgets(TestCase):
         SpectralLibraryUtils.addSpeclib(sl1, sl2)
 
         profiles = TestObjects.spectralProfiles(4, fields=sl1.fields(), n_bands=[7, 12])
-        slw.setCurrentProfiles(profiles)
+        slw.plotModel().addProfileCandidates({sl1.id(): profiles})
         fids_a = sl1.allFeatureIds()
         # sl1.commitChanges()
         # fids_b = sl1.allFeatureIds()
@@ -517,7 +517,7 @@ class TestSpeclibWidgets(TestCase):
         sw = SpectralLibraryWidget()
         sw.updatePlot()
         currentProfiles = features[0:2]
-        sw.setCurrentProfiles(currentProfiles)
+        sw.plotModel().addProfileCandidates({slib.id(): currentProfiles})
         sw.updatePlot()
         sw.plotModel().project().removeAllMapLayers()
 

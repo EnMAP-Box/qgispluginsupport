@@ -579,11 +579,12 @@ class SpectralProcessingTests(TestCase):
         from qpstestdata import enmap, hymap
         lyr1 = QgsRasterLayer(enmap.as_posix(), 'EnMAP')
         lyr2 = QgsRasterLayer(hymap.as_posix(), 'HyMAP')
-        lyr2 = QgsRasterLayer(hymap.as_posix(), 'Sentinel-2')
+        # lyr2 = QgsRasterLayer(hymap.as_posix(), 'Sentinel-2')
 
         sl = TestObjects.createSpectralLibrary(n_profiles_per_n_bands, n_bands=n_bands)
         sl.setName('Speclib 1')
-        RENAME = {'profiles': 'ASD', 'profiles1': 'Sentinel2'}
+        RENAME = {'profiles': 'ASD',
+                  'profiles1': 'Sentinel2'}
         with edit(sl):
             for oldName, newName in RENAME.items():
                 idx = sl.fields().lookupField(oldName)

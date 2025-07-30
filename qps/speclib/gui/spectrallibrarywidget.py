@@ -31,6 +31,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
     sigMapExtentRequested = pyqtSignal(object)
     sigMapCenterRequested = pyqtSignal(object)
     sigCurrentProfilesChanged = pyqtSignal(list)
+    sigOpenAttributeTableRequest = pyqtSignal(str)
 
     class ViewType(enum.Flag):
         Empty = enum.auto()
@@ -248,6 +249,18 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.splitter.setStretchFactor(2, 0)
         self.splitter.setSizes([200, 10, 0])
 
+        def onShowAttributeTable(layer_id: str):
+            lyr = self.speclib()
+            if isinstance(lyr, QgsVectorLayer) and lyr.id() == layer_id:
+                # ensure that attribute table is visible
+                # (to be removed in future, when SpectralLibraryWidget looses its attribute table)
+                self.setViewVisibility(self.viewVisibility() | self.ViewType.AttributeTable)
+            else:
+                # call to open an external attribute table
+                self.sigOpenAttributeTableRequest.emit(layer_id)
+
+        self.plotModel().sigOpenAttributeTableRequest.connect(onShowAttributeTable)
+
         self.mPostInitHooks: Dict[str, Any] = dict()
 
         # if profile_fields_check:
@@ -281,6 +294,24 @@ class SpectralLibraryWidget(AttributeTableWidget):
         super().editingToggled()
         if hasattr(self, 'actionShowSpectralProcessingDialog'):
             self.actionShowSpectralProcessingDialog.setEnabled(self.speclib().isEditable())
+
+    def viewVisibility(self) -> ViewType:
+
+        viewType = self.ViewType.Empty
+
+        if self.widgetLeft.isVisible():
+            viewType = viewType | self.ViewType.ProfileView
+
+        if self.mSpeclibPlotWidget.panelVisualization.isVisible():
+            viewType = viewType | self.ViewType.ProfileViewSettings
+
+        if self.widgetCenter.isVisible():
+            if self.mMainView.view() is not None:
+                pass
+
+            s = ""
+
+        return viewType
 
     def setViewVisibility(self, viewType: ViewType):
         """
@@ -598,14 +629,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
         """
         Adds all current spectral profiles to the "persistent" SpectralLibrary
         """
-        plotModel: SpectralProfilePlotModel = self.plotModel()
-        plotModel.profileCandidates().clearCandidates()
-
-        # fids = list(self.plotControl().mTemporaryProfileIDs)
-        # self.plotControl().mTemporaryProfileIDs.clear()
-        # self.plotControl().mTemporaryProfileColors.clear()
-        # self.plotControl().updatePlot(fids)
-        # self.updateActions()
+        self.plotModel().confirmProfileCandidates()
 
     def temporaryProfileIDs(self) -> Set[int]:
         return self.plotModel().profileCandidates().count()
