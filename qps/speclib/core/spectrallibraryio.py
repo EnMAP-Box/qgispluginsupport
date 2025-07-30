@@ -872,6 +872,10 @@ class SpectralLibraryImportDialog(QDialog, QgsExpressionContextGenerator):
             self.cbFormat.setCurrentIndex(i_fmt)
             return
 
+        # no widget found
+        if i_fmt == -1:
+            return
+
         import_widget: SpectralLibraryImportWidget = import_widgets[i_fmt]
 
         assert isinstance(import_widget, SpectralLibraryImportWidget)
