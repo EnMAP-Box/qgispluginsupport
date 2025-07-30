@@ -47,7 +47,7 @@ from ..core import is_spectral_library, is_profile_field
 from ...layerfielddialog import LayerFieldWidget
 from ...plotstyling.plotstyling import PlotStyle, PlotStyleButton, PlotWidgetStyle
 from ...pyqtgraph.pyqtgraph import InfiniteLine, PlotDataItem
-from ...pyqtgraph.pyqtgraph.widgets import PlotWidget
+from ...pyqtgraph.pyqtgraph.widgets.PlotWidget import PlotWidget
 from ...qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from ...unitmodel import BAND_INDEX, BAND_NUMBER, UnitConverterFunctionModel
 from ...utils import featureSymbolScope
