@@ -49,6 +49,7 @@ from ..core.spectrallibrary import LUT_IDL2GDAL, VSI_DIR
 from ..core.spectrallibraryio import SpectralLibraryExportWidget, SpectralLibraryImportWidget, SpectralLibraryIO
 from ..core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict, groupBySpectralProperties, \
     prepareProfileValueDict, SpectralSetting
+from ...gdal_utils import GDALConfigChanges
 from ...qgisenums import QMETATYPE_DOUBLE, QMETATYPE_INT, QMETATYPE_QSTRING
 from ...qgsrasterlayerproperties import stringToType
 
@@ -404,14 +405,18 @@ class EnviSpectralLibraryIO(SpectralLibraryIO):
         pathHdr, pathESL = findENVIHeader(path)
         fields, md = EnviSpectralLibraryIO.sourceFieldsMetadata(pathHdr)
 
-        tmpVrt = tempfile.mktemp(prefix='tmpESLVrt', suffix='.esl.vrt', dir=os.path.join(VSI_DIR, 'ENVIIO'))
-        try:
-            ds = esl2vrt(pathESL, tmpVrt)
-        except AssertionError as ex:
-            feedback.reportError(str(ex))
-            return []
+        config_changes = {'GDAL_VRT_ENABLE_RAWRASTERBAND': 'YES',
+                          'GDAL_VRT_RAWRASTERBAND_ALLOWED_SOURCE': 'ALL'}
 
-        profileArray = ds.ReadAsArray()
+        with GDALConfigChanges(config_changes) as cs:
+            tmpVrt = tempfile.mktemp(prefix='tmpESLVrt', suffix='.esl.vrt', dir=os.path.join(VSI_DIR, 'ENVIIO'))
+            try:
+                ds = esl2vrt(pathESL, tmpVrt)
+            except AssertionError as ex:
+                feedback.reportError(str(ex))
+                return []
+
+            profileArray = ds.ReadAsArray()
 
         # remove the temporary VRT, as it was created internally only
         ds.GetDriver().Delete(ds.GetDescription())
@@ -761,6 +766,7 @@ def describeRawFile(pathRaw, pathVrt, xsize, ysize,
 
     drvVRT = gdal.GetDriverByName('VRT')
     assert isinstance(drvVRT, gdal.Driver)
+
     dsVRT = drvVRT.Create(pathVrt, xsize, ysize, bands=0, eType=eType)
     assert isinstance(dsVRT, gdal.Dataset)
 
