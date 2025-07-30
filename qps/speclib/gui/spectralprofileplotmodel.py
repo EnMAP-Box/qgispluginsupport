@@ -1354,6 +1354,14 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
         self.mPROFILE_CANDIDATES.clear()
 
+    def flushProxySignals(self):
+        """
+        Flushes all SignalProxys
+        """
+        for _, signals in self.mSignalProxies.items():
+            for s in signals:
+                s.flush()
+
     def connectSpeclibSignals(self, speclib: QgsVectorLayer):
         """"
         Connects signals to the given spectral library vector layer.
