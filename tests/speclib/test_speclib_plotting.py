@@ -581,7 +581,7 @@ class TestSpeclibPlotting(TestCase):
         y1 = [4, 5, 6]
 
         x2 = [0, 1, 3, 5]
-        y2 = [3.4, 2.3, 3, np.NaN]
+        y2 = [3.4, 2.3, 3, np.nan]
 
         item1 = SpectralProfilePlotDataItem()
         item1.setData(x=x1, y=y1)
