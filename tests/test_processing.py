@@ -272,6 +272,7 @@ class ProcessingToolsTest(TestCase):
         reg.removeProvider(pid)
         QgsProject.instance().removeAllMapLayers()
 
+    @unittest.skipIf(TestCase.runsInCI(), 'Benchmark only. Requires local data')
     def test_spectralprofile_import_many(self):
 
         p = r"Z:\Namibia2024\SVC\SVC_ALL"

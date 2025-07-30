@@ -5,13 +5,13 @@ import unittest
 from typing import List, Union
 
 import numpy as np
+
 from qgis.PyQt.QtCore import QModelIndex, QSettings, QSortFilterProxyModel, Qt
 from qgis.PyQt.QtGui import QColor
 from qgis.PyQt.QtTest import QAbstractItemModelTester
 from qgis.PyQt.QtWidgets import QComboBox, QGridLayout, QHBoxLayout, QLabel, QMenu, QPushButton, QTreeView, QVBoxLayout, \
     QWidget
 from qgis.gui import QgsMapCanvas
-
 from qps.models import Option, OptionListModel, PyObjectTreeNode, SettingsModel, SettingsNode, SettingsTreeView, \
     TreeModel, TreeNode, TreeView
 from qps.plotstyling.plotstyling import MarkerSymbol
@@ -177,7 +177,7 @@ class ModelTests(TestCase):
                     {'B1': root,
                      'B2': {'DDD': root},
                      'NP': np.arange(256),
-                     'Array2': np.random.randint(0, 255, (255, 100, 200)),
+                     'Array2': np.random.randint(0, 255, (25, 40, 10)),
                      'Long String': longString,
                      'M': m},
                 'CA': QgsMapCanvas(),
