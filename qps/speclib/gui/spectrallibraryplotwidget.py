@@ -460,7 +460,7 @@ class SpectralLibraryPlotWidget(QWidget):
         # ensure that the dual-view layer is added to the recent QgsProject
         lyr = self.mDualView.masterModel().layer()
         if isinstance(lyr, QgsVectorLayer) and lyr.id() not in project.mapLayers():
-            project.addLayer(lyr)
+            project.addMapLayer(lyr)
 
     def project(self) -> QgsProject:
         return self.plotModel().project()
