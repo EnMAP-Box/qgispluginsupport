@@ -175,6 +175,7 @@ class ProcessingToolsTest(TestCase):
         self.assertEqual(groups, {'A', 'B'})
 
         provider = ExampleAlgorithmProvider()
+        self._keep_ref = provider
 
         reg: QgsProcessingRegistry = QgsApplication.instance().processingRegistry()
         reg.addProvider(provider)
@@ -311,7 +312,7 @@ class ProcessingToolsTest(TestCase):
         initSpectralLibraryIOs()
         reg: QgsProcessingRegistry = QgsApplication.instance().processingRegistry()
         reg.addProvider(provider)
-
+        self._provider_ref = provider
         self.assertTrue(provider.addAlgorithm(ImportSpectralProfiles()))
         reg.providerById(ExampleAlgorithmProvider.NAME.lower())
 
@@ -406,6 +407,7 @@ class ProcessingToolsTest(TestCase):
     def test_spectralprofile_export(self):
 
         provider = ExampleAlgorithmProvider()
+        self.__keep_ref = provider
         initSpectralLibraryIOs()
         reg: QgsProcessingRegistry = QgsApplication.instance().processingRegistry()
 

@@ -3,7 +3,6 @@ import unittest
 
 from qgis.PyQt.QtCore import QDate, QDateTime, QTime
 from qgis.core import edit, QgsField, QgsFields, QgsProject, QgsVectorDataProvider, QgsVectorFileWriter, QgsVectorLayer
-
 from qps.fieldvalueconverter import collect_native_types, create_vsimemfile, GenericFieldValueConverter, \
     GenericPropertyTransformer
 from qps.qgisenums import QMETATYPE_QDATE, QMETATYPE_QDATETIME, QMETATYPE_QSTRING, \
@@ -40,12 +39,29 @@ class GenericFieldValueConverterTests(TestCase):
             result = GenericPropertyTransformer.toTime(v)
             self.assertIsInstance(result, QTime, msg=f'Unable to convert {v} to QTime')
 
+    def test_driver_for_extension(self):
+
+        DRIVER = {'ESRI Shapefile': '.shp',
+                  'CSV': '.csv',
+                  'GeoJSON': '.geojson',
+                  'GPKG': '.gpkg'}
+
+        from qgis.core import QgsVectorFileWriter
+        for drv, ext in DRIVER.items():
+            self.assertEqual(QgsVectorFileWriter.driverForExtension(ext), drv)
+
     def test_create_vsimemfile(self):
 
-        for ext in ['.shp', '.csv', '.geojson', '.gpkg', '.kml']:
+        formats = ['.shp', '.csv', '.geojson', '.gpkg', '.kml']
+        for ext in formats:
             path, drvName = create_vsimemfile(ext)
             lyr = QgsVectorLayer(path)
             assert lyr.isValid()
+
+    def test_collect_native_types_0(self):
+
+        ntypinfo = collect_native_types()
+        self.assertIsInstance(ntypinfo, dict)
 
     def test_collect_native_types(self):
 

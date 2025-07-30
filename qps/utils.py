@@ -66,7 +66,7 @@ from qgis.core import Qgis, QgsApplication, QgsCoordinateReferenceSystem, QgsCoo
     QgsProcessingAlgorithm, QgsProcessingContext, QgsProcessingFeedback, QgsProject, QgsRaster, \
     QgsRasterBlock, QgsRasterBlockFeedback, QgsRasterDataProvider, QgsRasterIdentifyResult, QgsRasterInterface, \
     QgsRasterLayer, QgsRasterRenderer, QgsRectangle, QgsTask, QgsVector, QgsVectorDataProvider, QgsVectorFileWriter, \
-    QgsVectorFileWriterTask, QgsVectorLayer, QgsWkbTypes
+    QgsVectorLayer, QgsWkbTypes
 from qgis.core import QgsExpressionContextScope, QgsExpressionContext, QgsFeatureRenderer, QgsSingleSymbolRenderer, \
     QgsMarkerSymbol, QgsExpressionContextUtils, QgsRenderContext, QgsSymbol
 from qgis.gui import QgisInterface, QgsDialog, QgsGui, QgsMapCanvas, QgsMapLayerComboBox, QgsMessageViewer
@@ -1378,6 +1378,7 @@ def writeAsVectorFormat(layer: QgsVectorLayer,
                             QgsVectorFileWriter.FieldValueConverter] = None) -> QgsVectorLayer:
     """
     Writes any vector layer into another format. E.g. to store in-memory vector layers persistently
+    :param field_value_converter:
     :param layer: QgsVectorLayer
     :param path: path to store the vector file.
     :param options: optional, QgsVectorFileWriter.SaveVectorOptions
@@ -1416,23 +1417,14 @@ def writeAsVectorFormat(layer: QgsVectorLayer,
         converter = GenericFieldValueConverter(srcFields, dstFields)
         options.fieldValueConverter = converter
 
-    s = ""
+    err, errMsg, fn_new, lyrname_new = QgsVectorFileWriter.writeAsVectorFormatV3(
+        layer,
+        path.as_posix(),
+        QgsProject.instance().transformContext(),
+        options,
+    )
+    assert err == QgsVectorFileWriter.NoError, errMsg
 
-    def onCompleted(newFilename, newLayer):
-        s = ""
-
-    def onErrorOccurred(err: int, msg: str):
-        print(f'{msg}', file=sys.stderr)
-
-    def onWriteComplete(newFileName: str):
-        s = ""
-
-    s = ""
-    task = QgsVectorFileWriterTask(layer, path.as_posix(), options)
-    task.completed.connect(onCompleted)
-    task.errorOccurred.connect(onErrorOccurred)
-    task.writeComplete.connect(onWriteComplete)
-    r = task.run()
     # assert r
     # save styling
 

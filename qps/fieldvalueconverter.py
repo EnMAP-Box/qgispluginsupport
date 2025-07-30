@@ -9,10 +9,11 @@ import numpy as np
 from osgeo import gdal
 
 from qgis.PyQt.QtCore import QDate, QDateTime, QLocale, Qt, QTime
+from qgis.PyQt.QtCore import QMetaType
 from qgis.core import Qgis, QgsCoordinateReferenceSystem, QgsEditorWidgetSetup, QgsExpressionContext, QgsFeature, \
     QgsField, QgsFields, QgsProject, QgsProperty, QgsPropertyTransformer, QgsRemappingSinkDefinition, \
     QgsVectorDataProvider, QgsVectorFileWriter, QgsVectorLayer
-from .qgisenums import QMETATYPE_INT, QMETATYPE_QDATE, QMETATYPE_QDATETIME, QMETATYPE_QSTRING, QMETATYPE_QTIME, \
+from .qgisenums import QMETATYPE_QDATE, QMETATYPE_QDATETIME, QMETATYPE_QSTRING, QMETATYPE_QTIME, \
     QMETATYPE_QVARIANTMAP
 from .speclib import EDITOR_WIDGET_REGISTRY_KEY
 from .speclib.core import is_profile_field
@@ -27,17 +28,18 @@ def create_vsimemfile(extension: str, path: Optional[Union[str, Path]] = None) -
     if path:
         path = Path(path).as_posix()
     else:
-        path = f'/vsimem/example.{savename}.{uuid4()}{extension}'
+        path = f'/vsimem/example.{savename}.{uuid4()}.{extension.lstrip(".")}'
 
     crs = QgsCoordinateReferenceSystem("EPSG:4326")
 
     # Define fields
     fields = QgsFields()
-    fields.append(QgsField('name', QMETATYPE_QSTRING))
-    fields.append(QgsField('num', QMETATYPE_INT))
+    fields.append(QgsField('name', QMetaType.QString))
+    fields.append(QgsField('num', QMetaType.Int))
 
     # Create a QgsVectorFileWriter to write the shapefile
-    f: QgsFeature = QgsFeature(fields)
+    f: QgsFeature = QgsFeature()
+    f.setFields(fields)
     f.setAttribute('name', 'dummy')
     f.setAttribute('num', 1)
 
@@ -48,7 +50,7 @@ def create_vsimemfile(extension: str, path: Optional[Union[str, Path]] = None) -
     options.driverName = driver
     options.layerOptions = defLOptions
     options.datasourceOptions = defDOptions
-    options.fileEncoding = 'utf-8'
+    # options.fileEncoding = 'utf-8'
 
     wkbType = Qgis.WkbType.Point
     writer: QgsVectorFileWriter = QgsVectorFileWriter.create(path, fields, wkbType, crs,
@@ -57,13 +59,17 @@ def create_vsimemfile(extension: str, path: Optional[Union[str, Path]] = None) -
                                                              )
 
     assert isinstance(writer, QgsVectorFileWriter)
-    assert writer.addFeature(f)
-    assert writer.flushBuffer()
+
+    if not writer.addFeature(f):
+        raise Exception(writer.errorMessage())
+    if not writer.flushBuffer():
+        raise Exception(writer.errorMessage())
     # Check if the writer was created successfully
     if writer.hasError() != QgsVectorFileWriter.NoError:
-        print(f"Error when creating shapefile: {writer.errorMessage()}")
+        raise Exception(f"Error when creating vector file: {writer.errorMessage()}")
 
-    del writer
+    if hasattr(writer, 'finalize'):
+        writer.finalize()
     return path, driver
 
 
@@ -75,7 +81,8 @@ def collect_native_types() -> Dict[str, List[QgsVectorDataProvider.NativeType]]:
 
         sid = f'{uuid4()}'
 
-        for i, extension in enumerate(['.gml', '.shp', '.csv', '.geojson', '.gpkg', '.kml', '.sqlite', ]):
+        endings = ['.gml', '.shp', '.csv', '.geojson', '.gpkg', '.kml', '.sqlite', ]
+        for i, extension in enumerate(endings):
             # tmpDir = Path(__file__).parent
             # tmpPath = tmpDir / f'example.{i + 1}{extension}'
             tmpPath = Path(r'/vsimem') / f'example.{sid}.{i + 1}{extension}'
@@ -89,6 +96,7 @@ def collect_native_types() -> Dict[str, List[QgsVectorDataProvider.NativeType]]:
             r = gdal.Unlink(tmpPath.as_posix())
             s = ""
         # add in-memory vector types
+
         vl = QgsVectorLayer("point?crs=epsg:4326&field=id:integer", "Scratch point layer", "memory")
         __NATIVE_TYPES['memory'] = vl.dataProvider().nativeTypes()
 
