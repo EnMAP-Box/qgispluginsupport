@@ -3,18 +3,17 @@ import datetime
 import sys
 import textwrap
 import warnings
-from typing import Dict, List, Tuple, Union
+from typing import Dict, List, Tuple, Union, Optional, Any, Generator
 
 import numpy as np
 
 from qgis.PyQt.QtCore import pyqtSignal, QPoint, QPointF, Qt
-from qgis.PyQt.QtGui import QColor, QDragEnterEvent, QStandardItem
+from qgis.PyQt.QtGui import QColor
 from qgis.PyQt.QtWidgets import QAction, QApplication, QMenu, QSlider, QWidgetAction
-from qgis.core import QgsProject
 from ...plotstyling.plotstyling import PlotStyle, PlotWidgetStyle
 from ...pyqtgraph import pyqtgraph as pg
 from ...unitmodel import datetime64, UnitWrapper
-from ...utils import HashablePointF, SignalObjectWrapper
+from ...utils import HashablePointF
 
 
 class SpectralXAxis(pg.AxisItem):
@@ -115,7 +114,7 @@ class SpectralProfilePlotLegend(pg.LegendItem):
 
 
 class SpectralProfilePlotItem(pg.PlotItem):
-    sigPopulateContextMenuItems = pyqtSignal(SignalObjectWrapper)
+    sigPopulateContextMenuItems = pyqtSignal(object)
 
     def __init__(self, *args, **kwds):
         super(SpectralProfilePlotItem, self).__init__(*args, **kwds)
@@ -143,11 +142,13 @@ class SpectralProfilePlotItem(pg.PlotItem):
             self.legend = None
 
     def getContextMenus(self, event):
-        wrapper = SignalObjectWrapper([])
-        self.sigPopulateContextMenuItems.emit(wrapper)
         self.mTempList.clear()
-        self.mTempList.append(wrapper.wrapped_object)
-        return wrapper.wrapped_object
+        try:
+            self.sigPopulateContextMenuItems.emit(self.mTempList)
+        except Exception as ex:
+            print(ex)
+            pass
+        return self.mTempList[:]
 
     def addItems(self, items: list, *args, **kargs):
         """
@@ -288,24 +289,73 @@ FIELD_INDEX = int
 MODEL_NAME = str
 X_UNIT = str
 PLOT_DATA_KEY = Tuple[FEATURE_ID, FIELD_INDEX, X_UNIT]
-VISUALIZATION_KEY = Tuple[QStandardItem, FEATURE_ID, FIELD_INDEX, X_UNIT]
+
+
+def default_selection_style(style: PlotStyle) -> PlotStyle:
+    style2: PlotStyle = style.clone()
+    style2.setLineWidth(style.lineWidth() + 2)
+    return style2
 
 
 class SpectralProfilePlotDataItem(pg.PlotDataItem):
     """
     A pyqtgraph.PlotDataItem to plot a SpectralProfile
     """
-    sigProfileClicked = pyqtSignal(MouseClickData)
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, *args, **kwds):
+        super().__init__(*args, **kwds)
 
-        # self.curve.sigClicked.connect(self.curveClicked)
-        # self.scatter.sigClicked.connect(self.scatterClicked)
-        self.mCurveMouseClickNativeFunc = self.curve.mouseClickEvent
-        self.curve.mouseClickEvent = self.onCurveMouseClickEvent
-        self.scatter.sigClicked.connect(self.onScatterMouseClicked)
-        self.mVisualizationKey: VISUALIZATION_KEY = None
+        self.setAcceptedMouseButtons(Qt.LeftButton | Qt.RightButton)
+
+        self.mDefaultStyle: PlotStyle = PlotStyle()
+        self.mSelectedStyle = default_selection_style
+
+        self.mIsSelected: bool = False
+        self.mLayerID: Optional[str] = None
+        self.mFeatureID: Optional[int] = None
+        self.mField: Optional[str] = None
+
+    def curveIsSelected(self) -> bool:
+        return self.mIsSelected
+
+    def setCurveIsSelected(self, b: bool = True):
+
+        if self.mIsSelected == b:
+            return
+
+        self.mIsSelected = b
+        if b:
+            if callable(self.mSelectedStyle):
+                selectedStyle = self.mSelectedStyle(self.mDefaultStyle)
+            else:
+                selectedStyle = self.mSelectedStyle
+            assert isinstance(selectedStyle, PlotStyle)
+            self.setPlotStyle(selectedStyle)
+        else:
+            self.setPlotStyle(self.mDefaultStyle)
+
+    def selectPoints(self, point_indices):
+
+        s = ""
+
+    def selectedPoints(self) -> list:
+
+        return []
+
+    def layerID(self) -> Optional[str]:
+        return self.mLayerID
+
+    def featureID(self) -> Optional[int]:
+        return self.mFeatureID
+
+    def field(self) -> Optional[str]:
+        return self.mField
+
+    # On right-click, raise a context menu
+    def mouseClickEvent(self, ev):
+        if ev.button() == Qt.RightButton:
+            if self.raiseContextMenu(ev):
+                ev.accept()
 
     def setProfileData(self,
                        plot_data: dict,
@@ -316,6 +366,7 @@ class SpectralProfilePlotDataItem(pg.PlotDataItem):
                        label: str = None,
                        tooltip: str = None):
 
+        self.mDefaultStyle = plot_style
         y = plot_data.get('y')
 
         if y is None:
@@ -359,10 +410,6 @@ class SpectralProfilePlotDataItem(pg.PlotDataItem):
                      symbolBrush=symbolBrush,
                      symbolSize=symbolSize)
 
-        self.setToolTip(tooltip)
-        self.curve.setToolTip(tooltip)
-        self.scatter.setToolTip(tooltip)
-
     def setPlotStyle(self, plotStyle: PlotStyle):
         assert isinstance(plotStyle, PlotStyle)
 
@@ -373,29 +420,13 @@ class SpectralProfilePlotDataItem(pg.PlotDataItem):
         self.opts['symbolSize'] = plotStyle.markerSize
         self.updateItems(styleUpdate=True)
 
-    def onCurveMouseClickEvent(self, ev):
-        self.mCurveMouseClickNativeFunc(ev)
-
-        if ev.accepted:
-            idx, x, y, pxDistance = self.closestDataPoint(ev.pos())
-            data = MouseClickData(idx=idx, xValue=x, yValue=y, pxDistance=pxDistance, pdi=self)
-            self.sigProfileClicked.emit(data)
-
-    def onScatterMouseClicked(self, pts: pg.ScatterPlotItem):
-
-        if isinstance(pts, pg.ScatterPlotItem):
-            pdi = pts.parentItem()
-            if isinstance(pdi, SpectralProfilePlotDataItem):
-                pt = pts.ptsClicked[0]
-                i = pt.index()
-                data = MouseClickData(idx=i, xValue=pdi.xData[i], yValue=pdi.yData[i], pxDistance=0, pdi=self)
-                self.sigProfileClicked.emit(data)
-
-    def setVisualizationKey(self, key: VISUALIZATION_KEY):
-        self.mVisualizationKey = key
-
-    def visualizationKey(self) -> VISUALIZATION_KEY:
-        return self.mVisualizationKey
+        # if isinstance(pts, pg.ScatterPlotItem):
+        #    pdi = pts.parentItem()
+        #    if isinstance(pdi, SpectralProfilePlotDataItem):
+        #        pt = pts.ptsClicked[0]
+        #        i = pt.index()
+        #        data = MouseClickData(idx=i, xValue=pdi.xData[i], yValue=pdi.yData[i], pxDistance=0, pdi=self)
+        #        self.sigProfileClicked.emit(data)
 
     def closestDataPoint(self, pos) -> Tuple[int, float, float, float]:
         x = pos.x()
@@ -518,8 +549,6 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
     """
     A widget to PlotWidget SpectralProfiles
     """
-
-    sigPopulateContextMenuItems = pyqtSignal(SignalObjectWrapper)
     sigPlotDataItemSelected = pyqtSignal(SpectralProfilePlotDataItem, Qt.Modifier)
 
     def __init__(self, parent=None):
@@ -530,7 +559,6 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
         )
 
         super().__init__(parent, plotItem=plotItem)
-        self.mProject: QgsProject = QgsProject.instance()
         pi: SpectralProfilePlotItem = self.getPlotItem()
         assert isinstance(pi, SpectralProfilePlotItem) and pi == self.plotItem
 
@@ -542,6 +570,7 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
         self.mCrosshairLineH = pg.InfiniteLine(angle=0, movable=False)
 
         self.mInfoLabelCursor = pg.TextItem(text='<cursor position>', anchor=(1.0, 0.0))
+        self.mInfoHover = pg.TextItem(text='<hover info>', anchor=QPointF(0.5, 0.0))
         self.mInfoScatterPoints: pg.ScatterPlotItem = pg.ScatterPlotItem()
         self.mInfoScatterPoints.sigClicked.connect(self.onInfoScatterClicked)
         self.mInfoScatterPoints.setZValue(9999999)
@@ -554,8 +583,11 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
         self.mCrosshairLineH.setZValue(9999999)
         self.mCrosshairLineV.setZValue(9999999)
         self.mInfoLabelCursor.setZValue(9999999)
+        self.mInfoHover.setZValue(9999999)
 
         self.scene().addItem(self.mInfoLabelCursor)
+        self.scene().addItem(self.mInfoHover)
+        self.mInfoHover.setParentItem(self.getPlotItem())
         self.mInfoLabelCursor.setParentItem(self.getPlotItem())
 
         pi.addItem(self.mCrosshairLineV, ignoreBounds=True)
@@ -574,12 +606,22 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
         # activate option "Visible Data Only" for y-axis to ignore a y-value, when the x-value is nan
         self.setAutoVisible(y=True)
 
-    def setProject(self, project: QgsProject):
-        self.mProject = project
-
-    def dragEnterEvent(self, ev: QDragEnterEvent):
-
-        s = ""
+    def spectralProfilePlotDataItems(self,
+                                     is_selected: Optional[bool] = None) \
+            -> Generator[SpectralProfilePlotDataItem, Any, None]:
+        """
+        Returns a generator of SpectralProfilePlotDataItems
+        :return:
+        """
+        if isinstance(is_selected, bool):
+            for item in self.plotItem.listDataItems():
+                if isinstance(item, SpectralProfilePlotDataItem):
+                    if item.curveIsSelected() == is_selected:
+                        yield item
+        else:
+            for item in self.plotItem.listDataItems():
+                if isinstance(item, SpectralProfilePlotDataItem):
+                    yield item
 
     def onProfileClicked(self, data: MouseClickData):
         """
@@ -589,7 +631,7 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
         modifiers = QApplication.keyboardModifiers()
 
         pdi: SpectralProfilePlotDataItem = data.pdi
-        vis, fid, fieldIndex, xUnit = pdi.visualizationKey()
+        # vis, fid, fieldIndex, xUnit = pdi.visualizationKey()
         name = pdi.name()
         if not isinstance(name, str):
             name = ''
@@ -598,6 +640,7 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
             x = data.xValue
             y = data.yValue
             pt = HashablePointF(x, y)
+            xUnit = self.xAxis().mUnit
             if pt not in self.mInfoScatterPointHtml.keys():
 
                 if isinstance(pdi, SpectralProfilePlotDataItem):
@@ -632,10 +675,11 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
         assert isinstance(b, bool)
         self.mShowCrosshair = b
 
-    def setForegroundColor(self, color: QColor):
+    def setForegroundColor(self, color: Union[str, QColor]):
         c = QColor(color)
 
         # set Foreground color
+        self.mInfoLabelCursor.setColor(c)
         for axis in self.plotItem.axes.values():
             ai: pg.AxisItem = axis['item']
             if isinstance(ai, pg.AxisItem):
@@ -643,16 +687,18 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
                 ai.setTextPen(c)
                 ai.label.setDefaultTextColor(c)
 
-    def setCrosshairColor(self, color: QColor):
-
+    def setCrosshairColor(self, color: Union[str, QColor]):
         self.mCrosshairLineH.pen.setColor(QColor(color))
         self.mCrosshairLineV.pen.setColor(QColor(color))
 
-    def setSelectionColor(self, color: QColor):
-        self.mInfoScatterPoints.opts['pen'].setColor(QColor(color))
-        self.mInfoScatterPoints.opts['brush'].setColor(QColor(color))
+    def setSelectionColor(self, color: Union[str, QColor]):
+        c = QColor(color)
+        self.mInfoScatterPoints.opts['pen'].setColor(c)
+        self.mInfoScatterPoints.opts['brush'].setColor(c)
 
-    def setInfoColor(self, color: QColor):
+        self.mInfoHover.setColor(c)
+
+    def setInfoColor(self, color: Union[str, QColor]):
         self.mInfoLabelCursor.setColor(QColor(color))
 
     def setShowCursorInfo(self, b: bool):
@@ -706,10 +752,6 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
         positionInfoHtml += '</body></html>'
         self.mInfoLabelCursor.setHtml(positionInfoHtml)
 
-    def spectralProfilePlotDataItems(self) -> List[SpectralProfilePlotDataItem]:
-        return [item for item in self.plotItem.listDataItems()
-                if isinstance(item, SpectralProfilePlotDataItem)]
-
     def setWidgetStyle(self, style: PlotWidgetStyle):
         warnings.warn(DeprecationWarning(), stacklevel=2)
         self.mInfoLabelCursor.setColor(style.textColor)
@@ -735,10 +777,6 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
         self.mCrosshairLineV.setVisible(False)
         self.mInfoLabelCursor.setVisible(False)
 
-    def onMouseClicked(self, event):
-        # print(event[0].accepted)
-        s = ""
-
     def onMouseMoved2D(self, evt):
         pos = evt[0]  # using signal proxy turns original arguments into a tuple
 
@@ -746,6 +784,7 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
         assert isinstance(plotItem, SpectralProfilePlotItem)
         vb = plotItem.vb
         assert isinstance(vb, SpectralViewBox)
+
         if plotItem.sceneBoundingRect().contains(pos) and self.underMouse():
             mousePoint = vb.mapSceneToView(pos)
             self.mCurrentMousePosition = mousePoint

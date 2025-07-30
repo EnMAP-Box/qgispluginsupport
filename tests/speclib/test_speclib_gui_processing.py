@@ -57,6 +57,7 @@ class AlgorithmLogging(QgsProcessingAlgorithm):
             func(msg)
             outputs[funcName] = msg
 
+        outputs['outputProfile'] = 'foobar.tif'
         return outputs
 
 
@@ -86,7 +87,7 @@ class SpectralProcessingTests(TestCase):
                 }
         provider = ExampleAlgorithmProvider()
         provider.addAlgorithm(AlgorithmLogging(logs))
-
+        self._p_ref = provider
         preg, preggui = self.initProcessingRegistry()
         preg.addProvider(provider)
         algorithmId = provider.algorithms()[0].id()
@@ -110,7 +111,7 @@ class SpectralProcessingTests(TestCase):
                 self.assertTrue(value in html)
             self.showGui([spd, slw])
 
-        preg.removeProvider(provider)
+        # preg.removeProvider(provider)
         QgsProject.instance().removeAllMapLayers()
 
     def test_dualview(self):
@@ -268,6 +269,7 @@ class SpectralProcessingTests(TestCase):
         # speclib.startEditing()
         slw = SpectralLibraryWidget(speclib=speclib)
         self.showGui(slw)
+        slw.project().removeAllMapLayers()
 
 
 if __name__ == '__main__':

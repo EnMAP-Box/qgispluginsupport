@@ -560,7 +560,7 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
 
             for k2 in customProperties.keys():
 
-                cleaned_key = re.sub(r'^(enmapbox|qps)/', '', k2, re.I)
+                cleaned_key = re.sub(r'^(enmapbox|qps)/', '', k2, flags=re.I)
 
                 if rx.match(cleaned_key):
                     values = customProperties.value(k2)

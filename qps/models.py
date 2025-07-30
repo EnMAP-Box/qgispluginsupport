@@ -680,7 +680,7 @@ class TreeNode(QObject):
         """Returns the number of child nodes"""
         return len(self.mChildren)
 
-    def childNodes(self) -> Iterator['TreeNode']:
+    def childNodes(self) -> List['TreeNode']:
         """
         Returns the child nodes
         :return: [list-of-TreeNodes]
@@ -754,7 +754,7 @@ class NumpyArrayIterator(object):
         assert isinstance(array, np.ndarray)
         self.mArray = array
         self.mIndex = -1
-        self.mMax = array.shape[0]
+        self.mMax = array.shape[0] if len(array.shape) > 0 else 0
 
     def __str__(self):
         return 'NumpyArrayIterator'
@@ -764,7 +764,7 @@ class NumpyArrayIterator(object):
 
     def __next__(self):
         self.mIndex += 1
-        if self.mIndex < self.mArray.shape[0]:
+        if len(self.mArray.shape) > 0 and self.mIndex < self.mArray.shape[0]:
             if self.mArray.ndim > 1:
                 return self.mIndex, self.mArray[self.mIndex, :]
             else:

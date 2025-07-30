@@ -36,15 +36,15 @@ import weakref
 from typing import Dict, List, Optional, Union
 
 from osgeo import gdal, ogr
+
+from qgis.PyQt.QtCore import QDateTime, QMimeData, Qt, QUrl, QVariant
+from qgis.PyQt.QtWidgets import QWidget
 from qgis.core import edit, Qgis, QgsAction, QgsActionManager, QgsApplication, QgsAttributeTableConfig, \
     QgsCoordinateReferenceSystem, QgsCoordinateTransformContext, QgsEditorWidgetSetup, QgsExpression, \
     QgsExpressionContext, QgsExpressionContextScope, QgsExpressionContextUtils, QgsFeature, QgsFeatureIterator, \
     QgsFeatureRequest, QgsField, QgsFields, QgsGeometry, QgsMapLayerStore, QgsPointXY, QgsProcessingFeedback, \
     QgsProject, QgsProperty, QgsRasterLayer, QgsRemappingProxyFeatureSink, QgsRemappingSinkDefinition, QgsVectorLayer, \
     QgsWkbTypes
-from qgis.PyQt.QtCore import QDateTime, QMimeData, Qt, QUrl, QVariant
-from qgis.PyQt.QtWidgets import QWidget
-
 from . import can_store_spectral_profiles, create_profile_field, is_profile_field, is_spectral_library, \
     profile_field_list, profile_field_names
 from .spectralprofile import decodeProfileValueDict, encodeProfileValueDict, groupBySpectralProperties, \
@@ -265,6 +265,10 @@ class SpectralLibraryUtils:
     @staticmethod
     def isProfileField(field: QgsField) -> bool:
         return can_store_spectral_profiles(field) and field.editorWidgetSetup().type() == EDITOR_WIDGET_REGISTRY_KEY
+
+    @staticmethod
+    def isSpectralLibrary(layer: QgsVectorLayer) -> bool:
+        return is_spectral_library(layer)
 
     @staticmethod
     def activateProfileFields(layer: QgsVectorLayer, check: str = 'first_feature'):
@@ -688,7 +692,16 @@ class SpectralLibraryUtils:
                     addMissingFields: bool = False,
                     copyEditorWidgetSetup: bool = True,
                     feedback: QgsProcessingFeedback = QgsProcessingFeedback()) -> List[int]:
-
+        """
+        Adds one or more features to an existing QgsVectorLayer and returns the feature IDs.
+        :param speclib:
+        :param profiles:
+        :param crs:
+        :param addMissingFields:
+        :param copyEditorWidgetSetup:
+        :param feedback:
+        :return:
+        """
         assert isinstance(speclib, QgsVectorLayer)
         assert speclib.isEditable(), 'SpectralLibrary "{}" is not editable. call startEditing() first'.format(
             speclib.name())

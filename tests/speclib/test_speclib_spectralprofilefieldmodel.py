@@ -1,9 +1,9 @@
 import unittest
 
+from qgis.PyQt.QtWidgets import QComboBox, QHBoxLayout, QPushButton, QTableView, QWidget
+from qgis.core import QgsProject
 from qgis.core import edit, QgsField
 from qgis.gui import QgsEditorWidgetFactory, QgsGui
-from qgis.PyQt.QtWidgets import QComboBox, QHBoxLayout, QPushButton, QTableView, QWidget
-
 from qps.qgisenums import QMETATYPE_DOUBLE, QMETATYPE_INT, QMETATYPE_QBYTEARRAY, QMETATYPE_QSTRING
 from qps.speclib.core import profile_fields
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
@@ -111,6 +111,8 @@ class TestSpectralProfileFieldModel(TestCase):
         d.setLayer(vl)
         slw = SpectralLibraryWidget(speclib=vl)
         self.showGui(slw)
+
+        QgsProject.instance().removeAllMapLayers()
 
 
 if __name__ == '__main__':

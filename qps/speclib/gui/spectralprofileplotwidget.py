@@ -1,7 +1,7 @@
 from qgis.PyQt.QtGui import QPalette, QPen
 
-from .spectrallibraryplotitems import SpectralProfilePlotDataItem, SpectralProfilePlotItem, SpectralViewBox, \
-    SpectralXAxis
+from .spectrallibraryplotitems import SpectralProfilePlotItem, SpectralViewBox, \
+    SpectralXAxis, SpectralProfilePlotDataItem
 from ...plotstyling.plotstyling import PlotStyle
 from ...pyqtgraph.pyqtgraph import PlotWidget
 

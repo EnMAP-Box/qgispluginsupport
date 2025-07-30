@@ -40,7 +40,7 @@ class SpectralProfileFieldListModel(QgsFieldModel):
 
     def setLayer(self, layer: QgsVectorLayer):
         """
-        Sets the vectorlayer, i.e. the spectral library
+        Sets the vectorlayer, i.e., the spectral library
         :param layer:
         :return:
         """
@@ -59,6 +59,8 @@ class SpectralProfileFieldListModel(QgsFieldModel):
 
         if role == Qt.ToolTipRole:
             return QgsFieldModel.fieldToolTip(field)
+
+        return super().data(index, role)
 
 
 class SpectralProfileFieldActivatorModel(QgsFieldModel):

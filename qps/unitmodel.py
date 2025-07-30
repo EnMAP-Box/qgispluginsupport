@@ -4,10 +4,9 @@ import datetime
 import re
 import warnings
 from math import log10
-from typing import Iterator, List, Union
+from typing import Iterator, List, Union, Optional
 
 import numpy as np
-
 from qgis.PyQt.QtCore import NULL, QAbstractListModel, QDate, QDateTime, QModelIndex, Qt
 from qgis.PyQt.QtGui import QIcon
 
@@ -301,7 +300,7 @@ class UnitConverterFunctionModel(object):
         assert k not in self.mLUT, k
         self.mLUT[k] = func
 
-    def convertFunction(self, unitSrc: str, unitDst: str):
+    def convertFunction(self, unitSrc: Optional[str], unitDst: Optional[str]):
         if unitDst == BAND_INDEX:
             return self.func_return_band_index
         elif unitDst in [BAND_NUMBER, None, '']:

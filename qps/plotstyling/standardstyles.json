@@ -1,22 +1,31 @@
 [
-    {
-        "icon": ":/qps/ui/icons/profiletheme_dark.svg",
-        "name": "dark",
-        "foregroundColor": "white",
-        "backgroundColor": "black",
-        "textColor": "white",
-        "selectionColor": "yellow",
-        "crosshairColor": "yellow",
-        "temporaryColor": "green"
-    },
-    {
-        "icon": ":/qps/ui/icons/profiletheme_bright.svg",
-        "name": "bright",
-        "foregroundColor": "black",
-        "backgroundColor": "white",
-        "textColor": "black",
-        "selectionColor": "red",
-        "crosshairColor": "red",
-        "temporaryColor": "#aaff00"
-    }
+  {
+    "name": "default",
+    "foregroundColor": "grey",
+    "backgroundColor": "black",
+    "textColor": "grey",
+    "selectionColor": "yellow",
+    "crosshairColor": "yellow",
+    "temporaryColor": "#aaff00"
+  },
+  {
+    "icon": ":/qps/ui/icons/profiletheme_dark.svg",
+    "name": "dark",
+    "foregroundColor": "white",
+    "backgroundColor": "black",
+    "textColor": "white",
+    "selectionColor": "yellow",
+    "crosshairColor": "yellow",
+    "temporaryColor": "green"
+  },
+  {
+    "icon": ":/qps/ui/icons/profiletheme_bright.svg",
+    "name": "bright",
+    "foregroundColor": "black",
+    "backgroundColor": "white",
+    "textColor": "black",
+    "selectionColor": "red",
+    "crosshairColor": "red",
+    "temporaryColor": "#aaff00"
+  }
 ]

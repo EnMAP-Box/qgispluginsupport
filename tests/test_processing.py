@@ -175,6 +175,7 @@ class ProcessingToolsTest(TestCase):
         self.assertEqual(groups, {'A', 'B'})
 
         provider = ExampleAlgorithmProvider()
+        self._keep_ref = provider
 
         reg: QgsProcessingRegistry = QgsApplication.instance().processingRegistry()
         reg.addProvider(provider)
@@ -272,6 +273,7 @@ class ProcessingToolsTest(TestCase):
         reg.removeProvider(pid)
         QgsProject.instance().removeAllMapLayers()
 
+    @unittest.skipIf(TestCase.runsInCI(), 'Benchmark only. Requires local data')
     def test_spectralprofile_import_many(self):
 
         p = r"Z:\Namibia2024\SVC\SVC_ALL"
@@ -310,7 +312,7 @@ class ProcessingToolsTest(TestCase):
         initSpectralLibraryIOs()
         reg: QgsProcessingRegistry = QgsApplication.instance().processingRegistry()
         reg.addProvider(provider)
-
+        self._provider_ref = provider
         self.assertTrue(provider.addAlgorithm(ImportSpectralProfiles()))
         reg.providerById(ExampleAlgorithmProvider.NAME.lower())
 
@@ -405,6 +407,7 @@ class ProcessingToolsTest(TestCase):
     def test_spectralprofile_export(self):
 
         provider = ExampleAlgorithmProvider()
+        self.__keep_ref = provider
         initSpectralLibraryIOs()
         reg: QgsProcessingRegistry = QgsApplication.instance().processingRegistry()
 

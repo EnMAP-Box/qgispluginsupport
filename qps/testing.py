@@ -1033,6 +1033,7 @@ class TestObjects(object):
     def createSpectralLibrary(n: int = 10,
                               n_empty: int = 0,
                               n_bands: Union[int, List[int], np.ndarray] = [-1],
+                              name: Optional[str] = None,
                               profile_field_names: List[str] = None,
                               wlu: str = None,
                               crs: QgsCoordinateReferenceSystem = None) -> QgsVectorLayer:
@@ -1077,6 +1078,10 @@ class TestObjects(object):
             profile_field_names = [f'{FIELD_VALUES}{i}' for i in range(n_profile_columns)]
 
         slib: QgsVectorLayer = SpectralLibraryUtils.createSpectralLibrary(profile_fields=profile_field_names, crs=crs)
+
+        name = name if name else os.path.basename(slib.source())
+        slib.setName(name)
+
         with edit(slib):
 
             pfield_indices = profile_field_indices(slib)
@@ -1144,7 +1149,7 @@ class TestObjects(object):
             band.SetDescription(ds.GetRasterBand(b + 1).GetDescription())
         ds2.FlushCache()
         lyr = QgsRasterLayer(path)
-        lyr.setName('Multiband Mask')
+        lyr.setName(f'Multiband Mask {lyr.bandCount()}x{lyr.height()}x{lyr.width()}')
         assert lyr.isValid()
 
         return lyr
@@ -1353,7 +1358,7 @@ class TestObjects(object):
         return alg
 
     @staticmethod
-    def createRasterLayer(*args, **kwds) -> QgsRasterLayer:
+    def createRasterLayer(*args, name: Optional[str] = None, **kwds) -> QgsRasterLayer:
         """
         Creates an in-memory raster layer.
         See arguments & keyword for `inMemoryImage()`
@@ -1363,7 +1368,8 @@ class TestObjects(object):
         assert isinstance(ds, gdal.Dataset)
         path = ds.GetDescription()
 
-        lyr = QgsRasterLayer(path, os.path.basename(path), 'gdal')
+        name = name if name else os.path.basename(path)
+        lyr = QgsRasterLayer(path, name, 'gdal')
         assert lyr.isValid()
         return lyr
 
@@ -1377,7 +1383,7 @@ class TestObjects(object):
         """
         # ogr.RegisterAll()
         # ogr.UseExceptions()
-        assert wkb in [ogr.wkbPoint, ogr.wkbPolygon, ogr.wkbLineString]
+        assert wkb in [ogr.wkbPoint, ogr.wkbPolygon, ogr.wkbLineString, ogr.wkbNone]
 
         # find the QGIS world_map.shp
         # pkgPath = QgsApplication.instance().pkgDataPath()
@@ -1420,6 +1426,9 @@ class TestObjects(object):
             elif wkb == ogr.wkbLineString:
                 lname = 'lines'
                 pathDst = prefix + '.test.line.gpkg'
+            elif wkb == ogr.wkbNone:
+                lname = 'no_geometry'
+                pathDst = prefix + '.test.nogeometry.gpkg'
             else:
                 raise NotImplementedError()
 
@@ -1458,10 +1467,12 @@ class TestObjects(object):
                     g = g.Centroid()
                 elif wkb == ogr.wkbLineString:
                     g = g.GetBoundary()
+                elif wkb == ogr.wkbNone:
+                    g = None
                 else:
                     raise NotImplementedError()
-
-            fDst.SetGeometry(g)
+            if g:
+                fDst.SetGeometry(g)
 
             for i in range(ldef.GetFieldCount()):
                 fDst.SetField(i, fSrc.GetField(i))
@@ -1510,6 +1521,7 @@ class TestObjects(object):
     def createVectorLayer(cls, wkbType: QgsWkbTypes = QgsWkbTypes.Polygon,
                           n_features: int = None,
                           path: Union[str, Path] = None,
+                          name: Optional[str] = None,
                           crs: QgsCoordinateReferenceSystem = None) -> QgsVectorLayer:
         """
         Create a QgsVectorLayer
@@ -1525,6 +1537,8 @@ class TestObjects(object):
             wkb = ogr.wkbLineString
         elif wkbType in [QgsWkbTypes.Polygon, QgsWkbTypes.PolygonGeometry]:
             wkb = ogr.wkbPolygon
+        elif wkbType == QgsWkbTypes.NoGeometry:
+            wkb = ogr.wkbNone
 
         assert wkb is not None
         dsSrc = TestObjects.createVectorDataSet(wkb=wkb, n_features=n_features, path=path)
@@ -1536,17 +1550,20 @@ class TestObjects(object):
         # uri = '{}|{}'.format(dsSrc.GetName(), lyr.GetName())
         uri = dsSrc.GetName()
 
-        vl = QgsVectorLayer(uri, 'testlayer', 'ogr', lyrOptions)
+        name = name if name else os.path.basename(uri)
+
+        vl = QgsVectorLayer(uri, name, 'ogr', lyrOptions)
         assert isinstance(vl, QgsVectorLayer)
         assert vl.isValid()
-        if not vl.crs().isValid():
-            srs = lyr.GetSpatialRef()
-            srs_wkt = srs.ExportToWkt()
-            crs2 = QgsCoordinateReferenceSystem(srs_wkt)
-            assert crs2.isValid()
-            s = ""
+        if wkb != ogr.wkbNone:
+            if not vl.crs().isValid():
+                srs = lyr.GetSpatialRef()
+                srs_wkt = srs.ExportToWkt()
+                crs2 = QgsCoordinateReferenceSystem(srs_wkt)
+                assert crs2.isValid()
+                s = ""
 
-        assert vl.crs().isValid()
+            assert vl.crs().isValid()
         assert vl.featureCount() == lyr.GetFeatureCount()
 
         if isinstance(crs, QgsCoordinateReferenceSystem) and vl.crs() != crs:

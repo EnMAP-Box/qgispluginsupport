@@ -23,7 +23,8 @@ export PYTHONPATH="${PYTHONPATH}"\
 ":/usr/share/qgis/python/plugins"\
 ":$(pwd)/tests"
 python3 runfirst.py
-pytest --no-cov-on-fail --cov-config=.coveragec "$@"
-coverage-badge -o coverage.svg
+pytest --no-cov-on-fail
+# --cov-config=.coveragec "$@"
+# coverage-badge -o coverage.svg
 # echo "coverage-badge=coverage.svg" >> $GITHUB_OUTPUT
 popd

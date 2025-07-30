@@ -201,7 +201,8 @@ class ProfileSamplingMode(object):
         if aggregation == self.NO_AGGREGATION or len(profiles) == 1:
             return profiles
         else:
-            # aggregate profiles into a single profile
+            # aggregate profiles into a single profile and a single expression context
+
             pdicts: List[Dict] = []
             arrays = []
             pcontexts: List[QgsExpressionContext] = []
@@ -211,6 +212,8 @@ class ProfileSamplingMode(object):
                     pdicts.append(d)
                     pcontexts.append(c)
                     arrays.append(np.asarray(p))
+            if len(arrays) == 0:
+                return []
 
             data = np.stack(arrays)
             if data.dtype == object:
@@ -1389,7 +1392,7 @@ class SpectralFeatureGeneratorNode(ValidateNode):
 
     def onPlotWidgetStyleChanged(self):
         if isinstance(self.speclibWidget(), SpectralLibraryWidget):
-            backgroundColor = self.speclibWidget().plotControl().generalSettings().backgroundColor()
+            backgroundColor = self.speclibWidget().plotModel().generalSettings().backgroundColor()
             for n in self.spectralProfileGeneratorNodes():
                 n.mProfileStyleNode.value().setBackgroundColor(QColor(backgroundColor))
                 n.mProfileStyleNode.sigUpdated.emit(n.mProfileStyleNode)
@@ -1462,9 +1465,10 @@ class SpectralFeatureGeneratorNode(ValidateNode):
                 slw = self.speclibWidget()
                 if isinstance(slw, SpectralLibraryWidget):
                     color = QColor('green')
-                    for vis in slw.plotControl().visualizations():
-                        if vis.field().name() == fname:
-                            color = nextColor(vis.color(), 'brighter')
+                    for vis in slw.plotModel().visualizations():
+                        if vis.fieldName() == fname:
+                            plotStyle = vis.plotStyle()
+                            color = nextColor(plotStyle.lineColor(), 'brighter')
                             break
                     new_node.setColor(color)
 
@@ -1703,7 +1707,6 @@ class SpectralProfileBridge(TreeModel):
     def loadProfiles(self,
                      spatialPoint: SpatialPoint,
                      mapCanvas: QgsMapCanvas = None,
-                     add_permanent: bool = None,
                      runAsync: bool = False) -> Dict[str, List[QgsFeature]]:
         """
         Loads the spectral profiles as defined in the bridge model
@@ -1731,7 +1734,8 @@ class SpectralProfileBridge(TreeModel):
             self.dataChanged.emit(idx0, idx1, [Qt.BackgroundColorRole])
 
         # 3. generate features from a feature generators
-        #    multiple feature generators could create features for the same speclib
+        #    multiple feature generators can create features for the same speclib
+        # store as RESULTS[layer id, ([features], {field_name:PlotStyle})
         RESULTS: Dict[str, Tuple[List[QgsFeature], Dict[Tuple[int, str], PlotStyle]]] = dict()
 
         for fgnode in featureGenerators:
@@ -1759,8 +1763,14 @@ class SpectralProfileBridge(TreeModel):
         results2 = dict()
 
         for sid, slw in SLWidgets.items():
+
             features, styles = RESULTS.get(sid, ([], dict()))
-            slw.setCurrentProfiles(features, currentProfileStyles=styles, make_permanent=add_permanent)
+
+            # NEW_FEATURES = {sid: features}
+            PROFILE_STYLES = {field_name: plot_style for (fid, field_name), plot_style in styles.items()}
+            PROFILE_STYLES = {sid: PROFILE_STYLES}
+            slw.plotModel().addProfileCandidates({sid: features}, styles=PROFILE_STYLES)
+            # slw.setCurrentProfiles(features, currentProfileStyles=styles, make_permanent=add_permanent)
             if len(features) > 0:
                 results2[sid] = results2.get(sid, []) + features
             self.mLastDestinations.add(sid)

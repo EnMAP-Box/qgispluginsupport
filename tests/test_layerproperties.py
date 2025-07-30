@@ -13,13 +13,13 @@ __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 import unittest
 
 from osgeo import gdal
+
 from qgis.PyQt.QtWidgets import QDialog, QGridLayout, QWidget
 from qgis.core import QgsMapLayer
 from qgis.core import QgsMultiBandColorRenderer, QgsPalettedRasterRenderer, QgsProject, QgsRasterLayer, \
     QgsSingleBandGrayRenderer, QgsStyle, QgsVectorLayer
 from qgis.gui import QgsMapCanvas, QgsMapLayerConfigWidgetFactory, QgsOptionsDialogBase, QgsRasterLayerProperties, \
     QgsRendererPropertiesDialog
-
 from qps import MAPLAYER_CONFIGWIDGET_FACTORIES
 from qps.layerconfigwidgets.rasterbands import RasterBandConfigWidget
 from qps.layerproperties import AddAttributeDialog, AttributeTableWidget, CopyAttributesDialog, defaultRasterRenderer, \
