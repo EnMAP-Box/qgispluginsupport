@@ -503,6 +503,46 @@ class PropertyItemGroup(PropertyItemBase):
         return groups
 
 
+class LegendSettingsGroup(PropertyItemGroup):
+
+    def __init__(self, *args, **kwds):
+        super().__init__(*args, **kwds)
+        self.mZValue = -1
+        self.setText('Legend')
+        self.setIcon(QIcon())
+
+        self.setUserTristate(False)
+        self.setCheckable(True)
+        self.setCheckState(Qt.Unchecked)
+        self.setDropEnabled(False)
+        self.setDragEnabled(False)
+
+        self.mP_MaxProfiles = QgsPropertyItem('legend_max_profiles')
+        self.mP_MaxProfiles.setDefinition(QgsPropertyDefinition(
+            'Max. Profiles', 'Maximum number of profiles listed in legend',
+            QgsPropertyDefinition.StandardPropertyTemplate.IntegerPositive))
+        self.mP_MaxProfiles.setProperty(QgsProperty.fromValue(64))
+        # labelTextSize
+        self.m_textsize = QgsPropertyItem('legend_text_size')
+        self.m_textsize.setDefinition(QgsPropertyDefinition(
+            'Text size', 'Legend text size', QgsPropertyDefinition.StandardPropertyTemplate.String))
+        self.m_textsize.setProperty(QgsProperty.fromValue('9px'))
+
+        for pItem in [  # self.mPLegend,
+            self.mP_MaxProfiles, self.m_textsize
+        ]:
+            self.appendRow(pItem.propertyRow())
+
+    def asMap(self) -> dict:
+        d = {
+            'show': self.checkState() == Qt.Checked,
+            'text_size': self.m_textsize.value(),
+            'max_items': self.mP_MaxProfiles.value(),
+        }
+
+        return d
+
+
 class GeneralSettingsGroup(PropertyItemGroup):
     """
     General Plot Settings
@@ -538,7 +578,8 @@ class GeneralSettingsGroup(PropertyItemGroup):
         self.mP_MaxProfiles.setDefinition(QgsPropertyDefinition(
             'Max. Profiles', 'Maximum number of profiles that can be plotted.',
             QgsPropertyDefinition.StandardPropertyTemplate.IntegerPositive))
-        self.mP_MaxProfiles.setProperty(QgsProperty.fromValue(516))
+
+        self.mP_MaxProfiles.setProperty(QgsProperty.fromValue(256))
 
         self.mP_Antialiasing = QgsPropertyItem('Antialias')
         self.mP_Antialiasing.setDefinition(
@@ -590,11 +631,13 @@ class GeneralSettingsGroup(PropertyItemGroup):
         self.mProfileCandidates.setItemChecked(True)
         self.mProfileCandidates.setEditColors(True)
 
+        self.mLegendGroup = LegendSettingsGroup(self)
         for pItem in [  # self.mPLegend,
             self.mProfileCandidates,
             self.mP_MaxProfiles,
             self.mP_SortBands, self.mP_BadBands, self.mP_Antialiasing,
             self.mP_BG, self.mP_FG, self.mP_SC, self.mP_CH,
+            self.mLegendGroup,
         ]:
             self.appendRow(pItem.propertyRow())
 
@@ -647,6 +690,7 @@ class GeneralSettingsGroup(PropertyItemGroup):
             'color_ch': self.crosshairColor().name(),
             'candidate_style': candidate_style,
             'show_candidates': candidate_show,
+            'legend': self.mLegendGroup.asMap(),
         }
         return d
 

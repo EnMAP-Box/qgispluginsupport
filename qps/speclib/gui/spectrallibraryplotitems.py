@@ -7,6 +7,7 @@ from typing import Dict, List, Tuple, Union, Optional, Any, Generator
 
 import numpy as np
 
+from pyqtgraph import LegendItem
 from qgis.PyQt.QtCore import pyqtSignal, QPoint, QPointF, Qt
 from qgis.PyQt.QtGui import QColor
 from qgis.PyQt.QtWidgets import QAction, QApplication, QMenu, QSlider, QWidgetAction
@@ -97,7 +98,7 @@ class SpectralXAxis(pg.AxisItem):
 class SpectralProfilePlotLegend(pg.LegendItem):
     anchorChanged = pyqtSignal(int, int)
 
-    def __init__(self, *args, offset=(-1, 10), max_items=256, **kwds):
+    def __init__(self, *args, offset=(-1, 10), max_items=999999, **kwds):
         super().__init__(*args, offset=offset, **kwds)
         self.mMaxItems = int(max_items)
 
@@ -122,24 +123,24 @@ class SpectralProfilePlotItem(pg.PlotItem):
         # self.addLegend()
         self.mTempList = []
 
-    def addLegend(self, *args, **kwargs) -> SpectralProfilePlotLegend:
-
-        if self.legend is None:
-            self.legend = SpectralProfilePlotLegend(*args, **kwargs)
-            self.legend.setParentItem(self.vb)
-
-            # add existing items
-            for item in self.items:
-                if isinstance(item, SpectralProfilePlotDataItem) and item.name() != '':
-                    self.legend.addItem(item, name=item.name())
-
-        return self.legend
-
-    def removeLegend(self):
-        if self.legend and self.legend.parentItem():
-            self.legend.opts['offset'] = None
-            self.legend.parentItem().removeItem(self.legend)
-            self.legend = None
+    # def addLegend(self, *args, **kwargs) -> SpectralProfilePlotLegend:
+    #
+    #     if self.legend is None:
+    #         self.legend = SpectralProfilePlotLegend(*args, **kwargs)
+    #         self.legend.setParentItem(self.vb)
+    #
+    #         # add existing items
+    #         for item in self.items:
+    #             if isinstance(item, SpectralProfilePlotDataItem) and item.name() != '':
+    #                 self.legend.addItem(item, name=item.name())
+    #
+    #     return self.legend
+    #
+    # def removeLegend(self):
+    #     if self.legend and self.legend.parentItem():
+    #         self.legend.opts['offset'] = None
+    #         self.legend.parentItem().removeItem(self.legend)
+    #         self.legend = None
 
     def getContextMenus(self, event):
         self.mTempList.clear()
@@ -570,7 +571,7 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
         self.mCrosshairLineH = pg.InfiniteLine(angle=0, movable=False)
 
         self.mInfoLabelCursor = pg.TextItem(text='<cursor position>', anchor=(1.0, 0.0))
-        self.mInfoHover = pg.TextItem(text='<hover info>', anchor=QPointF(0.5, 0.0))
+        self.mInfoHover = pg.TextItem(text='<hover info>', anchor=QPointF(0.0, 0.0))
         self.mInfoScatterPoints: pg.ScatterPlotItem = pg.ScatterPlotItem()
         self.mInfoScatterPoints.sigClicked.connect(self.onInfoScatterClicked)
         self.mInfoScatterPoints.setZValue(9999999)
@@ -588,7 +589,11 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
         self.scene().addItem(self.mInfoLabelCursor)
         self.scene().addItem(self.mInfoHover)
         self.mInfoHover.setParentItem(self.getPlotItem())
+        self.mInfoHover.setPos(0.2, 0)
         self.mInfoLabelCursor.setParentItem(self.getPlotItem())
+
+        self.mLegendItem = LegendItem(offset=(30, 30))
+        self.mLegendItem.setParentItem(self.viewBox())
 
         pi.addItem(self.mCrosshairLineV, ignoreBounds=True)
         pi.addItem(self.mCrosshairLineH, ignoreBounds=True)
@@ -605,6 +610,9 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
 
         # activate option "Visible Data Only" for y-axis to ignore a y-value, when the x-value is nan
         self.setAutoVisible(y=True)
+
+    def legend(self) -> LegendItem:
+        return self.mLegendItem
 
     def spectralProfilePlotDataItems(self,
                                      is_selected: Optional[bool] = None) \

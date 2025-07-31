@@ -7,6 +7,7 @@ from typing import Dict, List, Tuple, Set, Union, Optional, Iterator
 
 import numpy as np
 
+from pyqtgraph import LegendItem
 from qgis.PyQt.QtCore import QSortFilterProxyModel, Qt, pyqtSignal, QModelIndex, QPoint, QMimeData
 from qgis.PyQt.QtGui import QStandardItemModel, QStandardItem, QColor, QPen
 from qgis.PyQt.QtWidgets import QTableView, QApplication
@@ -19,8 +20,7 @@ from qgis.gui import QgsDualView
 from ..core import is_spectral_library, profile_fields, profile_field_list, profile_field_indices
 from ..core.spectrallibrary import SpectralLibraryUtils
 from ..core.spectralprofile import decodeProfileValueDict
-from ..gui.spectrallibraryplotitems import SpectralProfilePlotWidget, SpectralProfilePlotLegend, \
-    SpectralProfilePlotDataItem, PlotUpdateBlocker
+from ..gui.spectrallibraryplotitems import SpectralProfilePlotWidget, SpectralProfilePlotDataItem, PlotUpdateBlocker
 from ..gui.spectrallibraryplotmodelitems import PropertyItemGroup, GeneralSettingsGroup, \
     ProfileVisualizationGroup, RasterRendererGroup, PropertyItem, SpectralProfileLayerFieldItem, \
     ProfileColorPropertyItem
@@ -52,6 +52,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
     sigMaxProfilesExceeded = pyqtSignal()
     sigOpenAttributeTableRequest = pyqtSignal(str)
     NOT_INITIALIZED = -1
+    MAX_PROFILES_DEFAULT: int = 516
 
     class UpdateBlocker(object):
         """Blocks plot updates and proxy signals"""
@@ -162,7 +163,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
         self.insertPropertyGroup(0, self.mGeneralSettings)
         # self.insertPropertyGroup(1, self.mProfileCandidates)
 
-        self.setMaxProfiles(MAX_PROFILES_DEFAULT)
+        self.setMaxProfiles(self.MAX_PROFILES_DEFAULT)
         self._update_rate_limit = 60
         self.itemChanged.connect(self.onItemChanged)
         self.itemChanged.connect(self.updatePlotIfChanged)
@@ -263,9 +264,8 @@ class SpectralProfilePlotModel(QStandardItemModel):
             g_old = old_settings.get('general', {})
 
             # do the light work
-            from .spectrallibraryplotwidget import SpectralLibraryPlotWidget
             w: Optional[SpectralProfilePlotWidget] = self.plotWidget()
-            if g_new != g_old and isinstance(w, SpectralLibraryPlotWidget):
+            if g_new != g_old and isinstance(w, SpectralProfilePlotWidget):
 
                 # selection color
                 w.setSelectionColor(g_new['color_sc'])
@@ -277,13 +277,23 @@ class SpectralProfilePlotModel(QStandardItemModel):
                 w.setShowCrosshair(g_new['show_crosshair'])
                 w.setForegroundColor(g_new['color_fg'])
                 w.setBackground(g_new['color_bg'])
-                legend = w.getPlotItem().legend
-                if isinstance(legend, SpectralProfilePlotLegend):
-                    pen = legend.pen()
-                    pen.setColor(QColor(g_new['color_fg']))
-                    legend.setPen(pen)
+                legend = w.mLegendItem
+                if isinstance(legend, LegendItem):
+                    g_legend = g_new.get('legend', {'show': False})
                     legend.setLabelTextColor(QColor(g_new['color_fg']))
-                    legend.update()
+                    pi = w.getPlotItem()
+                    if g_legend.get('show', False):
+                        legend.setVisible(True)
+                        pi.legend = legend
+                    else:
+                        legend.setVisible(False)
+                        pi.legend = None
+
+                    # pen = legend.pen()
+                    # pen.setColor(QColor(g_new['color_fg']))
+                    # legend.setPen(pen)
+
+                    # legend.update()
 
             update_heavy = False
             # check for general settings that require a re-plot
@@ -1542,9 +1552,6 @@ class SpectralProfilePlotModel(QStandardItemModel):
     PropertyIndexRole = Qt.UserRole + 1
     PropertyDefinitionRole = Qt.UserRole + 2
     PropertyRole = Qt.UserRole + 3
-
-
-MAX_PROFILES_DEFAULT: int = 516
 
 
 def copy_items(items: List[SpectralProfilePlotDataItem],
