@@ -810,7 +810,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
         if not isinstance(self.mPlotWidget, SpectralProfilePlotWidget):
             return
 
-        logger.info(f'update #{self.nUpdates}')
+        logger.debug(f'update #{self.nUpdates}')
 
         self.nUpdates += 1
         xunit: str = self.xUnit().unit
@@ -1120,7 +1120,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
         for k, dtl in DT.items():
             dtl = np.asarray(dtl)
             infos.append(f'\t{k}: {dtl.sum():.2f} s  {dtl.mean():.3f}s n = {len(dtl)}')
-        logger.info('\n'.join(infos))
+        logger.debug('\n'.join(infos))
 
         self.updateProfileLabel(len(PLOT_ITEMS), profile_limit_reached)
 

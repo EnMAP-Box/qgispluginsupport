@@ -555,7 +555,7 @@ class SpectralProfileEditorWidget(QGroupBox):
         :param conf: dict
         """
         SpectralProfileEditorWidget.CNT += 1
-        logger.info(f' initConfig #{self.CNT}')
+        logger.debug(f'initConfig #{self.CNT}')
 
     def setProfile(self, profile: dict):
         """
