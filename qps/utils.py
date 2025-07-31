@@ -1537,6 +1537,39 @@ def copyEditorWidgetSetup(vectorLayer: QgsVectorLayer, fields: Union[QgsFields, 
     vectorLayer.updatedFields.emit()
 
 
+def compare_dicts(d1, d2, path=""):
+    """
+    Compares two dictionaries recursively and prints their differences.
+    """
+    for key in d1.keys() | d2.keys():  # Union of keys from both dicts
+        current_path = f"{path}.{key}" if path else key
+
+        if key not in d1:
+            print(f"Added: {current_path} = {d2[key]}")
+        elif key not in d2:
+            print(f"Removed: {current_path} = {d1[key]}")
+        else:
+            val1 = d1[key]
+            val2 = d2[key]
+
+            if isinstance(val1, dict) and isinstance(val2, dict):
+                compare_dicts(val1, val2, current_path)
+            elif isinstance(val1, list) and isinstance(val2, list):
+                if len(val1) != len(val2):
+                    print(f'# Changed lists: {current_path}')
+                else:
+                    for i, (v1, v2) in enumerate(zip(val1, val2)):
+                        if v1 != v2:
+                            cpath = f'{current_path}[{i}]'
+                            if isinstance(v1, dict):
+                                compare_dicts(v1, v2)
+                            else:
+                                print(f'# Changed {cpath} {v1} -> {v2}')
+
+            elif val1 != val2:
+                print(f"# Changed: {current_path}: {val1} -> {val2}")
+
+
 def check_package(name, package=None, stop_on_error=False):
     try:
         importlib.import_module(name, package)

@@ -1,6 +1,7 @@
 import datetime
 import io
 import json
+import logging
 import math
 from typing import Dict, List, Tuple, Set, Union, Optional, Iterator
 
@@ -30,6 +31,8 @@ from ...pyqtgraph.pyqtgraph import SignalProxy, ScatterPlotItem, PlotDataItem, S
 from ...pyqtgraph.pyqtgraph.GraphicsScene.mouseEvents import HoverEvent, MouseClickEvent
 from ...unitmodel import UnitConverterFunctionModel, UnitWrapper, BAND_NUMBER, BAND_INDEX, datetime64
 from ...utils import convertDateUnit, xy_pair_matrix
+
+logger = logging.getLogger(__name__)
 
 
 class SpectralProfilePlotModelProxyModel(QSortFilterProxyModel):
@@ -296,7 +299,6 @@ class SpectralProfilePlotModel(QStandardItemModel):
             if update_heavy \
                     or old_settings.get('visualizations', {}) != new_settings.get('visualizations', {}) \
                     or old_settings.get('candidates', {}) != new_settings.get('candidates', {}):
-                compare_dicts(old_settings, new_settings)
                 self.updatePlot(settings=new_settings)
 
     def dict_differences(self, dict1, dict2):
@@ -808,7 +810,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
         if not isinstance(self.mPlotWidget, SpectralProfilePlotWidget):
             return
 
-        print(f'# UPDATE PLOT {self.nUpdates} {self}')
+        logger.info(f'update #{self.nUpdates}')
 
         self.nUpdates += 1
         xunit: str = self.xUnit().unit
@@ -882,7 +884,6 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
         def add_dt(key: str, t0: datetime.datetime):
             dt = (datetime.datetime.now() - t0).total_seconds()
-
             dtl = DT.get(key, [])
             dtl.append(dt)
             DT[key] = dtl
@@ -1070,7 +1071,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
         t0 = datetime.datetime.now()
         self.mPlotWidget.viewBox()._updatingRange = True
         self.mPlotWidget.plotItem.clearPlots()
-        add_dt('clearPlots', t0)
+        add_dt('clear plot', t0)
         t0 = datetime.datetime.now()
 
         def func_scatter_tip(pi: SpectralProfilePlotDataItem):
@@ -1115,9 +1116,11 @@ class SpectralProfilePlotModel(QStandardItemModel):
                 self.mPlotWidget.plotItem.addItem(p)
         add_dt('add plot items', t0)
 
+        infos = ['update durations:']
         for k, dtl in DT.items():
             dtl = np.asarray(dtl)
-            print(f'{k}: {dtl.sum():.2f} s  {dtl.mean():.3f}s n = {len(dtl)}')
+            infos.append(f'\t{k}: {dtl.sum():.2f} s  {dtl.mean():.3f}s n = {len(dtl)}')
+        logger.info('\n'.join(infos))
 
         self.updateProfileLabel(len(PLOT_ITEMS), profile_limit_reached)
 
@@ -1542,36 +1545,6 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
 
 MAX_PROFILES_DEFAULT: int = 516
-
-
-def compare_dicts(d1, d2, path=""):
-    for key in d1.keys() | d2.keys():  # Union of keys from both dicts
-        current_path = f"{path}.{key}" if path else key
-
-        if key not in d1:
-            print(f"Added: {current_path} = {d2[key]}")
-        elif key not in d2:
-            print(f"Removed: {current_path} = {d1[key]}")
-        else:
-            val1 = d1[key]
-            val2 = d2[key]
-
-            if isinstance(val1, dict) and isinstance(val2, dict):
-                compare_dicts(val1, val2, current_path)
-            elif isinstance(val1, list) and isinstance(val2, list):
-                if len(val1) != len(val2):
-                    print(f'# Changed lists: {current_path}')
-                else:
-                    for i, (v1, v2) in enumerate(zip(val1, val2)):
-                        if v1 != v2:
-                            cpath = f'{current_path}[{i}]'
-                            if isinstance(v1, dict):
-                                compare_dicts(v1, v2)
-                            else:
-                                print(f'# Changed {cpath} {v1} -> {v2}')
-
-            elif val1 != val2:
-                print(f"# Changed: {current_path}: {val1} -> {val2}")
 
 
 def copy_items(items: List[SpectralProfilePlotDataItem],
