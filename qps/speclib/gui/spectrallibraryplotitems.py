@@ -3,17 +3,17 @@ import datetime
 import sys
 import textwrap
 import warnings
-from typing import Dict, List, Tuple, Union, Optional, Any, Generator
+from typing import Any, Dict, Generator, List, Optional, Tuple, Union
 
 import numpy as np
 
-from pyqtgraph import LegendItem
 from qgis.PyQt.QtCore import pyqtSignal, QPoint, QPointF, Qt
 from qgis.PyQt.QtGui import QColor
 from qgis.PyQt.QtWidgets import QAction, QApplication, QMenu, QSlider, QWidgetAction
 from ...plotstyling.plotstyling import PlotStyle, PlotWidgetStyle
 from ...pyqtgraph import pyqtgraph as pg
 from ...unitmodel import datetime64, UnitWrapper
+from ...pyqtgraph.pyqtgraph.graphicsItems.PlotDataItem import PlotDataItem
 from ...utils import HashablePointF
 
 
@@ -298,7 +298,7 @@ def default_selection_style(style: PlotStyle) -> PlotStyle:
     return style2
 
 
-class SpectralProfilePlotDataItem(pg.PlotDataItem):
+class SpectralProfilePlotDataItem(PlotDataItem):
     """
     A pyqtgraph.PlotDataItem to plot a SpectralProfile
     """
@@ -571,7 +571,7 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
         self.mCrosshairLineH = pg.InfiniteLine(angle=0, movable=False)
 
         self.mInfoLabelCursor = pg.TextItem(text='<cursor position>', anchor=(1.0, 0.0))
-        self.mInfoHover = pg.TextItem(text='<hover info>', anchor=QPointF(0.0, 0.0))
+        self.mInfoHover = pg.TextItem(text='', anchor=QPointF(0.0, 0.0))
         self.mInfoScatterPoints: pg.ScatterPlotItem = pg.ScatterPlotItem()
         self.mInfoScatterPoints.sigClicked.connect(self.onInfoScatterClicked)
         self.mInfoScatterPoints.setZValue(9999999)
@@ -589,10 +589,10 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
         self.scene().addItem(self.mInfoLabelCursor)
         self.scene().addItem(self.mInfoHover)
         self.mInfoHover.setParentItem(self.getPlotItem())
-        self.mInfoHover.setPos(0.2, 0)
+        self.mInfoHover.setPos(50, 0)
         self.mInfoLabelCursor.setParentItem(self.getPlotItem())
 
-        self.mLegendItem = LegendItem(offset=(30, 30))
+        self.mLegendItem = pg.LegendItem(offset=(100, 30))
         self.mLegendItem.setParentItem(self.viewBox())
 
         pi.addItem(self.mCrosshairLineV, ignoreBounds=True)
@@ -611,7 +611,7 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
         # activate option "Visible Data Only" for y-axis to ignore a y-value, when the x-value is nan
         self.setAutoVisible(y=True)
 
-    def legend(self) -> LegendItem:
+    def legend(self) -> pg.LegendItem:
         return self.mLegendItem
 
     def spectralProfilePlotDataItems(self,

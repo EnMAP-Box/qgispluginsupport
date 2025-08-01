@@ -3,33 +3,30 @@ import io
 import json
 import logging
 import math
-from typing import Dict, List, Tuple, Set, Union, Optional, Iterator
+from typing import Dict, Iterator, List, Optional, Set, Tuple, Union
 
 import numpy as np
 
-from pyqtgraph import LegendItem
-from qgis.PyQt.QtCore import QSortFilterProxyModel, Qt, pyqtSignal, QModelIndex, QPoint, QMimeData
-from qgis.PyQt.QtGui import QStandardItemModel, QStandardItem, QColor, QPen
-from qgis.PyQt.QtWidgets import QTableView, QApplication
-from qgis.PyQt.QtXml import QDomElement, QDomDocument
-from qgis.core import QgsVectorLayerCache, QgsProject, QgsMarkerSymbol, QgsSingleSymbolRenderer, QgsVectorLayer, \
-    QgsProperty, QgsFeatureRenderer, QgsExpressionContext, QgsFeature, QgsRenderContext, QgsSymbol, \
-    QgsExpressionContextScope, QgsReadWriteContext, QgsExpression, QgsFeatureRequest, QgsExpressionContextUtils, \
-    QgsField
+from qgis.PyQt.QtCore import pyqtSignal, QMimeData, QModelIndex, QPoint, QSortFilterProxyModel, Qt
+from qgis.PyQt.QtGui import QColor, QPen, QStandardItem, QStandardItemModel
+from qgis.PyQt.QtWidgets import QApplication, QTableView
+from qgis.PyQt.QtXml import QDomDocument, QDomElement
+from qgis.core import QgsExpression, QgsExpressionContext, QgsExpressionContextScope, QgsExpressionContextUtils, \
+    QgsFeature, QgsFeatureRenderer, QgsFeatureRequest, QgsField, QgsMarkerSymbol, QgsProject, QgsProperty, \
+    QgsReadWriteContext, QgsRenderContext, QgsSingleSymbolRenderer, QgsSymbol, QgsVectorLayer, QgsVectorLayerCache
 from qgis.gui import QgsDualView
-from ..core import is_spectral_library, profile_fields, profile_field_list, profile_field_indices
+from ..core import is_spectral_library, profile_field_indices, profile_field_list, profile_fields
 from ..core.spectrallibrary import SpectralLibraryUtils
 from ..core.spectralprofile import decodeProfileValueDict
-from ..gui.spectrallibraryplotitems import SpectralProfilePlotWidget, SpectralProfilePlotDataItem, PlotUpdateBlocker
-from ..gui.spectrallibraryplotmodelitems import PropertyItemGroup, GeneralSettingsGroup, \
-    ProfileVisualizationGroup, RasterRendererGroup, PropertyItem, SpectralProfileLayerFieldItem, \
-    ProfileColorPropertyItem
+from ..gui.spectrallibraryplotitems import PlotUpdateBlocker, SpectralProfilePlotDataItem, SpectralProfilePlotWidget
+from ..gui.spectrallibraryplotmodelitems import GeneralSettingsGroup, ProfileColorPropertyItem, \
+    ProfileVisualizationGroup, PropertyItem, PropertyItemGroup, RasterRendererGroup, SpectralProfileLayerFieldItem
 from ..gui.spectrallibraryplotunitmodels import SpectralProfilePlotXAxisUnitModel
 from ..gui.spectralprofilefieldmodel import SpectralProfileFieldListModel
 from ...plotstyling.plotstyling import PlotStyle
-from ...pyqtgraph.pyqtgraph import SignalProxy, ScatterPlotItem, PlotDataItem, SpotItem, PlotCurveItem
+from ...pyqtgraph.pyqtgraph import (LegendItem, PlotCurveItem, PlotDataItem, ScatterPlotItem, SignalProxy, SpotItem)
 from ...pyqtgraph.pyqtgraph.GraphicsScene.mouseEvents import HoverEvent, MouseClickEvent
-from ...unitmodel import UnitConverterFunctionModel, UnitWrapper, BAND_NUMBER, BAND_INDEX, datetime64
+from ...unitmodel import BAND_INDEX, BAND_NUMBER, datetime64, UnitConverterFunctionModel, UnitWrapper
 from ...utils import convertDateUnit, xy_pair_matrix
 
 logger = logging.getLogger(__name__)
@@ -281,12 +278,22 @@ class SpectralProfilePlotModel(QStandardItemModel):
                 if isinstance(legend, LegendItem):
                     g_legend = g_new.get('legend', {'show': False})
                     legend.setLabelTextColor(QColor(g_new['color_fg']))
+                    legend.setLabelTextSize(g_legend.get('text_size', '9px'))
+                    legend.setColumnCount(g_legend.get('columns', 1))
                     pi = w.getPlotItem()
-                    if g_legend.get('show', False):
+                    show_legend = g_legend.get('show', False)
+                    update_legend_items = legend.isVisible() != show_legend
+                    if show_legend:
                         legend.setVisible(True)
                         pi.legend = legend
+                        if update_legend_items:
+                            legend.clear()
+                            for item in pi.items:
+                                if isinstance(item, SpectralProfilePlotDataItem):
+                                    legend.addItem(item, item.name())
                     else:
                         legend.setVisible(False)
+                        legend.clear()
                         pi.legend = None
 
                     # pen = legend.pen()
@@ -477,6 +484,13 @@ class SpectralProfilePlotModel(QStandardItemModel):
         return self.mPlotWidget
 
     sigShowSelectedFeaturesOnlyChanged = pyqtSignal(bool)
+
+    def setShowLegend(self, b: bool):
+        """
+        Show or hides the legend
+        :param b: bool
+        """
+        self.generalSettings().setShowLegend(b)
 
     def setShowSelectedFeaturesOnly(self, b: bool):
         if self.mShowSelectedFeaturesOnly != b:
@@ -802,8 +816,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
                 else:
                     SELECTED_FEATURES[lid] = []
             item.setCurveIsSelected(fid in SELECTED_FEATURES[lid])
-
-            s = ""
+        self.plotWidget().mLegendItem.update()
 
     def updatePlot(self,
                    settings: Optional[dict] = None):  #
@@ -1081,6 +1094,8 @@ class SpectralProfilePlotModel(QStandardItemModel):
         t0 = datetime.datetime.now()
         self.mPlotWidget.viewBox()._updatingRange = True
         self.mPlotWidget.plotItem.clearPlots()
+        self.plotWidget().legend().clear()
+
         add_dt('clear plot', t0)
         t0 = datetime.datetime.now()
 

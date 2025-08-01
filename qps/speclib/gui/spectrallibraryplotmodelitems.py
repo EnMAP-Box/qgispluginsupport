@@ -24,26 +24,24 @@
 """
 import json
 import sys
-from typing import Any, List, Union, Optional
+from typing import Any, List, Optional, Union
 
 import numpy as np
 
-from qgis.PyQt.QtCore import QAbstractItemModel
-from qgis.PyQt.QtCore import QMimeData, QModelIndex, QSize, Qt
+from qgis.PyQt.QtWidgets import QCheckBox, QComboBox, QDoubleSpinBox, QHBoxLayout, QLineEdit, QMenu, QSizePolicy, \
+    QSpinBox, QWidget
+from qgis.PyQt.QtCore import QAbstractItemModel, QMimeData, QModelIndex, QSize, Qt
 from qgis.PyQt.QtGui import QColor, QIcon, QPen, QPixmap, QStandardItem, QStandardItemModel
-from qgis.PyQt.QtWidgets import QCheckBox, QComboBox, QDoubleSpinBox, QHBoxLayout, QMenu, QSizePolicy, QSpinBox, QWidget
 from qgis.PyQt.QtXml import QDomDocument, QDomElement
 from qgis.core import Qgis, QgsExpression, QgsExpressionContext, QgsExpressionContextGenerator, \
-    QgsExpressionContextScope, QgsExpressionContextUtils, QgsFeature, QgsFeatureRenderer, QgsField, \
-    QgsHillshadeRenderer, QgsMultiBandColorRenderer, QgsPalettedRasterRenderer, QgsProperty, QgsPropertyDefinition, \
-    QgsRasterContourRenderer, QgsRasterLayer, QgsRasterRenderer, QgsReadWriteContext, QgsRenderContext, \
-    QgsSingleBandColorDataRenderer, QgsSingleBandGrayRenderer, QgsSingleBandPseudoColorRenderer, QgsTextFormat, \
-    QgsVectorLayer, QgsWkbTypes, QgsXmlUtils
-from qgis.core import QgsFeatureRequest
-from qgis.core import QgsProject, QgsMapLayer
-from qgis.gui import QgsColorButton, QgsDoubleSpinBox, QgsFieldExpressionWidget, QgsPropertyOverrideButton, QgsSpinBox
-from qgis.gui import QgsMapLayerComboBox
-from ..core import is_spectral_library, is_profile_field
+    QgsExpressionContextScope, QgsExpressionContextUtils, QgsFeature, QgsFeatureRenderer, QgsFeatureRequest, QgsField, \
+    QgsHillshadeRenderer, QgsMapLayer, QgsMultiBandColorRenderer, QgsPalettedRasterRenderer, QgsProject, QgsProperty, \
+    QgsPropertyDefinition, QgsRasterContourRenderer, QgsRasterLayer, QgsRasterRenderer, QgsReadWriteContext, \
+    QgsRenderContext, QgsSingleBandColorDataRenderer, QgsSingleBandGrayRenderer, QgsSingleBandPseudoColorRenderer, \
+    QgsTextFormat, QgsVectorLayer, QgsWkbTypes, QgsXmlUtils
+from qgis.gui import QgsColorButton, QgsDoubleSpinBox, QgsFieldExpressionWidget, QgsMapLayerComboBox, \
+    QgsPropertyOverrideButton, QgsSpinBox
+from ..core import is_profile_field, is_spectral_library
 from ...layerfielddialog import LayerFieldWidget
 from ...plotstyling.plotstyling import PlotStyle, PlotStyleButton, PlotWidgetStyle
 from ...pyqtgraph.pyqtgraph import InfiniteLine, PlotDataItem
@@ -278,6 +276,19 @@ class PropertyItem(PropertyItemBase):
 
     # def signals(self):
     #    return self.mSignals
+
+    def expressionContext(self) -> QgsExpressionContext:
+        """
+        Returns an expression context that can be used
+        to evaluate QgsExpressions.
+        :return:
+        """
+        parent = self.parent()
+        if parent is not None and hasattr(parent, 'expressionContextGenerator'):
+            return parent.expressionContextGenerator().createExpressionContext()
+
+        context = QgsExpressionContext()
+        return context
 
     def createEditor(self, parent):
 
@@ -517,27 +528,36 @@ class LegendSettingsGroup(PropertyItemGroup):
         self.setDropEnabled(False)
         self.setDragEnabled(False)
 
-        self.mP_MaxProfiles = QgsPropertyItem('legend_max_profiles')
-        self.mP_MaxProfiles.setDefinition(QgsPropertyDefinition(
-            'Max. Profiles', 'Maximum number of profiles listed in legend',
-            QgsPropertyDefinition.StandardPropertyTemplate.IntegerPositive))
-        self.mP_MaxProfiles.setProperty(QgsProperty.fromValue(64))
+        # self.mP_MaxProfiles = QgsPropertyItem('legend_max_profiles')
+        # self.mP_MaxProfiles.setDefinition(QgsPropertyDefinition(
+        #    'Max. Profiles', 'Maximum number of profiles listed in legend',
+        #    QgsPropertyDefinition.StandardPropertyTemplate.IntegerPositive))
+        # self.mP_MaxProfiles.setProperty(QgsProperty.fromValue(64))
         # labelTextSize
-        self.m_textsize = QgsPropertyItem('legend_text_size')
-        self.m_textsize.setDefinition(QgsPropertyDefinition(
-            'Text size', 'Legend text size', QgsPropertyDefinition.StandardPropertyTemplate.String))
-        self.m_textsize.setProperty(QgsProperty.fromValue('9px'))
+
+        self.m_columns = QgsPropertyItem('legend_columns')
+        self.m_columns.setDefinition(QgsPropertyDefinition(
+            'Columns', 'Number of columns in legend',
+            QgsPropertyDefinition.StandardPropertyTemplate.IntegerPositiveGreaterZero
+        ))
+        self.m_columns.setProperty(QgsProperty.fromValue(1))
+        # self.m_textsize = PropertyItem('text_size', 'Text Size')
+        self.m_textsize = TextItem('legend_text_size', 'Text Size')
+        self.m_textsize.setText('9px')
+        self.m_textsize.setToolTip('Text size in legend')
 
         for pItem in [  # self.mPLegend,
-            self.mP_MaxProfiles, self.m_textsize
+            # self.mP_MaxProfiles,
+            self.m_columns, self.m_textsize
         ]:
             self.appendRow(pItem.propertyRow())
 
     def asMap(self) -> dict:
         d = {
             'show': self.checkState() == Qt.Checked,
-            'text_size': self.m_textsize.value(),
-            'max_items': self.mP_MaxProfiles.value(),
+            'text_size': self.m_textsize.text(),
+            # 'max_items': self.mP_MaxProfiles.value(),
+            'columns': max(1, self.m_columns.value()),
         }
 
         return d
@@ -705,6 +725,10 @@ class GeneralSettingsGroup(PropertyItemGroup):
 
     def maximumProfiles(self) -> int:
         return self.mP_MaxProfiles.value()
+
+    def setShowLegend(self, value: bool):
+        state = Qt.Checked if value else Qt.Unchecked
+        self.mLegendGroup.setCheckState(state)
 
     def setMaximumProfiles(self, n: int):
         assert n >= 0
@@ -952,6 +976,31 @@ class SpectralProfileLayerFieldItem(PropertyItem):
         return super().data(role)
 
 
+class TextItem(PropertyItem):
+
+    def __init__(self, *args, **kwds):
+        super().__init__(*args, **kwds)
+
+        self.setEditable(True)
+
+    def text(self):
+        return self.data(Qt.EditRole)
+
+    def setText(self, text: str):
+        assert isinstance(text, str)
+        self.setData(text, Qt.EditRole)
+
+    def createEditor(self, parent: QWidget) -> QLineEdit:
+        return QLineEdit(parent)
+
+    def setEditorData(self, editor: QLineEdit, index: QModelIndex):
+        editor.setText(self.text())
+
+    def setModelData(self, editor: QLineEdit, bridge, index: QModelIndex):
+        if isinstance(editor, QLineEdit):
+            self.setText(editor.text())
+
+
 class QgsTextFormatItem(PropertyItem):
 
     def __init__(self, *args, **kwds):
@@ -1023,6 +1072,7 @@ class QgsPropertyItem(PropertyItem):
         self.mDefinition = propertyDefinition
         self.label().setText(propertyDefinition.name())
         self.label().setToolTip(propertyDefinition.description())
+        self.setToolTip(propertyDefinition.description())
 
     def definition(self) -> QgsPropertyDefinition:
         return self.mDefinition
@@ -1082,6 +1132,7 @@ class QgsPropertyItem(PropertyItem):
                           QgsPropertyDefinition.StandardPropertyTemplate.DoublePositive,
                           QgsPropertyDefinition.StandardPropertyTemplate.Double0To1]:
             w = QgsDoubleSpinBox(parent=parent)
+
         else:
 
             w = QgsFieldExpressionWidget(parent=parent)
@@ -1147,18 +1198,23 @@ class QgsPropertyItem(PropertyItem):
 
             editor.setMinimum(v_min)
             editor.setMaximum(v_max)
-            value = self.value(defaultValue=0.0)
+
+            value = self.value(self.expressionContext(), defaultValue=0.0)
             if isinstance(editor, QgsDoubleSpinBox):
                 editor.setShowClearButton(True)
                 editor.setClearValue(value)
             editor.setValue(value)
+        elif isinstance(editor, QLineEdit):
+
+            value, success = self.property().valueAsString(self.expressionContext())
+            editor.setText(value)
 
         elif isinstance(editor, QCheckBox):
-            b = self.property().valueAsBool(QgsExpressionContext())
+            b = self.property().valueAsBool(self.expressionContext())[0]
             editor.setCheckState(Qt.Checked if b else Qt.Unchecked)
 
         elif isinstance(editor, QComboBox):
-            value, success = self.property().value(QgsExpressionContext())
+            value, success = self.property().value(self.expressionContext())
             if success:
                 for r in range(editor.count()):
                     if editor.itemData(r) == value:
@@ -1184,6 +1240,9 @@ class QgsPropertyItem(PropertyItem):
 
         elif isinstance(w, (QgsSpinBox, QgsDoubleSpinBox)):
             property = QgsProperty.fromValue(w.value())
+
+        elif isinstance(w, QLineEdit):
+            property = QgsProperty.fromValue(w.text())
 
         if isinstance(property, QgsProperty):
             self.setProperty(property)
@@ -1885,8 +1944,8 @@ class ProfileVisualizationGroup(PropertyItemGroup):
         return self.mPField.mLayerID
 
     def layer(self) -> QgsMapLayer:
-        """Returns the layer instance realting to the layerId.
-        Requires that the layer is stored in the provide QgsProject instance.
+        """Returns the layer instance relating to the layerId.
+        Requires that the layer is stored in the provided QgsProject instance.
         """
         return self.project().mapLayer(self.layerId())
 

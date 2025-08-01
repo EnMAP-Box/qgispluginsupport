@@ -1,9 +1,7 @@
 import datetime
 import logging
-import os
 from typing import Optional
 
-os.environ['PYQTGRAPH_QT_LIB'] = 'PyQt5'
 from qgis.core import QgsVectorLayer
 from qps import initAll
 from qps.speclib.gui.spectrallibraryplotitems import SpectralProfilePlotDataItem
