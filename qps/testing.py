@@ -25,6 +25,7 @@
 ***************************************************************************
 """
 import gc
+import hashlib
 import inspect
 import itertools
 import os
@@ -624,11 +625,14 @@ class TestCase(QgisTestCase):
     def createTestOutputDirectory(self,
                                   root: Optional[str] = 'test-outputs',
                                   subdir: Optional[Union[str, Path]] = None,
-                                  cleanup: bool = False) -> Path:
+                                  cleanup: bool = False,
+                                  max_length: int = 200) -> Path:
         """
         Returns the path to a test output directory.
         Defaults to: <repo>/<root>/<test module>/<test class>/<test method>
 
+        :param max_length: the maximum length of the path. If the path exceeds this limit, it will be hashed
+                           and the has used for a directory <DIR_REPO>/<root>/<hash>.
         :param root: str, name of the folder for test output below the repository root. Defaults to <repo>/test-outputs.
         :param subdir: str or Path with subdirectories to append.
         :param cleanup: bool, set True to delete existing test ouptuts.
@@ -655,6 +659,13 @@ class TestCase(QgisTestCase):
             folders.append(subdir)
 
         p = Path(DIR_REPO) / root / Path(*folders)
+
+        if len(p.as_posix()) > max_length:
+            p2 = Path(DIR_REPO) / root / hashlib.md5(p.as_posix().encode()).hexdigest()
+            info = [f'Path exceeds max_length ({max_length}: {p}).',
+                    f'Use MD5 hash instead: {p2}']
+            warnings.warn('\n'.join(info), stacklevel=2)
+            p = p2
 
         if cleanup and p.exists() and p.is_dir():
             shutil.rmtree(p)
