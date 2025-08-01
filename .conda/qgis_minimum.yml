@@ -1,4 +1,6 @@
-# run: conda env create --file=qgis_gdal3.9.yml
+# install: conda env create -n qgis_minimum --file=qgis_minimum.yml
+# update : conda env update -n qgis_minimum --file=qgis_minimum.yml --prune
+# remove : conda env remove -n qgis_minimum
 # see also https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html#creating-an-environment-from-an-environment-yml-file
 name: qgis_minimum
 channels:
