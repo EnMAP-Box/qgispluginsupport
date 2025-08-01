@@ -81,16 +81,16 @@ class TestSpeclibIO_SVC(TestCase):
         dt = datetime.now().replace(microsecond=0)
 
         formats = [
+            '%d.%m.%Y %H:%M:%S',  # 27.05.2025 09:39:32
             '%m/%d/%Y %H:%M:%S%p',  # 5/27/2025 9:39:32AM
             '%m/%d/%Y %H:%M:%S %p',  # 5/27/2025 9:39:32 AM
             '%m/%d/%Y %H:%M:%S',  # 5/27/2025 9:39:32
-            '%d.%m.%Y %H:%M:%S',  # 27.05.2025 09:39:32
         ]
         self.assertEqual(dt, SVCSigFile._readDateTime(dt.isoformat()))
         for fmt in formats:
             text = dt.strftime(fmt)
             dt2 = SVCSigFile._readDateTime(text)
-            self.assertEqual(dt, dt2)
+            self.assertEqual(dt, dt2, msg=f'Failed for format "{fmt}" : {text}')
 
     # @unittest.skipIf(TestCase.runsInCI(), 'Skipped CI')
     def test_speclib(self):
@@ -112,6 +112,9 @@ class TestSpeclibIO_SVC(TestCase):
         conf = {}
         alg = ImportSpectralProfiles()
         alg.initAlgorithm(conf)
+
+        alg.prepareAlgorithm(par, context, feedback)
+        results = alg.processAlgorithm(par, context, feedback)
 
         results, success = alg.run(par, context, feedback, conf)
         self.assertTrue(success, msg=feedback.textLog())
