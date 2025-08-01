@@ -14,7 +14,6 @@ from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QGroupBox, QLabel, QLineEdit, QVBoxLayout, QWidget
 from qgis.gui import QgisInterface, QgsGui, QgsLayerTreeView, QgsOptionsPageWidget, QgsOptionsWidgetFactory
 from qgis.core import QgsApplication, QgsLayerTree, QgsLayerTreeModel, QgsProcessingRegistry, QgsProject
-
 import qps.testing
 from qps.testing import QgsOptionsMockup, start_app, TestCase
 from scripts.install_testdata import DIR_REPO
@@ -186,6 +185,14 @@ class TestCasesClassTesting(TestCase):
             iface.unregisterOptionsWidgetFactory(factory)
 
     def test_testfolders(self):
+
+        # shorten long-paths
+        subdirs = [f'sub{i}' for i in range(100)]
+        subdir = Path(*subdirs)
+        assert len(subdir.as_posix()) > 100
+        p = self.createTestOutputDirectory(subdir=subdir, max_length=100)
+        self.assertTrue(p.is_dir())
+
         p = self.createTestOutputDirectory()
         expected = DIR_REPO / 'test-outputs' / __name__ / self.__class__.__name__ / 'test_testfolders'
         self.assertEqual(p, expected)

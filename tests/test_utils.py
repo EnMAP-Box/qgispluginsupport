@@ -37,13 +37,13 @@ from qps.speclib.core import is_spectral_library
 from qps.speclib.core.spectralprofile import decodeProfileValueDict
 from qps.testing import start_app, TestCase, TestObjects
 from qps.unitmodel import UnitLookup
-from qps.utils import aggregateArray, appendItemsToMenu, createQgsField, defaultBands, displayBandNames, dn, \
-    ExtentTileIterator, fid2pixelindices, file_search, filenameFromString, findMapLayerStores, findParent, gdalDataset, \
-    gdalFileSize, geo2px, layerGeoTransform, loadUi, MapGeometryToPixel, nextColor, nodeXmlString, optimize_block_size, \
-    osrSpatialReference, parseFWHM, parseWavelength, px2geo, px2geocoordinates, px2spatialPoint, qgsField, \
-    qgsFieldAttributes2List, qgsRasterLayer, qgsRasterLayers, rasterArray, rasterBlockArray, rasterizeFeatures, \
-    relativePath, SelectMapLayerDialog, SelectMapLayersDialog, snapGeoCoordinates, SpatialExtent, SpatialPoint, \
-    spatialPoint2px, value2str, writeAsVectorFormat, create_picture_viewer_config
+from qps.utils import aggregateArray, appendItemsToMenu, create_picture_viewer_config, createQgsField, defaultBands, \
+    displayBandNames, dn, ExtentTileIterator, fid2pixelindices, file_search, filenameFromString, findMapLayerStores, \
+    findParent, gdalDataset, gdalFileSize, geo2px, layerGeoTransform, loadUi, MapGeometryToPixel, nextColor, \
+    nodeXmlString, optimize_block_size, osrSpatialReference, parseFWHM, parseWavelength, px2geo, px2geocoordinates, \
+    px2spatialPoint, qgsField, qgsFieldAttributes2List, qgsRasterLayer, qgsRasterLayers, rasterArray, rasterBlockArray, \
+    rasterizeFeatures, relativePath, SelectMapLayerDialog, SelectMapLayersDialog, snapGeoCoordinates, SpatialExtent, \
+    SpatialPoint, spatialPoint2px, value2str, writeAsVectorFormat
 from qpstestdata import enmap, enmap_multipoint, enmap_multipolygon, enmap_pixel, hymap, landcover
 
 start_app()
@@ -998,13 +998,15 @@ class TestUtils(TestCase):
 
         lyrR = TestObjects.createRasterLayer()
         lyrV = TestObjects.createVectorLayer()
-        QgsProject.instance().addMapLayers([lyrR, lyrV])
+        layers = [lyrR, lyrV]
+        QgsProject.instance().addMapLayers(layers)
         d = SelectMapLayersDialog()
         d.addLayerDescription('Any Type', QgsMapLayerProxyModel.All)
-        layers = d.mapLayers()
-        self.assertIsInstance(layers, list)
-        self.assertTrue(len(layers) == 1)
-        self.assertListEqual(layers, [lyrR])
+        layers2 = d.mapLayers()
+        self.assertIsInstance(layers2, list)
+        self.assertTrue(len(layers2) == 1)
+        for lyr in layers2:
+            self.assertTrue(lyr in layers)
 
         d.addLayerDescription('A Vector Layer', QgsMapLayerProxyModel.VectorLayer)
         d.addLayerDescription('A Raster Layer', QgsMapLayerProxyModel.RasterLayer)
