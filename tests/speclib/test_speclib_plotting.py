@@ -105,7 +105,7 @@ class TestSpeclibPlotting(TestCase):
             return
 
         speclib = QgsVectorLayer(p_large)
-        speclib.setSubsetString('"fid" <= 5')
+        speclib.setSubsetString('"fid" <= 200')
         self.assertTrue(SpectralLibraryUtils.isSpectralLibrary(speclib))
 
         slw = SpectralLibraryWidget(speclib=speclib)

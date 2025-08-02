@@ -683,6 +683,17 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
         assert isinstance(b, bool)
         self.mShowCrosshair = b
 
+    def setBackgroundColor(self, color: Union[str, QColor]):
+        c = QColor(color)
+        self.setBackground(c)
+
+        bgBrush = mkBrush(c)
+        c2 = bgBrush.color()
+        c2.setAlpha(128)
+        bgBrush.setColor(c2)
+        self.mInfoHover.fill = bgBrush
+        self.mInfoLabelCursor.fill = bgBrush
+
     def setForegroundColor(self, color: Union[str, QColor]):
         c = QColor(color)
 

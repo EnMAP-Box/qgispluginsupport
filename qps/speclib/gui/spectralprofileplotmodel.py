@@ -8,7 +8,7 @@ from typing import Dict, Iterator, List, Optional, Set, Tuple, Union
 import numpy as np
 
 from qgis.PyQt.QtCore import pyqtSignal, QMimeData, QModelIndex, QPoint, QSortFilterProxyModel, Qt
-from qgis.PyQt.QtGui import QColor, QPen, QStandardItem, QStandardItemModel
+from qgis.PyQt.QtGui import QColor, QStandardItem, QStandardItemModel
 from qgis.PyQt.QtWidgets import QApplication, QTableView
 from qgis.PyQt.QtXml import QDomDocument, QDomElement
 from qgis.core import QgsExpression, QgsExpressionContext, QgsExpressionContextScope, QgsExpressionContextUtils, \
@@ -24,8 +24,8 @@ from ..gui.spectrallibraryplotmodelitems import GeneralSettingsGroup, ProfileCol
 from ..gui.spectrallibraryplotunitmodels import SpectralProfilePlotXAxisUnitModel
 from ..gui.spectralprofilefieldmodel import SpectralProfileFieldListModel
 from ...plotstyling.plotstyling import PlotStyle
-from ...pyqtgraph.pyqtgraph import (LegendItem, PlotCurveItem, PlotDataItem, ScatterPlotItem, SignalProxy,
-                                    SpotItem)
+from ...pyqtgraph.pyqtgraph import (LegendItem, mkBrush, mkPen, PlotCurveItem, PlotDataItem, ScatterPlotItem,
+                                    SignalProxy, SpotItem)
 from ...pyqtgraph.pyqtgraph.GraphicsScene.mouseEvents import HoverEvent, MouseClickEvent
 from ...unitmodel import BAND_INDEX, BAND_NUMBER, datetime64, UnitConverterFunctionModel, UnitWrapper
 from ...utils import convertDateUnit, xy_pair_matrix
@@ -275,7 +275,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
                 w.setShowCrosshair(g_new['show_crosshair'])
                 w.setForegroundColor(g_new['color_fg'])
-                w.setBackground(g_new['color_bg'])
+                w.setBackgroundColor(g_new['color_bg'])
                 legend = w.mLegendItem
                 if isinstance(legend, LegendItem):
                     g_legend = g_new.get('legend', {'show': False})
@@ -698,13 +698,21 @@ class SpectralProfilePlotModel(QStandardItemModel):
                     xu = self.xUnit().unit
                     self.mPlotWidget.xAxis().unit()
                     for spot in points:
-                        txt = f'{parent.name()}<br>{spot.index()}: {spot.pos().x()} {xu} , {spot.pos().y()}'
+                        txt = f'<i>{parent.name()}</i><br>[{spot.index()}] {spot.pos().x()}, {spot.pos().y()}'
                         self.mHoverHTML[parent] = txt
                 else:
                     if parent in self.mHoverHTML:
                         self.mHoverHTML.pop(parent)
 
-        self.mPlotWidget.mInfoHover.setHtml('<br>'.join(self.mHoverHTML.values()))
+        n_max = 5
+        html = []
+        for i, txt in enumerate(self.mHoverHTML.values()):
+            if i == n_max:
+                html.append('...')
+                break
+            else:
+                html.append(txt)
+        self.mPlotWidget.mInfoHover.setHtml('<br>'.join(html))
 
     def onPointsClicked(self, item: PlotDataItem, spots: List[SpotItem], event: MouseClickEvent, **kwarg):
         """
@@ -1128,7 +1136,8 @@ class SpectralProfilePlotModel(QStandardItemModel):
             return scatter_tooltip
 
         with PlotUpdateBlocker(self.mPlotWidget) as blocker:
-            hoverPen = QPen(self.mCurrentSelectionColor)
+            hoverPen = mkPen(self.mCurrentSelectionColor)
+            hoverBrush = mkBrush(self.mCurrentSelectionColor)
             for p in PLOT_ITEMS:
                 p: SpectralProfilePlotDataItem
                 p.sigClicked.connect(self.onCurveClicked)
@@ -1140,6 +1149,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
                 p.scatter.setData(  # hoverSymbol=p.scatter.opts['symbol'],
                     hoverPen=hoverPen,
+                    hoverBrush=hoverBrush,
                     hoverable=True,
                     tip=func_scatter_tooltip(p),
                     hoverSize=p.scatter.opts.get('size', 5) + 2)
