@@ -542,7 +542,7 @@ class LegendSettingsGroup(PropertyItemGroup):
         ))
         self.m_columns.setProperty(QgsProperty.fromValue(1))
         # self.m_textsize = PropertyItem('text_size', 'Text Size')
-        self.m_textsize = TextItem('legend_text_size', 'Text Size')
+        self.m_textsize = TextItem('legend_text_size', labelName='Text Size')
         self.m_textsize.setText('9px')
         self.m_textsize.setToolTip('Text size in legend')
 
@@ -577,6 +577,15 @@ class GeneralSettingsGroup(PropertyItemGroup):
         self.setEditable(False)
         self.setIcon(QIcon(':/images/themes/default/console/iconSettingsConsole.svg'))
 
+        self.mShowToolTips = QgsPropertyItem('Tooltips')
+        self.mShowToolTips.setDefinition(
+            QgsPropertyDefinition(
+                'Tooltips', 'Show tooltips',
+                QgsPropertyDefinition.StandardPropertyTemplate.Boolean)
+
+        )
+        self.mShowToolTips.setProperty(QgsProperty.fromValue(False))
+
         self.mP_SortBands = QgsPropertyItem('SortBands')
         self.mP_SortBands.setDefinition(
             QgsPropertyDefinition(
@@ -598,31 +607,31 @@ class GeneralSettingsGroup(PropertyItemGroup):
         self.mP_MaxProfiles.setDefinition(QgsPropertyDefinition(
             'Max. Profiles', 'Maximum number of profiles that can be plotted.',
             QgsPropertyDefinition.StandardPropertyTemplate.IntegerPositive))
-
         self.mP_MaxProfiles.setProperty(QgsProperty.fromValue(256))
 
         self.mP_Antialiasing = QgsPropertyItem('Antialias')
         self.mP_Antialiasing.setDefinition(
             QgsPropertyDefinition(
                 'Antialias', 'Enable antialias. Can decrease rendering speed.',
-                QgsPropertyDefinition.StandardPropertyTemplate.Boolean)
-
-        )
+                QgsPropertyDefinition.StandardPropertyTemplate.Boolean))
         self.mP_Antialiasing.setProperty(QgsProperty.fromValue(False))
 
         self.mP_BG = QgsPropertyItem('BG')
         self.mP_BG.setDefinition(QgsPropertyDefinition(
-            'Background', 'Plot background color', QgsPropertyDefinition.StandardPropertyTemplate.ColorWithAlpha))
+            'Background', 'Plot background color',
+            QgsPropertyDefinition.StandardPropertyTemplate.ColorWithAlpha))
         self.mP_BG.setProperty(QgsProperty.fromValue(QColor('black')))
 
         self.mP_FG = QgsPropertyItem('FG')
         self.mP_FG.setDefinition(QgsPropertyDefinition(
-            'Foreground', 'Plot foreground color', QgsPropertyDefinition.StandardPropertyTemplate.ColorWithAlpha))
+            'Foreground', 'Plot foreground color',
+            QgsPropertyDefinition.StandardPropertyTemplate.ColorWithAlpha))
         self.mP_FG.setProperty(QgsProperty.fromValue(QColor('white')))
 
         self.mP_SC = QgsPropertyItem('SC')
         self.mP_SC.setDefinition(QgsPropertyDefinition(
-            'Selection', 'Color of selected profiles', QgsPropertyDefinition.StandardPropertyTemplate.ColorWithAlpha))
+            'Selection', 'Color of selected profiles',
+            QgsPropertyDefinition.StandardPropertyTemplate.ColorWithAlpha))
         self.mP_SC.setProperty(QgsProperty.fromValue(QColor('yellow')))
 
         self.mP_CH = QgsPropertyItem('CH')
@@ -653,11 +662,13 @@ class GeneralSettingsGroup(PropertyItemGroup):
 
         self.mLegendGroup = LegendSettingsGroup(self)
         for pItem in [  # self.mPLegend,
-            self.mProfileCandidates,
-            self.mP_MaxProfiles,
+            self.mProfileCandidates, self.mLegendGroup,
+            self.mP_CH,
+            self.mShowToolTips,
             self.mP_SortBands, self.mP_BadBands, self.mP_Antialiasing,
-            self.mP_BG, self.mP_FG, self.mP_SC, self.mP_CH,
-            self.mLegendGroup,
+            self.mP_MaxProfiles,
+            self.mP_BG, self.mP_FG, self.mP_SC,
+
         ]:
             self.appendRow(pItem.propertyRow())
 
@@ -710,6 +721,7 @@ class GeneralSettingsGroup(PropertyItemGroup):
             'color_ch': self.crosshairColor().name(),
             'candidate_style': candidate_style,
             'show_candidates': candidate_show,
+            'show_tooltips': self.showToolTips(),
             'legend': self.mLegendGroup.asMap(),
         }
         return d
@@ -787,6 +799,9 @@ class GeneralSettingsGroup(PropertyItemGroup):
 
     def crosshairColor(self) -> QColor:
         return self.mP_CH.property().valueAsColor(self.expressionContext())[0]
+
+    def showToolTips(self) -> bool:
+        return self.mShowToolTips.property().valueAsBool(self.expressionContext())[0]
 
     def showBadBands(self) -> bool:
         return self.mP_BadBands.property().valueAsBool(self.expressionContext(), False)[0]

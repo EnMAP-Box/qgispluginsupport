@@ -86,6 +86,10 @@ class TestSpeclibPlotting(TestCase):
         model: SpectralProfilePlotModel
         model.setShowLegend(True)
 
+        for vis in model.visualizations():
+            s = vis.plotStyle()
+            s.setMarkerSymbol('o')
+            vis.setPlotStyle(s)
         self.showGui(slw)
         slw.project().removeAllMapLayers()
 

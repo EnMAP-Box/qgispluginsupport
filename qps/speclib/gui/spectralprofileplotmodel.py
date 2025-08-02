@@ -24,7 +24,8 @@ from ..gui.spectrallibraryplotmodelitems import GeneralSettingsGroup, ProfileCol
 from ..gui.spectrallibraryplotunitmodels import SpectralProfilePlotXAxisUnitModel
 from ..gui.spectralprofilefieldmodel import SpectralProfileFieldListModel
 from ...plotstyling.plotstyling import PlotStyle
-from ...pyqtgraph.pyqtgraph import (LegendItem, PlotCurveItem, PlotDataItem, ScatterPlotItem, SignalProxy, SpotItem)
+from ...pyqtgraph.pyqtgraph import (LegendItem, PlotCurveItem, PlotDataItem, ScatterPlotItem, SignalProxy,
+                                    SpotItem)
 from ...pyqtgraph.pyqtgraph.GraphicsScene.mouseEvents import HoverEvent, MouseClickEvent
 from ...unitmodel import BAND_INDEX, BAND_NUMBER, datetime64, UnitConverterFunctionModel, UnitWrapper
 from ...utils import convertDateUnit, xy_pair_matrix
@@ -84,6 +85,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
         # allows to overwrite automatic generated plot styles
         self.mPROFILE_CANDIDATE_STYLES: Dict[Tuple[str, str], Dict[int, PlotStyle]] = {}
 
+        self.mHoverHTML: Dict[SpotItem, str] = dict()
         self.mSELECTED_SPOTS: Dict[str, Tuple[int, int]] = dict()
 
         self.mLastSettings: dict = dict()
@@ -498,6 +500,9 @@ class SpectralProfilePlotModel(QStandardItemModel):
             self.updatePlot()
             self.sigShowSelectedFeaturesOnlyChanged.emit(self.mShowSelectedFeaturesOnly)
 
+    def showToolTips(self) -> bool:
+        return self.mGeneralSettings.showToolTips()
+
     def showSelectedFeaturesOnly(self) -> bool:
         return self.mShowSelectedFeaturesOnly
 
@@ -675,20 +680,31 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
         return result
 
-    def onPointsHovered(self, item: ScatterPlotItem, points: List, event: HoverEvent, **kwarg):
+    def onPointsHovered(self, item: ScatterPlotItem, points: List[SpotItem], event: HoverEvent, **kwarg):
         s = ""
         # print(item)
         # print(event)
-        html = ''
-        if event.isEnter() or len(points) > 0:
-            info = []
-            for spot in points:
-                info.append(f'{spot.pos().x()},{spot.pos().y()}')
-            html = '<br>'.join(info)
-        elif event.isExit():
-            html = ''
+        # info = f'{event.enter} {event.exit} {len(points)}'
+        # self.mPlotWidget.mInfoHover.setHtml(info)
+        # return
 
-        self.plotWidget().mInfoHover.setHtml(html)
+        if event.isExit():
+            self.mHoverHTML.clear()
+            self.mPlotWidget.mInfoHover.setHtml('')
+        else:
+            parent = item.parentItem()
+            if isinstance(parent, SpectralProfilePlotDataItem):
+                if len(points) > 0:
+                    xu = self.xUnit().unit
+                    self.mPlotWidget.xAxis().unit()
+                    for spot in points:
+                        txt = f'{parent.name()}<br>{spot.index()}: {spot.pos().x()} {xu} , {spot.pos().y()}'
+                        self.mHoverHTML[parent] = txt
+                else:
+                    if parent in self.mHoverHTML:
+                        self.mHoverHTML.pop(parent)
+
+        self.mPlotWidget.mInfoHover.setHtml('<br>'.join(self.mHoverHTML.values()))
 
     def onPointsClicked(self, item: PlotDataItem, spots: List[SpotItem], event: MouseClickEvent, **kwarg):
         """
@@ -944,14 +960,6 @@ class SpectralProfilePlotModel(QStandardItemModel):
             else:
                 referenced_aids.extend(filter_expression.referencedAttributeIndexes(layer.fields()))
 
-            tooltip_expression = QgsExpression(vis['tooltip_expression'])
-            if tooltip_expression.expression() == '':
-                tooltip_expression.setExpression("'Feature ' + to_string(@id)")
-            elif tooltip_expression.hasParserError():
-                continue
-            else:
-                referenced_aids.extend(label_expression.referencedAttributeIndexes(layer.fields()))
-
             self.mLastReferencedColumns[layer_id] = set(referenced_aids)
 
             s = ""
@@ -1057,7 +1065,6 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
                 t0 = datetime.datetime.now()
                 plot_label = label_expression.evaluate(feature_context)
-                plot_tooltip = tooltip_expression.evaluate(feature_context)
 
                 is_selected = fid in selected_fids
 
@@ -1073,8 +1080,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
                 pdi.setProfileData(plot_data, plot_style,
                                    showBadBands=show_bad_bands,
                                    sortBands=sort_bands,
-                                   label=plot_label,
-                                   tooltip=plot_tooltip)
+                                   label=plot_label)
                 pdi.setCurveIsSelected(is_selected)
                 PLOT_ITEMS.append(pdi)
 
@@ -1099,7 +1105,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
         add_dt('clear plot', t0)
         t0 = datetime.datetime.now()
 
-        def func_scatter_tip(pi: SpectralProfilePlotDataItem):
+        def func_scatter_tooltip(pi: SpectralProfilePlotDataItem):
             """
             Yea! Currying
             Returns a tip function to generate the scatter plot point tooltip
@@ -1107,19 +1113,19 @@ class SpectralProfilePlotModel(QStandardItemModel):
             :return: function def(x,y,data)->str
             """
 
-            def tip(x, y, data) -> str:
-                lyr = self.project().mapLayer(pi.mLayerID)
-                info = f'<i>{pi.name()}</i><br>x: {x}, y: {y}'
-                info += f'<br>fid: {pi.mFeatureID} field: {pi.mField}'
-                if isinstance(lyr, QgsVectorLayer):
-                    info += f'<br>layer: {lyr.name()}'
-                    info += f'<br>source: {lyr.source()}'
+            def scatter_tooltip(x, y, data) -> str:
+                if self.showToolTips():
+                    lyr = self.project().mapLayer(pi.mLayerID)
+                    info = f'<i>{pi.name()}</i><br>x: {x}, y: {y}'
+                    info += f'<br>fid: {pi.mFeatureID} field: {pi.mField}'
+                    if isinstance(lyr, QgsVectorLayer):
+                        info += f'<br>layer: {lyr.name()}'
+                        info += f'<br>source: {lyr.source()}'
+                else:
+                    info = ""
                 return info
 
-            return tip
-
-        def func_curve_tip(*args, **kwds) -> str:
-            return 'foobar'
+            return scatter_tooltip
 
         with PlotUpdateBlocker(self.mPlotWidget) as blocker:
             hoverPen = QPen(self.mCurrentSelectionColor)
@@ -1135,7 +1141,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
                 p.scatter.setData(  # hoverSymbol=p.scatter.opts['symbol'],
                     hoverPen=hoverPen,
                     hoverable=True,
-                    tip=func_scatter_tip(p),
+                    tip=func_scatter_tooltip(p),
                     hoverSize=p.scatter.opts.get('size', 5) + 2)
 
                 self.mPlotWidget.plotItem.addItem(p)

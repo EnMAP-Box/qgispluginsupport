@@ -12,6 +12,7 @@ from qgis.PyQt.QtGui import QColor
 from qgis.PyQt.QtWidgets import QAction, QApplication, QMenu, QSlider, QWidgetAction
 from ...plotstyling.plotstyling import PlotStyle, PlotWidgetStyle
 from ...pyqtgraph import pyqtgraph as pg
+from ...pyqtgraph.pyqtgraph import mkBrush, mkPen
 from ...unitmodel import datetime64, UnitWrapper
 from ...pyqtgraph.pyqtgraph.graphicsItems.PlotDataItem import PlotDataItem
 from ...utils import HashablePointF
@@ -364,8 +365,7 @@ class SpectralProfilePlotDataItem(PlotDataItem):
                        showBadBands: bool = True,
                        sortBands: bool = False,
                        zValue: int = None,
-                       label: str = None,
-                       tooltip: str = None):
+                       label: str = None):
 
         self.mDefaultStyle = plot_style
         y = plot_data.get('y')
@@ -704,7 +704,11 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
         self.mInfoScatterPoints.opts['pen'].setColor(c)
         self.mInfoScatterPoints.opts['brush'].setColor(c)
 
+        # selection color = hover color
         self.mInfoHover.setColor(c)
+        for item in self.spectralProfilePlotDataItems():
+            item.scatter.opts['hoverPen'] = mkPen(c)
+            item.scatter.opts['hoverBrush'] = mkBrush(c)
 
     def setInfoColor(self, color: Union[str, QColor]):
         self.mInfoLabelCursor.setColor(QColor(color))
