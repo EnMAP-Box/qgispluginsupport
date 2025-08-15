@@ -1050,7 +1050,7 @@ def xy_pair_matrix(pairs: List[Union[Tuple, Dict]]) -> Tuple[np.ndarray, np.ndar
             x_values.add(xi)
 
     # list of unique x values
-    x_values = list(x_values)
+    x_values = sorted(list(x_values))
 
     n_pairs = len(pairs2)
     Y_VALUES = np.full((len(x_values), n_pairs), np.nan)
