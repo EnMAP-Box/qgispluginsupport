@@ -2,17 +2,16 @@ import enum
 import json
 import sys
 import warnings
-from typing import List, Set, Dict, Tuple, Generator, Any, Optional
+from typing import Any, Dict, Generator, List, Optional, Set, Tuple
 
-from qgis.PyQt.QtCore import pyqtSignal, Qt, QModelIndex
-from qgis.PyQt.QtGui import QIcon, QDragEnterEvent, QDropEvent
-from qgis.PyQt.QtWidgets import QWidget, QVBoxLayout, QAction, QMenu, QToolBar, QWidgetAction, QPushButton, \
-    QHBoxLayout, QFrame, QDialog
-from qgis.PyQt.QtXml import QDomElement, QDomDocument
-from qgis.core import (QgsFeature, QgsProject, QgsVectorLayer, QgsReadWriteContext,
-                       QgsMapLayer, QgsProcessingOutputFile)
-from qgis.gui import QgsMapCanvas, QgsDualView, QgsAttributeTableView, QgsDockWidget, \
-    QgsActionMenu
+from qgis.PyQt.QtCore import pyqtSignal, QModelIndex, Qt
+from qgis.PyQt.QtGui import QDragEnterEvent, QDropEvent, QIcon
+from qgis.PyQt.QtWidgets import QAction, QDialog, QFrame, QHBoxLayout, QMenu, QPushButton, QToolBar, QVBoxLayout, \
+    QWidget, QWidgetAction
+from qgis.PyQt.QtXml import QDomDocument, QDomElement
+from qgis.core import (QgsFeature, QgsMapLayer, QgsProcessingOutputFile, QgsProject, QgsReadWriteContext,
+                       QgsVectorLayer)
+from qgis.gui import QgsActionMenu, QgsAttributeTableView, QgsDockWidget, QgsDualView, QgsMapCanvas
 from .spectrallibraryplotitems import SpectralProfilePlotItem, SpectralProfilePlotWidget
 from .spectrallibraryplotwidget import SpectralLibraryPlotWidget
 from .spectralprocessingdialog import SpectralProcessingDialog
@@ -20,8 +19,8 @@ from .spectralprofilefieldmodel import SpectralProfileFieldActivatorDialog
 from .spectralprofileplotmodel import SpectralProfilePlotModel
 from ..core import is_spectral_library
 from ..core.spectrallibrary import SpectralLibraryUtils
-from ..core.spectrallibraryio import SpectralLibraryImportDialog, SpectralLibraryExportDialog
-from ...layerproperties import AttributeTableWidget, showLayerPropertiesDialog, CopyAttributesDialog
+from ..core.spectrallibraryio import SpectralLibraryExportDialog, SpectralLibraryImportDialog
+from ...layerproperties import AttributeTableWidget, CopyAttributesDialog, showLayerPropertiesDialog
 from ...plotstyling.plotstyling import PlotStyle, PlotStyleWidget
 
 
@@ -465,7 +464,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
         """
         :return: SpectralLibraryPlotItem
         """
-        return self.plotWidget().getPlotItem()
+        return self.plotWidget().plotItem1
 
     def readXml(self, parent: QDomElement, context: QgsReadWriteContext) -> bool:
         """

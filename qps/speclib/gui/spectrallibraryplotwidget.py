@@ -12,11 +12,10 @@ from qgis.core import QgsApplication, QgsField, QgsMapLayerProxyModel, QgsProjec
     QgsSettings, QgsVectorLayer
 from qgis.gui import QgsDualView, QgsFilterLineEdit
 from .spectrallibraryplotitems import SpectralProfilePlotWidget
-from .spectrallibraryplotmodelitems import PlotStyleItem, ProfileVisualizationGroup, PropertyItem, PropertyItemBase, \
-    PropertyItemGroup, PropertyLabel, \
-    RasterRendererGroup, GeneralSettingsGroup
+from .spectrallibraryplotmodelitems import GeneralSettingsGroup, PlotStyleItem, ProfileVisualizationGroup, PropertyItem, \
+    PropertyItemBase, PropertyItemGroup, PropertyLabel, RasterRendererGroup
 from .spectrallibraryplotunitmodels import SpectralProfilePlotXAxisUnitWidgetAction
-from .spectralprofileplotmodel import SpectralProfilePlotModelProxyModel, SpectralProfilePlotModel, copy_items
+from .spectralprofileplotmodel import copy_items, SpectralProfilePlotModel, SpectralProfilePlotModelProxyModel
 from .. import speclibUiPath
 from ..core import profile_field_list
 from ...models import SettingsModel
@@ -127,7 +126,9 @@ class SpectralProfilePlotView(QTreeView):
                 a.triggered.connect(lambda *args, v=profileVis: self.userColorsFromSymbolRenderer(v))
 
         if not menu.isEmpty():
+            # actions = menu.actions()
             menu.exec_(self.viewport().mapToGlobal(event.pos()))
+            # s = actions
 
     def removeItems(self, vis: List[PropertyItemGroup]):
 
@@ -440,8 +441,6 @@ class SpectralLibraryPlotWidget(QWidget):
         # self.visButtonLayout.insertWidget(self.visButtonLayout.count() - 1,
         #                                  self.optionMaxNumberOfProfiles.createWidget(self))
 
-        widgetXAxis: QWidget = self.mPlotWidget.viewBox().menu.widgetGroups[0]
-        widgetYAxis: QWidget = self.mPlotWidget.viewBox().menu.widgetGroups[1]
         # grid: QGridLayout = widgetXAxis.layout()
         # grid.addWidget(QLabel('Unit:'), 0, 0, 1, 1)
         # grid.addWidget(self.optionXUnit.createUnitComboBox(), 0, 2, 1, 2)

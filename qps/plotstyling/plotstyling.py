@@ -477,13 +477,18 @@ class PlotStyle(QObject):
         :rtype:
         """
 
-        assert isinstance(pdi, pg.PlotDataItem)
+        if isinstance(pdi, pg.PlotDataItem):
+            pdi.setPen(pg.mkPen(self.linePen))
+            pdi.setSymbol(self.markerSymbol)
+            pdi.setSymbolPen(pg.mkPen(self.markerPen))
+            pdi.setSymbolBrush(pg.mkBrush(self.markerBrush))
+            pdi.setSymbolSize(self.markerSize)
 
-        pdi.opts['pen'] = pg.mkPen(self.linePen)
-        pdi.opts['symbol'] = self.markerSymbol
-        pdi.opts['symbolPen'] = pg.mkPen(self.markerPen)
-        pdi.opts['symbolBrush'] = pg.mkBrush(self.markerBrush)
-        pdi.opts['symbolSize'] = self.markerSize
+        # pdi.opts['pen'] = pg.mkPen(self.linePen)
+        # pdi.opts['symbol'] = self.markerSymbol
+        # pdi.opts['symbolPen'] = pg.mkPen(self.markerPen)
+        # pdi.opts['symbolBrush'] = pg.mkBrush(self.markerBrush)
+        # pdi.opts['symbolSize'] = self.markerSize
 
         if isinstance(visibility, bool):
             pdi.setVisible(visibility)

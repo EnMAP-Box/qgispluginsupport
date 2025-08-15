@@ -27,7 +27,7 @@ from qps.speclib.gui.spectrallibraryplotmodelitems import PlotStyleItem, Profile
     SpectralProfileColorPropertyWidget
 from qps.speclib.gui.spectrallibraryplotwidget import SpectralLibraryPlotWidget
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
-from qps.speclib.gui.spectralprofileplotmodel import copy_items, SpectralProfilePlotModel
+from qps.speclib.gui.spectralprofileplotmodel import copy_items, SpectralProfilePlotModel, STATS_FUNCTIONS
 from qps.testing import start_app, TestCase, TestObjects
 from qps.unitmodel import BAND_INDEX, BAND_NUMBER
 from qps.utils import file_search, nextColor, parseWavelength, writeAsVectorFormat
@@ -68,17 +68,50 @@ class TestSpeclibPlotting(TestCase):
         slw.project().removeAllMapLayers()
         self.showGui(slw)
 
+    def test_SpectralLibraryWidget_stats(self):
+
+        speclib = TestObjects.createSpectralLibrary(25, n_bands=[100, ], profile_field_names=['p1'])
+        slw = SpectralLibraryWidget(speclib=speclib)
+        VM = SpectralLibraryWidget.ViewType
+        slw.setViewVisibility(VM.ProfileViewSettings | VM.ProfileView)
+        model = slw.plotModel()
+        model: SpectralProfilePlotModel
+        model.setShowLegend(True)
+
+        if True:
+            x = np.asarray([1, 2, 3])
+            Y = np.asarray([[10, 20, 10],
+                            [10, 20, 30]]).transpose()
+
+            for n, func in STATS_FUNCTIONS.items():
+                x1, y1 = func(x, Y)
+                self.assertTrue(np.array_equal(x, x1))
+                self.assertEqual(x1.shape, y1.shape, msg=f'failed to calculate {n}')
+
+        if True:
+            model.generalSettings().mProfileStats.mNormalized.setValue(False)
+            for vis in model.visualizations():
+                s = vis.plotStyle()
+                s.setMarkerSymbol('o')
+                vis.setPlotStyle(s)
+                vis.mStats.mMean.setItemChecked(True)
+                vis.mStats.mStd.setItemChecked(True)
+
+        self.showGui(slw)
+
+        slw.project().removeAllMapLayers()
+
     @unittest.skipIf(TestCase.runsInCI(), 'For debugging only')
     def test_SpectralLibraryWidget_small(self):
         import logging
-        logging.basicConfig(level=logging.DEBUG,
+        logging.basicConfig(level=logging.INFO,
                             format='%(asctime)s %(levelname)s %(module)s %(funcName)s: %(message)s',
                             handlers=[
                                 # logging.FileHandler("debug.log"),  # Log to a file
                                 logging.StreamHandler()  # Log to console
                             ])
 
-        speclib = TestObjects.createSpectralLibrary(2, n_bands=[10, 20], profile_field_names=['p1', 'p2'])
+        speclib = TestObjects.createSpectralLibrary(3, n_bands=[10, 100], profile_field_names=['p1', 'p2'])
         slw = SpectralLibraryWidget(speclib=speclib)
         VM = SpectralLibraryWidget.ViewType
         slw.setViewVisibility(VM.ProfileViewSettings | VM.ProfileView)
@@ -90,7 +123,11 @@ class TestSpeclibPlotting(TestCase):
             s = vis.plotStyle()
             s.setMarkerSymbol('o')
             vis.setPlotStyle(s)
+
+        pw = slw.plotWidget()
+
         self.showGui(slw)
+
         slw.project().removeAllMapLayers()
 
     @unittest.skipIf(TestCase.runsInCI(), 'For debugging only')
