@@ -44,7 +44,7 @@ from qgis.gui import QgsColorButton, QgsDoubleSpinBox, QgsFieldExpressionWidget,
     QgsPropertyOverrideButton, QgsSpinBox
 from ..core import is_profile_field, is_spectral_library
 from ...layerfielddialog import LayerFieldWidget
-from ...plotstyling.plotstyling import PlotStyle, PlotStyleButton, PlotWidgetStyle
+from ...plotstyling.plotstyling import PlotStyle, PlotStyleButton, PlotWidgetStyle, PlotStyleWidget
 from ...pyqtgraph.pyqtgraph import InfiniteLine, PlotDataItem
 from ...pyqtgraph.pyqtgraph.widgets.PlotWidget import PlotWidget
 from ...qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
@@ -825,6 +825,7 @@ class PlotStyleItem(PropertyItem):
         self.mPlotStyle = PlotStyle()
         self.setEditable(True)
 
+        self.mVisibilityFlags = None
         self.mEditColors: bool = False
 
     def clone(self):
@@ -842,6 +843,10 @@ class PlotStyleItem(PropertyItem):
         if plotStyle != self.mPlotStyle:
             self.mPlotStyle = plotStyle
             self.emitDataChanged()
+
+    def setVisibilitFlags(self, flags: PlotStyleWidget.VisibilityFlags):
+
+        self.mVisibilityFlags = flags
 
     def plotStyle(self) -> PlotStyle:
         style = self.mPlotStyle.clone()
@@ -879,9 +884,14 @@ class PlotStyleItem(PropertyItem):
 
         w = PlotStyleButton(parent=parent)
         w.setMinimumSize(5, 5)
-        w.setColorWidgetVisibility(self.mEditColors)
-        w.setVisibilityCheckboxVisible(self.isCheckable())
+        if self.mVisibilityFlags:
+            w.setVisibilityFlags(self.mVisibilityFlags)
+        else:
+            w.setColorWidgetVisibility(self.mEditColors)
+            w.setVisibilityCheckboxVisible(self.isCheckable())
+
         w.setToolTip('Set curve style')
+
         return w
 
     def setEditorData(self, editor: QWidget, index: QModelIndex):
@@ -1770,23 +1780,22 @@ class GeneralSettingsProfileStats(PropertyItemGroup):
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
 
+        self.setCheckable(True)
+        self.setCheckState(Qt.Checked)
         self.setText('Statistics')
 
-        self.mShow = QgsPropertyItemBool('Show',
-                                         tooltip='Deactivate to hide statistic profiles',
-                                         value=True)
         self.mNormalized = QgsPropertyItemBool('Normalized',
                                                tooltip='Show deviations like StdDev and RMSE normalized '
                                                        'by mean in a second plot',
                                                value=True)
 
-        self._items = [self.mShow, self.mNormalized]
+        self._items = [self.mNormalized]
         for item in self._items:
             self.appendRow(item.propertyRow())
 
     def asMap(self) -> dict:
 
-        d = {}
+        d = {'show': self.checkState() == Qt.Checked}
         for item in self._items:
             d[item.key()] = item.value()
 
@@ -1817,8 +1826,19 @@ class ProfileStatsGroup(PropertyItemGroup):
         self.mMetricItems = [self.mMean, self.mStd, self.mRMSE, self.mMAE,
                              self.mQ1, self.mQ2, self.mQ3, self.mCount, self.mRange]
 
+        f = PlotStyleWidget.VisibilityFlags
+
+        default_style = PlotStyle()
+        default_style.setMarkerSymbol(None)
+        default_style.setLineColor('green')
+        default_style.setLineStyle(Qt.SolidLine)
+        default_style.setLineWidth(3)
+
+        visFlags = f.Line | f.Color | f.Size | f.Type
         for pItem in self.mMetricItems:
             pItem: PlotStyleItem
+            pItem.setPlotStyle(default_style)
+            pItem.setVisibilitFlags(visFlags)
             pItem.setEditable(True)
             pItem.setItemCheckable(True)
             pItem.setItemChecked(False)

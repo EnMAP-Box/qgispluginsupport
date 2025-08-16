@@ -98,7 +98,7 @@ STATS_FUNCTIONS = {
     'range': func_range,
 }
 
-NORMALIZED_VIEW = ['stdev', 'rmse', 'mae']
+NORMALIZED_VIEW = ['stdev', 'rmse', 'mae', 'count', 'range']
 
 
 class SpectralProfilePlotModel(QStandardItemModel):
@@ -370,7 +370,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
             # check for general settings that require a re-plot
             for k in ['x_unit',
                       'sort_bands', 'show_bad_bands',
-                      'max_profiles', 'antialiasing',
+                      'max_profiles', '',
                       'show_candidates', 'candidate_style']:
                 if g_old.get(k, None) != g_new.get(k, None):
                     update_heavy = True
@@ -928,6 +928,8 @@ class SpectralProfilePlotModel(QStandardItemModel):
         show_stats = g_stats.get('show', False)
         show_normalized = g_stats.get('normalized', True)
         sort_bands = g_settings.get('sort_bands', False)
+        antialias = g_settings.get('antialiasing', False)
+
         # remove all stats profiles:
         if not show_stats:
             show_normalized = False
@@ -945,9 +947,13 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
         self.mSTATS_ITEMS.clear()
 
-        vis_with_stats = [
-            vis for vis in settings.get('visualizations')
-            if len(vis.get('statistics', {})) > 0]
+        if show_stats:
+
+            vis_with_stats = [
+                vis for vis in settings.get('visualizations')
+                if len(vis.get('statistics', {})) > 0]
+        else:
+            vis_with_stats = []
 
         vis_ids = [v['vis_id'] for v in vis_with_stats]
 
@@ -992,24 +998,28 @@ class SpectralProfilePlotModel(QStandardItemModel):
                 name = f'{vis_name} {stat}'
 
                 if stat not in NORMALIZED_VIEW:
-                    item = PlotDataItem(x=x2.tolist(), y=y2.tolist(), name=name)
+                    item = PlotDataItem(x=x2.tolist(), y=y2.tolist(),
+                                        name=name, antialias=antialias)
                     style.apply(item)
                     ITEMS_PI1.append(item)
                 else:
                     # stats like stddev, mae and rmse can be shown separately
                     # a) single curve in plot item 2
                     if show_normalized:
-                        item = PlotDataItem(x=x2.tolist(), y=y2.tolist(), name=name)
-                        # style.apply(item)
+                        item = PlotDataItem(x=x2.tolist(), y=y2.tolist(),
+                                            name=name, antialias=antialias)
+                        style.apply(item)
                         ITEMS_PI2.append(item)
 
                     # b) area around the mean in plot 1
                     else:
                         x_mean, y_mean = func_mean(x, Y)
-                        c_upper = PlotDataItem(x=x_mean.tolist(), y=(y_mean + y2).tolist(), name=name)
-                        c_lower = PlotDataItem(x=x_mean.tolist(), y=(y_mean - y2).tolist(), name=name)
+                        c_upper = PlotDataItem(x=x_mean.tolist(), y=(y_mean + y2).tolist(),
+                                               name=name, antialias=antialias)
+                        c_lower = PlotDataItem(x=x_mean.tolist(), y=(y_mean - y2).tolist(),
+                                               name=name, antialias=antialias)
                         item = FillBetweenItem(c_upper, c_lower,
-                                               brush=mkBrush(style.markerBrush))
+                                               brush=mkBrush(style.lineColor()))
 
                         ITEMS_PI1.append(item)
 

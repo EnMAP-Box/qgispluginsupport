@@ -89,7 +89,7 @@ class TestSpeclibPlotting(TestCase):
                 self.assertEqual(x1.shape, y1.shape, msg=f'failed to calculate {n}')
 
         if True:
-            model.generalSettings().mProfileStats.mNormalized.setValue(False)
+            # model.generalSettings().mProfileStats.mNormalized.setValue(False)
             for vis in model.visualizations():
                 s = vis.plotStyle()
                 s.setMarkerSymbol('o')
