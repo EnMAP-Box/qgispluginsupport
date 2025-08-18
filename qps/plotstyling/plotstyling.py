@@ -784,24 +784,7 @@ class PlotStyle(QObject):
     def __eq__(self, other):
         if not isinstance(other, PlotStyle):
             return False
-        for k in ['markerSymbol',
-                  'markerSize',
-                  'markerBrush',
-                  'backgroundColor',
-                  'markerPen',
-                  'linePen',
-                  'mIsVisible']:
-            if self.__dict__[k] != other.__dict__[k]:
-
-                a = self.__dict__[k]
-                b = other.__dict__[k]
-                if a != b:
-                    if isinstance(a, QPen):
-                        if not pens_equal(a, b):
-                            return False
-                    else:
-                        return False
-        return True
+        return self.map() == other.map()
 
     def __reduce_ex__(self, protocol):
 
