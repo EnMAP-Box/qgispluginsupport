@@ -1,4 +1,5 @@
 import json
+import logging
 import os.path
 import unittest
 
@@ -70,7 +71,28 @@ class TestSpeclibPlotting(TestCase):
 
     def test_SpectralLibraryWidget_stats(self):
 
-        speclib = TestObjects.createSpectralLibrary(25, n_bands=[100, ], profile_field_names=['p1'])
+        logging.basicConfig(level=logging.DEBUG,
+                            format='%(asctime)s %(levelname)s %(module)s %(funcName)s: %(message)s',
+                            handlers=[
+                                # logging.FileHandler("debug.log"),  # Log to a file
+                                logging.StreamHandler()  # Log to console
+                            ])
+
+        if False:
+            speclib = TestObjects.createSpectralLibrary(25, n_bands=[100, ], profile_field_names=['p1'])
+        else:
+            l_dir = DIR_REPO / 'tmp/largespeclib'
+            p_large = None
+            if l_dir.is_dir():
+                for f in file_search(l_dir, '*.gpkg'):
+                    p_large = f
+                    break
+            if not (p_large and os.path.isfile(p_large)):
+                return
+
+            speclib = QgsVectorLayer(p_large)
+            speclib.setSubsetString('"fid" <= 200')
+
         slw = SpectralLibraryWidget(speclib=speclib)
         VM = SpectralLibraryWidget.ViewType
         slw.setViewVisibility(VM.ProfileViewSettings | VM.ProfileView)
@@ -103,7 +125,6 @@ class TestSpeclibPlotting(TestCase):
 
     @unittest.skipIf(TestCase.runsInCI(), 'For debugging only')
     def test_SpectralLibraryWidget_small(self):
-        import logging
         logging.basicConfig(level=logging.INFO,
                             format='%(asctime)s %(levelname)s %(module)s %(funcName)s: %(message)s',
                             handlers=[
@@ -569,7 +590,10 @@ class TestSpeclibPlotting(TestCase):
         self.assertIsInstance(item2, PlotStyleItem)
         self.assertEqual(item1, item2)
 
-        item2.plotStyle().setLineColor('blue')
+        ps2 = item2.plotStyle()
+        ps2.setLineColor('blue')
+        item2.setPlotStyle(ps2)
+        self.assertNotEqual(item1.plotStyle(), item2.plotStyle())
         self.assertNotEqual(item1, item2)
 
     def test_sortBands(self):

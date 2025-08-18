@@ -338,27 +338,31 @@ class SpectralProfilePlotModel(QStandardItemModel):
                 w.setShowCrosshair(g_new['show_crosshair'])
                 w.setForegroundColor(g_new['color_fg'])
                 w.setBackgroundColor(g_new['color_bg'])
-                legend = w.mLegendItem
-                if isinstance(legend, LegendItem):
+                legend1 = w.mLegendItem1
+                legend2 = w.mLegendItem2
+
+                for legend, pi in [(legend1, w.plotItem1),
+                                   (legend2, w.plotItem2)]:
                     g_legend = g_new.get('legend', {'show': False})
-                    legend.setLabelTextColor(QColor(g_new['color_fg']))
-                    legend.setLabelTextSize(g_legend.get('text_size', '9px'))
-                    legend.setColumnCount(g_legend.get('columns', 1))
-                    pi = w.plotItem1
-                    show_legend = g_legend.get('show', False)
-                    update_legend_items = legend.isVisible() != show_legend
-                    if show_legend:
-                        legend.setVisible(True)
-                        pi.legend = legend
-                        if update_legend_items:
+
+                    if isinstance(legend, LegendItem):
+                        legend.setLabelTextColor(QColor(g_new['color_fg']))
+                        legend.setLabelTextSize(g_legend.get('text_size', '9px'))
+                        legend.setColumnCount(g_legend.get('columns', 1))
+                        show_legend = g_legend.get('show', False)
+                        update_legend_items = legend.isVisible() != show_legend
+                        if show_legend:
+                            legend.setVisible(True)
+                            pi.legend = legend
+                            if update_legend_items:
+                                legend.clear()
+                                for item in pi.items:
+                                    if isinstance(item, PlotDataItem):
+                                        legend.addItem(item, item.name())
+                        else:
+                            legend.setVisible(False)
                             legend.clear()
-                            for item in pi.items:
-                                if isinstance(item, SpectralProfilePlotDataItem):
-                                    legend.addItem(item, item.name())
-                    else:
-                        legend.setVisible(False)
-                        legend.clear()
-                        pi.legend = None
+                            pi.legend = None
 
                     # pen = legend.pen()
                     # pen.setColor(QColor(g_new['color_fg']))
@@ -366,28 +370,57 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
                     # legend.update()
 
+            # check for settings that require a re-plot with time-consuming
+            # reloading of vector layer data
             update_heavy = False
-            # check for general settings that require a re-plot
-            for k in ['x_unit',
-                      'sort_bands', 'show_bad_bands',
-                      'max_profiles', '',
-                      'show_candidates', 'candidate_style']:
+            update_stats = False
+
+            # 1. check general settings
+            requires_replot = ['x_unit',
+                               'sort_bands', 'show_bad_bands',
+                               'max_profiles', '',
+                               'show_candidates', 'candidate_style']
+            requires_restats = ['statistics']
+            for k in set(g_old.keys()) | set(g_new.keys()):
                 if g_old.get(k, None) != g_new.get(k, None):
+                    if k in requires_replot:
+                        update_heavy = True
+                        update_stats = True
+                        break
+                    elif k in requires_restats:
+                        update_stats = True
+
+            # 2. check visualization settings
+            v_old = old_settings.get('visualizations', {})
+            v_new = new_settings.get('visualizations', {})
+            if not update_heavy:
+                if len(v_old) != len(v_new):
                     update_heavy = True
-                    break
+                elif len(v_old) > 0:
+                    # check if visualization requires a reloading of vector layer
+                    requires_replot = ['vis_id', 'name', 'field_name', 'layer_id',
+                                       'layer_source', 'layer_name', 'layer_provider', 'label_expression',
+                                       'filter_expression',
+                                       'color_expression', 'tooltip_expression', 'plot_style']
+                    requires_restats = ['statistics']
+                    for v_o, v_n in zip(v_old, v_new):
+                        for k in set(v_o.keys()) | set(v_n.keys()):
+                            if v_o.get(k) != v_n.get(k):
+                                if k in requires_replot:
+                                    update_heavy = True
+                                    update_stats = True
+                                    break
+                                elif k in requires_restats:
+                                    update_stats = True
 
-            # doing the heavy work that requires to reload and draw profiles
-            if update_heavy \
-                    or old_settings.get('visualizations', {}) != new_settings.get('visualizations', {}) \
-                    or old_settings.get('candidates', {}) != new_settings.get('candidates', {}):
+            if update_heavy:
+                # redraw profiles with loading from vector layer
                 self.updatePlot(settings=new_settings)
-            else:
-                # statistic profile are calculated from plotted profiles (i.e. do not required to load
-                # vector layer data.
-                update_stats = g_old.get('statistics', None) != g_new.get('statistics', None)
 
-                if update_stats:
-                    self.updateStatistics(new_settings)
+            if update_stats:
+                # recalculate statistic profile, which are derived from data of previously plotted profiles
+
+                self.updateStatistics(new_settings)
 
     def dict_differences(self, dict1, dict2):
         # Find keys that are in both dictionaries but have different values
@@ -909,7 +942,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
                 else:
                     SELECTED_FEATURES[lid] = []
             item.setCurveIsSelected(fid in SELECTED_FEATURES[lid])
-        self.plotWidget().mLegendItem.update()
+        self.plotWidget().mLegendItem1.update()
 
     def updateStatistics(self, settings: Optional[dict] = None):
         """
@@ -917,6 +950,8 @@ class SpectralProfilePlotModel(QStandardItemModel):
         :param settings:
         :return:
         """
+
+        logger.debug('updateStatistics')
 
         if settings is None:
             settings = self.settingsMap()
@@ -930,9 +965,14 @@ class SpectralProfilePlotModel(QStandardItemModel):
         sort_bands = g_settings.get('sort_bands', False)
         antialias = g_settings.get('antialiasing', False)
 
-        # remove all stats profiles:
-        if not show_stats:
-            show_normalized = False
+        DT = dict()
+        t0 = datetime.datetime.now()
+
+        def add_dt(key: str, t0: datetime.datetime):
+            dt = (datetime.datetime.now() - t0).total_seconds()
+            dtl = DT.get(key, [])
+            dtl.append(dt)
+            DT[key] = dtl
 
         # collect data for each visualization
         p1: SpectralProfilePlotItem = self.plotWidget().plotItem1
@@ -947,85 +987,89 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
         self.mSTATS_ITEMS.clear()
 
-        if show_stats:
-
-            vis_with_stats = [
-                vis for vis in settings.get('visualizations')
-                if len(vis.get('statistics', {})) > 0]
-        else:
-            vis_with_stats = []
-
-        vis_ids = [v['vis_id'] for v in vis_with_stats]
-
         ITEMS_PI1 = []
         ITEMS_PI2 = []
 
-        if len(vis_with_stats) == 0:
-            return
-
         DATA_PAIRS = dict()
         VIS_STATS = dict()
+
         # collect data from plottes SpectraProfilePlotDataItems
-        for pdi in p1.spectralProfilePlotDataItems():
-            if pdi.mVisID in vis_ids:
-                DATA_PAIRS[pdi.mVisID] = DATA_PAIRS.get(pdi.mVisID, []) + [(pdi.xData, pdi.yData)]
+        vis_with_stats = []
+        if show_stats:
+            vis_with_stats.extend([
+                vis for vis in settings.get('visualizations')
+                if len(vis.get('statistics', {})) > 0])
 
-        # merge data into
-        # x = 1d array with x values,
-        # Y = 2d array with Y values to caluclate statistics from
-        for vis_id in list(DATA_PAIRS.keys()):
-            DATA_PAIRS[vis_id] = xy_pair_matrix(DATA_PAIRS[vis_id])
+        if len(vis_with_stats) > 0:
+            vis_ids = [v['vis_id'] for v in vis_with_stats]
+            t0 = datetime.datetime.now()
+            for pdi in p1.spectralProfilePlotDataItems():
+                if pdi.mVisID in vis_ids:
+                    DATA_PAIRS[pdi.mVisID] = DATA_PAIRS.get(pdi.mVisID, []) + [(pdi.xData, pdi.yData)]
+            add_dt('Collect XY Data', t0)
+            # merge data into
+            # x = 1d array with x values,
+            # Y = 2d array with Y values to caluclate statistics from
+            t1 = datetime.datetime.now()
+            for vis_id in list(DATA_PAIRS.keys()):
+                DATA_PAIRS[vis_id] = xy_pair_matrix(DATA_PAIRS[vis_id])
+            add_dt('run xy_pair_matrix', t1)
+            add_dt('Create XY_PAIR_MATRIZES total', t0)
 
-        for vis in vis_with_stats:
-            vis_id = vis['vis_id']
-            vis_name = vis['name']
-            if vis_id not in DATA_PAIRS:
-                continue
-
-            x, Y = DATA_PAIRS[vis_id]
-
-            for stat, style in vis['statistics'].items():
-                if isinstance(style, dict):
-                    style: PlotStyle = PlotStyle.fromMap(style)
-                assert isinstance(style, PlotStyle)
-                assert isinstance(stat, str)
-
-                if stat not in STATS_FUNCTIONS:
+            for vis in vis_with_stats:
+                vis_id = vis['vis_id']
+                vis_name = vis['name']
+                if vis_id not in DATA_PAIRS:
                     continue
 
-                x2, y2 = STATS_FUNCTIONS[stat](x, Y)
+                x, Y = DATA_PAIRS[vis_id]
 
-                name = f'{vis_name} {stat}'
+                t0 = datetime.datetime.now()
+                for stat, style in vis['statistics'].items():
+                    if isinstance(style, dict):
+                        style: PlotStyle = PlotStyle.fromMap(style)
+                    assert isinstance(style, PlotStyle)
+                    assert isinstance(stat, str)
 
-                if stat not in NORMALIZED_VIEW:
-                    item = PlotDataItem(x=x2.tolist(), y=y2.tolist(),
-                                        name=name, antialias=antialias)
-                    style.apply(item)
-                    ITEMS_PI1.append(item)
-                else:
-                    # stats like stddev, mae and rmse can be shown separately
-                    # a) single curve in plot item 2
-                    if show_normalized:
+                    if stat not in STATS_FUNCTIONS:
+                        continue
+
+                    x2, y2 = STATS_FUNCTIONS[stat](x, Y)
+
+                    name = f'{vis_name} {stat}'
+
+                    if stat not in NORMALIZED_VIEW:
                         item = PlotDataItem(x=x2.tolist(), y=y2.tolist(),
                                             name=name, antialias=antialias)
                         style.apply(item)
-                        ITEMS_PI2.append(item)
-
-                    # b) area around the mean in plot 1
-                    else:
-                        x_mean, y_mean = func_mean(x, Y)
-                        c_upper = PlotDataItem(x=x_mean.tolist(), y=(y_mean + y2).tolist(),
-                                               name=name, antialias=antialias)
-                        c_lower = PlotDataItem(x=x_mean.tolist(), y=(y_mean - y2).tolist(),
-                                               name=name, antialias=antialias)
-                        item = FillBetweenItem(c_upper, c_lower,
-                                               brush=mkBrush(style.lineColor()))
-
                         ITEMS_PI1.append(item)
+                    else:
+                        # stats like stddev, mae and rmse can be shown separately
+                        # a) single curve in plot item 2
+                        if show_normalized:
+                            item = PlotDataItem(x=x2.tolist(), y=y2.tolist(),
+                                                name=name, antialias=antialias)
+                            style.apply(item)
+                            ITEMS_PI2.append(item)
+
+                        # b) area around the mean in plot 1
+                        else:
+                            x_mean, y_mean = func_mean(x, Y)
+                            c_upper = PlotDataItem(x=x_mean.tolist(), y=(y_mean + y2).tolist(),
+                                                   name=name, antialias=antialias)
+                            c_lower = PlotDataItem(x=x_mean.tolist(), y=(y_mean - y2).tolist(),
+                                                   name=name, antialias=antialias)
+                            item = FillBetweenItem(c_upper, c_lower,
+                                                   brush=mkBrush(style.lineColor()))
+
+                            ITEMS_PI1.append(item)
+
+                add_dt(f'Create VIS {vis_id} stats', t0)
 
         self.mSTATS_ITEMS.extend(ITEMS_PI1)
         self.mSTATS_ITEMS.extend(ITEMS_PI2)
 
+        t0 = datetime.datetime.now()
         for item in ITEMS_PI1:
             p1.addItem(item)
 
@@ -1036,6 +1080,14 @@ class SpectralProfilePlotModel(QStandardItemModel):
             p2.show()
         else:
             p2.hide()
+
+        add_dt('Add/Show plot items', t0)
+
+        infos = ['stats update durations:']
+        for k, dtl in DT.items():
+            dtl = np.asarray(dtl)
+            infos.append(f'\t{k}: {dtl.sum():.2f} s  {dtl.mean():.3f}s n = {len(dtl)}')
+        logger.debug('\n'.join(infos))
 
     def updatePlot(self,
                    settings: Optional[dict] = None):  #
@@ -1361,7 +1413,6 @@ class SpectralProfilePlotModel(QStandardItemModel):
         logger.debug('\n'.join(infos))
 
         self.updateProfileLabel(len(PLOT_ITEMS), profile_limit_reached)
-        self.updateStatistics(settings)
 
     def updateProfileLabel(self, n: int, limit_reached: bool):
         propertyItem = self.generalSettings().mP_MaxProfiles

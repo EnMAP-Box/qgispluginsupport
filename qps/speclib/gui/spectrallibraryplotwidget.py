@@ -60,17 +60,31 @@ class SpectralProfilePlotView(QTreeView):
 
             for r in range(0, model.rowCount()):
                 idx = model.index(r, 0)
-                item = idx.data(Qt.UserRole)
-                if isinstance(item, PropertyItemBase) and item.firstColumnSpanned():
-                    self.setFirstColumnSpanned(r, idx.parent(), True)
+                self.checkColumnSpanRecursively(idx)
+                # item = idx.data(Qt.UserRole)
+                # if isinstance(item, PropertyItemBase) and item.firstColumnSpanned():
+                #    self.setFirstColumnSpanned(r, idx.parent(), True)
+
+    def checkColumnSpanRecursively(self, index: QModelIndex):
+        item = index.data(Qt.UserRole)
+
+        if isinstance(item, PropertyItemBase):
+            if item.firstColumnSpanned():
+                self.setFirstColumnSpanned(index.row(), index.parent(), True)
+
+            m: QAbstractItemModel = self.model()
+            for r in range(m.rowCount(index)):
+                index2 = m.index(r, 0, parent=index)
+                self.checkColumnSpanRecursively(index2)
 
     def onRowsInserted(self, parent: QModelIndex, first: int, last: int):
 
         for r in range(first, last + 1):
             idx = self.model().index(r, 0, parent=parent)
-            item = idx.data(Qt.UserRole)
-            if isinstance(item, PropertyItemBase) and item.firstColumnSpanned():
-                self.setFirstColumnSpanned(r, idx.parent(), True)
+            self.checkColumnSpanRecursively(idx)
+            # item = idx.data(Qt.UserRole)
+            # if isinstance(item, PropertyItemBase) and item.firstColumnSpanned():
+            #    self.setFirstColumnSpanned(r, idx.parent(), True)
         s = ""
 
     def contextMenuEvent(self, event: QContextMenuEvent) -> None:

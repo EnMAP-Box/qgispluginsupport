@@ -13,8 +13,8 @@ from qgis.PyQt.QtWidgets import QAction, QApplication, QMenu, QSlider, QWidgetAc
 from ...plotstyling.plotstyling import PlotStyle, PlotWidgetStyle
 from ...pyqtgraph import pyqtgraph as pg
 from ...pyqtgraph.pyqtgraph import mkBrush, mkPen
-from ...unitmodel import datetime64, UnitWrapper
 from ...pyqtgraph.pyqtgraph.graphicsItems.PlotDataItem import PlotDataItem
+from ...unitmodel import datetime64, UnitWrapper
 from ...utils import HashablePointF
 
 
@@ -576,14 +576,13 @@ class SpectralProfilePlotWidget(pg.GraphicsLayoutWidget):
         pi2.vb.setXLink(pi1)
         self.addItem(pi1)
         self.nextRow()
-        l2 = self.addLabel('Standard Deviation')
         self.nextRow()
         self.addItem(pi2)
         # vb2 = self.addViewBox()
         # vb2.addItem(self.pi2)
 
         # self.l1 = l1
-        self.l2 = l2
+        # self.l2 = l2
         self.plotItem = pi1
         self.plotItem1 = pi1
         self.plotItem2 = pi2
@@ -621,8 +620,11 @@ class SpectralProfilePlotWidget(pg.GraphicsLayoutWidget):
         self.mInfoHover.setPos(50, 0)
         self.mInfoLabelCursor.setParentItem(pi1)
 
-        self.mLegendItem = pg.LegendItem(offset=(100, 30))
-        self.mLegendItem.setParentItem(self.viewBox())
+        self.mLegendItem1 = pg.LegendItem(offset=(50, 30))
+        self.mLegendItem1.setParentItem(self.plotItem1.getViewBox())
+
+        self.mLegendItem2 = pg.LegendItem(offset=(50, 30))
+        self.mLegendItem2.setParentItem(self.plotItem2.getViewBox())
 
         pi1.addItem(self.mCrosshairLineV, ignoreBounds=True)
         pi1.addItem(self.mCrosshairLineH, ignoreBounds=True)
@@ -641,7 +643,7 @@ class SpectralProfilePlotWidget(pg.GraphicsLayoutWidget):
         # self.setAutoVisible(y=True)
 
     def legend(self) -> pg.LegendItem:
-        return self.mLegendItem
+        return self.mLegendItem1
 
     def spectralProfilePlotDataItems(self,
                                      is_selected: Optional[bool] = None) \
