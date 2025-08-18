@@ -8,15 +8,17 @@ from typing import Dict, Iterator, List, Optional, Set, Tuple, Union
 
 import numpy as np
 
+from qgis.PyQt.QtCore import QRectF
 from qgis.PyQt.QtCore import pyqtSignal, QMimeData, QModelIndex, QPoint, QSortFilterProxyModel, Qt
 from qgis.PyQt.QtGui import QColor, QStandardItem, QStandardItemModel
 from qgis.PyQt.QtWidgets import QApplication, QTableView
+from qgis.PyQt.QtWidgets import QGraphicsSceneMouseEvent
 from qgis.PyQt.QtXml import QDomDocument, QDomElement
 from qgis.core import QgsExpression, QgsExpressionContext, QgsExpressionContextScope, QgsExpressionContextUtils, \
     QgsFeature, QgsFeatureRenderer, QgsFeatureRequest, QgsField, QgsMarkerSymbol, QgsProject, QgsProperty, \
     QgsReadWriteContext, QgsRenderContext, QgsSingleSymbolRenderer, QgsSymbol, QgsVectorLayer, QgsVectorLayerCache
 from qgis.gui import QgsDualView
-from .spectrallibraryplotitems import SpectralProfilePlotItem
+from .spectrallibraryplotitems import SpectralProfilePlotItem, SpectralViewBox
 from ..core import is_spectral_library, profile_field_indices, profile_field_list, profile_fields
 from ..core.spectrallibrary import SpectralLibraryUtils
 from ..core.spectralprofile import decodeProfileValueDict
@@ -416,10 +418,10 @@ class SpectralProfilePlotModel(QStandardItemModel):
             if update_heavy:
                 # redraw profiles with loading from vector layer
                 self.updatePlot(settings=new_settings)
+                self.updateStatistics(new_settings)
 
-            if update_stats:
+            elif update_stats:
                 # recalculate statistic profile, which are derived from data of previously plotted profiles
-
                 self.updateStatistics(new_settings)
 
     def dict_differences(self, dict1, dict2):
@@ -619,7 +621,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
             #  baseUnit = UnitLookup.baseUnit(unit_)
             labelName = self.mXUnitModel.unitData(unit, Qt.DisplayRole)
             self.mPlotWidget.xAxis().setUnit(unit, labelName=labelName)
-            self.mPlotWidget.clearInfoScatterPoints()
+            # self.mPlotWidget.clearInfoScatterPoints()
             # self.mPlotWidget.xAxis().setLabel(text='x values', unit=unit_)
             for bv in self.layerRendererVisualizations():
                 bv.setXUnit(self.mXUnit.unit)
@@ -667,6 +669,11 @@ class SpectralProfilePlotModel(QStandardItemModel):
         self.mPlotWidget.sigPlotDataItemSelected.connect(self.onPlotSelectionRequest)
         self.mPlotWidget.xAxis().setUnit(self.xUnit())  # required to set x unit in plot widget
         self.mXUnitInitialized = False
+
+        vb1: SpectralViewBox = plotWidget.plotItem1.getViewBox()
+        vb2: SpectralViewBox = plotWidget.plotItem1.getViewBox()
+
+        vb1.sigRectDrawn.connect(self.onRectDrawn)
 
         bg = plotWidget.backgroundBrush().color()
         fg = plotWidget.xAxis().pen().color()
@@ -858,6 +865,37 @@ class SpectralProfilePlotModel(QStandardItemModel):
             if OLD_SELECTION != self.mSELECTED_SPOTS:
                 self._updateSpotSelection(OLD_SELECTION)
         pass
+
+    def onRectDrawn(self, srect: QRectF, ev: QGraphicsSceneMouseEvent):
+
+        vb: SpectralViewBox = self.sender()
+
+        if not isinstance(vb, SpectralViewBox):
+            return
+
+        pdi = vb.parentItem()
+        if not isinstance(pdi, SpectralProfilePlotItem):
+            return
+
+        modifiers = ev.modifiers()
+        has_ctrl = modifiers & Qt.KeyboardModifier.ControlModifier
+        has_shift = modifiers & Qt.KeyboardModifier.ShiftModifier
+
+        pi1 = self.mPlotWidget.plotItem1
+        # get all items whose shape intersects the rect
+        # items1 = vb.scene().items(srect, Qt.IntersectsItemShape, Qt.AscendingOrder)
+        pdis = [item for item in pi1.scene().items(srect, Qt.IntersectsItemShape, Qt.AscendingOrder) if
+                isinstance(item, PlotCurveItem)]
+        pdis = [item.parentItem() for item in pdis if isinstance(item.parentItem(), SpectralProfilePlotDataItem)]
+        if has_shift:
+            if has_ctrl:
+                # remove from selection
+                for item in pdis:
+                    item.setCurveIsSelected(False)
+            else:
+                # add to selection
+                for item in pdis:
+                    item.setCurveIsSelected(True)
 
     def onCurveClicked(self, item: PlotCurveItem, event: MouseClickEvent):
         """
@@ -1132,7 +1170,6 @@ class SpectralProfilePlotModel(QStandardItemModel):
         layer_ids = []
         for vis in visualizations:
             lid = vis.get('layer_id')
-            vis_id = vis.get('vis_id')
             layer_ids.append(lid)
             if lid in self.mLayerCaches:
                 continue
@@ -1190,6 +1227,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
             layer_cache: QgsVectorLayerCache = self.mLayerCaches[vis['layer_id']]
             layer = layer_cache.layer()
             layer_id = layer.id()
+            vis_id = vis.get('vis_id')
             selected_fids = layer.selectedFeatureIds()
             candidate_fids = self.mPROFILE_CANDIDATES.get(layer_id, [])
 
@@ -1322,7 +1360,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
                 t0 = datetime.datetime.now()
                 plot_label = label_expression.evaluate(feature_context)
 
-                is_selected = fid in selected_fids
+                is_selected = not show_selected_only and fid in selected_fids
 
                 pdi = SpectralProfilePlotDataItem(antialias=antialiasing)
                 pdi.setClickable(True, 4)
@@ -1560,6 +1598,12 @@ class SpectralProfilePlotModel(QStandardItemModel):
                 if speclib.id() not in self.project().mapLayers().keys():
                     self.project().addMapLayer(speclib)
                 self.connectSpeclibSignals(speclib)
+
+    def clearCurveSelection(self):
+
+        for item in self.mPlotWidget.spectralProfilePlotDataItems():
+            item.setCurveIsSelected(False)
+        s = ""
 
     def defaultProfileStyle(self) -> PlotStyle:
         return self.mDefaultProfileStyle

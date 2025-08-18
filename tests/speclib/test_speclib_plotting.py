@@ -78,7 +78,7 @@ class TestSpeclibPlotting(TestCase):
                                 logging.StreamHandler()  # Log to console
                             ])
 
-        if False:
+        if True:
             speclib = TestObjects.createSpectralLibrary(25, n_bands=[100, ], profile_field_names=['p1'])
         else:
             l_dir = DIR_REPO / 'tmp/largespeclib'

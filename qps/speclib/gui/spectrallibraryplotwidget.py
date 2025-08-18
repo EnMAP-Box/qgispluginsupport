@@ -425,6 +425,8 @@ class SpectralLibraryPlotWidget(QWidget):
         self.optionSelectedFeaturesOnly.setIcon(QgsApplication.getThemeIcon("/mActionShowSelectedLayers.svg"))
         self.mPlotModel.sigShowSelectedFeaturesOnlyChanged.connect(self.optionSelectedFeaturesOnly.setChecked)
 
+        self.actionClearSelection.triggered.connect(self.plotModel().clearCurveSelection)
+        self.btnClearSelection.setDefaultAction(self.actionClearSelection)
         # self.sbMaxProfiles: QSpinBox
         # self.sbMaxProfiles.valueChanged.connect(self.mPlotControlModel.setMaxProfiles)
         # self.labelMaxProfiles: QLabel
