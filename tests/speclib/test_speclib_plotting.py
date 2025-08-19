@@ -1,37 +1,34 @@
 import json
+import logging
 import os.path
 import unittest
 
 import numpy as np
 from osgeo import gdal
 
-from qgis.PyQt.QtCore import QEvent, QPointF, Qt
-from qgis.PyQt.QtCore import QMetaType
-from qgis.PyQt.QtGui import QColor, QMouseEvent
-from qgis.PyQt.QtGui import QPen
+from qgis.PyQt.QtCore import QEvent, QMetaType, QPointF, Qt
+from qgis.PyQt.QtGui import QColor, QMouseEvent, QPen
 from qgis.PyQt.QtWidgets import QHBoxLayout, QTreeView, QVBoxLayout, QWidget
 from qgis.PyQt.QtXml import QDomDocument, QDomElement
-from qgis.core import QgsApplication
-from qgis.core import edit, QgsCategorizedSymbolRenderer, QgsClassificationRange, QgsEditorWidgetSetup, \
+from qgis.core import edit, QgsApplication, QgsCategorizedSymbolRenderer, QgsClassificationRange, QgsEditorWidgetSetup, \
     QgsExpressionContextScope, QgsFeature, QgsField, QgsGraduatedSymbolRenderer, QgsMarkerSymbol, \
     QgsMultiBandColorRenderer, QgsNullSymbolRenderer, QgsProject, QgsProperty, QgsReadWriteContext, QgsRenderContext, \
-    QgsRendererCategory, QgsRendererRange, QgsSingleBandGrayRenderer, \
-    QgsSingleSymbolRenderer, QgsVectorLayer
+    QgsRendererCategory, QgsRendererRange, QgsSingleBandGrayRenderer, QgsSingleSymbolRenderer, QgsVectorLayer
 from qgis.gui import QgsDualView, QgsMapCanvas
 from qps import DIR_REPO, initAll
-from qps.plotstyling.plotstyling import PlotStyle, MarkerSymbol
+from qps.plotstyling.plotstyling import MarkerSymbol, PlotStyle
 from qps.pyqtgraph.pyqtgraph import InfiniteLine
 from qps.qgisenums import QMETATYPE_DOUBLE, QMETATYPE_INT, QMETATYPE_QSTRING
 from qps.speclib.core import create_profile_field, profile_field_list, profile_field_names, profile_fields
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
 from qps.speclib.core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict, prepareProfileValueDict
-from qps.speclib.gui.spectrallibraryplotitems import SpectralProfilePlotWidget, SpectralXAxis, \
-    SpectralProfilePlotDataItem
+from qps.speclib.gui.spectrallibraryplotitems import SpectralProfilePlotDataItem, SpectralProfilePlotWidget, \
+    SpectralXAxis
 from qps.speclib.gui.spectrallibraryplotmodelitems import PlotStyleItem, ProfileVisualizationGroup, RasterRendererGroup, \
     SpectralProfileColorPropertyWidget
 from qps.speclib.gui.spectrallibraryplotwidget import SpectralLibraryPlotWidget
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
-from qps.speclib.gui.spectralprofileplotmodel import SpectralProfilePlotModel, copy_items
+from qps.speclib.gui.spectralprofileplotmodel import copy_items, SpectralProfilePlotModel, STATS_FUNCTIONS
 from qps.testing import start_app, TestCase, TestObjects
 from qps.unitmodel import BAND_INDEX, BAND_NUMBER
 from qps.utils import file_search, nextColor, parseWavelength, writeAsVectorFormat
@@ -72,6 +69,89 @@ class TestSpeclibPlotting(TestCase):
         slw.project().removeAllMapLayers()
         self.showGui(slw)
 
+    def test_SpectralLibraryWidget_stats(self):
+
+        logging.basicConfig(level=logging.DEBUG,
+                            format='%(asctime)s %(levelname)s %(module)s %(funcName)s: %(message)s',
+                            handlers=[
+                                # logging.FileHandler("debug.log"),  # Log to a file
+                                logging.StreamHandler()  # Log to console
+                            ])
+
+        if True:
+            speclib = TestObjects.createSpectralLibrary(2, n_bands=[100, ], profile_field_names=['p1'])
+        else:
+            l_dir = DIR_REPO / 'tmp/largespeclib'
+            p_large = None
+            if l_dir.is_dir():
+                for f in file_search(l_dir, '*.gpkg'):
+                    p_large = f
+                    break
+            if not (p_large and os.path.isfile(p_large)):
+                return
+
+            speclib = QgsVectorLayer(p_large)
+            speclib.setSubsetString('"fid" <= 200')
+
+        slw = SpectralLibraryWidget(speclib=speclib)
+        VM = SpectralLibraryWidget.ViewType
+        slw.setViewVisibility(VM.ProfileViewSettings | VM.ProfileView)
+        model = slw.plotModel()
+        model: SpectralProfilePlotModel
+        model.setShowLegend(True)
+
+        if True:
+            x = np.asarray([1, 2, 3])
+            Y = np.asarray([[10, 20, 10],
+                            [10, 20, 30]]).transpose()
+
+            for n, func in STATS_FUNCTIONS.items():
+                x1, y1 = func(x, Y)
+                self.assertTrue(np.array_equal(x, x1))
+                self.assertEqual(x1.shape, y1.shape, msg=f'failed to calculate {n}')
+
+        if True:
+            # model.generalSettings().mProfileStats.mNormalized.setValue(False)
+            for vis in model.visualizations():
+                s = vis.plotStyle()
+                s.setMarkerSymbol('o')
+                vis.setPlotStyle(s)
+                vis.mStats.mMean.setItemChecked(True)
+                vis.mStats.mStd.setItemChecked(True)
+
+        self.showGui(slw)
+
+        slw.project().removeAllMapLayers()
+
+    @unittest.skipIf(TestCase.runsInCI(), 'For debugging only')
+    def test_SpectralLibraryWidget_small(self):
+        logging.basicConfig(level=logging.INFO,
+                            format='%(asctime)s %(levelname)s %(module)s %(funcName)s: %(message)s',
+                            handlers=[
+                                # logging.FileHandler("debug.log"),  # Log to a file
+                                logging.StreamHandler()  # Log to console
+                            ])
+
+        speclib = TestObjects.createSpectralLibrary(3, n_bands=[10, 100], profile_field_names=['p1', 'p2'])
+        slw = SpectralLibraryWidget(speclib=speclib)
+        VM = SpectralLibraryWidget.ViewType
+        slw.setViewVisibility(VM.ProfileViewSettings | VM.ProfileView)
+        model = slw.plotModel()
+        model: SpectralProfilePlotModel
+        model.setShowLegend(True)
+
+        for vis in model.visualizations():
+            s = vis.plotStyle()
+            s.setMarkerSymbol('o')
+            vis.setPlotStyle(s)
+
+        pw = slw.plotWidget()
+
+        self.showGui(slw)
+
+        slw.project().removeAllMapLayers()
+
+    @unittest.skipIf(TestCase.runsInCI(), 'For debugging only')
     def test_SpectralLibraryWidget_large(self):
         l_dir = DIR_REPO / 'tmp/largespeclib'
         p_large = None
@@ -83,7 +163,7 @@ class TestSpeclibPlotting(TestCase):
             return
 
         speclib = QgsVectorLayer(p_large)
-
+        speclib.setSubsetString('"fid" <= 200')
         self.assertTrue(SpectralLibraryUtils.isSpectralLibrary(speclib))
 
         slw = SpectralLibraryWidget(speclib=speclib)
@@ -510,7 +590,10 @@ class TestSpeclibPlotting(TestCase):
         self.assertIsInstance(item2, PlotStyleItem)
         self.assertEqual(item1, item2)
 
-        item2.plotStyle().setLineColor('blue')
+        ps2 = item2.plotStyle()
+        ps2.setLineColor('blue')
+        item2.setPlotStyle(ps2)
+        self.assertNotEqual(item1.plotStyle(), item2.plotStyle())
         self.assertNotEqual(item1, item2)
 
     def test_sortBands(self):

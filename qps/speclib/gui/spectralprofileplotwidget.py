@@ -1,7 +1,6 @@
 from qgis.PyQt.QtGui import QPalette, QPen
 
-from .spectrallibraryplotitems import SpectralProfilePlotItem, SpectralViewBox, \
-    SpectralXAxis, SpectralProfilePlotDataItem
+from .spectrallibraryplotitems import SpectralProfilePlotItem, SpectralProfilePlotDataItem
 from ...plotstyling.plotstyling import PlotStyle
 from ...pyqtgraph.pyqtgraph import PlotWidget
 
@@ -11,10 +10,7 @@ class SpectralProfilePlotWidget(PlotWidget):
 
     def __init__(self, *args, profile: dict = None, **kwds):
 
-        mViewBox = SpectralViewBox()
-        plotItem = SpectralProfilePlotItem(
-            axisItems={'bottom': SpectralXAxis(orientation='bottom')}, viewBox=mViewBox
-        )
+        plotItem = SpectralProfilePlotItem()
 
         super().__init__(*args, plotItem=plotItem, **kwds)
 

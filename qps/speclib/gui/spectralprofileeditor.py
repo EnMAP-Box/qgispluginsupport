@@ -1,4 +1,5 @@
 import json
+import logging
 import re
 import warnings
 from copy import copy
@@ -21,6 +22,8 @@ from ..core import can_store_spectral_profiles
 from ..core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict, prepareProfileValueDict, \
     ProfileEncoding, validateProfileValueDict
 from ...utils import SignalBlocker
+
+logger = logging.getLogger(__name__)
 
 SPECTRAL_PROFILE_FIELD_REPRESENT_VALUE = 'Profile'
 
@@ -552,8 +555,7 @@ class SpectralProfileEditorWidget(QGroupBox):
         :param conf: dict
         """
         SpectralProfileEditorWidget.CNT += 1
-        print(f' SpectralProfileEditorWidget {self.CNT} initConfig')
-        pass
+        logger.debug(f'initConfig #{self.CNT}')
 
     def setProfile(self, profile: dict):
         """

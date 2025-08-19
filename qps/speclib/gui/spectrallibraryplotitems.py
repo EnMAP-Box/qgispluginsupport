@@ -1,17 +1,20 @@
 import collections
 import datetime
 import sys
-import textwrap
 import warnings
-from typing import Dict, List, Tuple, Union, Optional, Any, Generator
+from typing import Any, Generator, List, Optional, Tuple, Union
 
 import numpy as np
 
+from qgis.PyQt.QtCore import QRectF
 from qgis.PyQt.QtCore import pyqtSignal, QPoint, QPointF, Qt
 from qgis.PyQt.QtGui import QColor
-from qgis.PyQt.QtWidgets import QAction, QApplication, QMenu, QSlider, QWidgetAction
+from qgis.PyQt.QtWidgets import QAction, QMenu, QSlider, QWidgetAction
+from qgis.PyQt.QtWidgets import QGraphicsRectItem, QGraphicsSceneMouseEvent
 from ...plotstyling.plotstyling import PlotStyle, PlotWidgetStyle
 from ...pyqtgraph import pyqtgraph as pg
+from ...pyqtgraph.pyqtgraph import mkBrush, mkPen
+from ...pyqtgraph.pyqtgraph.graphicsItems.PlotDataItem import PlotDataItem
 from ...unitmodel import datetime64, UnitWrapper
 from ...utils import HashablePointF
 
@@ -97,7 +100,7 @@ class SpectralXAxis(pg.AxisItem):
 class SpectralProfilePlotLegend(pg.LegendItem):
     anchorChanged = pyqtSignal(int, int)
 
-    def __init__(self, *args, offset=(-1, 10), max_items=256, **kwds):
+    def __init__(self, *args, offset=(-1, 10), max_items=999999, **kwds):
         super().__init__(*args, offset=offset, **kwds)
         self.mMaxItems = int(max_items)
 
@@ -117,33 +120,43 @@ class SpectralProfilePlotItem(pg.PlotItem):
     sigPopulateContextMenuItems = pyqtSignal(object)
 
     def __init__(self, *args, **kwds):
-        super(SpectralProfilePlotItem, self).__init__(*args, **kwds)
+
+        viewBox = kwds.get('viewBox', SpectralViewBox())
+        axisItems = kwds.get('axisItems', {'bottom': SpectralXAxis(orientation='bottom')})
+
+        super(SpectralProfilePlotItem, self).__init__(*args, viewBox=viewBox, axisItems=axisItems, **kwds)
 
         # self.addLegend()
         self.mTempList = []
 
-    def addLegend(self, *args, **kwargs) -> SpectralProfilePlotLegend:
+    def spectralProfilePlotDataItems(self):
+        for item in self.listDataItems():
+            if isinstance(item, SpectralProfilePlotDataItem):
+                yield item
 
-        if self.legend is None:
-            self.legend = SpectralProfilePlotLegend(*args, **kwargs)
-            self.legend.setParentItem(self.vb)
+    # def addLegend(self, *args, **kwargs) -> SpectralProfilePlotLegend:
+    #
+    #     if self.legend is None:
+    #         self.legend = SpectralProfilePlotLegend(*args, **kwargs)
+    #         self.legend.setParentItem(self.vb)
+    #
+    #         # add existing items
+    #         for item in self.items:
+    #             if isinstance(item, SpectralProfilePlotDataItem) and item.name() != '':
+    #                 self.legend.addItem(item, name=item.name())
+    #
+    #     return self.legend
+    #
+    # def removeLegend(self):
+    #     if self.legend and self.legend.parentItem():
+    #         self.legend.opts['offset'] = None
+    #         self.legend.parentItem().removeItem(self.legend)
+    #         self.legend = None
 
-            # add existing items
-            for item in self.items:
-                if isinstance(item, SpectralProfilePlotDataItem) and item.name() != '':
-                    self.legend.addItem(item, name=item.name())
-
-        return self.legend
-
-    def removeLegend(self):
-        if self.legend and self.legend.parentItem():
-            self.legend.opts['offset'] = None
-            self.legend.parentItem().removeItem(self.legend)
-            self.legend = None
-
-    def getContextMenus(self, event):
+    def getContextMenus(self, event) -> List[QMenu]:
         self.mTempList.clear()
         try:
+            self.mTempList.append(self.ctrlMenu)
             self.sigPopulateContextMenuItems.emit(self.mTempList)
         except Exception as ex:
             print(ex)
@@ -231,6 +244,7 @@ class SpectralViewBox(pg.ViewBox):
     Subclass of PyQgtGraph ViewBox
 
     """
+    sigRectDrawn = pyqtSignal(QRectF, QGraphicsSceneMouseEvent)
 
     def __init__(self, parent=None):
         """
@@ -238,30 +252,14 @@ class SpectralViewBox(pg.ViewBox):
         """
         super().__init__(parent, enableMenu=True)
 
-        # self.mCurrentCursorPosition: Tuple[int, int] = (0, 0)
-        # define actions
+        self._selecting = False
+        self._p0 = None
 
-        # create menu
-        # menu = SpectralViewBoxMenu(self)
-
-        # widgetXAxis: QWidget = menu.widgetGroups[0]
-        # widgetYAxis: QWidget = menu.widgetGroups[1]
-        # cbXUnit = self.mActionXAxis.createUnitComboBox()
-        # grid: QGridLayout = widgetXAxis.layout()
-        # grid.addWidget(QLabel('Unit:'), 0, 0, 1, 1)
-        # grid.addWidget(cbXUnit, 0, 2, 1, 2)
-
-        # menuProfileRendering = menu.addMenu('Colors')
-        # menuProfileRendering.addAction(self.mActionSpectralProfileRendering)
-
-        # menuOtherSettings = menu.addMenu('Others')
-        # menuOtherSettings.addAction(self.mOptionMaxNumberOfProfiles)
-        # menuOtherSettings.addAction(self.mOptionShowSelectedProfilesOnly)
-        # menuOtherSettings.addAction(self.mActionShowCrosshair)
-        # menuOtherSettings.addAction(self.mActionShowCursorValues)
-
-        # self.menu: SpectralViewBoxMenu = menu
-        # self.state['enableMenu'] = True
+        self._rect_item = QGraphicsRectItem()
+        self._rect_item.setPen(mkPen('yellow'))
+        c = QColor('yellow')
+        c.setAlpha(140)
+        self._rect_item.setBrush(c)
 
     def addItems(self, pdis: list, ignoreBounds=False):
         """
@@ -281,6 +279,45 @@ class SpectralViewBox(pg.ViewBox):
             self.addedItems.extend(pdis)
         # self.updateAutoRange()
 
+    def mousePressEvent(self, ev):
+        has_shift = ev.modifiers() & Qt.ShiftModifier
+        has_ctrl = ev.modifiers() & Qt.CTRL
+        if ev.button() == Qt.LeftButton and (has_shift or has_ctrl):
+            self._selecting = True
+            self._p0 = self.mapSceneToView(ev.scenePos())
+            rect = QRectF(self._p0, self._p0)
+            self._rect_item.setRect(rect)
+            self.addItem(self._rect_item, ignoreBounds=True)
+            ev.accept()
+        else:
+            super().mousePressEvent(ev)
+
+    def mouseMoveEvent(self, ev):
+        if self._selecting and self._rect_item is not None:
+            p1 = self._p0
+            p2 = self.mapSceneToView(ev.scenePos())
+            rect = QRectF(p1, p2).normalized()
+            self._rect_item.setRect(rect)
+            ev.accept()
+        else:
+            super().mouseMoveEvent(ev)
+
+    def mouseReleaseEvent(self, ev: QGraphicsSceneMouseEvent):
+        if self._selecting and ev.button() == Qt.LeftButton:
+            rect = self._rect_item.rect()
+
+            tl = self.mapViewToScene(rect.topLeft())
+            lr = self.mapViewToScene(rect.bottomRight())
+            srect = QRectF(tl, lr).normalized()
+
+            self.sigRectDrawn.emit(srect, ev)
+            # clean up
+            self.removeItem(self._rect_item)
+            self._selecting = False
+            ev.accept()
+        else:
+            super().mouseReleaseEvent(ev)
+
 
 MouseClickData = collections.namedtuple('MouseClickData', ['idx', 'xValue', 'yValue', 'pxDistance', 'pdi'])
 
@@ -297,7 +334,7 @@ def default_selection_style(style: PlotStyle) -> PlotStyle:
     return style2
 
 
-class SpectralProfilePlotDataItem(pg.PlotDataItem):
+class SpectralProfilePlotDataItem(PlotDataItem):
     """
     A pyqtgraph.PlotDataItem to plot a SpectralProfile
     """
@@ -311,6 +348,7 @@ class SpectralProfilePlotDataItem(pg.PlotDataItem):
         self.mSelectedStyle = default_selection_style
 
         self.mIsSelected: bool = False
+        self.mVisID: Optional[str] = None
         self.mLayerID: Optional[str] = None
         self.mFeatureID: Optional[int] = None
         self.mField: Optional[str] = None
@@ -363,8 +401,7 @@ class SpectralProfilePlotDataItem(pg.PlotDataItem):
                        showBadBands: bool = True,
                        sortBands: bool = False,
                        zValue: int = None,
-                       label: str = None,
-                       tooltip: str = None):
+                       label: str = None):
 
         self.mDefaultStyle = plot_style
         y = plot_data.get('y')
@@ -473,6 +510,10 @@ class SpectralProfilePlotDataItem(pg.PlotDataItem):
         assert isinstance(b, bool)
         self.curve.setClickable(b, width=width)
 
+    def populateContextMenu(self, menu: QMenu):
+
+        s = ""
+
     def raiseContextMenu(self, ev):
         menu = self.contextMenu()
 
@@ -545,22 +586,35 @@ class PlotUpdateBlocker(object):
             legend.updateSize()
 
 
-class SpectralProfilePlotWidget(pg.PlotWidget):
+class SpectralProfilePlotWidget(pg.GraphicsLayoutWidget):
     """
-    A widget to PlotWidget SpectralProfiles
+    A widget to plot SpectralProfiles
     """
     sigPlotDataItemSelected = pyqtSignal(SpectralProfilePlotDataItem, Qt.Modifier)
 
-    def __init__(self, parent=None):
+    def __init__(self, *args, **kwargs):
 
-        mViewBox = SpectralViewBox()
-        plotItem = SpectralProfilePlotItem(
-            axisItems={'bottom': SpectralXAxis(orientation='bottom')}, viewBox=mViewBox
-        )
+        super().__init__(*args, *kwargs)
 
-        super().__init__(parent, plotItem=plotItem)
-        pi: SpectralProfilePlotItem = self.getPlotItem()
-        assert isinstance(pi, SpectralProfilePlotItem) and pi == self.plotItem
+        pi1 = SpectralProfilePlotItem()
+        pi2 = SpectralProfilePlotItem()
+        pi2.vb.setXLink(pi1)
+        self.addItem(pi1)
+        self.nextRow()
+        self.nextRow()
+        self.addItem(pi2)
+        # vb2 = self.addViewBox()
+        # vb2.addItem(self.pi2)
+
+        # self.l1 = l1
+        # self.l2 = l2
+        self.plotItem = pi1
+        self.plotItem1 = pi1
+        self.plotItem2 = pi2
+
+        layout = self.ci.layout
+        layout.setRowStretchFactor(0, 2)
+        layout.setContentsMargins(2, 2, 2, 2)
 
         self.mCurrentMousePosition: QPointF = QPointF()
         self.setAntialiasing(True)
@@ -570,13 +624,7 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
         self.mCrosshairLineH = pg.InfiniteLine(angle=0, movable=False)
 
         self.mInfoLabelCursor = pg.TextItem(text='<cursor position>', anchor=(1.0, 0.0))
-        self.mInfoHover = pg.TextItem(text='<hover info>', anchor=QPointF(0.5, 0.0))
-        self.mInfoScatterPoints: pg.ScatterPlotItem = pg.ScatterPlotItem()
-        self.mInfoScatterPoints.sigClicked.connect(self.onInfoScatterClicked)
-        self.mInfoScatterPoints.setZValue(9999999)
-        self.mInfoScatterPoints.setBrush(self.mCrosshairLineH.pen.color())
-
-        self.mInfoScatterPointHtml: Dict[pg.Point, str] = dict()
+        self.mInfoHover = pg.TextItem(text='', anchor=QPointF(0.0, 0.0))
 
         self.mCrosshairLineH.pen.setWidth(2)
         self.mCrosshairLineV.pen.setWidth(2)
@@ -587,12 +635,19 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
 
         self.scene().addItem(self.mInfoLabelCursor)
         self.scene().addItem(self.mInfoHover)
-        self.mInfoHover.setParentItem(self.getPlotItem())
-        self.mInfoLabelCursor.setParentItem(self.getPlotItem())
+        self.mInfoHover.setParentItem(pi1)
+        self.mInfoHover.setPos(50, 0)
+        self.mInfoLabelCursor.setParentItem(pi1)
 
-        pi.addItem(self.mCrosshairLineV, ignoreBounds=True)
-        pi.addItem(self.mCrosshairLineH, ignoreBounds=True)
-        pi.addItem(self.mInfoScatterPoints)
+        self.mLegendItem1 = pg.LegendItem(offset=(50, 30))
+        self.mLegendItem1.setParentItem(self.plotItem1.getViewBox())
+
+        self.mLegendItem2 = pg.LegendItem(offset=(50, 30))
+        self.mLegendItem2.setParentItem(self.plotItem2.getViewBox())
+
+        pi1.addItem(self.mCrosshairLineV, ignoreBounds=True)
+        pi1.addItem(self.mCrosshairLineH, ignoreBounds=True)
+        # pi1.addItem(self.mInfoScatterPoints)
         self.proxy2D = pg.SignalProxy(self.scene().sigMouseMoved, rateLimit=100, slot=self.onMouseMoved2D)
 
         # self.mUpdateTimer = QTimer()
@@ -604,7 +659,10 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
         self.mShowCursorInfo: bool = True
 
         # activate option "Visible Data Only" for y-axis to ignore a y-value, when the x-value is nan
-        self.setAutoVisible(y=True)
+        # self.setAutoVisible(y=True)
+
+    def legend(self) -> pg.LegendItem:
+        return self.mLegendItem1
 
     def spectralProfilePlotDataItems(self,
                                      is_selected: Optional[bool] = None) \
@@ -614,59 +672,14 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
         :return:
         """
         if isinstance(is_selected, bool):
-            for item in self.plotItem.listDataItems():
+            for item in self.plotItem1.spectralProfilePlotDataItems():
                 if isinstance(item, SpectralProfilePlotDataItem):
                     if item.curveIsSelected() == is_selected:
                         yield item
         else:
-            for item in self.plotItem.listDataItems():
+            for item in self.plotItem1.spectralProfilePlotDataItems():
                 if isinstance(item, SpectralProfilePlotDataItem):
                     yield item
-
-    def onProfileClicked(self, data: MouseClickData):
-        """
-        Slot to react to mouse-clicks on SpectralProfilePlotDataItems
-        :param data: MouseClickData
-        """
-        modifiers = QApplication.keyboardModifiers()
-
-        pdi: SpectralProfilePlotDataItem = data.pdi
-        # vis, fid, fieldIndex, xUnit = pdi.visualizationKey()
-        name = pdi.name()
-        if not isinstance(name, str):
-            name = ''
-
-        if modifiers == Qt.AltModifier:
-            x = data.xValue
-            y = data.yValue
-            pt = HashablePointF(x, y)
-            xUnit = self.xAxis().mUnit
-            if pt not in self.mInfoScatterPointHtml.keys():
-
-                if isinstance(pdi, SpectralProfilePlotDataItem):
-                    ptColor: QColor = self.mInfoScatterPoints.opts['brush'].color()
-                    ptInfo = f'<div ' \
-                             f'style="color:{ptColor.name()}; ' \
-                             f'text-align:right;">{x} {xUnit},{y} ' \
-                             f'{textwrap.shorten(name, width=self.mMaxInfoLength, placeholder="...")}' \
-                             f'</div>'
-
-                    self.mInfoScatterPointHtml[pt] = ptInfo
-
-                    existingpoints = self.existingInfoScatterPoints()
-                    if pt not in existingpoints:
-                        existingpoints.append(pt)
-                        self.mInfoScatterPoints.setData(x=[p.x() for p in existingpoints],
-                                                        y=[p.y() for p in existingpoints],
-                                                        symbol='o')
-                        # self.mInfoScatterPoints.setData(x=xcoords, y=ycoords, symbol='o')
-                    self.mInfoScatterPoints.setPointsVisible(len(existingpoints) > 0)
-
-        else:
-            if isinstance(pdi, SpectralProfilePlotDataItem):
-                self.sigPlotDataItemSelected.emit(pdi, modifiers)
-
-        self.updatePositionInfo()
 
     def existingInfoScatterPoints(self) -> List[HashablePointF]:
         return [HashablePointF(p.pos()) for p in self.mInfoScatterPoints.points()]
@@ -675,17 +688,32 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
         assert isinstance(b, bool)
         self.mShowCrosshair = b
 
+    def setBackgroundColor(self, color: Union[str, QColor]):
+        c = QColor(color)
+        self.setBackground(c)
+
+        bgBrush = mkBrush(c)
+        c2 = bgBrush.color()
+        c2.setAlpha(128)
+        bgBrush.setColor(c2)
+        self.mInfoHover.fill = bgBrush
+        self.mInfoLabelCursor.fill = bgBrush
+
+    def plotItems(self) -> List:
+        return [self.plotItem1, self.plotItem2]
+
     def setForegroundColor(self, color: Union[str, QColor]):
         c = QColor(color)
 
         # set Foreground color
         self.mInfoLabelCursor.setColor(c)
-        for axis in self.plotItem.axes.values():
-            ai: pg.AxisItem = axis['item']
-            if isinstance(ai, pg.AxisItem):
-                ai.setPen(c)
-                ai.setTextPen(c)
-                ai.label.setDefaultTextColor(c)
+        for plotItem in self.plotItems():
+            for axis in plotItem.axes.values():
+                ai: pg.AxisItem = axis['item']
+                if isinstance(ai, pg.AxisItem):
+                    ai.setPen(c)
+                    ai.setTextPen(c)
+                    ai.label.setDefaultTextColor(c)
 
     def setCrosshairColor(self, color: Union[str, QColor]):
         self.mCrosshairLineH.pen.setColor(QColor(color))
@@ -693,10 +721,14 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
 
     def setSelectionColor(self, color: Union[str, QColor]):
         c = QColor(color)
-        self.mInfoScatterPoints.opts['pen'].setColor(c)
-        self.mInfoScatterPoints.opts['brush'].setColor(c)
+        # self.mInfoScatterPoints.opts['pen'].setColor(c)
+        # self.mInfoScatterPoints.opts['brush'].setColor(c)
 
+        # selection color = hover color
         self.mInfoHover.setColor(c)
+        for item in self.spectralProfilePlotDataItems():
+            item.scatter.opts['hoverPen'] = mkPen(c)
+            item.scatter.opts['hoverBrush'] = mkBrush(c)
 
     def setInfoColor(self, color: Union[str, QColor]):
         self.mInfoLabelCursor.setColor(QColor(color))
@@ -706,36 +738,16 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
         self.mShowCursorInfo = b
 
     def xAxis(self) -> SpectralXAxis:
-        return self.plotItem.getAxis('bottom')
+        return self.plotItem1.getAxis('bottom')
 
     def yAxis(self) -> pg.AxisItem:
-        return self.plotItem.getAxis('left')
+        return self.plotItem1.getAxis('left')
 
     def viewBox(self) -> SpectralViewBox:
-        return self.plotItem.getViewBox()
+        return self.plotItem1.getViewBox()
 
-    def clearInfoScatterPoints(self):
-
-        self.mInfoScatterPointHtml.clear()
-        self.mInfoScatterPoints.setData(x=[], y=[])
-        self.mInfoScatterPoints.setPointsVisible(False)
-
-    def onInfoScatterClicked(self, a, spotItems):
-        # remove info point
-        existing_points = self.existingInfoScatterPoints()
-        for spotItem in spotItems:
-            if isinstance(spotItem, pg.SpotItem):
-                pt = HashablePointF(spotItem.pos())
-                if pt in existing_points:
-                    existing_points.remove(pt)
-
-        for pt in [p for p in list(self.mInfoScatterPointHtml.keys()) if p not in existing_points]:
-            self.mInfoScatterPointHtml.pop(pt)
-
-        self.mInfoScatterPoints.setData(x=[p.x() for p in existing_points],
-                                        y=[p.y() for p in existing_points],
-                                        symbol='o')
-        self.mInfoScatterPoints.setPointsVisible(len(existing_points) > 0)
+    def getPlotItem(self):
+        return self.plotItem1
 
     def updatePositionInfo(self):
         x, y = self.mCurrentMousePosition.x(), self.mCurrentMousePosition.y()
@@ -747,16 +759,16 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
         else:
             positionInfoHtml += 'x:{:0.5f}\ny:{:0.5f}'.format(x, y)
 
-        for pt, v in self.mInfoScatterPointHtml.items():
-            positionInfoHtml += f'{v}'
+        # for pt, v in self.mInfoScatterPointHtml.items():
+        #    positionInfoHtml += f'{v}'
         positionInfoHtml += '</body></html>'
         self.mInfoLabelCursor.setHtml(positionInfoHtml)
 
     def setWidgetStyle(self, style: PlotWidgetStyle):
         warnings.warn(DeprecationWarning(), stacklevel=2)
         self.mInfoLabelCursor.setColor(style.textColor)
-        self.mInfoScatterPoints.opts['pen'].setColor(QColor(style.selectionColor))
-        self.mInfoScatterPoints.opts['brush'].setColor(QColor(style.selectionColor))
+        # self.mInfoScatterPoints.opts['pen'].setColor(QColor(style.selectionColor))
+        # self.mInfoScatterPoints.opts['brush'].setColor(QColor(style.selectionColor))
         self.mCrosshairLineH.pen.setColor(style.crosshairColor)
         self.mCrosshairLineV.pen.setColor(style.crosshairColor)
         self.setBackground(style.backgroundColor)
@@ -780,7 +792,7 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
     def onMouseMoved2D(self, evt):
         pos = evt[0]  # using signal proxy turns original arguments into a tuple
 
-        plotItem = self.getPlotItem()
+        plotItem = self.plotItem1
         assert isinstance(plotItem, SpectralProfilePlotItem)
         vb = plotItem.vb
         assert isinstance(vb, SpectralViewBox)
@@ -792,7 +804,7 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
             nearest_item = None
             nearest_index = -1
             nearest_distance = sys.float_info.max
-            sx, sy = self.mInfoScatterPoints.getData()
+            # sx, sy = self.mInfoScatterPoints.getData()
 
             self.updatePositionInfo()
 

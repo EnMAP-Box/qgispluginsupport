@@ -12,11 +12,10 @@ from qgis.core import QgsApplication, QgsField, QgsMapLayerProxyModel, QgsProjec
     QgsSettings, QgsVectorLayer
 from qgis.gui import QgsDualView, QgsFilterLineEdit
 from .spectrallibraryplotitems import SpectralProfilePlotWidget
-from .spectrallibraryplotmodelitems import PlotStyleItem, ProfileVisualizationGroup, PropertyItem, PropertyItemBase, \
-    PropertyItemGroup, PropertyLabel, \
-    RasterRendererGroup, GeneralSettingsGroup
+from .spectrallibraryplotmodelitems import GeneralSettingsGroup, PlotStyleItem, ProfileVisualizationGroup, PropertyItem, \
+    PropertyItemBase, PropertyItemGroup, PropertyLabel, RasterRendererGroup
 from .spectrallibraryplotunitmodels import SpectralProfilePlotXAxisUnitWidgetAction
-from .spectralprofileplotmodel import SpectralProfilePlotModelProxyModel, SpectralProfilePlotModel, copy_items
+from .spectralprofileplotmodel import copy_items, SpectralProfilePlotModel, SpectralProfilePlotModelProxyModel
 from .. import speclibUiPath
 from ..core import profile_field_list
 from ...models import SettingsModel
@@ -61,17 +60,31 @@ class SpectralProfilePlotView(QTreeView):
 
             for r in range(0, model.rowCount()):
                 idx = model.index(r, 0)
-                item = idx.data(Qt.UserRole)
-                if isinstance(item, PropertyItemBase) and item.firstColumnSpanned():
-                    self.setFirstColumnSpanned(r, idx.parent(), True)
+                self.checkColumnSpanRecursively(idx)
+                # item = idx.data(Qt.UserRole)
+                # if isinstance(item, PropertyItemBase) and item.firstColumnSpanned():
+                #    self.setFirstColumnSpanned(r, idx.parent(), True)
+
+    def checkColumnSpanRecursively(self, index: QModelIndex):
+        item = index.data(Qt.UserRole)
+
+        if isinstance(item, PropertyItemBase):
+            if item.firstColumnSpanned():
+                self.setFirstColumnSpanned(index.row(), index.parent(), True)
+
+            m: QAbstractItemModel = self.model()
+            for r in range(m.rowCount(index)):
+                index2 = m.index(r, 0, parent=index)
+                self.checkColumnSpanRecursively(index2)
 
     def onRowsInserted(self, parent: QModelIndex, first: int, last: int):
 
         for r in range(first, last + 1):
             idx = self.model().index(r, 0, parent=parent)
-            item = idx.data(Qt.UserRole)
-            if isinstance(item, PropertyItemBase) and item.firstColumnSpanned():
-                self.setFirstColumnSpanned(r, idx.parent(), True)
+            self.checkColumnSpanRecursively(idx)
+            # item = idx.data(Qt.UserRole)
+            # if isinstance(item, PropertyItemBase) and item.firstColumnSpanned():
+            #    self.setFirstColumnSpanned(r, idx.parent(), True)
         s = ""
 
     def contextMenuEvent(self, event: QContextMenuEvent) -> None:
@@ -127,7 +140,9 @@ class SpectralProfilePlotView(QTreeView):
                 a.triggered.connect(lambda *args, v=profileVis: self.userColorsFromSymbolRenderer(v))
 
         if not menu.isEmpty():
+            # actions = menu.actions()
             menu.exec_(self.viewport().mapToGlobal(event.pos()))
+            # s = actions
 
     def removeItems(self, vis: List[PropertyItemGroup]):
 
@@ -410,6 +425,8 @@ class SpectralLibraryPlotWidget(QWidget):
         self.optionSelectedFeaturesOnly.setIcon(QgsApplication.getThemeIcon("/mActionShowSelectedLayers.svg"))
         self.mPlotModel.sigShowSelectedFeaturesOnlyChanged.connect(self.optionSelectedFeaturesOnly.setChecked)
 
+        self.actionClearSelection.triggered.connect(self.plotModel().clearCurveSelection)
+        self.btnClearSelection.setDefaultAction(self.actionClearSelection)
         # self.sbMaxProfiles: QSpinBox
         # self.sbMaxProfiles.valueChanged.connect(self.mPlotControlModel.setMaxProfiles)
         # self.labelMaxProfiles: QLabel
@@ -440,8 +457,6 @@ class SpectralLibraryPlotWidget(QWidget):
         # self.visButtonLayout.insertWidget(self.visButtonLayout.count() - 1,
         #                                  self.optionMaxNumberOfProfiles.createWidget(self))
 
-        widgetXAxis: QWidget = self.mPlotWidget.viewBox().menu.widgetGroups[0]
-        widgetYAxis: QWidget = self.mPlotWidget.viewBox().menu.widgetGroups[1]
         # grid: QGridLayout = widgetXAxis.layout()
         # grid.addWidget(QLabel('Unit:'), 0, 0, 1, 1)
         # grid.addWidget(self.optionXUnit.createUnitComboBox(), 0, 2, 1, 2)

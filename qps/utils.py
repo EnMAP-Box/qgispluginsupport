@@ -1027,38 +1027,47 @@ def qgsRasterLayer(source) -> QgsRasterLayer:
     raise Exception('Unable to transform {} into QgsRasterLayer'.format(source))
 
 
-def xy_pair_matrix(pairs: List[Union[Tuple, Dict]]) -> Tuple[np.ndarray, np.ndarray]:
+def xy_pair_matrix(pairs: List[Union[Tuple[np.ndarray, np.ndarray], Dict]]) -> Tuple[np.ndarray, np.ndarray]:
     """
     Takes arbitrary number of (x, y) pairs of 1D lists or numpy arrays.
     Returns:
-      result1: 1D numpy array of all unique x values (sorted, ordered by first occurrence)
+      result1: 1D numpy array of all unique x values (sorted by first occurrence)
       result2: 2D numpy array (len(result1), n_pairs) containing y values matched to x,
                np.nan fills if x doesn't exist in the pair.
     """
-    # Flatten all xs and collect unique in order of first appearance
-    x_values = set()
+    # Normalize input into a list of (x, y) numpy arrays
     pairs2 = []
+    x_order = {}
+    counter = 0
     for pair in pairs:
         if isinstance(pair, dict):
-            x, y = pair['x'], pair['y']
+            x, y = np.asarray(pair['x']), np.asarray(pair['y'])
         else:
-            x, y = pair
-
+            x, y = np.asarray(pair[0]), np.asarray(pair[1])
         assert len(x) == len(y), f'Input arrays must be of the same length: {len(x)} != {len(y)}'
         pairs2.append((x, y))
-        for xi in x:
-            x_values.add(xi)
 
-    # list of unique x values
-    x_values = list(x_values)
+        # preserve order of first occurrence
+        for xi in x:
+            if xi not in x_order:
+                x_order[xi] = counter
+                counter += 1
+
+    # unique x values, ordered by first occurrence
+    x_values = np.array(sorted(x_order, key=x_order.get))
+
+    # map from x to row index
+    x_to_idx = {x: i for i, x in enumerate(x_values)}
 
     n_pairs = len(pairs2)
     Y_VALUES = np.full((len(x_values), n_pairs), np.nan)
-    for i, (xvec, yvec) in enumerate(pairs2):
-        for x, y in zip(xvec, yvec):
-            j = x_values.index(x)
-            Y_VALUES[j, i] = y
-    return np.asarray(x_values), Y_VALUES
+
+    # fill matrix
+    for j, (xvec, yvec) in enumerate(pairs2):
+        idxs = [x_to_idx[x] for x in xvec]
+        Y_VALUES[idxs, j] = yvec
+
+    return x_values, Y_VALUES
 
 
 def qgsFields(source: Union[List[QgsField], QgsFeature, QgsFields, QgsVectorLayer]) -> QgsFields:
@@ -1535,6 +1544,39 @@ def copyEditorWidgetSetup(vectorLayer: QgsVectorLayer, fields: Union[QgsFields, 
         else:
             s = ""
     vectorLayer.updatedFields.emit()
+
+
+def compare_dicts(d1, d2, path=""):
+    """
+    Compares two dictionaries recursively and prints their differences.
+    """
+    for key in d1.keys() | d2.keys():  # Union of keys from both dicts
+        current_path = f"{path}.{key}" if path else key
+
+        if key not in d1:
+            print(f"Added: {current_path} = {d2[key]}")
+        elif key not in d2:
+            print(f"Removed: {current_path} = {d1[key]}")
+        else:
+            val1 = d1[key]
+            val2 = d2[key]
+
+            if isinstance(val1, dict) and isinstance(val2, dict):
+                compare_dicts(val1, val2, current_path)
+            elif isinstance(val1, list) and isinstance(val2, list):
+                if len(val1) != len(val2):
+                    print(f'# Changed lists: {current_path}')
+                else:
+                    for i, (v1, v2) in enumerate(zip(val1, val2)):
+                        if v1 != v2:
+                            cpath = f'{current_path}[{i}]'
+                            if isinstance(v1, dict):
+                                compare_dicts(v1, v2)
+                            else:
+                                print(f'# Changed {cpath} {v1} -> {v2}')
+
+            elif val1 != val2:
+                print(f"# Changed: {current_path}: {val1} -> {val2}")
 
 
 def check_package(name, package=None, stop_on_error=False):

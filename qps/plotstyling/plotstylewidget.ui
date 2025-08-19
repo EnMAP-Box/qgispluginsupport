@@ -113,6 +113,9 @@
        <blue>0</blue>
       </color>
      </property>
+     <property name="allowOpacity">
+      <bool>true</bool>
+     </property>
     </widget>
    </item>
    <item row="0" column="0">
@@ -249,6 +252,9 @@
        <blue>0</blue>
       </color>
      </property>
+     <property name="allowOpacity">
+      <bool>true</bool>
+     </property>
     </widget>
    </item>
    <item row="1" column="1">
@@ -303,6 +309,9 @@
        <green>0</green>
        <blue>0</blue>
       </color>
+     </property>
+     <property name="allowOpacity">
+      <bool>true</bool>
      </property>
     </widget>
    </item>

@@ -32,10 +32,10 @@ from json import JSONDecodeError
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
-from qgis.PyQt.QtCore import pyqtSignal, QByteArray, QDataStream, QIODevice, QObject, QSize, Qt
-from qgis.PyQt.QtGui import QBrush, QColor, QIcon, QPainter, QPainterPath, QPen, QPixmap
-from qgis.PyQt.QtWidgets import QComboBox, QDialog, QDialogButtonBox, QLabel, QMenu, QSpinBox, QToolButton, QVBoxLayout, \
-    QWidget, QWidgetAction
+from qgis.PyQt.QtCore import pyqtSignal, QByteArray, QDataStream, QIODevice, QMimeData, QObject, QSize, Qt
+from qgis.PyQt.QtGui import QBrush, QClipboard, QColor, QIcon, QPainter, QPainterPath, QPen, QPixmap
+from qgis.PyQt.QtWidgets import QApplication, QComboBox, QDialog, QDialogButtonBox, QLabel, QMenu, QSpinBox, \
+    QToolButton, QVBoxLayout, QWidget, QWidgetAction
 from qgis.PyQt.QtXml import QDomDocument, QDomElement
 from qgis.core import QgsAction, QgsField, QgsMessageLog, QgsSymbolLayerUtils, QgsVectorLayer
 from qgis.gui import QgsColorButton, QgsDialog, QgsEditorConfigWidget, QgsEditorWidgetFactory, QgsEditorWidgetWrapper, \
@@ -51,6 +51,7 @@ MODULE_IMPORT_PATH = None
 XMLTAG_PLOTSTYLENODE = 'PlotStyle'
 _PLOTSTYLE_EDITOR_WIDGET_FACTORY = None
 EDITOR_WIDGET_REGISTRY_KEY = 'Plot Settings'
+MIMEDATA_PLOTSTYLE = 'application/qps.plotstyle'
 
 for name, module in sys.modules.items():
     if hasattr(module, '__file__') and module.__file__ == __file__:
@@ -476,13 +477,18 @@ class PlotStyle(QObject):
         :rtype:
         """
 
-        assert isinstance(pdi, pg.PlotDataItem)
+        if isinstance(pdi, pg.PlotDataItem):
+            pdi.setPen(pg.mkPen(self.linePen))
+            pdi.setSymbol(self.markerSymbol)
+            pdi.setSymbolPen(pg.mkPen(self.markerPen))
+            pdi.setSymbolBrush(pg.mkBrush(self.markerBrush))
+            pdi.setSymbolSize(self.markerSize)
 
-        pdi.opts['pen'] = pg.mkPen(self.linePen)
-        pdi.opts['symbol'] = self.markerSymbol
-        pdi.opts['symbolPen'] = pg.mkPen(self.markerPen)
-        pdi.opts['symbolBrush'] = pg.mkBrush(self.markerBrush)
-        pdi.opts['symbolSize'] = self.markerSize
+        # pdi.opts['pen'] = pg.mkPen(self.linePen)
+        # pdi.opts['symbol'] = self.markerSymbol
+        # pdi.opts['symbolPen'] = pg.mkPen(self.markerPen)
+        # pdi.opts['symbolBrush'] = pg.mkBrush(self.markerBrush)
+        # pdi.opts['symbolSize'] = self.markerSize
 
         if isinstance(visibility, bool):
             pdi.setVisible(visibility)
@@ -606,6 +612,41 @@ class PlotStyle(QObject):
         style['backgroundColor'] = QgsSymbolLayerUtils.encodeColor(self.backgroundColor)
         style['antialias'] = self.antialias
         return style
+
+    @classmethod
+    def fromClipboard(cls) -> Optional['PlotStyle']:
+        """
+        Copies a style from the clipboard
+        :return:
+        """
+        cb: QClipboard = QApplication.instance().clipboard()
+        md = cb.mimeData()
+        if isinstance(md, QMimeData):
+
+            try:
+                if MIMEDATA_PLOTSTYLE in md.formats():
+                    dump = md.data(MIMEDATA_PLOTSTYLE)
+                    dump = bytes(dump).decode('utf-8')
+                else:
+                    dump = md.text()
+
+                return PlotStyle.fromJSON(dump)
+
+            except Exception:
+                pass
+        return None
+
+    def toClipboard(self):
+
+        txt = self.json()
+        dump = QByteArray(txt.encode("utf-8"))
+
+        md = QMimeData()
+        md.setData(MIMEDATA_PLOTSTYLE, dump)
+        md.setText(txt)
+
+        cb: QClipboard = QApplication.instance().clipboard()
+        cb.setMimeData(md)
 
     def setAntialias(self, b: bool):
         """
@@ -743,24 +784,7 @@ class PlotStyle(QObject):
     def __eq__(self, other):
         if not isinstance(other, PlotStyle):
             return False
-        for k in ['markerSymbol',
-                  'markerSize',
-                  'markerBrush',
-                  'backgroundColor',
-                  'markerPen',
-                  'linePen',
-                  'mIsVisible']:
-            if self.__dict__[k] != other.__dict__[k]:
-
-                a = self.__dict__[k]
-                b = other.__dict__[k]
-                if a != b:
-                    if isinstance(a, QPen):
-                        if not pens_equal(a, b):
-                            return False
-                    else:
-                        return False
-        return True
+        return self.map() == other.map()
 
     def __reduce_ex__(self, protocol):
 

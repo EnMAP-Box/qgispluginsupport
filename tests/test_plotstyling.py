@@ -27,9 +27,9 @@ from qgis.PyQt.QtXml import QDomDocument
 from qgis.core import QgsAction, QgsActionManager, QgsAttributeTableConfig, QgsEditorWidgetSetup, QgsFeature, QgsField, \
     QgsVectorLayer
 from qgis.gui import QgsDualView, QgsGui, QgsMapCanvas, QgsSearchWidgetWrapper
-from qps.plotstyling.plotstyling import createSetPlotStyleAction, MarkerSymbol, MarkerSymbolComboBox, pen2list, \
-    PlotStyle, PlotStyleButton, PlotStyleEditorConfigWidget, PlotStyleEditorWidgetFactory, plotStyleEditorWidgetFactory, \
-    PlotStyleEditorWidgetWrapper, PlotStyleWidget, PlotWidgetStyle, XMLTAG_PLOTSTYLENODE, list2pen
+from qps.plotstyling.plotstyling import createSetPlotStyleAction, list2pen, MarkerSymbol, MarkerSymbolComboBox, \
+    pen2list, PlotStyle, PlotStyleButton, PlotStyleEditorConfigWidget, PlotStyleEditorWidgetFactory, \
+    plotStyleEditorWidgetFactory, PlotStyleEditorWidgetWrapper, PlotStyleWidget, PlotWidgetStyle, XMLTAG_PLOTSTYLENODE
 from qps.pyqtgraph.pyqtgraph.graphicsItems.ScatterPlotItem import Symbols as pgSymbols
 from qps.qgisenums import QMETATYPE_DOUBLE, QMETATYPE_INT, QMETATYPE_QSTRING
 from qps.testing import start_app, TestCase
@@ -134,6 +134,15 @@ class PlotStyleTests(TestCase):
 
         for A, B in zip(stylesIn, stylesOut):
             self.assertEqual(A, B, msg='XML Export/Import changed style property')
+
+    def test_copy_paste(self):
+
+        s1 = PlotStyle()
+        s1.setLineColor(QColor('red'))
+        s1.toClipboard()
+        s2 = PlotStyle.fromClipboard()
+
+        self.assertEqual(s1, s2)
 
     def test_PlotStyle(self):
 
