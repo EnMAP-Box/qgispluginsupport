@@ -79,7 +79,7 @@ class TestSpeclibPlotting(TestCase):
                             ])
 
         if True:
-            speclib = TestObjects.createSpectralLibrary(25, n_bands=[100, ], profile_field_names=['p1'])
+            speclib = TestObjects.createSpectralLibrary(2, n_bands=[100, ], profile_field_names=['p1'])
         else:
             l_dir = DIR_REPO / 'tmp/largespeclib'
             p_large = None

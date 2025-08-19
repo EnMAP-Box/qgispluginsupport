@@ -881,21 +881,52 @@ class SpectralProfilePlotModel(QStandardItemModel):
         has_ctrl = modifiers & Qt.KeyboardModifier.ControlModifier
         has_shift = modifiers & Qt.KeyboardModifier.ShiftModifier
 
+        scene = self.mPlotWidget.scene()
+
         pi1 = self.mPlotWidget.plotItem1
+        vb = pi1.getViewBox()
+
+        srect2 = vb.mapRectToScene(srect)
+
         # get all items whose shape intersects the rect
         # items1 = vb.scene().items(srect, Qt.IntersectsItemShape, Qt.AscendingOrder)
-        pdis = [item for item in pi1.scene().items(srect, Qt.IntersectsItemShape, Qt.AscendingOrder) if
-                isinstance(item, PlotCurveItem)]
-        pdis = [item.parentItem() for item in pdis if isinstance(item.parentItem(), SpectralProfilePlotDataItem)]
+
+        curves = [item
+                  for item in scene.items(srect2, Qt.IntersectsItemShape, Qt.AscendingOrder)
+                  if isinstance(item, PlotCurveItem)
+                  and isinstance(item.parentItem(), SpectralProfilePlotDataItem)]
+        srect2 = vb.mapSceneToView(srect).boundingRect().normalized()
+
+        # need a more precise intersection test
+        def intersects(item: PlotDataItem, rect: QRectF) -> bool:
+            x, y = item.getData()
+            # p = item.getPath()
+            # b1 = p.intersects(rect)
+
+            from qgis.core import QgsLineString, QgsGeometry, QgsRectangle
+            ls = QgsGeometry(QgsLineString(x, y))
+
+            rect2 = QgsGeometry.fromWkt(QgsRectangle(rect).asWktPolygon())
+            b2 = ls.intersects(rect2)
+            return b2
+
+        pdis = [c.parentItem() for c in curves if intersects(c, srect2)]
+
+        selection_changed = False
         if has_shift:
-            if has_ctrl:
-                # remove from selection
-                for item in pdis:
-                    item.setCurveIsSelected(False)
-            else:
-                # add to selection
-                for item in pdis:
-                    item.setCurveIsSelected(True)
+            # add to selection
+            for item in pdis:
+                item.setCurveIsSelected(True)
+
+            selection_changed = True
+        elif has_ctrl:
+            # remove from selection
+            for item in pdis:
+                item.setCurveIsSelected(False)
+            selection_changed = True
+
+        if selection_changed:
+            self._updateFeatureSelectionFromCurves()
 
     def onCurveClicked(self, item: PlotCurveItem, event: MouseClickEvent):
         """
@@ -934,19 +965,22 @@ class SpectralProfilePlotModel(QStandardItemModel):
             new_selection = self.selectedCurveFeatures()
 
             if old_selection != new_selection and not self.showSelectedFeaturesOnly():
-                layers = set(old_selection.keys()) | set(new_selection.keys())
+                self._updateFeatureSelectionFromCurves()
 
-                # 1. select layer features that have a selected curve
-                for layerID in layers:
-                    layer = self.project().mapLayer(layerID)
-                    if isinstance(layer, QgsVectorLayer):
-                        new_ids = new_selection.get(layerID, set())
-                        old_ids = old_selection.get(layerID, set())
+                if False:
+                    layers = set(old_selection.keys()) | set(new_selection.keys())
 
-                        layer.selectByIds(list(new_ids))
+                    # 1. select layer features that have a selected curve
+                    for layerID in layers:
+                        layer = self.project().mapLayer(layerID)
+                        if isinstance(layer, QgsVectorLayer):
+                            new_ids = new_selection.get(layerID, set())
+                            old_ids = old_selection.get(layerID, set())
 
-                # 2. select curves that have a selected layer feature
-                self._updateCurveSelection()
+                            layer.selectByIds(list(new_ids))
+
+                    # 2. select curves that have a selected layer feature
+                    self._updateCurveSelectionFromFeatures()
 
     def _updateSpotSelection(self, old_selection: dict):
 
@@ -967,7 +1001,29 @@ class SpectralProfilePlotModel(QStandardItemModel):
                     pass
             s = ""
 
-    def _updateCurveSelection(self):
+    def _updateFeatureSelectionFromCurves(self):
+        """
+        Call to select feature which have a selected curve
+        :return:
+        """
+        SELECTED_FEATURES = dict()
+        for item in self.mPlotWidget.spectralProfilePlotDataItems(is_selected=True):
+            lid = item.layerID()
+            fid = item.featureID()
+            SELECTED_FEATURES[lid] = SELECTED_FEATURES.get(lid, []) + [fid]
+
+        for lid, fids in SELECTED_FEATURES.items():
+            layer = self.project().mapLayer(lid)
+            if isinstance(layer, QgsVectorLayer) and layer.isValid():
+                proxy: SignalProxy = self.mSignalProxies[layer.id()][0]
+                proxy.blockSignal = True
+                layer.selectByIds(list(set(fids)))
+                proxy.blockSignal = False
+
+    def _updateCurveSelectionFromFeatures(self):
+        """
+        Call this to select curves which relate to a selected vector layer feature
+        """
         SELECTED_FEATURES = dict()
 
         for item in self.mPlotWidget.spectralProfilePlotDataItems():
@@ -1600,10 +1656,12 @@ class SpectralProfilePlotModel(QStandardItemModel):
                 self.connectSpeclibSignals(speclib)
 
     def clearCurveSelection(self):
-
+        """
+        Unselects all selected curves.
+        :return:
+        """
         for item in self.mPlotWidget.spectralProfilePlotDataItems():
             item.setCurveIsSelected(False)
-        s = ""
 
     def defaultProfileStyle(self) -> PlotStyle:
         return self.mDefaultProfileStyle
@@ -1712,12 +1770,12 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
         if speclib.id() not in self.mSignalProxies:
             proxies = [
+                SignalProxy(speclib.selectionChanged, rateLimit=rl, slot=self.onSpeclibSelectionChanged),
                 SignalProxy(speclib.attributeValueChanged, delay=1, rateLimit=rl * 10,
                             slot=lambda *args, lid=speclib.id(): _plotted_value_changed(lid, args)),
                 SignalProxy(speclib.featuresDeleted, rateLimit=rl, slot=lambda: self.updatePlot()),
                 SignalProxy(speclib.featureAdded, rateLimit=rl, slot=lambda: self.updatePlot()),
                 SignalProxy(speclib.styleChanged, rateLimit=rl, slot=self.onSpeclibStyleChanged),
-                SignalProxy(speclib.selectionChanged, rateLimit=rl, slot=self.onSpeclibSelectionChanged),
                 SignalProxy(speclib.updatedFields, rateLimit=rl, slot=lambda: self.onSpeclibFieldsUpdated),
             ]
 
@@ -1830,7 +1888,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
         if self.showSelectedFeaturesOnly():
             self.updatePlot()
         else:
-            self._updateCurveSelection()
+            self._updateCurveSelectionFromFeatures()
         # self.updatePlot()
 
     def onDualViewSliderMoved(self, *args):

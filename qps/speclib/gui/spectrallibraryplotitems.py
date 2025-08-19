@@ -280,7 +280,9 @@ class SpectralViewBox(pg.ViewBox):
         # self.updateAutoRange()
 
     def mousePressEvent(self, ev):
-        if ev.button() == Qt.LeftButton and ev.modifiers() & Qt.ShiftModifier:
+        has_shift = ev.modifiers() & Qt.ShiftModifier
+        has_ctrl = ev.modifiers() & Qt.CTRL
+        if ev.button() == Qt.LeftButton and (has_shift or has_ctrl):
             self._selecting = True
             self._p0 = self.mapSceneToView(ev.scenePos())
             rect = QRectF(self._p0, self._p0)
