@@ -31,7 +31,7 @@ import warnings
 from json import JSONDecodeError
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
-
+import numpy as np
 from qgis.PyQt.QtCore import pyqtSignal, QByteArray, QDataStream, QIODevice, QMimeData, QObject, QSize, Qt
 from qgis.PyQt.QtGui import QBrush, QClipboard, QColor, QIcon, QPainter, QPainterPath, QPen, QPixmap
 from qgis.PyQt.QtWidgets import QApplication, QComboBox, QDialog, QDialogButtonBox, QLabel, QMenu, QSpinBox, \
