@@ -31,7 +31,7 @@ import warnings
 from json import JSONDecodeError
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
-
+import numpy as np
 from qgis.PyQt.QtCore import pyqtSignal, QByteArray, QDataStream, QIODevice, QMimeData, QObject, QSize, Qt
 from qgis.PyQt.QtGui import QBrush, QClipboard, QColor, QIcon, QPainter, QPainterPath, QPen, QPixmap
 from qgis.PyQt.QtWidgets import QApplication, QComboBox, QDialog, QDialogButtonBox, QLabel, QMenu, QSpinBox, \
@@ -329,13 +329,20 @@ class PlotStyle(QObject):
         :param pdi: PlotDataItem
         """
 
+        def getFirst(input):
+            if isinstance(input, np.ndarray):
+                return input[0]
+            else:
+                return input
+
         ps = PlotStyle()
         ps.setLinePen(pg.mkPen(pdi.opts['pen']))
-        ps.setMarkerSymbol(pdi.opts['symbol'])
-        ps.setMarkerBrush(pg.mkBrush(pdi.opts['symbolBrush']))
-        ps.setMarkerPen(pg.mkPen(pdi.opts['symbolPen']))
-        ps.markerSize = pdi.opts['symbolSize']
+        ps.setMarkerSymbol(getFirst(pdi.opts['symbol']))
+        ps.setMarkerBrush(pg.mkBrush(getFirst(pdi.opts['symbolBrush'])))
+        ps.setMarkerPen(pg.mkPen(getFirst(pdi.opts['symbolPen'])))
+        ps.markerSize = getFirst(pdi.opts['symbolSize'])
         ps.setVisibility(pdi.isVisible())
+
         return ps
 
     def __init__(self, **kwds):
