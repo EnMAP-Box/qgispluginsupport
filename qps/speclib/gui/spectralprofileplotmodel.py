@@ -31,6 +31,7 @@ from ...plotstyling.plotstyling import PlotStyle
 from ...pyqtgraph.pyqtgraph import (LegendItem, mkBrush, mkPen, PlotCurveItem, PlotDataItem, ScatterPlotItem,
                                     SpotItem, FillBetweenItem, SignalProxy)
 from ...pyqtgraph.pyqtgraph.GraphicsScene.mouseEvents import HoverEvent, MouseClickEvent
+from ...signalproxy import SignalProxyUndecorated
 from ...unitmodel import BAND_INDEX, BAND_NUMBER, datetime64, UnitConverterFunctionModel, UnitWrapper
 from ...utils import convertDateUnit, xy_pair_matrix
 
@@ -1770,10 +1771,10 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
         if speclib.id() not in self.mSignalProxies:
             proxies = [
-                SignalProxy(speclib.selectionChanged, rateLimit=rl, slot=self.onSpeclibSelectionChanged),
+                SignalProxyUndecorated(speclib.selectionChanged, rateLimit=rl, slot=self.onSpeclibSelectionChanged),
                 SignalProxy(speclib.attributeValueChanged, delay=1, rateLimit=rl * 10,
                             slot=lambda *args, lid=speclib.id(): _plotted_value_changed(lid, args)),
-                SignalProxy(speclib.featuresDeleted, rateLimit=rl, slot=lambda: self.updatePlot()),
+                SignalProxyUndecorated(speclib.featuresDeleted, rateLimit=rl, slot=lambda: self.updatePlot()),
                 SignalProxy(speclib.featureAdded, rateLimit=rl, slot=lambda: self.updatePlot()),
                 SignalProxy(speclib.styleChanged, rateLimit=rl, slot=self.onSpeclibStyleChanged),
                 SignalProxy(speclib.updatedFields, rateLimit=rl, slot=lambda: self.onSpeclibFieldsUpdated),
