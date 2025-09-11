@@ -13,6 +13,7 @@ RUN mkdir -p venv/qps
 RUN python3 -m venv --system-site-packages venv/qps
 ENV PATH=/venv/qps/bin:$PATH
 RUN pip install -r /tmp/requirements.txt
+RUN python -c 'from colorama.win32 import windll'
 
 RUN ls -lisa /tmp
 RUN cat /tmp/qgis_setup.sh
