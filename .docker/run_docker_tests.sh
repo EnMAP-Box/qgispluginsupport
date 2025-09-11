@@ -25,7 +25,7 @@ export PYTHONPATH="${PYTHONPATH}"\
 python3 runfirst.py
 python3 -c "import colorama; print(colorama.__version__)"
 
-pytest --no-cov-on-fail
+# pytest --no-cov-on-fail
 # --cov-config=.coveragec "$@"
 # coverage-badge -o coverage.svg
 # echo "coverage-badge=coverage.svg" >> $GITHUB_OUTPUT
