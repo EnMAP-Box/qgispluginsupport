@@ -2594,7 +2594,7 @@ class SpatialPoint(QgsPointXY):
         """
         Returns the pixel position of this SpatialPoint within the rasterDataSource
         :param rasterDataSource: gdal.Dataset
-        :param allowOutOfRaster: set True to return out-of-raster pixel positions, e.g. QPoint(-1,0)
+        :param allowOutOfRaster: set True to return out-of-raster pixel positions, e.g., QPoint(-1,0)
         :return: the pixel position as QPoint
         """
         lyr: QgsRasterLayer = qgsRasterLayer(rasterDataSource)

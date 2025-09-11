@@ -29,7 +29,7 @@ from ..gui.spectrallibraryplotunitmodels import SpectralProfilePlotXAxisUnitMode
 from ..gui.spectralprofilefieldmodel import SpectralProfileFieldListModel
 from ...plotstyling.plotstyling import PlotStyle
 from ...pyqtgraph.pyqtgraph import (LegendItem, mkBrush, mkPen, PlotCurveItem, PlotDataItem, ScatterPlotItem,
-                                    SignalProxy, SpotItem, FillBetweenItem)
+                                    SpotItem, FillBetweenItem, SignalProxy)
 from ...pyqtgraph.pyqtgraph.GraphicsScene.mouseEvents import HoverEvent, MouseClickEvent
 from ...unitmodel import BAND_INDEX, BAND_NUMBER, datetime64, UnitConverterFunctionModel, UnitWrapper
 from ...utils import convertDateUnit, xy_pair_matrix
