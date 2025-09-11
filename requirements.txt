@@ -11,7 +11,6 @@ flake8
 flake8-qgis
 
 # for unit testing only
-unittest-xml-reporting
 pytest
 pytest-cov
 pytest-xdist

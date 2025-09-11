@@ -12,7 +12,7 @@ COPY ./.docker/qgis_setup.sh /tmp/
 RUN mkdir -p venv/qps
 RUN python3 -m venv --system-site-packages venv/qps
 ENV PATH=/venv/qps/bin:$PATH
-RUN pip install flake8-qgis coverage-badge
+RUN pip install -r /tmp/requirements.txt
 
 RUN ls -lisa /tmp
 RUN cat /tmp/qgis_setup.sh
