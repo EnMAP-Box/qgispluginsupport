@@ -13,9 +13,9 @@ RUN python3 -m venv --system-site-packages venv/qps
 ENV PATH=/venv/qps/bin:$PATH
 RUN pip install -r /tmp/requirements.txt
 RUN sh /tmp/qgis_setup.sh
-RUN python -c 'from colorama.win32 import windll'
 
-RUN git submodule
 # ENV LANG=C.UTF-8
 RUN ls -l /usr/src/qps/pyqtgraph/pyqtgraph/util
+RUN python -c 'from colorama.win32 import windll'
+
 WORKDIR /
