@@ -692,7 +692,7 @@ class TestUtils(TestCase):
 
     def test_SpatialPoint_pixel_positions(self):
 
-        layer = TestObjects.createRasterLayer()
+        layer = TestObjects.createRasterLayer(ns=10, nl=20, pixel_size=3.0)
         pointA = SpatialPoint(layer.crs(), layer.extent().center())
         pixelA = pointA.toPixelPosition(layer)
 

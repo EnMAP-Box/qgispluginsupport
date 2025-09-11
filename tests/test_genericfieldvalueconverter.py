@@ -1,7 +1,7 @@
 import datetime
 import unittest
 
-from qgis.PyQt.QtCore import QDate, QDateTime, QTime
+from qgis.PyQt.QtCore import QDate, QDateTime, QTime, Qt
 from qgis.core import edit, QgsField, QgsFields, QgsProject, QgsVectorDataProvider, QgsVectorFileWriter, QgsVectorLayer
 from qps.fieldvalueconverter import collect_native_types, create_vsimemfile, GenericFieldValueConverter, \
     GenericPropertyTransformer
@@ -23,19 +23,19 @@ class GenericFieldValueConverterTests(TestCase):
 
         # convert to QDateTime
         for v in [str(dtgPy), dtgPy, dtgPy.date(),
-                  dtgQt, dtgQt.toString(), dtgQt.date()]:
+                  dtgQt, dtgQt.toString(Qt.ISODate), dtgQt.date()]:
             result = GenericPropertyTransformer.toDateTime(v)
             self.assertIsInstance(result, QDateTime, msg=f'Unable to convert {v} to QDateTime')
 
         # convert to QDate
         for v in [str(dtgPy), dtgPy, dtgPy.date(),
-                  dtgQt, dtgQt.toString(), dtgQt.date(), dtgQt.date().toString()]:
+                  dtgQt, dtgQt.toString(Qt.ISODate), dtgQt.date(), dtgQt.date().toString()]:
             result = GenericPropertyTransformer.toDate(v)
             self.assertIsInstance(result, QDate, msg=f'Unable to convert {v} to QDate')
 
         # convert to QTime
         for v in [str(dtgPy), dtgPy, dtgPy.time(), dtgPy.time().isoformat(),
-                  dtgQt, dtgQt.time(), dtgQt.toString(), dtgQt.time().toString()]:
+                  dtgQt, dtgQt.time(), dtgQt.toString(Qt.ISODate), dtgQt.time().toString()]:
             result = GenericPropertyTransformer.toTime(v)
             self.assertIsInstance(result, QTime, msg=f'Unable to convert {v} to QTime')
 

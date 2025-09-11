@@ -126,7 +126,7 @@ class ProcessingToolsTest(TestCase):
         groups = sl1.uniqueValues(sl1.fields().lookupField('group'))
         self.assertEqual(groups, {'A', 'B'})
 
-        provider = ExampleAlgorithmProvider()
+        provider = ExampleAlgorithmProvider.instance()
 
         processingPlugin = qgis.utils.plugins.get('processing', ProcessingPlugin(get_iface()))
 
@@ -144,6 +144,8 @@ class ProcessingToolsTest(TestCase):
         d.context = context
         d.exec_()
         processingPlugin.executeAlgorithm(alg_id, None, in_place=False, as_batch=False)
+
+        project.removeAllMapLayers()
 
     def test_aggregate_profiles(self):
         registerQgsExpressionFunctions()
@@ -174,13 +176,9 @@ class ProcessingToolsTest(TestCase):
         groups = sl1.uniqueValues(sl1.fields().lookupField('group'))
         self.assertEqual(groups, {'A', 'B'})
 
-        provider = ExampleAlgorithmProvider()
-        self._keep_ref = provider
-
-        reg: QgsProcessingRegistry = QgsApplication.instance().processingRegistry()
-        reg.addProvider(provider)
+        provider = ExampleAlgorithmProvider.instance()
         self.assertTrue(provider.addAlgorithm(AggregateProfiles()))
-        reg.providerById(ExampleAlgorithmProvider.NAME.lower())
+        reg = QgsApplication.instance().processingRegistry()
 
         alg_id = provider.algorithms()[0].id()
         alg = reg.algorithmById(alg_id)
@@ -308,11 +306,9 @@ class ProcessingToolsTest(TestCase):
 
     def test_spectralprofile_import(self):
 
-        provider = ExampleAlgorithmProvider()
+        provider = ExampleAlgorithmProvider.instance()
         initSpectralLibraryIOs()
         reg: QgsProcessingRegistry = QgsApplication.instance().processingRegistry()
-        reg.addProvider(provider)
-        self._provider_ref = provider
         self.assertTrue(provider.addAlgorithm(ImportSpectralProfiles()))
         reg.providerById(ExampleAlgorithmProvider.NAME.lower())
 
@@ -406,14 +402,14 @@ class ProcessingToolsTest(TestCase):
 
     def test_spectralprofile_export(self):
 
-        provider = ExampleAlgorithmProvider()
-        self.__keep_ref = provider
+        provider = ExampleAlgorithmProvider.instance()
+        # self.__keep_ref = provider
         initSpectralLibraryIOs()
         reg: QgsProcessingRegistry = QgsApplication.instance().processingRegistry()
-
-        self.assertTrue(provider.addAlgorithm(ExportSpectralProfiles()))
         reg.providerById(ExampleAlgorithmProvider.NAME.lower())
-        reg.addProvider(provider)
+        self.assertEqual(provider, reg.providerById(provider.id()))
+
+        provider.addAlgorithm(ExportSpectralProfiles())
 
         alg: QgsProcessingAlgorithm = reg.algorithmById(f'{provider.id()}:{ExportSpectralProfiles.NAME}')
         self.assertIsInstance(alg, ExportSpectralProfiles)
