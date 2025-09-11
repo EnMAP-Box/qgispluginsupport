@@ -15,7 +15,7 @@ RUN pip install -r /tmp/requirements.txt
 RUN sh /tmp/qgis_setup.sh
 
 # ENV LANG=C.UTF-8
-RUN ls -l /usr/src/qps/pyqtgraph/pyqtgraph/util
+RUN ls -l /usr/src
 RUN python -c 'from colorama.win32 import windll'
 
 WORKDIR /
