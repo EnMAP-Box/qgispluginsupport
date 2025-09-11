@@ -15,8 +15,8 @@ ENV PATH=/venv/qps/bin:$PATH
 RUN pip install -r /tmp/requirements.txt
 
 
-RUN ls -lisa /tmp
-RUN ls -l qps/pyqtgraph/pyqtgraph/util
+RUN ls -l /
+RUN ls -l /qps/pyqtgraph/pyqtgraph/util
 RUN cat /tmp/qgis_setup.sh
 RUN sh /tmp/qgis_setup.sh
 RUN python -c 'from colorama.win32 import windll'
