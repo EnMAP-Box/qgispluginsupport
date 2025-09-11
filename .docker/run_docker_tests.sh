@@ -23,6 +23,8 @@ export PYTHONPATH="${PYTHONPATH}"\
 ":/usr/share/qgis/python/plugins"\
 ":$(pwd)/tests"
 python3 runfirst.py
+python3 -c "import colorama; print(colorama.__version__)"
+
 pytest --no-cov-on-fail
 # --cov-config=.coveragec "$@"
 # coverage-badge -o coverage.svg
