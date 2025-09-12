@@ -28,7 +28,7 @@ which python3
 which python
 which pytest
 
-# python3 -m pytest -n auto --no-cov-on-fail
+python3 -m pytest -n auto --no-cov-on-fail
 # pytest --no-cov-on-fail
 # --cov-config=.coveragec "$@"
 # coverage-badge -o coverage.svg
