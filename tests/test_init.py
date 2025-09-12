@@ -9,6 +9,9 @@ import pathlib
 import re
 import unittest
 
+import colorama
+
+print(f'## colorama: {colorama.__version__}')
 from qgis.PyQt.QtGui import QIcon
 from qgis.gui import QgsEditorWidgetRegistry, QgsGui
 from qps import registerEditorWidgets
