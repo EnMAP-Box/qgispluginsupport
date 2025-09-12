@@ -23,7 +23,7 @@ except Exception as ex:
     print(f'QGIS: not available!: {ex}')
 
 section('PACKAGES')
-to_test = ['numpy', 'scipy', 'osgeo.gdal', 'colorama', 'qps', 'sklearn']
+to_test = ['numpy', 'scipy', 'osgeo.gdal', 'colorama', 'qps', 'sklearn', 'pytest']
 
 for p in sorted(to_test):
     b = importlib.util.find_spec(p) is not None
