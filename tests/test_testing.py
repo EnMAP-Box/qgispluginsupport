@@ -9,12 +9,12 @@ import unittest
 from pathlib import Path
 from typing import List
 
+import qps.testing
 from qgis.PyQt.QtCore import pyqtSignal
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QGroupBox, QLabel, QLineEdit, QVBoxLayout, QWidget
-from qgis.gui import QgisInterface, QgsGui, QgsLayerTreeView, QgsOptionsPageWidget, QgsOptionsWidgetFactory
 from qgis.core import QgsApplication, QgsLayerTree, QgsLayerTreeModel, QgsProcessingRegistry, QgsProject
-import qps.testing
+from qgis.gui import QgisInterface, QgsGui, QgsLayerTreeView, QgsOptionsPageWidget, QgsOptionsWidgetFactory
 from qps.testing import QgsOptionsMockup, start_app, TestCase
 from scripts.install_testdata import DIR_REPO
 
@@ -190,7 +190,8 @@ class TestCasesClassTesting(TestCase):
         subdirs = [f'sub{i}' for i in range(100)]
         subdir = Path(*subdirs)
         assert len(subdir.as_posix()) > 100
-        p = self.createTestOutputDirectory(subdir=subdir, max_length=100)
+        with self.assertWarns(UserWarning):
+            p = self.createTestOutputDirectory(subdir=subdir, max_length=100)
         self.assertTrue(p.is_dir())
 
         p = self.createTestOutputDirectory()

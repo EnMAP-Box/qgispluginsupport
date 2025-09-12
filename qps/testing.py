@@ -84,8 +84,8 @@ def start_app(cleanup: bool = True,
 
     if 'delimitedtext' not in QgsProviderRegistry.instance().providerList():
         warnings.warn('QgsProviderRegistry misses "delimitedtext" provider!\n'
-                      'Check your QGIS test environment'
-                      f'Available providers are: {QgsProviderRegistry.instance().providerList()}')
+                      'Check your QGIS test environment. Ensure that QGIS_PREFIX_PATH is defined.\n'
+                      f'Available providers: {QgsProviderRegistry.instance().providerList()}')
 
     from qgis.core import QgsCoordinateReferenceSystem
     assert QgsCoordinateReferenceSystem('EPSG:4326').isValid()
@@ -759,6 +759,21 @@ class TestCase(QgisTestCase):
 
 class ExampleAlgorithmProvider(QgsProcessingProvider):
     NAME = 'TestAlgorithmProvider'
+
+    _INSTANCE = None
+
+    @staticmethod
+    def instance():
+        """
+        Returns the instance of this provider that is added to the
+        QgsProviderRegistry.instance().
+        If none exists, it creates a new one.
+        """
+        reg: QgsProcessingRegistry = QgsApplication.instance().processingRegistry()
+        if not reg.providerById(ExampleAlgorithmProvider.NAME.lower()):
+            ExampleAlgorithmProvider._INSTANCE = ExampleAlgorithmProvider()
+            assert reg.addProvider(ExampleAlgorithmProvider._INSTANCE)
+        return reg.providerById(ExampleAlgorithmProvider.NAME.lower())
 
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)

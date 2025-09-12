@@ -16,9 +16,9 @@ from qps.classification.classificationscheme import ClassificationSchemeWidgetFa
 from qps.plotstyling.plotstyling import PlotStyleEditorWidgetFactory
 from qps.resources import initQtResources
 from qps.speclib.gui.spectralprofileeditor import SpectralProfileEditorWidgetFactory
+from qps.testing import start_app, TestCase
 from qps.utils import file_search, scanResources
 from scripts.create_resourcefile import create_resource_files
-from qps.testing import start_app, TestCase
 
 start_app()
 
