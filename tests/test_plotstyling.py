@@ -20,6 +20,8 @@ import json
 import os
 import unittest
 
+from PyQt5.QtGui import QBrush
+
 from qgis.PyQt.QtCore import QByteArray, QDataStream, QIODevice, QSize, Qt
 from qgis.PyQt.QtGui import QColor, QPen
 from qgis.PyQt.QtWidgets import QCheckBox, QComboBox, QGridLayout, QHBoxLayout, QLabel, QVBoxLayout, QWidget
@@ -30,6 +32,7 @@ from qgis.gui import QgsDualView, QgsGui, QgsMapCanvas, QgsSearchWidgetWrapper
 from qps.plotstyling.plotstyling import createSetPlotStyleAction, list2pen, MarkerSymbol, MarkerSymbolComboBox, \
     pen2list, PlotStyle, PlotStyleButton, PlotStyleEditorConfigWidget, PlotStyleEditorWidgetFactory, \
     plotStyleEditorWidgetFactory, PlotStyleEditorWidgetWrapper, PlotStyleWidget, PlotWidgetStyle, XMLTAG_PLOTSTYLENODE
+from qps.pyqtgraph.pyqtgraph import mkBrush
 from qps.pyqtgraph.pyqtgraph.graphicsItems.ScatterPlotItem import Symbols as pgSymbols
 from qps.qgisenums import QMETATYPE_DOUBLE, QMETATYPE_INT, QMETATYPE_QSTRING
 from qps.testing import start_app, TestCase
@@ -49,6 +52,25 @@ class PlotStyleTests(TestCase):
         vl.addFeature(QgsFeature(vl.fields()))
         vl.commitChanges()
         return vl
+
+    def test_set_properties(self):
+        """
+        If a list/array of style properties is give, take the 1st
+        """
+        s = PlotStyle()
+
+        s0 = s.markerSymbol
+        c0 = s.markerColor()
+
+        s.setMarkerSymbol(['x', 'o'])
+        self.assertEqual(s.markerSymbol, 'x')
+
+        s.setMarkerColor(['yellow', 'magenta'])
+        self.assertEqual(s.markerColor(), QColor('yellow'))
+
+        b = mkBrush(QBrush(QColor('yellow')))
+        s.setMarkerBrush([mkBrush('yellow'), mkBrush('magenta')])
+        self.assertEqual(s.markerBrush, mkBrush('yellow'))
 
     def test_PlotStyleButton(self):
 

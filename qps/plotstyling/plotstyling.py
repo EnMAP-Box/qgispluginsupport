@@ -31,7 +31,9 @@ import warnings
 from json import JSONDecodeError
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
+
 import numpy as np
+
 from qgis.PyQt.QtCore import pyqtSignal, QByteArray, QDataStream, QIODevice, QMimeData, QObject, QSize, Qt
 from qgis.PyQt.QtGui import QBrush, QClipboard, QColor, QIcon, QPainter, QPainterPath, QPen, QPixmap
 from qgis.PyQt.QtWidgets import QApplication, QComboBox, QDialog, QDialogButtonBox, QLabel, QMenu, QSpinBox, \
@@ -41,6 +43,7 @@ from qgis.core import QgsAction, QgsField, QgsMessageLog, QgsSymbolLayerUtils, Q
 from qgis.gui import QgsColorButton, QgsDialog, QgsEditorConfigWidget, QgsEditorWidgetFactory, QgsEditorWidgetWrapper, \
     QgsGui, QgsPenStyleComboBox, QgsSearchWidgetWrapper
 from ..pyqtgraph import pyqtgraph as pg
+from ..pyqtgraph.pyqtgraph import mkBrush, mkPen
 from ..pyqtgraph.pyqtgraph.graphicsItems.ScatterPlotItem import drawSymbol, renderSymbol
 from ..qgisenums import QMETATYPE_QSTRING
 from ..utils import findMapLayer, loadUi, SignalBlocker
@@ -62,6 +65,13 @@ for name, module in sys.modules.items():
 def log(msg: str):
     if DEBUG:
         QgsMessageLog.logMessage(msg, 'plotstyling.py')
+
+
+def getFirst(input):
+    if isinstance(input, (list, np.ndarray)):
+        return input[0]
+    else:
+        return input
 
 
 def pens_equal(p1, p2):
@@ -329,12 +339,6 @@ class PlotStyle(QObject):
         :param pdi: PlotDataItem
         """
 
-        def getFirst(input):
-            if isinstance(input, np.ndarray):
-                return input[0]
-            else:
-                return input
-
         ps = PlotStyle()
         ps.setLinePen(pg.mkPen(pdi.opts['pen']))
         ps.setMarkerSymbol(getFirst(pdi.opts['symbol']))
@@ -387,22 +391,26 @@ class PlotStyle(QObject):
         :return:
         :rtype:
         """
+        symbol = getFirst(symbol)
         self.markerSymbol = MarkerSymbol.decode(symbol).value
 
-    def setMarkerPen(self, *pen):
-        self.markerPen = QPen(*pen)
+    def setMarkerPen(self, pen):
+        pen = getFirst(pen)
+        self.markerPen = mkPen(pen)
         if self.mCosmeticPens:
             self.markerPen.setCosmetic(True)
 
-    def setLinePen(self, *pen):
-        self.linePen = QPen(*pen)
+    def setLinePen(self, pen):
+        pen = getFirst(pen)
+        self.linePen = mkPen(pen)
         if self.mCosmeticPens:
             self.linePen.setCosmetic(True)
 
-    def setMarkerBrush(self, *brush):
-        self.markerBrush = QBrush(*brush)
+    def setMarkerBrush(self, brush):
+        brush = getFirst(brush)
+        self.markerBrush = mkBrush(brush)
 
-    def setMarkerColor(self, *color: Union[str, QColor]):
+    def setMarkerColor(self, color: Union[str, QColor]):
         """
         Sets the marker symbol color
         :param color:
@@ -410,7 +418,9 @@ class PlotStyle(QObject):
         :return:
         :rtype:
         """
-        self.markerBrush.setColor(QColor(*color))
+        if isinstance(color, (list, np.ndarray)):
+            color = color[0]
+        self.markerBrush.setColor(pg.mkColor(color))
 
     def markerColor(self) -> QColor:
         """
@@ -418,7 +428,7 @@ class PlotStyle(QObject):
         :return:
         :rtype:
         """
-        self.markerBrush.color()
+        return self.markerBrush.color()
 
     def setMarkerLinecolor(self, *color: QColor):
         """
