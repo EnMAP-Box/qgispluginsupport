@@ -20,9 +20,8 @@ import json
 import os
 import unittest
 
-from PyQt5.QtGui import QBrush
-
 from qgis.PyQt.QtCore import QByteArray, QDataStream, QIODevice, QSize, Qt
+from qgis.PyQt.QtGui import QBrush
 from qgis.PyQt.QtGui import QColor, QPen
 from qgis.PyQt.QtWidgets import QCheckBox, QComboBox, QGridLayout, QHBoxLayout, QLabel, QVBoxLayout, QWidget
 from qgis.PyQt.QtXml import QDomDocument
