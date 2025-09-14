@@ -771,9 +771,12 @@ class ExampleAlgorithmProvider(QgsProcessingProvider):
         """
         reg: QgsProcessingRegistry = QgsApplication.instance().processingRegistry()
         if not reg.providerById(ExampleAlgorithmProvider.NAME.lower()):
-            ExampleAlgorithmProvider._INSTANCE = ExampleAlgorithmProvider()
+            provider = ExampleAlgorithmProvider()
+            ExampleAlgorithmProvider._INSTANCE = provider
+            assert isinstance(ExampleAlgorithmProvider._INSTANCE, ExampleAlgorithmProvider)
             assert reg.addProvider(ExampleAlgorithmProvider._INSTANCE)
-        return reg.providerById(ExampleAlgorithmProvider.NAME.lower())
+        assert reg.providerById(ExampleAlgorithmProvider.NAME.lower())
+        return ExampleAlgorithmProvider._INSTANCE
 
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
