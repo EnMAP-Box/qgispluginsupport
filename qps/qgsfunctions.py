@@ -34,12 +34,12 @@ from json import JSONDecodeError
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union
 
 import numpy as np
+
 from qgis.PyQt.QtCore import NULL, QByteArray, QCoreApplication, QVariant
 from qgis.core import Qgis, QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsExpression, QgsExpressionContext, \
     QgsExpressionContextScope, QgsExpressionFunction, QgsExpressionNode, QgsExpressionNodeFunction, QgsFeature, \
     QgsFeatureRequest, QgsField, QgsGeometry, QgsMapLayer, QgsMapToPixel, QgsMessageLog, QgsPointXY, QgsProject, \
     QgsRasterDataProvider, QgsRasterLayer
-
 from .qgisenums import QGIS_WKBTYPE
 from .qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from .speclib.core import is_profile_field
@@ -715,7 +715,10 @@ class RasterArray(QgsExpressionFunction):
         # we want to capture pixel-centers. ensure that a line / point geometry has a
         # small buffer to indicate which pixels we overlap
         resX, resY = lyrR.rasterUnitsPerPixelX(), lyrR.rasterUnitsPerPixelY()
-        if 0 in [bbox.width(), bbox.height()]:
+
+        if geom.type() == Qgis.GeometryType.Point:
+            pass
+        elif 0 in [bbox.width(), bbox.height()]:
             if bbox.width() == 0:
                 bbox.setXMinimum(c.x() - 0.5 * resX)
                 bbox.setXMaximum(c.x() + 0.5 * resX)
