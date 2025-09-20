@@ -3671,7 +3671,7 @@ def rasterArray(rasterInterface: Union[QgsRasterInterface, str, QgsRasterLayer],
 
     dp = rasterInterface
 
-    result_array: np.ndarray = None
+    result_array: Optional[np.ndarray] = None
     bands = sorted(set(bands))
     nb = len(bands)
     assert nb > 0
@@ -3684,7 +3684,11 @@ def rasterArray(rasterInterface: Union[QgsRasterInterface, str, QgsRasterLayer],
                                                     QgsRaster.IdentifyFormatValue).results()
 
         arr = np.asarray([ires[b] for b in bands]).reshape((len(bands), 1, 1))
-        return arr.astype(QGIS2NUMPY_DATA_TYPES.get(dp.dataType(1), arr.dtype))
+
+        if arr.dtype == np.dtype(object):
+            return arr
+        else:
+            return arr.astype(QGIS2NUMPY_DATA_TYPES.get(dp.dataType(1), arr.dtype))
     else:
 
         if isinstance(rect, QRect):
