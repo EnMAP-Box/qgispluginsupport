@@ -24,7 +24,7 @@
 import enum
 import math
 import sys
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtCore import pyqtSignal, QTimer, QObject, QPoint, QRect, QSize, QEvent
@@ -1244,14 +1244,13 @@ class QgsMapToolSelectUtils(object):
     """
 
     @staticmethod
-    def getCurrentVectorLayer(canvas: QgsMapCanvas):
+    def getCurrentVectorLayer(canvas: QgsMapCanvas) -> Optional[QgsVectorLayer]:
 
         vlayer = canvas.currentLayer()
-
-        if not isinstance(vlayer, QgsVectorLayer):
-            print("No active vector layer", file=sys.stderr)
-
-        return vlayer
+        if isinstance(vlayer, QgsVectorLayer) and vlayer.isValid():
+            return vlayer
+        else:
+            return None
 
     @staticmethod
     def setRubberBand(canvas: QgsMapCanvas, selectRect: QRect, rubberBand: QgsRubberBand):
@@ -1818,10 +1817,11 @@ class QgsMapToolSelect(QgsMapTool):
                 and self.mSelectionHandler.selectedGeometry().type() == QgsWkbTypes.PointGeometry:
 
             vlayer = QgsMapToolSelectUtils.getCurrentVectorLayer(self.canvas())
-            r = QgsMapToolSelectUtils.expandSelectRectangle(self.mSelectionHandler.selectedGeometry().asPoint(),
-                                                            self.canvas(),
-                                                            vlayer)
-            QgsMapToolSelectUtils.selectSingleFeature(self.canvas(), QgsGeometry.fromRect(r), modifiers)
+            if isinstance(vlayer, QgsVectorLayer):
+                r = QgsMapToolSelectUtils.expandSelectRectangle(self.mSelectionHandler.selectedGeometry().asPoint(),
+                                                                self.canvas(),
+                                                                vlayer)
+                QgsMapToolSelectUtils.selectSingleFeature(self.canvas(), QgsGeometry.fromRect(r), modifiers)
 
         else:
             QgsMapToolSelectUtils.selectMultipleFeatures(self.canvas(), self.mSelectionHandler.selectedGeometry(),
