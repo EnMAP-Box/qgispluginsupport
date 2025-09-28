@@ -335,12 +335,18 @@ def file_search(rootdir,
                             or fnmatch.fnmatch(name, pattern):
                         yield entry.path.replace('\\', '/')
                 elif entry.is_dir() and recursive is True:
-                    for r in file_search(entry.path, pattern, recursive=recursive, directories=directories):
+                    for r in file_search(entry.path, pattern,
+                                         recursive=recursive,
+                                         directories=directories,
+                                         fullpath=fullpath):
                         yield r
             else:
                 if entry.is_dir():
                     if recursive is True:
-                        for d in file_search(entry.path, pattern, recursive=recursive, directories=directories):
+                        for d in file_search(entry.path, pattern,
+                                             recursive=recursive,
+                                             directories=directories,
+                                             fullpath=fullpath):
                             yield d
 
                     if fullpath:
