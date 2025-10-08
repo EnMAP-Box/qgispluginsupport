@@ -1194,6 +1194,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
         settings = settings.copy()
         if self.updatesBlocked():
+            logger.debug('updatePlot - updateBlocked!')
             return
 
         if not isinstance(self.mPlotWidget, SpectralProfilePlotWidget):

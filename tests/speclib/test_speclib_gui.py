@@ -21,7 +21,9 @@ import os
 import pathlib
 import shutil
 import unittest
+import logging
 
+from PyQt5.QtCore import QSize
 from osgeo import gdal, ogr
 
 from qgis.PyQt.QtCore import QMimeData, QPoint, Qt, QUrl
@@ -232,9 +234,27 @@ class TestSpeclibWidgets(TestCase):
     @unittest.skipIf(TestCase.runsInCI(), 'GUI test only')
     def test_SpectralLibraryWidget_Simple(self):
         # QApplication.setStyle("Fusion")
-        slw = SpectralLibraryWidget(speclib=TestObjects.createSpectralLibrary(n=10))
+
+        logging.basicConfig(level=logging.DEBUG,
+                            format='%(asctime)s %(levelname)s %(module)s %(funcName)s: %(message)s',
+                            handlers=[
+                                # logging.FileHandler("debug.log"),  # Log to a file
+                                logging.StreamHandler()  # Log to console
+                            ])
+        sl1 = TestObjects.createSpectralLibrary(n=10)
+        sl1.setName('Speclib A')
+
+        sl2 = TestObjects.createSpectralLibrary(n=10)
+        sl2.setName('Speclib B')
+
+        rl1 = TestObjects.createRasterLayer(nb=5)
+
+        project = QgsProject()
+        project.addMapLayers([sl1, sl2, rl1])
+        slw = SpectralLibraryWidget(speclib=sl2, project=project)
+        slw.resize(QSize(1000, 600))
         self.showGui(slw)
-        QgsProject.instance().removeAllMapLayers()
+        project.removeAllMapLayers()
 
     def test_SpectralLibraryWidget(self):
 

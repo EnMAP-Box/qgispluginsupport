@@ -1,0 +1,239 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>SpectralLibraryWidget</class>
+ <widget class="QgsDockWidget" name="SpectralLibraryWidget">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>683</width>
+    <height>279</height>
+   </rect>
+  </property>
+  <property name="windowIcon">
+   <iconset resource="../../qpsresources.qrc">
+    <normaloff>:/qps/ui/icons/speclib.svg</normaloff>:/qps/ui/icons/speclib.svg</iconset>
+  </property>
+  <property name="windowTitle">
+   <string>Spectral Library View</string>
+  </property>
+  <widget class="QWidget" name="dockWidgetContents">
+   <layout class="QVBoxLayout" name="verticalLayout">
+    <property name="spacing">
+     <number>0</number>
+    </property>
+    <property name="leftMargin">
+     <number>0</number>
+    </property>
+    <property name="topMargin">
+     <number>0</number>
+    </property>
+    <property name="rightMargin">
+     <number>0</number>
+    </property>
+    <property name="bottomMargin">
+     <number>0</number>
+    </property>
+    <item>
+     <widget class="QToolBar" name="toolBar">
+      <property name="windowTitle">
+       <string>toolBar</string>
+      </property>
+      <property name="movable">
+       <bool>false</bool>
+      </property>
+      <property name="iconSize">
+       <size>
+        <width>20</width>
+        <height>20</height>
+       </size>
+      </property>
+      <property name="toolButtonStyle">
+       <enum>Qt::ToolButtonIconOnly</enum>
+      </property>
+      <property name="floatable">
+       <bool>false</bool>
+      </property>
+      <addaction name="actionSelectProfilesFromMap"/>
+      <addaction name="actionAddCurrentProfiles"/>
+      <addaction name="actionImportSpeclib"/>
+      <addaction name="actionExportSpeclib"/>
+      <addaction name="separator"/>
+      <addaction name="actionShowProfileViewSettings"/>
+      <addaction name="actionRefreshPlot"/>
+      <addaction name="separator"/>
+      <addaction name="actionShowProperties"/>
+      <addaction name="actionShowAttributeTable"/>
+      <addaction name="actionShowSpectralProcessingDialog"/>
+     </widget>
+    </item>
+    <item>
+     <widget class="SpectralLibraryPlotWidget" name="mSpeclibPlotWidget" native="true"/>
+    </item>
+   </layout>
+  </widget>
+  <action name="actionAddCurrentProfiles">
+   <property name="icon">
+    <iconset resource="../../qpsresources.qrc">
+     <normaloff>:/qps/ui/icons/plus_green_icon.svg</normaloff>:/qps/ui/icons/plus_green_icon.svg</iconset>
+   </property>
+   <property name="text">
+    <string>AddCurrentProfiles</string>
+   </property>
+   <property name="toolTip">
+    <string>Adds currently overlaid profiles to the spectral library</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Shift+A</string>
+   </property>
+  </action>
+  <action name="actionSelectProfilesFromMap">
+   <property name="icon">
+    <iconset resource="../../qpsresources.qrc">
+     <normaloff>:/qps/ui/icons/profile_identify.svg</normaloff>:/qps/ui/icons/profile_identify.svg</iconset>
+   </property>
+   <property name="text">
+    <string>SelectProfilesFromMap</string>
+   </property>
+   <property name="toolTip">
+    <string>Select a new profile from map</string>
+   </property>
+  </action>
+  <action name="optionAddCurrentProfilesAutomatically">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="../../qpsresources.qrc">
+     <normaloff>:/qps/ui/icons/profile_add_auto.svg</normaloff>:/qps/ui/icons/profile_add_auto.svg</iconset>
+   </property>
+   <property name="text">
+    <string>optionAddCurrentProfilesAutomatically</string>
+   </property>
+   <property name="toolTip">
+    <string>Activate to add profiles automatically into the spectral library</string>
+   </property>
+  </action>
+  <action name="actionImportSpeclib">
+   <property name="icon">
+    <iconset resource="../../qpsresources.qrc">
+     <normaloff>:/qps/ui/icons/speclib_add.svg</normaloff>:/qps/ui/icons/speclib_add.svg</iconset>
+   </property>
+   <property name="text">
+    <string>Import Spectral Profiles</string>
+   </property>
+   <property name="toolTip">
+    <string>Import spectral profiles from other data sources</string>
+   </property>
+  </action>
+  <action name="actionExportSpeclib">
+   <property name="icon">
+    <iconset resource="../../qpsresources.qrc">
+     <normaloff>:/qps/ui/icons/speclib_save.svg</normaloff>:/qps/ui/icons/speclib_save.svg</iconset>
+   </property>
+   <property name="text">
+    <string>Export Spectral Profiles</string>
+   </property>
+   <property name="toolTip">
+    <string>Export spectral profiles to other data formats</string>
+   </property>
+  </action>
+  <action name="actionShowProperties">
+   <property name="icon">
+    <iconset theme=":/images/themes/default/propertyicons/system.svg" resource="../../../../../../QGIS/images/images.qrc">
+     <normaloff>:/images/themes/default/propertyicons/system.svg</normaloff>:/images/themes/default/propertyicons/system.svg</iconset>
+   </property>
+   <property name="text">
+    <string>Layer Properties</string>
+   </property>
+   <property name="toolTip">
+    <string>Show the vector layer properties</string>
+   </property>
+  </action>
+  <action name="actionShowProfileFields">
+   <property name="icon">
+    <iconset resource="../../qpsresources.qrc">
+     <normaloff>:/qps/ui/icons/profile_fields.svg</normaloff>:/qps/ui/icons/profile_fields.svg</iconset>
+   </property>
+   <property name="text">
+    <string>Show Spectral Profile Fields</string>
+   </property>
+   <property name="toolTip">
+    <string>Define the fields that contain spectral profiles</string>
+   </property>
+  </action>
+  <action name="actionShowSpectralProcessingDialog">
+   <property name="icon">
+    <iconset resource="../../qpsresources.qrc">
+     <normaloff>:/qps/ui/icons/profile_processing.svg</normaloff>:/qps/ui/icons/profile_processing.svg</iconset>
+   </property>
+   <property name="text">
+    <string>Spectral Processing</string>
+   </property>
+   <property name="toolTip">
+    <string>Open the spectral processing dialog</string>
+   </property>
+  </action>
+  <action name="actionShowProfileViewSettings">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="../../../../../../QGIS/images/images.qrc">
+     <normaloff>:/images/themes/default/legend.svg</normaloff>:/images/themes/default/legend.svg</iconset>
+   </property>
+   <property name="text">
+    <string>Profile view settings</string>
+   </property>
+   <property name="toolTip">
+    <string>Show the profile view settings</string>
+   </property>
+  </action>
+  <action name="actionShowAttributeTable">
+   <property name="icon">
+    <iconset resource="../../../../../../QGIS/images/images.qrc">
+     <normaloff>:/images/themes/default/mActionOpenTable.svg</normaloff>:/images/themes/default/mActionOpenTable.svg</iconset>
+   </property>
+   <property name="text">
+    <string>Show Attribute Table</string>
+   </property>
+   <property name="toolTip">
+    <string>Open the attribute table for the selected spectral library layer</string>
+   </property>
+  </action>
+  <action name="actionRefreshPlot">
+   <property name="icon">
+    <iconset resource="../../qpsresources.qrc">
+     <normaloff>:/qps/ui/icons/refresh_green.svg</normaloff>:/qps/ui/icons/refresh_green.svg</iconset>
+   </property>
+   <property name="text">
+    <string>Refresh plot</string>
+   </property>
+   <property name="toolTip">
+    <string>Refresh the spectral library plot</string>
+   </property>
+  </action>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>QgsDockWidget</class>
+   <extends>QDockWidget</extends>
+   <header>qgsdockwidget.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>SpectralLibraryPlotWidget</class>
+   <extends>QWidget</extends>
+   <header>qps.speclib.gui.spectrallibraryplotwidget</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
+ <resources>
+  <include location="../../qpsresources.qrc"/>
+  <include location="../../../../../../QGIS/images/images.qrc"/>
+ </resources>
+ <connections/>
+</ui>

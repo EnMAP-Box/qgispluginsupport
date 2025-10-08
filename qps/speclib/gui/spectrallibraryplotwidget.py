@@ -1,4 +1,5 @@
 import re
+import warnings
 from typing import List, Optional, Union
 
 from qgis.PyQt.QtCore import pyqtSignal, QAbstractItemModel, QItemSelectionModel, QMimeData, QModelIndex, \
@@ -357,11 +358,11 @@ class SpectralLibraryPlotWidget(QWidget):
     sigDragEnterEvent = pyqtSignal(QDragEnterEvent)
     sigDropEvent = pyqtSignal(QDropEvent)
     sigPlotWidgetStyleChanged = pyqtSignal()
+    sigTreeSelectionChanged = pyqtSignal()
 
     SHOW_MAX_PROFILES_HINT = True
 
-    def __init__(self, *args,
-                 plot_model: Optional[SpectralProfilePlotModel] = None, **kwds):
+    def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
         loadUi(speclibUiPath('spectrallibraryplotwidget.ui'), self)
 
@@ -374,10 +375,7 @@ class SpectralLibraryPlotWidget(QWidget):
         assert isinstance(self.mPlotWidget, SpectralProfilePlotWidget)
         # self.plotWidget.sigPopulateContextMenuItems.connect(self.onPopulatePlotContextMenu)
 
-        if not isinstance(plot_model, SpectralProfilePlotModel):
-            plot_model = SpectralProfilePlotModel()
-
-        self.mPlotModel = plot_model
+        self.mPlotModel = SpectralProfilePlotModel()
 
         self.mPlotModel.setPlotWidget(self.mPlotWidget)
         self.mPlotModel.sigPlotWidgetStyleChanged.connect(self.sigPlotWidgetStyleChanged.emit)
@@ -399,7 +397,7 @@ class SpectralLibraryPlotWidget(QWidget):
         self.mViewDelegate = SpectralProfilePlotViewDelegate(self.treeView)
         self.mViewDelegate.setItemDelegates(self.treeView)
 
-        self.mDualView: Union[QgsDualView] = None
+        # self.mDualView: Union[QgsDualView] = None
         self.mSettingsModel = SettingsModel(QgsSettings('qps'), key_filter='qps/spectrallibrary')
 
         self.optionShowVisualizationSettings: QAction
@@ -473,9 +471,9 @@ class SpectralLibraryPlotWidget(QWidget):
         self.plotModel().setProject(project)
 
         # ensure that the dual-view layer is added to the recent QgsProject
-        lyr = self.mDualView.masterModel().layer()
-        if isinstance(lyr, QgsVectorLayer) and lyr.id() not in project.mapLayers():
-            project.addMapLayer(lyr)
+        # lyr = self.mDualView.masterModel().layer()
+        # if isinstance(lyr, QgsVectorLayer) and lyr.id() not in project.mapLayers():
+        #     project.addMapLayer(lyr)
 
     def project(self) -> QgsProject:
         return self.plotModel().project()
@@ -534,6 +532,7 @@ class SpectralLibraryPlotWidget(QWidget):
         # rows = self.treeView.selectionModel().selectedRows()
         groups = [g for g in self.treeView.selectedPropertyGroups() if g.isRemovable()]
         self.actionRemoveProfileVis.setEnabled(len(groups) > 0)
+        self.sigTreeSelectionChanged.emit()
 
     def onMaxProfilesReached(self):
 
@@ -604,7 +603,7 @@ class SpectralLibraryPlotWidget(QWidget):
                            if isinstance(v.fieldName(), str) and isinstance(v.layerId(), str)]
 
         if layer_id is None and field_name is None:
-            last_speclib = self.speclib()
+            last_speclib = self.currentSpeclib()
             if isinstance(last_speclib, QgsVectorLayer):
 
                 layer_id = last_speclib.id()
@@ -616,6 +615,13 @@ class SpectralLibraryPlotWidget(QWidget):
                         break
         if layer_id is None and field_name is None and len(existing_fields) > 0:
             layer_id, field_name = existing_fields[-1]
+
+        if layer_id and field_name is None:
+            layer = self.project().mapLayer(layer_id)
+            if isinstance(layer, QgsVectorLayer):
+                profile_fields = profile_field_list(layer)
+                if len(profile_fields) > 0:
+                    field_name = profile_fields[0].name()
 
         # set profile source in speclib
         if isinstance(layer_id, str) and isinstance(field_name, str):
@@ -688,13 +694,43 @@ class SpectralLibraryPlotWidget(QWidget):
         to_remove = [r.data(Qt.UserRole) for r in rows if isinstance(r.data(Qt.UserRole), PropertyItemGroup)]
         self.mPlotModel.removePropertyItemGroups(to_remove)
 
-    def setDualView(self, dualView):
-        self.mDualView = dualView
-        self.mPlotModel.setDualView(dualView)
+    #def setDualView(self, dualView):
+    #    self.mDualView = dualView
+    #    self.mPlotModel.setDualView(dualView)
 
-    def speclib(self) -> QgsVectorLayer:
-        # will be removed
-        return self.mDualView.masterModel().layer()
+    def currentVisualization(self) -> Optional[ProfileVisualizationGroup]:
+
+        for idx in self.treeView.selectionModel().selectedRows():
+            node = idx.data(Qt.UserRole)
+
+            if isinstance(node, PropertyLabel):
+                node = node.propertyItem()
+            if isinstance(node, PropertyItem):
+                node = node.parent()
+            if isinstance(node, ProfileVisualizationGroup):
+                return node
+
+
+        return None
+
+
+    def currentSpeclib(self) -> Optional[QgsVectorLayer]:
+        """
+        Returns the currently selected speclib layer, or None if not Visualization Group
+        """
+        vis = self.currentVisualization()
+        if isinstance(vis, ProfileVisualizationGroup):
+            return vis.layer()
+        else:
+            return None
+
+
+        return None
+
+    def speclib(self) -> Optional[QgsVectorLayer]:
+        warnings.warn(DeprecationWarning('use currentSpeclib() instead'), stacklevel=2)
+        return self.currentSpeclib()
+        # return self.mDualView.masterModel().layer()
 
     # def addSpectralModel(self, model):
     #    self.mPlotControlModel.addModel(model)
