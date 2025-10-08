@@ -1,5 +1,5 @@
 import os
-import pathlib
+from pathlib import Path
 import sys
 import warnings
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
@@ -182,8 +182,8 @@ class SpectralLibraryIO(QObject):
         super().__init__(*args, **kwds)
 
     @classmethod
-    def copyEditorWidgetSetup(cls, path: Union[str, pathlib.Path], fields: QgsFields):
-        path = pathlib.Path(path).as_posix()
+    def copyEditorWidgetSetup(cls, path: Union[str, Path], fields: QgsFields):
+        path = Path(path).as_posix()
         lyr = QgsVectorLayer(path)
 
         if lyr.isValid():
@@ -197,11 +197,11 @@ class SpectralLibraryIO(QObject):
                 print(msg, file=sys.stderr)
 
     @classmethod
-    def extractFilePath(cls, uri: Union[str, pathlib.Path, QUrl]) -> pathlib.Path:
+    def extractFilePath(cls, uri: Union[str, Path, QUrl]) -> Path:
 
         if isinstance(uri, QUrl):
             uri = uri.toString(QUrl.PreferLocalFile | QUrl.RemoveQuery)
-        return pathlib.Path(uri)
+        return Path(uri)
 
     @classmethod
     def extractWriterInfos(cls,
@@ -352,7 +352,7 @@ class SpectralLibraryIO(QObject):
 
     @classmethod
     def exportProfiles(cls,
-                       path: Union[str, pathlib.Path, QUrl],
+                       path: Union[str, Path, QUrl],
                        profiles: List[QgsFeature],
                        exportSettings: dict = dict(),
                        feedback: QgsProcessingFeedback = QgsProcessingFeedback(),
@@ -370,14 +370,14 @@ class SpectralLibraryIO(QObject):
 
     @staticmethod
     def readProfilesFromUri(
-            uri: Union[QUrl, str, pathlib.Path],
+            uri: Union[QUrl, str, Path],
             importSettings: Optional[dict] = None,
             feedback: Optional[QgsProcessingFeedback] = None) -> List[QgsFeature]:
 
         if isinstance(uri, QUrl):
             uri = uri.toString(QUrl.PreferLocalFile | QUrl.RemoveQuery)
 
-        elif isinstance(uri, pathlib.Path):
+        elif isinstance(uri, Path):
             uri = uri.as_posix()
 
         if not isinstance(uri, str):
@@ -415,7 +415,7 @@ class SpectralLibraryIO(QObject):
                           QgsVectorLayer,
                           QgsFeatureIterator,
                           List[QgsFeature]],
-                      uri: Union[str, pathlib.Path, QUrl],
+                      uri: Union[str, Path, QUrl],
                       settings: dict = dict(),
                       feedback: QgsProcessingFeedback = QgsProcessingFeedback(),
                       **kwargs: dict) -> List[str]:
@@ -526,7 +526,7 @@ class SpectralLibraryIO(QObject):
         speclib = None
         if isinstance(uri, QUrl):
             uri = uri.toString(QUrl.PreferLocalFile | QUrl.RemoveQuery)
-        elif isinstance(uri, pathlib.Path):
+        elif isinstance(uri, Path):
             uri = uri.as_posix()
         assert isinstance(uri, str)
         # 1. Try to open directly as vector layer
@@ -636,7 +636,7 @@ class SpectralLibraryImportDialog(QDialog, QgsExpressionContextGenerator):
 
     @staticmethod
     def importProfiles(speclib: QgsVectorLayer,
-                       defaultRoot: Union[str, pathlib.Path] = None,
+                       defaultRoot: Union[str, Path] = None,
                        parent: QWidget = None):
 
         assert isinstance(speclib, QgsVectorLayer) and speclib.isValid()
@@ -719,8 +719,8 @@ class SpectralLibraryImportDialog(QDialog, QgsExpressionContextGenerator):
 
     def __init__(self,
                  *args,
-                 speclib: QgsVectorLayer = None,
-                 defaultRoot: Union[str, pathlib.Path] = None,
+                 speclib: Union[QgsVectorLayer] = None,
+                 defaultRoot: Union[str, Path] = None,
                  **kwds):
 
         super().__init__(*args, **kwds)
@@ -743,7 +743,7 @@ class SpectralLibraryImportDialog(QDialog, QgsExpressionContextGenerator):
         self.fieldMappingWidget.registerExpressionContextGenerator(self.mContextGenerator)
 
         if defaultRoot:
-            r = pathlib.Path(defaultRoot)
+            r = Path(defaultRoot)
             if r.is_dir():
                 self.fileWidget.setDefaultRoot(r.as_posix())
             if r.is_file():
@@ -790,7 +790,7 @@ class SpectralLibraryImportDialog(QDialog, QgsExpressionContextGenerator):
             filePath = fw.filePath()
             if fw.isMultiFiles(filePath):
                 filePath = fw.splitFilePaths(filePath)[0]
-            filePath = pathlib.Path(filePath)
+            filePath = Path(filePath)
             if filePath.is_file():
                 filePath = filePath.parent
             settings.setValue('SpectralLibraryImportDialog/defaultRoot', filePath.as_posix())
@@ -830,8 +830,8 @@ class SpectralLibraryImportDialog(QDialog, QgsExpressionContextGenerator):
                 return True
         return False
 
-    def setSource(self, source: Union[str, pathlib.Path]):
-        if isinstance(source, pathlib.Path):
+    def setSource(self, source: Union[str, Path]):
+        if isinstance(source, Path):
             source = source.as_posix()
         self.fileWidget.setFilePath(source)
 
