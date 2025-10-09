@@ -272,7 +272,7 @@ QSplitter::handle:vertical {
     <string>SelectedFeaturesOnly</string>
    </property>
    <property name="toolTip">
-    <string>Activate to show profiles for selected features only</string>
+    <string>Show profiles from selected vector features only</string>
    </property>
   </action>
   <action name="optionColorsFromFeatureRenderer">

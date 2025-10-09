@@ -10,6 +10,7 @@ from qgis.PyQt.QtCore import QRectF
 from qgis.PyQt.QtCore import pyqtSignal, QPoint, QPointF, Qt
 from qgis.PyQt.QtGui import QColor
 from qgis.PyQt.QtWidgets import QAction, QMenu, QSlider, QWidgetAction
+from qgis.PyQt.QtWidgets import QApplication
 from qgis.PyQt.QtWidgets import QGraphicsRectItem, QGraphicsSceneMouseEvent
 from ...plotstyling.plotstyling import PlotStyle, PlotWidgetStyle
 from ...pyqtgraph import pyqtgraph as pg
@@ -256,10 +257,21 @@ class SpectralViewBox(pg.ViewBox):
         self._p0 = None
 
         self._rect_item = QGraphicsRectItem()
-        self._rect_item.setPen(mkPen('yellow'))
+        self.setSelectionRectangleBrush('select')
+
+    def setSelectionRectangleBrush(self, mode: str = 'select'):
+
+        pen = mkPen('yellow')
+
         c = QColor('yellow')
         c.setAlpha(140)
-        self._rect_item.setBrush(c)
+        brush = mkBrush(c)
+
+        if mode == 'deselect':
+            pen.setStyle(Qt.DashLine)
+            # brush.setStyle(Qt.Dense4Pattern)
+        self._rect_item.setPen(pen)
+        self._rect_item.setBrush(brush)
 
     def addItems(self, pdis: list, ignoreBounds=False):
         """
@@ -286,9 +298,16 @@ class SpectralViewBox(pg.ViewBox):
             self._selecting = True
             self._p0 = self.mapSceneToView(ev.scenePos())
             rect = QRectF(self._p0, self._p0)
+
             self._rect_item.setRect(rect)
+            if has_shift:
+                self.setSelectionRectangleBrush('select')
+            elif has_ctrl:
+                self.setSelectionRectangleBrush('deselect')
             self.addItem(self._rect_item, ignoreBounds=True)
+            QApplication.setOverrideCursor(Qt.CrossCursor)
             ev.accept()
+
         else:
             super().mousePressEvent(ev)
 
@@ -314,6 +333,7 @@ class SpectralViewBox(pg.ViewBox):
             # clean up
             self.removeItem(self._rect_item)
             self._selecting = False
+            QApplication.restoreOverrideCursor()
             ev.accept()
         else:
             super().mouseReleaseEvent(ev)

@@ -11,9 +11,9 @@ from qgis.PyQt.QtWidgets import QAbstractItemView, QAction, QApplication, QCombo
     QWidget
 from qgis.core import QgsApplication, QgsField, QgsMapLayerProxyModel, QgsProject, QgsRasterLayer, \
     QgsSettings, QgsVectorLayer
-from qgis.gui import QgsDualView, QgsFilterLineEdit
+from qgis.gui import QgsFilterLineEdit
 from .spectrallibraryplotitems import SpectralProfilePlotWidget
-from .spectrallibraryplotmodelitems import GeneralSettingsGroup, PlotStyleItem, ProfileVisualizationGroup, PropertyItem, \
+from .spectrallibraryplotmodelitems import PlotStyleItem, ProfileVisualizationGroup, PropertyItem, \
     PropertyItemBase, PropertyItemGroup, PropertyLabel, RasterRendererGroup
 from .spectrallibraryplotunitmodels import SpectralProfilePlotXAxisUnitWidgetAction
 from .spectralprofileplotmodel import copy_items, SpectralProfilePlotModel, SpectralProfilePlotModelProxyModel
@@ -284,10 +284,8 @@ class SpectralProfilePlotViewDelegate(QStyledItemDelegate):
             elif isinstance(item, PlotStyleItem):
                 # self.initStyleOption(option, index)
                 grp = item.parent()
-                if isinstance(grp, ProfileVisualizationGroup):
+                if isinstance(grp, ProfileVisualizationGroup) and item.key() == 'style':
                     plot_style = grp.plotStyle(add_symbol_scope=True)
-                elif isinstance(grp, GeneralSettingsGroup) and item.key() == 'candidate_style':
-                    plot_style = grp.profileCandidateStyle()
                 else:
                     plot_style: PlotStyle = item.plotStyle()
 
@@ -591,6 +589,7 @@ class SpectralLibraryPlotWidget(QWidget):
         """
         item = ProfileVisualizationGroup()
         item.setCheckState(Qt.Checked if checked else Qt.Unchecked)
+
         # set defaults
 
         if isinstance(layer_id, QgsVectorLayer):
@@ -694,7 +693,7 @@ class SpectralLibraryPlotWidget(QWidget):
         to_remove = [r.data(Qt.UserRole) for r in rows if isinstance(r.data(Qt.UserRole), PropertyItemGroup)]
         self.mPlotModel.removePropertyItemGroups(to_remove)
 
-    #def setDualView(self, dualView):
+    # def setDualView(self, dualView):
     #    self.mDualView = dualView
     #    self.mPlotModel.setDualView(dualView)
 
@@ -710,9 +709,7 @@ class SpectralLibraryPlotWidget(QWidget):
             if isinstance(node, ProfileVisualizationGroup):
                 return node
 
-
         return None
-
 
     def currentSpeclib(self) -> Optional[QgsVectorLayer]:
         """
@@ -723,9 +720,6 @@ class SpectralLibraryPlotWidget(QWidget):
             return vis.layer()
         else:
             return None
-
-
-        return None
 
     def speclib(self) -> Optional[QgsVectorLayer]:
         warnings.warn(DeprecationWarning('use currentSpeclib() instead'), stacklevel=2)

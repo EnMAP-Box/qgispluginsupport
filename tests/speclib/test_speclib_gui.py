@@ -16,32 +16,30 @@
 *                                                                         *
 ***************************************************************************
 """
+import logging
 # noinspection PyPep8Naming
 import os
 import pathlib
-import shutil
 import unittest
-import logging
 
-from PyQt5.QtCore import QSize
 from osgeo import gdal, ogr
 
 from qgis.PyQt.QtCore import QMimeData, QPoint, Qt, QUrl
+from qgis.PyQt.QtCore import QSize
 from qgis.PyQt.QtGui import QDropEvent
 from qgis.PyQt.QtWidgets import QAction, QApplication, QComboBox, QDialog, QPushButton, QToolBar, QToolButton, \
     QVBoxLayout, QWidget
-from qgis.core import QgsFeature, QgsField, QgsProject, QgsRasterLayer, QgsVectorLayer, QgsWkbTypes
-from qgis.gui import QgsDualView, QgsGui, QgsMapCanvas
+from qgis.core import QgsFeature, QgsProject, QgsRasterLayer, QgsVectorLayer, QgsWkbTypes
+from qgis.gui import QgsGui, QgsMapCanvas
 from qps import registerEditorWidgets
 from qps.layerproperties import AddAttributeDialog
-from qps.qgisenums import QMETATYPE_INT
-from qps.speclib.core import is_spectral_library, profile_field_list, profile_field_names
+from qps.speclib.core import is_spectral_library, profile_field_list
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
 from qps.speclib.core.spectralprofile import decodeProfileValueDict
 from qps.speclib.gui.spectrallibraryplotitems import SpectralProfilePlotWidget
 from qps.speclib.gui.spectrallibraryplotunitmodels import SpectralProfilePlotXAxisUnitModel
 from qps.speclib.gui.spectrallibraryplotwidget import SpectralLibraryPlotWidget
-from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryPanel, SpectralLibraryWidget
+from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
 from qps.testing import start_app, TestCase, TestObjects
 from qps.unitmodel import BAND_NUMBER, UnitLookup
 from qps.utils import setToolButtonDefaultActionMenu
@@ -193,28 +191,6 @@ class TestSpeclibWidgets(TestCase):
 
         s = ""
 
-    def test_SpectralLibraryWidget_ViewTypes(self):
-
-        w = SpectralLibraryWidget()
-        w.show()
-
-        w.setViewVisibility(SpectralLibraryWidget.ViewType.Empty)
-        self.assertFalse(w.mSpeclibPlotWidget.isVisible())
-        self.assertFalse(w.mMainView.isVisible())
-
-        w.setViewVisibility(SpectralLibraryWidget.ViewType.Standard)
-        self.assertTrue(w.mMainView.isVisible())
-        self.assertEqual(w.mMainView.view(), QgsDualView.AttributeTable)
-        self.assertTrue(w.mSpeclibPlotWidget.isVisible())
-        self.assertTrue(w.mMainView.isVisible())
-
-        w.setViewVisibility(SpectralLibraryWidget.ViewType.ProfileView)
-        self.assertTrue(w.mSpeclibPlotWidget.isVisible())
-        self.assertFalse(w.mMainView.isVisible())
-
-        self.showGui(w)
-        QgsProject.instance().removeAllMapLayers()
-
     def test_SpectralLibraryWidget_empty_vectorlayer(self):
 
         vl = TestObjects.createVectorLayer()
@@ -253,6 +229,7 @@ class TestSpeclibWidgets(TestCase):
         project.addMapLayers([sl1, sl2, rl1])
         slw = SpectralLibraryWidget(speclib=sl2, project=project)
         slw.resize(QSize(1000, 600))
+        self.assertEqual(project, slw.project())
         self.showGui(slw)
         project.removeAllMapLayers()
 
@@ -284,22 +261,15 @@ class TestSpeclibWidgets(TestCase):
 
         QgsProject.instance().addMapLayer(slw.speclib())
 
-        self.assertEqual(slw.speclib(), sl1)
-        self.assertIsInstance(slw.speclib(), QgsVectorLayer)
-        fieldNames = slw.speclib().fields().names()
-        self.assertIsInstance(fieldNames, list)
+        # self.assertEqual(slw.speclib(), sl1)
+        # self.assertIsInstance(slw.speclib(), QgsVectorLayer)
+        # fieldNames = slw.speclib().fields().names()
+        # self.assertIsInstance(fieldNames, list)
 
-        self.assertTrue(slw.speclib() == sl1)
+        # self.assertTrue(slw.speclib() == sl1)
 
         self.showGui([slw])
 
-        QgsProject.instance().removeAllMapLayers()
-
-    @unittest.skipIf(False, '')
-    def test_SpectralLibraryPanel(self):
-
-        sp = SpectralLibraryPanel()
-        self.showGui(sp)
         QgsProject.instance().removeAllMapLayers()
 
     @unittest.skipIf(False, '')
@@ -316,9 +286,9 @@ class TestSpeclibWidgets(TestCase):
 
         canvas = QgsMapCanvas()
 
-        canvas.setLayers([slw.speclib(), lyr])
-        canvas.setDestinationCrs(slw.speclib().crs())
-        canvas.setExtent(slw.speclib().extent())
+        canvas.setLayers([speclib, lyr])
+        canvas.setDestinationCrs(speclib.crs())
+        canvas.setExtent(speclib.extent())
 
         def setLayers():
             canvas.mapSettings().setDestinationCrs(slw.mCanvas.mapSettings().destinationCrs())
@@ -331,63 +301,18 @@ class TestSpeclibWidgets(TestCase):
         self.showGui([canvas, slw])
         QgsProject.instance().removeAllMapLayers()
 
-    @unittest.skipIf(False, '')
-    def test_editing(self):
-
-        slib = TestObjects.createSpectralLibrary()
-        self.assertTrue(len(slib) > 0)
-        slw = SpectralLibraryWidget(project=QgsProject())
-        slw.speclib().startEditing()
-        slw.addSpeclib(slib)
-
-        slw.mActionToggleEditing.setChecked(True)
-
-        # self.assertTrue()
-
-        self.showGui(slw)
-
-        slw.project().removeAllMapLayers()
-
-    def test_addAttribute(self):
-
-        slw = SpectralLibraryWidget()
-        self.assertIsInstance(slw, SpectralLibraryWidget)
-        sl = slw.speclib()
-        self.assertIsInstance(sl, QgsVectorLayer)
-        sl.startEditing()
-
-        attr = QgsField(name='test',
-                        type=QMETATYPE_INT,
-                        typeName='Int')
-
-        sl.addAttribute(attr)
-        conf1 = sl.attributeTableConfig()
-        conf2 = slw.mMainView.attributeTableConfig()
-
-        self.assertEqual(len(conf1.columns()), len(conf2.columns()))
-        names = []
-        for c1, c2 in zip(conf1.columns(), conf2.columns()):
-            self.assertEqual(c1.name, c2.name)
-            self.assertEqual(c1.type, c2.type)
-            self.assertEqual(c1.hidden, c2.hidden)
-            names.append(c1.name)
-        # self.assertTrue(attr.name() in names)
-        s = ""
-
-        self.showGui(slw)
-
-        slw.project().removeAllMapLayers()
-
     def test_delete_speclib(self):
 
         speclib = TestObjects.createSpectralLibrary(10)
-        QgsProject.instance().addMapLayer(speclib)
-        w = SpectralLibraryWidget(speclib=speclib)
+        project = QgsProject()
+        project.addMapLayer(speclib)
+        w = SpectralLibraryWidget(speclib=speclib, project=project)
         w.show()
 
-        QgsProject.instance().removeAllMapLayers()
+        project.removeAllMapLayers()
 
-        assert w.speclib() is None
+        speclibs = w.plotModel().spectralLibraries()
+        self.assertEqual(0, len(speclibs))
 
     def test_SpectralProfileImportPointsDialog(self):
 
@@ -457,7 +382,6 @@ class TestSpeclibWidgets(TestCase):
     def test_SpectralLibraryWidget_loadProfileFields(self):
 
         # test profile field detection
-
         lyr = QgsVectorLayer(speclib_geojson.as_posix())
         pfields = profile_field_list(lyr)
         self.assertEqual(1, len(pfields))
@@ -472,38 +396,6 @@ class TestSpeclibWidgets(TestCase):
 
         self.showGui(w)
         w.plotModel().project().removeAllMapLayers()
-
-    def test_SpectralLibraryWidget_saveStyle(self):
-
-        tmp = self.createTestOutputDirectory()
-        path_json = tmp / 'testspeclib.geojson'
-        path_qml = tmp / 'testspeclib.qml'
-        shutil.copyfile(speclib_geojson, path_json)
-
-        self.assertTrue(path_json.is_file())
-        if path_qml.is_file():
-            os.remove(path_qml)
-        self.assertFalse(path_qml.is_file())
-
-        sl = QgsVectorLayer(path_json.as_posix())
-        pfields = profile_field_names(sl)
-        self.assertEqual(pfields, [])
-
-        slw = SpectralLibraryWidget(speclib=sl)
-        # self.assertTrue(path_qml.is_file())
-        # pfields = profile_field_names(sl)
-        # self.assertTrue(len(pfields) == 1)
-        # os.remove(path_qml)
-        # self.assertFalse(path_qml.is_file())
-
-        slw.mActionSaveEdits.trigger()
-        self.assertTrue(path_qml.is_file())
-        slw.project().removeAllMapLayers()
-        del slw
-
-        sl2 = QgsVectorLayer(path_json.as_posix())
-        pfield2 = profile_field_names(sl2)
-        self.assertListEqual(pfield2, ['profiles'])
 
     def test_SpectralLibraryWidgetProgressDialog(self):
 
@@ -531,7 +423,6 @@ class TestSpeclibWidgets(TestCase):
                 xunits.append(u)
 
         sw = SpectralLibraryWidget(speclib=slib)
-        self.assertEqual(sw.speclib(), slib)
         sw.updatePlot()
 
         sw = SpectralLibraryWidget()

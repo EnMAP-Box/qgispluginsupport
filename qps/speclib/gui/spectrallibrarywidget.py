@@ -1,15 +1,16 @@
 import enum
 import json
+import logging
 import sys
 import warnings
-from typing import Any, Dict, Generator, List, Optional, Set, Tuple
-import logging
 from pathlib import Path
+from typing import Any, Dict, Generator, List, Optional, Set, Tuple
 
 from qgis.PyQt.QtCore import pyqtSignal, QModelIndex, Qt
 from qgis.PyQt.QtGui import QDragEnterEvent, QDropEvent, QIcon
 from qgis.PyQt.QtWidgets import QAction, QDialog, QFrame, QHBoxLayout, QMenu, QPushButton, QToolBar, QVBoxLayout, \
     QWidget, QWidgetAction
+from qgis.PyQt.QtWidgets import QToolButton
 from qgis.PyQt.QtXml import QDomDocument, QDomElement
 from qgis.core import (QgsFeature, QgsMapLayer, QgsProcessingOutputFile, QgsProject, QgsReadWriteContext,
                        QgsVectorLayer, edit)
@@ -28,6 +29,7 @@ from ...utils import loadUi
 
 logger = logging.getLogger(__name__)
 
+
 class SpectralLibraryWidget(QgsDockWidget):
     sigFilesCreated = pyqtSignal(list)
     sigLoadFromMapRequest = pyqtSignal()
@@ -39,7 +41,7 @@ class SpectralLibraryWidget(QgsDockWidget):
     def __init__(self, *args,
                  project: Optional[QgsProject] = None,
                  # plot_model: Optional[SpectralProfilePlotModel] = None,
-                 # profile_fields_check: str = 'first_feature',
+                 profile_fields_check: Optional[str] = 'first_feature',
                  default_style: Optional[PlotStyle] = None,
                  speclib: Optional[QgsVectorLayer] = None,
                  **kwds):
@@ -52,9 +54,11 @@ class SpectralLibraryWidget(QgsDockWidget):
         if project is None:
             project = QgsProject.instance()
         assert isinstance(self.mSpeclibPlotWidget, SpectralLibraryPlotWidget)
-        self.mSpeclibPlotWidget.plotModel().setProject(project)
+        self.setProject(project)
+        # self.mSpeclibPlotWidget.plotModel().setProject(project)
+        model = self.plotModel()
+        model.sigProfileCandidatesChanged.connect(self.updateActions)
         self.mSpeclibPlotWidget.sigTreeSelectionChanged.connect(self.updateActions)
-
 
         # if isinstance(plot_model, SpectralProfilePlotModel):
         #     for vis in plot_model.visualizations():
@@ -101,13 +105,16 @@ class SpectralLibraryWidget(QgsDockWidget):
         if default_style:
             self.mSpeclibPlotWidget.plotModel().setDefaultProfileStyle(default_style)
 
-
         # self.mSpeclibPlotWidget.setDualView(self.mMainView)
         self.mSpeclibPlotWidget.sigDragEnterEvent.connect(self.dragEnterEvent)
         self.mSpeclibPlotWidget.sigDropEvent.connect(self.dropEvent)
         model = self.plotModel()
 
         if isinstance(speclib, QgsVectorLayer):
+
+            if profile_fields_check:
+                SpectralLibraryUtils.activateProfileFields(speclib, check=profile_fields_check)
+
             self.project().addMapLayer(speclib)
             self.mSpeclibPlotWidget.createProfileVisualization(layer_id=speclib)
         else:
@@ -148,15 +155,23 @@ class SpectralLibraryWidget(QgsDockWidget):
         self.optionAddCurrentProfilesAutomatically.setChecked(False)
 
         m = QMenu()
+        m.setToolTipsVisible(True)
         m.addAction(self.actionAddCurrentProfiles)
         m.addAction(self.optionAddCurrentProfilesAutomatically)
-        m.setDefaultAction(self.actionAddCurrentProfiles)
+        m.addAction(self.actionSelectProfilesFromMap)
+        # m.setDefaultAction(self.actionAddCurrentProfiles)
 
         # self.actionAddProfiles = QAction(self.actionAddCurrentProfiles.text(), self)
         # self.actionAddProfiles.setToolTip(self.actionAddCurrentProfiles.text())
         # self.actionAddProfiles.setIcon(self.actionAddCurrentProfiles.icon())
         # self.actionAddProfiles.triggered.connect(self.actionAddCurrentProfiles.trigger)
-        self.actionAddCurrentProfiles.setMenu(m)
+        # self.actionAddCurrentProfiles.setMenu(m)
+
+        self.actionGrpAddProfiles.triggered.connect(self.actionAddCurrentProfiles.trigger)
+        self.actionGrpAddProfiles.setMenu(m)
+        btn: QToolButton = self.toolBar.widgetForAction(self.actionGrpAddProfiles)
+        # btn.setDefaultAction(self.actionShowProperties)
+        btn.setPopupMode(QToolButton.ToolButtonPopupMode.MenuButtonPopup)
 
         # self.actionImportSpeclib = QAction(self.tr('Import Spectral Profiles'), parent=self)
         # self.actionImportSpeclib.setToolTip(self.tr('Import spectral profiles from other data sources'))
@@ -179,11 +194,15 @@ class SpectralLibraryWidget(QgsDockWidget):
         self.actionShowProfileFields.triggered.connect(self.showProfileFields)
 
         m = QMenu()
+        m.setToolTipsVisible(True)
         m.addAction(self.actionShowProperties)
         m.addAction(self.actionShowProfileFields)
-        m.setDefaultAction(self.actionShowProperties)
-
-        self.actionShowProperties.setMenu(m)
+        # m.setDefaultAction(self.actionShowProperties)
+        self.actionGrpLayerProperties.triggered.connect(self.actionShowProperties.trigger)
+        self.actionGrpLayerProperties.setMenu(m)
+        btn: QToolButton = self.toolBar.widgetForAction(self.actionGrpLayerProperties)
+        # btn.setDefaultAction(self.actionShowProperties)
+        btn.setPopupMode(QToolButton.ToolButtonPopupMode.MenuButtonPopup)
 
         self.actionRefreshPlot.triggered.connect(self.updatePlot)
         # self.actionLayerSettings = QAction(self.actionShowProperties.text(), self)
@@ -276,6 +295,8 @@ class SpectralLibraryWidget(QgsDockWidget):
 
         self.plotModel().sigOpenAttributeTableRequest.connect(onShowAttributeTable)
 
+        self.updateActions()
+
     def setProject(self, project: QgsProject):
         assert isinstance(project, QgsProject)
         self.mSpeclibPlotWidget.setProject(project)
@@ -287,7 +308,6 @@ class SpectralLibraryWidget(QgsDockWidget):
         super().editingToggled()
         if hasattr(self, 'actionShowSpectralProcessingDialog'):
             self.actionShowSpectralProcessingDialog.setEnabled(self.speclib().isEditable())
-
 
     def tableView(self) -> QgsAttributeTableView:
         return self.mMainView.tableView()
@@ -408,16 +428,20 @@ class SpectralLibraryWidget(QgsDockWidget):
         """
         self.actionAddCurrentProfiles.setEnabled(len(self.plotModel().mPROFILE_CANDIDATES) > 0)
 
+        b = self.plotModel().hasProfileCandidates()
+        self.actionAddCurrentProfiles.setEnabled(b)
+        self.actionGrpAddProfiles.setEnabled(b)
+
         b = self.mSpeclibPlotWidget.panelVisualization.isVisible()
         self.actionShowProfileViewSettings.setChecked(b)
         speclib = self.currentSpeclib()
         b = isinstance(speclib, QgsVectorLayer)
         self.actionShowAttributeTable.setEnabled(b)
         self.actionShowSpectralProcessingDialog.setEnabled(b)
-        self.actionShowProfileFields.setEnabled(b)
-        self.actionShowProperties.setEnabled(b)
         self.actionExportSpeclib.setEnabled(b)
-
+        self.actionGrpLayerProperties.setEnabled(b)
+        # self.actionShowProfileFields.setEnabled(b)
+        # self.actionShowProperties.setEnabled(b)
 
     def updatePlot(self):
         """
@@ -552,7 +576,7 @@ class SpectralLibraryWidget(QgsDockWidget):
         plotModel.addProfileCandidates(currentProfiles)
 
         self.updateActions()
-        self.speclib().triggerRepaint()
+        # self.speclib().triggerRepaint()
 
     def canvas(self) -> QgsMapCanvas:
         """
@@ -633,9 +657,11 @@ class SpectralLibraryWidget(QgsDockWidget):
 
     def onExportProfiles(self, *args):
 
-        files = SpectralLibraryExportDialog.exportProfiles(self.speclib(), parent=self)
-        if len(files) > 0:
-            self.sigFilesCreated.emit(files)
+        speclib = self.currentSpeclib()
+        if isinstance(speclib, QgsVectorLayer):
+            files = SpectralLibraryExportDialog.exportProfiles(speclib=speclib, parent=self)
+            if len(files) > 0:
+                self.sigFilesCreated.emit(files)
 
 
 class SpectralLibraryWidget_OLD(AttributeTableWidget):
@@ -1368,38 +1394,3 @@ class SpectralLibraryWidget_OLD(AttributeTableWidget):
         files = SpectralLibraryExportDialog.exportProfiles(self.speclib(), parent=self)
         if len(files) > 0:
             self.sigFilesCreated.emit(files)
-
-
-class SpectralLibraryPanel(QgsDockWidget):
-    sigLoadFromMapRequest = None
-
-    def __init__(self, *args, speclib: QgsVectorLayer = None, **kwds):
-        super(SpectralLibraryPanel, self).__init__(*args, **kwds)
-        self.setObjectName('spectralLibraryPanel')
-
-        self.SLW = SpectralLibraryWidget(speclib=speclib)
-        self.setWindowTitle(self.speclib().name())
-        self.speclib().nameChanged.connect(lambda *args: self.setWindowTitle(self.speclib().name()))
-        self.setWidget(self.SLW)
-
-    def spectralLibraryWidget(self) -> SpectralLibraryWidget:
-        """
-        Returns the SpectralLibraryWidget
-        :return: SpectralLibraryWidget
-        """
-        return self.SLW
-
-    def speclib(self) -> QgsVectorLayer:
-        """
-        Returns the SpectralLibrary
-        :return: SpectralLibrary
-        """
-        return self.SLW.speclib()
-
-    def setCurrentSpectra(self, listOfSpectra):
-        """
-        Adds a list of SpectralProfiles as current spectra
-        :param listOfSpectra: [list-of-SpectralProfiles]
-        :return:
-        """
-        self.SLW.setCurrentProfiles(listOfSpectra)
