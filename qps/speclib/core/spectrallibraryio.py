@@ -962,6 +962,8 @@ class SpectralLibraryExportDialog(QDialog):
         loadUi(speclibUiPath('spectrallibraryexportdialog.ui'), self)
         self.setWindowIcon(QIcon(':/qps/ui/icons/speclib_save.svg'))
 
+        self.mTitleBase = self.windowTitle()
+
         self.cbFormat: QComboBox
         self.cbSaveSelectedOnly: QCheckBox
         self.fileWidget: QgsFileWidget
@@ -1063,6 +1065,8 @@ class SpectralLibraryExportDialog(QDialog):
 
         self.mSpeclib = speclib
         self.mSpeclib.selectionChanged.connect(self.onSelectionChanged)
+
+        self.setWindowTitle(f'{self.mTitleBase} - {speclib.name()}')
 
         if self.tbLayerName.text() == '':
             lyrname = speclib.name()
