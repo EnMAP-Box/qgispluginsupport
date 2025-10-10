@@ -173,20 +173,24 @@ class SVCSigFile(SpectralProfileFileReader):
         except ValueError:
             pass
 
+        try:
+            import dateutil.parser
+            from dateutil.parser import ParserError
+            try:
+                return dateutil.parser.parse(text)
+            except ParserError:
+                pass
+        except ImportError:
+            pass
+
         # test non-ISO formats
         formats = [
             '%d.%m.%Y %H:%M:%S',  # 27.05.2025 09:39:32
-            '%m/%d/%Y %H:%M:%S%p',  # 5/27/2025 9:39:32AM
-            '%m/%d/%Y %H:%M:%S %p',  # 5/27/2025 9:39:32 AM
+            '%m/%d/%Y %I:%M:%S%p',  # 5/27/2025 9:39:32AM
+            '%m/%d/%Y %I:%M:%S %p',  # 5/27/2025 9:39:32 AM
             '%m/%d/%Y %H:%M:%S',  # 5/27/2025 9:39:32
             '%d/%m/%Y %H:%M:%S',  # 27/05/2025 09:39:32
         ]
-
-        for fmt in formats:
-            try:
-                return datetime.datetime.strptime(text, fmt)
-            except ValueError:
-                continue
 
         raise ValueError(f'Unable to extract datetime from {text}')
 
