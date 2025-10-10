@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any, Dict, Generator, List, Optional, Set, Tuple
 
 from qgis.PyQt.QtCore import pyqtSignal, QModelIndex, Qt
+from qgis.PyQt.QtGui import QCloseEvent
 from qgis.PyQt.QtGui import QDragEnterEvent, QDropEvent, QIcon
 from qgis.PyQt.QtWidgets import QAction, QDialog, QFrame, QHBoxLayout, QMenu, QPushButton, QToolBar, QVBoxLayout, \
     QWidget, QWidgetAction
@@ -37,6 +38,7 @@ class SpectralLibraryWidget(QgsDockWidget):
     sigMapCenterRequested = pyqtSignal(object)
     sigCurrentProfilesChanged = pyqtSignal(list)
     sigOpenAttributeTableRequest = pyqtSignal(str)
+    sigWindowIsClosing = pyqtSignal()
 
     def __init__(self, *args,
                  project: Optional[QgsProject] = None,
@@ -297,6 +299,11 @@ class SpectralLibraryWidget(QgsDockWidget):
 
         self.updateActions()
 
+    def closeEvent(self, event: QCloseEvent):
+        super().closeEvent(event)
+        if event.isAccepted():
+            self.sigWindowIsClosing.emit()
+
     def setProject(self, project: QgsProject):
         assert isinstance(project, QgsProject)
         self.mSpeclibPlotWidget.setProject(project)
@@ -333,7 +340,10 @@ class SpectralLibraryWidget(QgsDockWidget):
         else:
             logging.debug('no currentSpeclib() to open with SpectralProfileFieldActivatorDialog')
 
-    def plotWidget(self) -> SpectralProfilePlotWidget:
+    def libraryPlotWidget(self) -> SpectralLibraryPlotWidget:
+        return self.mSpeclibPlotWidget
+
+    def profilePlotWidget(self) -> SpectralProfilePlotWidget:
         return self.mSpeclibPlotWidget.plotWidget()
 
     def plotModel(self) -> SpectralProfilePlotModel:
@@ -347,7 +357,7 @@ class SpectralLibraryWidget(QgsDockWidget):
         """
         :return: SpectralLibraryPlotItem
         """
-        return self.plotWidget().plotItem1
+        return self.profilePlotWidget().plotItem1
 
     def readXml(self, parent: QDomElement, context: QgsReadWriteContext) -> bool:
         """

@@ -20,7 +20,7 @@ class SpectralProfileFieldListModel(QgsFieldModel):
 
     def updateFields(self):
         """
-        Call this to update the list of spectral profile fields, e.g. after removal of fields or changing the
+        Call this to update the list of spectral profile fields, e.g., after removal of fields or changing the
         editor widget setup.
         """
 

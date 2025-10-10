@@ -2,11 +2,11 @@ import datetime
 import logging
 from typing import Optional
 
+import qps.speclib.gui.spectrallibraryplotwidget
 from qgis.core import QgsVectorLayer
 from qps import initAll
 from qps.speclib.gui.spectrallibraryplotitems import SpectralProfilePlotDataItem
 from qps.speclib.gui.spectrallibraryplotwidget import SpectralProfilePlotModel
-import qps.speclib.gui.spectrallibraryplotwidget
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
 from qps.testing import start_app
 
@@ -36,7 +36,8 @@ def measure(step: str, end: Optional[str] = None):
 
 
 def n_items(w: SpectralLibraryWidget):
-    items = [item for item in w.plotWidget().getPlotItem().items if isinstance(item, SpectralProfilePlotDataItem)]
+    items = [item for item in w.profilePlotWidget().getPlotItem().items if
+             isinstance(item, SpectralProfilePlotDataItem)]
     return len(items)
 
 

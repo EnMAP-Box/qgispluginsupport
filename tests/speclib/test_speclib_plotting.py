@@ -94,8 +94,6 @@ class TestSpeclibPlotting(TestCase):
             speclib.setSubsetString('"fid" <= 200')
 
         slw = SpectralLibraryWidget(speclib=speclib)
-        VM = SpectralLibraryWidget.ViewType
-        slw.setViewVisibility(VM.ProfileViewSettings | VM.ProfileView)
         model = slw.plotModel()
         model: SpectralProfilePlotModel
         model.setShowLegend(True)
@@ -145,7 +143,7 @@ class TestSpeclibPlotting(TestCase):
             s.setMarkerSymbol('o')
             vis.setPlotStyle(s)
 
-        pw = slw.plotWidget()
+        pw = slw.profilePlotWidget()
 
         self.showGui(slw)
 
@@ -174,7 +172,6 @@ class TestSpeclibPlotting(TestCase):
     def test_SpectralLibraryWidget_addField(self):
         speclib = TestObjects.createSpectralLibrary(10)
         slw = SpectralLibraryWidget(speclib=speclib)
-        speclib: QgsVectorLayer = slw.speclib()
         slw.show()
         speclib.startEditing()
         pfields = profile_fields(speclib)
@@ -519,6 +516,28 @@ class TestSpeclibPlotting(TestCase):
         self.showGui(w)
         w.project().removeAllMapLayers()
 
+    def test_ProfileVisualizationGroup(self):
+
+        sl = TestObjects.createSpectralLibrary(n=10, n_bands=[5, 12],
+                                               profile_field_names=['p1', 'p2'],
+                                               name='SL_A')
+
+        p = QgsProject()
+        p.addMapLayer(sl)
+        g = ProfileVisualizationGroup()
+        g.setProject(p)
+
+        g.setLayerField(sl, 'p1')
+
+        self.assertEqual('SL_A:p1', g.data(Qt.DisplayRole), )
+        g.setLayerField(sl, 'p2')
+        self.assertEqual('SL_A:p2', g.data(Qt.DisplayRole))
+
+        g.setText('My Vis')
+        self.assertEqual('My Vis', g.data(Qt.DisplayRole))
+        g.setLayerField(sl, 'p1')
+        self.assertEqual('My Vis', g.data(Qt.DisplayRole))
+
     def test_SpectralProfilePlotModel(self):
 
         model = SpectralProfilePlotModel()
@@ -595,26 +614,6 @@ class TestSpeclibPlotting(TestCase):
         item2.setPlotStyle(ps2)
         self.assertNotEqual(item1.plotStyle(), item2.plotStyle())
         self.assertNotEqual(item1, item2)
-
-    def test_sortBands(self):
-
-        d = prepareProfileValueDict(y=[1, 2, 3, 4, 4, 3, 2, 3, 3, 4],
-                                    x=[0, 1, 2, 6, 5, 4, 3, 7, 8, 9],
-                                    xUnit='Band Number')
-
-        slw = SpectralLibraryWidget()
-
-        speclib = slw.speclib()
-
-        feature = QgsFeature(speclib.fields())
-        for field in profile_fields(feature):
-            idx = feature.fields().lookupField(field.name())
-            feature.setAttribute(idx, encodeProfileValueDict(d, field))
-        self.assertTrue(speclib.startEditing())
-        speclib.addFeature(feature)
-        self.assertTrue(speclib.commitChanges())
-        self.showGui(slw)
-        QgsProject.instance().removeAllMapLayers()
 
     def test_badBands(self):
 
@@ -697,17 +696,18 @@ class TestSpeclibPlotting(TestCase):
     def test_SpectralLibraryPlotWidget(self):
 
         speclib = TestObjects.createSpectralLibrary(n_bands=[-1, 12])
-        canvas = QgsMapCanvas()
-        dv = QgsDualView()
-        dv.init(speclib, canvas)
+        rl1 = TestObjects.createRasterLayer(nb=255)
+        rl2 = TestObjects.createRasterLayer(nb=1)
+        rl1.setName('MultiBand')
+        rl2.setName('SingleBand')
+        project = QgsProject()
 
+        project.addMapLayers([speclib, rl1, rl2])
         w = SpectralLibraryPlotWidget()
-        w.setDualView(dv)
-
-        proj = QgsProject()
-        w.setProject(proj)
+        w.setProject(project)
 
         visModel = w.treeView.model().sourceModel()
+        self.assertEqual(visModel, w.plotModel())
         cnt = visModel.rowCount()
         self.assertIsInstance(visModel, SpectralProfilePlotModel)
 
@@ -725,15 +725,6 @@ class TestSpeclibPlotting(TestCase):
 
         w.treeView.selectPropertyGroups(visModel.visualizations()[0])
         w.btnRemoveProfileVis.click()
-
-        rl1 = TestObjects.createRasterLayer(nb=255)
-        rl2 = TestObjects.createRasterLayer(nb=1)
-        rl1.setName('MultiBand')
-        rl2.setName('SingleBand')
-
-        proj.addMapLayers([rl1, rl2, speclib])
-
-        QgsProject.instance().removeAllMapLayers()
 
         speclib.startEditing()
         speclib.addAttribute(create_profile_field('profiles3'))
@@ -753,7 +744,7 @@ class TestSpeclibPlotting(TestCase):
         major.setLayout(layout)
 
         self.showGui(major)
-        QgsProject.instance().removeAllMapLayers()
+        project.removeAllMapLayers()
 
     def test_rendering(self):
 

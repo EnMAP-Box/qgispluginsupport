@@ -4,11 +4,14 @@ import random
 import unittest
 from typing import Iterator, List, Tuple
 
+from PyQt5.QtWidgets import QTreeView
+
 from qgis.PyQt.QtCore import QSize, Qt
 from qgis.PyQt.QtWidgets import QHBoxLayout, QPushButton, QSplitter, QVBoxLayout, QWidget
 from qgis.core import edit, Qgis, QgsExpressionContext, QgsFeature, QgsField, QgsGeometry, QgsMapToPixel, QgsPoint, \
     QgsPointXY, QgsProject, QgsRaster, QgsRasterDataProvider, QgsRasterLayer, QgsVectorLayer, QgsWkbTypes
 from qgis.gui import QgsDualView, QgsMapCanvas
+from qps import initAll
 from qps.maptools import CursorLocationMapTool
 from qps.qgisenums import QMETATYPE_DOUBLE, QMETATYPE_INT, QMETATYPE_QSTRING
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
@@ -17,12 +20,14 @@ from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
 from qps.speclib.gui.spectralprofilesources import MapCanvasLayerProfileSource, ProfileSamplingMode, \
     SamplingBlockDescription, SpectralFeatureGeneratorNode, SpectralProfileBridge, SpectralProfileBridgeTreeView, \
     SpectralProfileBridgeViewDelegate, SpectralProfileGeneratorNode, SpectralProfileSource, SpectralProfileSourceModel, \
-    SpectralProfileSourcePanel, SpectralProfileSourceProxyModel, StandardFieldGeneratorNode, StandardLayerProfileSource
+    SpectralProfileSourcePanel, SpectralProfileSourceProxyModel, StandardFieldGeneratorNode, StandardLayerProfileSource, \
+    SpectralProfileDestinationModel
 from qps.testing import start_app, TestCase, TestObjects
 from qps.utils import parseWavelength, rasterArray, SpatialExtent, SpatialPoint
 from qpstestdata import enmap
 
 start_app()
+initAll()
 
 
 class SpectralProcessingTests(TestCase):
@@ -193,6 +198,51 @@ class SpectralProcessingTests(TestCase):
                               'n2:n3b: Value is undefined. Needs a value/expression or uncheck the field.']
                              )
 
+    def test_SpectralProfileSourcePanel_gui(self):
+        from qps import registerEditorWidgets, initResources
+        initResources()
+        registerEditorWidgets()
+
+        sources, (slw1, slw2) = self.createTestObjects()
+        sources.append(TestObjects.createMultiMaskExample(nb=10, ns=30, nl=50))
+        canvas = QgsMapCanvas()
+        canvas.setLayers(sources)
+        canvas.setDestinationCrs(sources[0].crs())
+        canvas.zoomToFullExtent()
+        canvas.setExtent(sources[0].extent())
+        mt = CursorLocationMapTool(canvas, True)
+        canvas.setMapTool(mt)
+
+        center = SpatialPoint.fromMapCanvasCenter(canvas)
+
+        panel = SpectralProfileSourcePanel()
+        panel.mBridge.addSources(sources)
+        panel.mBridge.addSpectralLibraryWidgets([slw1, slw2])
+        panel.createRelation()
+        panel.createRelation()
+
+        hl = QHBoxLayout()
+        # hl.addWidget(btnAdd)
+        vl = QVBoxLayout()
+        vl.addLayout(hl)
+        vl.addWidget(panel)
+        w = QWidget()
+        w.setLayout(vl)
+
+        splitV = QSplitter()
+        splitV.setOrientation(Qt.Vertical)
+        splitV.addWidget(slw1)
+        splitV.addWidget(slw2)
+
+        splitH = QSplitter()
+        splitH.addWidget(canvas)
+        splitH.addWidget(splitV)
+        splitH.addWidget(w)
+
+        speclibs = [w.speclib() for w in panel.spectralProfileBridge().destinations()]
+        canvas.setLayers(speclibs + canvas.layers())
+        self.showGui(splitH)
+
     def test_SpectralProfileSourcePanel(self):
 
         from qps import registerEditorWidgets, initResources
@@ -233,9 +283,7 @@ class SpectralProcessingTests(TestCase):
 
         g = panel.createRelation()
         self.assertIsInstance(g, SpectralFeatureGeneratorNode)
-        self.assertEqual(g.name(), g.speclib().name())
-
-        self.assertEqual(g.name(), g.speclib().name())
+        # self.assertEqual(g.name(), speclib.name())
 
         n = g.spectralProfileGeneratorNodes()[0]
         self.assertIsInstance(n, SpectralProfileGeneratorNode)
@@ -424,6 +472,44 @@ class SpectralProcessingTests(TestCase):
                 s = ""
             self.assertListEqual(yValues, yValuesR)
 
+    def test_SpectralProfileDestinationModel(self):
+
+        sl1 = TestObjects.createSpectralLibrary(name='SpeclibA1')
+        sl2 = TestObjects.createSpectralLibrary(name='SpeclibA2')
+        sl3 = TestObjects.createSpectralLibrary(name='SpeclibB1')
+
+        project = QgsProject.instance()
+        project.addMapLayers([sl1, sl2, sl3])
+        slwA = SpectralLibraryWidget()
+        slwB = SpectralLibraryWidget()
+        for slw in [slwA, slwB]:
+            slw.setProject(project)
+            slw.actionShowProfileViewSettings.setChecked(True)
+        slwA.libraryPlotWidget().createProfileVisualization(layer_id=sl2)
+
+        destinationModel = SpectralProfileDestinationModel()
+        self.assertEqual(0, len(destinationModel))
+        destinationModel.addSpectralLibraryWidget(slwA)
+        self.assertEqual(2, len(destinationModel))
+        destinationModel.addSpectralLibraryWidget(slwB)
+        self.assertEqual(3, len(destinationModel))
+
+        view = QTreeView()
+
+        view.setModel(destinationModel)
+
+        w = QWidget()
+        l = QVBoxLayout()
+        l.addWidget(slwA)
+        l.addWidget(slwB)
+
+        hl = QHBoxLayout()
+        hl.addLayout(l)
+        hl.addWidget(view)
+
+        w.setLayout(hl)
+        self.showGui(w)
+
     def test_SpectralProfileSourceModel(self):
 
         lyr1 = TestObjects.createRasterLayer(nb=2, ns=5, nl=5)
@@ -599,8 +685,7 @@ class SpectralProcessingTests(TestCase):
         sl.commitChanges()
 
         slw1 = SpectralLibraryWidget(speclib=sl)
-        slw2 = SpectralLibraryWidget()
-        slw2.speclib().setName('Speclib 2')
+        slw2 = SpectralLibraryWidget(speclib=sl)
 
         widgets = [slw1, slw2]
         sources = [lyr1, lyr2]

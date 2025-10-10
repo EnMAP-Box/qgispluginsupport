@@ -969,9 +969,10 @@ class SpectralProfileLayerFieldItem(PropertyItem):
 
         if isinstance(editor, LayerFieldWidget):
             layer, field = editor.layerField()
-            self.mLayerID = layer.id()
-            self.mFieldName = field
-            self.emitDataChanged()
+            self.setLayerField(layer, field)
+            # self.mLayerID = layer.id()
+            # self.mFieldName = field
+            # self.emitDataChanged()
 
     def setLayerField(self,
                       layer_id: Union[None, str, QgsVectorLayer],
@@ -987,6 +988,10 @@ class SpectralProfileLayerFieldItem(PropertyItem):
             self.mFieldName = field_name
 
             self.emitDataChanged()
+
+            grp = self.parent()
+            if isinstance(grp, ProfileVisualizationGroup):
+                grp.emitDataChanged()
 
     def field(self) -> Optional[str]:
         return self.mFieldName
@@ -1874,7 +1879,9 @@ class ProfileVisualizationGroup(PropertyItemGroup):
         self.mPlotWidgetStyle: PlotWidgetStyle = PlotWidgetStyle.default()
 
         self.mZValue = 2
-        self.setName('Visualization')
+        self.mAutoName: bool = True
+        # self.setText('Visualization')
+        self.mAutoName: bool = True
         self.setIcon(QIcon(':/qps/ui/icons/profile.svg'))
         self.mFirstColumnSpanned = False
 
@@ -1934,8 +1941,10 @@ class ProfileVisualizationGroup(PropertyItemGroup):
         self.setDragEnabled(False)
 
     def fromMap(self, data: dict):
-        self.setName(data.get('name', 'Visualization'))
+
         self.setLayerField(data.get('field', None))
+        if name := data.get('name', None):
+            self.setText(name)
         s = ""
 
     def asMap(self) -> dict:
@@ -1957,7 +1966,7 @@ class ProfileVisualizationGroup(PropertyItemGroup):
 
         settings = {
             'vis_id': id(self),
-            'name': self.name(),
+            'name': self.text(),
             'field_name': self.fieldName(),
             'layer_id': layer_id,
             'layer_source': layer_src,
@@ -2007,7 +2016,7 @@ class ProfileVisualizationGroup(PropertyItemGroup):
 
         scope = QgsExpressionContextScope('profile_visualization')
         # todo: add scope variables
-        scope.setVariable('vis_name', self.name(), isStatic=True)
+        scope.setVariable('vis_name', self.text(), isStatic=True)
         return scope
 
     def clone(self) -> 'ProfileVisualizationGroup':
@@ -2031,18 +2040,27 @@ class ProfileVisualizationGroup(PropertyItemGroup):
             self.setColor(style.foregroundColor)
             self.emitDataChanged()
 
+    def data(self, role: int = ...) -> Any:
+        if role == Qt.DisplayRole:
+            if self.mAutoName:
+                return self.autoName()
+        return super().data(role)
+
     def setColor(self, color: Union[str, QColor]):
         self.mPColor.setColor(color)
 
-    def name(self) -> str:
+    def autoName(self) -> str:
         """
-        Returns the name of this visualization
-        :return:
+        Create a name for the profile visualization
+        from the layer and field name
+        :return: str
         """
-        return self.text()
+        lyr = self.layer()
+        fn = self.fieldName()
 
-    def setName(self, name: str):
-        self.setText(name)
+        if isinstance(lyr, QgsVectorLayer):
+            return f'{lyr.name()}:{fn}'
+        return 'Missing layer'
 
     def setSpeclib(self, speclib: QgsVectorLayer):
         assert isinstance(speclib, QgsVectorLayer)

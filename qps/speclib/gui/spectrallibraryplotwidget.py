@@ -9,6 +9,7 @@ from qgis.PyQt.QtGui import QColor, QContextMenuEvent, QDragEnterEvent, QDropEve
 from qgis.PyQt.QtWidgets import QAbstractItemView, QAction, QApplication, QComboBox, QDialog, QFrame, QHBoxLayout, \
     QMenu, QMessageBox, QStyle, QStyledItemDelegate, QStyleOptionButton, QStyleOptionViewItem, QTreeView, \
     QWidget
+from qgis.PyQt.QtWidgets import QLineEdit
 from qgis.core import QgsApplication, QgsField, QgsMapLayerProxyModel, QgsProject, QgsRasterLayer, \
     QgsSettings, QgsVectorLayer
 from qgis.gui import QgsFilterLineEdit
@@ -339,7 +340,10 @@ class SpectralProfilePlotViewDelegate(QStyledItemDelegate):
         if callable(getattr(item, 'setEditorData', None)):
             item.setEditorData(editor, index)
         else:
-            super().setEditorData(editor, index)
+            if isinstance(item, ProfileVisualizationGroup) and isinstance(editor, QLineEdit):
+                editor.setText(item.text())
+            else:
+                super().setEditorData(editor, index)
 
         return
 
@@ -349,6 +353,9 @@ class SpectralProfilePlotViewDelegate(QStyledItemDelegate):
         if callable(getattr(item, 'setModelData', None)):
             item.setModelData(w, model, index)
         else:
+            if isinstance(item, ProfileVisualizationGroup) and isinstance(w, QLineEdit):
+                if item.text() != w.text():
+                    item.mAutoName = False
             super().setModelData(w, model, index)
 
 
@@ -597,10 +604,20 @@ class SpectralLibraryPlotWidget(QWidget):
         if isinstance(field_name, QgsField):
             field_name = field_name.name()
 
+        # already shown speclib fields
         existing_fields = [(v.layerId(), v.fieldName())
                            for v in self.plotModel().visualizations()
                            if isinstance(v.fieldName(), str) and isinstance(v.layerId(), str)]
 
+        # other existing speclib fields
+        for lyr in self.project().mapLayers().values():
+            if isinstance(lyr, QgsVectorLayer):
+                for field in profile_field_list(lyr):
+                    k = (lyr.id(), field.name())
+                    if k not in existing_fields:
+                        existing_fields.append(k)
+
+        # try to find a good guess for the layer and field
         if layer_id is None and field_name is None:
             last_speclib = self.currentSpeclib()
             if isinstance(last_speclib, QgsVectorLayer):
@@ -625,21 +642,6 @@ class SpectralLibraryPlotWidget(QWidget):
         # set profile source in speclib
         if isinstance(layer_id, str) and isinstance(field_name, str):
             item.setLayerField(layer_id, field_name)
-
-        if name is None:
-            if isinstance(item.fieldName(), str):
-                _name = f'Group "{item.fieldName()}"'
-            else:
-                _name = 'Group'
-
-            existing_names = [v.name() for v in self.mPlotModel]
-            n = 1
-            name = _name
-            while name in existing_names:
-                n += 1
-                name = f'{_name} {n}'
-
-        item.setName(name)
 
         if item.layerId() and item.fieldName():
             # get a good guess for the name expression

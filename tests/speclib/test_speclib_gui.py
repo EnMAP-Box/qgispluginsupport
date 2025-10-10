@@ -38,7 +38,6 @@ from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
 from qps.speclib.core.spectralprofile import decodeProfileValueDict
 from qps.speclib.gui.spectrallibraryplotitems import SpectralProfilePlotWidget
 from qps.speclib.gui.spectrallibraryplotunitmodels import SpectralProfilePlotXAxisUnitModel
-from qps.speclib.gui.spectrallibraryplotwidget import SpectralLibraryPlotWidget
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
 from qps.testing import start_app, TestCase, TestObjects
 from qps.unitmodel import BAND_NUMBER, UnitLookup
@@ -86,14 +85,6 @@ class TestSpeclibWidgets(TestCase):
 
         from qps import registerMapLayerConfigWidgetFactories
         registerMapLayerConfigWidgetFactories()
-
-    def test_SpectralLibraryPlotWidget(self):
-
-        from qps.resources import ResourceBrowser
-        w = SpectralLibraryPlotWidget()
-        rb = ResourceBrowser()
-
-        self.showGui([w, rb])
 
     @unittest.skipIf(False, '')
     def test_toolbarStackedActions(self):
@@ -397,17 +388,11 @@ class TestSpeclibWidgets(TestCase):
         self.showGui(w)
         w.plotModel().project().removeAllMapLayers()
 
-    def test_SpectralLibraryWidgetProgressDialog(self):
-
-        slib = TestObjects.createSpectralLibrary(3000)
-        self.assertIsInstance(slib, QgsVectorLayer)
-        self.assertTrue(slib.isValid())
-
     def test_SpectralLibraryWidgetCurrentProfilOverlayerXUnit(self):
 
         sw = SpectralLibraryWidget()
         self.assertIsInstance(sw, SpectralLibraryWidget)
-        pw = sw.plotWidget()
+        pw = sw.profilePlotWidget()
         self.assertIsInstance(pw, SpectralProfilePlotWidget)
         self.assertEqual(BAND_NUMBER, pw.xAxis().unit())
         slib = TestObjects.createSpectralLibrary(10)

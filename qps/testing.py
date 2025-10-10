@@ -1061,13 +1061,14 @@ class TestObjects(object):
     @staticmethod
     def createSpectralLibrary(n: int = 10,
                               n_empty: int = 0,
-                              n_bands: Union[int, List[int], np.ndarray] = [-1],
-                              name: Optional[str] = None,
+                              n_bands: Union[None, int, List[int], np.ndarray] = None,
+                              name: Optional[str] = 'SpectralLibrary',
                               profile_field_names: List[str] = None,
                               wlu: str = None,
                               crs: QgsCoordinateReferenceSystem = None) -> QgsVectorLayer:
         """
         Creates a Spectral Library
+        :param name:
         :param crs:
         :param profile_field_names:
         :param n_bands:
@@ -1092,6 +1093,8 @@ class TestObjects(object):
                 n_bands = [-1 for _ in profile_field_names]
             assert len(profile_field_names) == len(n_bands)
 
+        if n_bands is None:
+            n_bands = [-1]
         if isinstance(n_bands, int):
             n_bands = np.asarray([[n_bands, ]])
         elif isinstance(n_bands, list):
