@@ -112,6 +112,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
     sigMaxProfilesExceeded = pyqtSignal()
     sigOpenAttributeTableRequest = pyqtSignal(str)
     sigProfileCandidatesChanged = pyqtSignal()
+    sigLayersChanged = pyqtSignal()
 
     NOT_INITIALIZED = -1
     MAX_PROFILES_DEFAULT: int = 516
@@ -142,7 +143,6 @@ class SpectralProfilePlotModel(QStandardItemModel):
         super().__init__(*args, **kwds)
 
         self.mBlockUpdates: bool = False
-
         self.mAddProfileCandidates: bool = False
         self.mPROFILE_CANDIDATES: Dict[str, List] = {}
 
@@ -741,6 +741,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
         if isinstance(index, QModelIndex):
             index = index.row()
 
+        layers_changed = False
         for i, item in enumerate(items):
             assert isinstance(item, PropertyItemGroup)
 
@@ -765,8 +766,14 @@ class SpectralProfilePlotModel(QStandardItemModel):
             for zLevel in sorted(GROUPS.keys()):
                 new_group_order += GROUPS[zLevel]
 
+            if isinstance(item, ProfileVisualizationGroup):
+                layers_changed = True
+
             self.mModelItems.add(item)
             self.insertRow(new_group_order.index(item), item)
+
+        if layers_changed:
+            self.sigLayersChanged.emit()
 
     def removePropertyItemGroups(self, groups: Union[PropertyItemGroup, List[PropertyItemGroup]]):
 
@@ -787,6 +794,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
                         self.takeRow(r)
                         break
 
+            self.sigLayersChanged.emit()
             self.updatePlot()
 
     def selectedCurveFeatures(self) -> Dict[str, set]:
@@ -1758,6 +1766,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
         if isinstance(item, SpectralProfileLayerFieldItem):
             if isinstance(grp, ProfileVisualizationGroup):
                 grp.mPColor.emitDataChanged()
+                self.sigLayersChanged.emit()
 
         if isinstance(item, RasterRendererGroup):
             s = ""
