@@ -135,15 +135,34 @@ class FilteredFieldProxyModel(QgsFieldProxyModel):
 
 
 class FilteredMapLayerProxyModel(QgsMapLayerProxyModel):
+    """
+    A proxy model to filter layers based on a filter function.
+
+    Use .setFilterFunc(func: Callable) to set a filter function.
+    The function must accept a QgsMapLayer as an argument and return True or False.
+
+    Use .setShowAll(b: bool) to either hide all layers that
+    do not pass the filter (b = False) or show them as disable (b = True))
+
+    """
+
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
         self.mFilterFunc: Callable = lambda layer: isinstance(layer, QgsMapLayer)
         self.mShowAll = True
         self.mSrcModel = self.sourceLayerModel()
+        self.mProject = QgsProject.instance()
 
     def setShowAll(self, show: bool):
         self.mShowAll = show
         self.invalidateFilter()
+
+    def setProject(self, project: QgsProject):
+        super().setProject(project)
+        self.mProject = project
+
+    def project(self) -> QgsProject:
+        return self.mProject
 
     def flags(self, index):
         # disable selection of out-filtered layers
