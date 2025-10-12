@@ -4,11 +4,8 @@ import random
 import unittest
 from typing import Iterator, List, Tuple
 
-from PyQt5.QtWidgets import QTreeView
-
 from qgis.PyQt.QtCore import QSize, Qt
 from qgis.PyQt.QtWidgets import QHBoxLayout, QPushButton, QSplitter, QVBoxLayout, QWidget
-from qgis._core import QgsApplication
 from qgis.core import edit, Qgis, QgsExpressionContext, QgsFeature, QgsField, QgsGeometry, QgsMapToPixel, QgsPoint, \
     QgsPointXY, QgsProject, QgsRaster, QgsRasterDataProvider, QgsRasterLayer, QgsVectorLayer, QgsWkbTypes
 from qgis.gui import QgsDualView, QgsMapCanvas
@@ -21,8 +18,7 @@ from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
 from qps.speclib.gui.spectralprofilesources import MapCanvasLayerProfileSource, ProfileSamplingMode, \
     SamplingBlockDescription, SpectralFeatureGeneratorNode, SpectralProfileBridge, SpectralProfileBridgeTreeView, \
     SpectralProfileBridgeViewDelegate, SpectralProfileGeneratorNode, SpectralProfileSource, SpectralProfileSourceModel, \
-    SpectralProfileSourcePanel, SpectralProfileSourceProxyModel, StandardFieldGeneratorNode, StandardLayerProfileSource, \
-    SpectralProfileDestinationModel
+    SpectralProfileSourcePanel, SpectralProfileSourceProxyModel, StandardFieldGeneratorNode, StandardLayerProfileSource
 from qps.testing import start_app, TestCase, TestObjects
 from qps.utils import parseWavelength, rasterArray, SpatialExtent, SpatialPoint
 from qpstestdata import enmap
@@ -244,13 +240,15 @@ class SpectralProcessingTests(TestCase):
         canvas.setLayers(speclibs + canvas.layers())
         self.showGui(splitH)
 
+        QgsProject.instance().removeAllMapLayers()
+
     def test_SpectralProfileSourcePanel(self):
 
         from qps import registerEditorWidgets, initResources
         initResources()
         registerEditorWidgets()
 
-        sources, spectralLibraryWidget = self.createTestObjects()
+        sources, spectralLibraryWidgets = self.createTestObjects()
         sources.append(TestObjects.createMultiMaskExample(nb=10, ns=30, nl=50))
         canvas = QgsMapCanvas()
         canvas.setLayers(sources)
@@ -274,7 +272,7 @@ class SpectralProcessingTests(TestCase):
         panel.addSources(sources)
 
         # add widgets
-        panel.addSpectralLibraryWidgets(spectralLibraryWidget)
+        panel.addSpectralLibraryWidgets(spectralLibraryWidgets)
         speclib = TestObjects.createSpectralLibrary()
         speclib.setName('NewLib')
 
@@ -301,12 +299,12 @@ class SpectralProcessingTests(TestCase):
         panel.removeSources(sources)
 
         # remove widgets
-        panel.removeSpectralLibraryWidgets(spectralLibraryWidget)
+        panel.removeSpectralLibraryWidgets(spectralLibraryWidgets)
 
         slw.close()
 
         (src1, src2), (slw1, slw2) = self.createTestObjects()
-        sl1 = slw1.speclib()
+        sl1 = slw1.plotModel().visualizations()[0].layer()
 
         with edit(sl1):
             assert SpectralLibraryUtils.addSpectralProfileField(sl1, 'profile_new')
@@ -316,17 +314,18 @@ class SpectralProcessingTests(TestCase):
         fgnode2 = panel.createRelation()
         self.assertIsInstance(fgnode1, SpectralFeatureGeneratorNode)
         self.assertIsInstance(fgnode2, SpectralFeatureGeneratorNode)
-        fgnode1.setSpeclibWidget(slw1)
-        fgnode2.setSpeclibWidget(slw2)
+        fgnode1.setSpeclib(sl1)
+        fgnode2.setSpeclib(sl1)
 
         # clear test speclibs
         for slw in [slw1, slw2]:
-            sl = slw.speclib()
-            with edit(sl):
-                sl.selectAll()
-                sl.deleteSelectedFeatures()
 
-        sl1 = slw1.speclib()
+            for sl in slw.plotModel().spectralLibraries():
+                with edit(sl):
+                    sl.selectAll()
+                    sl.deleteSelectedFeatures()
+
+        sl1 = slw1.plotModel().spectralLibraries()[0]
         with edit(sl1):
             assert SpectralLibraryUtils.addSpectralProfileField(sl1, 'profile2')
 
@@ -396,14 +395,14 @@ class SpectralProcessingTests(TestCase):
             panel.loadCurrentMapSpectra(pt, mapCanvas=canvas, runAsync=False)
 
         def onDestroyed():
-            print('destroyed sli')
+            print('destroyed layer')
 
         def onClosing():
-            print('Closing sli')
+            print('Closing layer')
 
-        for sli in panel.mBridge.destinations():
-            sli.destroyed.connect(onDestroyed)
-            sli.sigWindowIsClosing.connect(onClosing)
+        for lyr in panel.mBridge.destinations():
+            lyr.destroyed.connect(onDestroyed)
+            lyr.willBeDeleted.connect(onClosing)
 
         mt.sigLocationRequest.connect(lambda crs, pt, c=canvas:
                                       panel.loadCurrentMapSpectra(SpatialPoint(crs, pt), mapCanvas=canvas))
@@ -426,7 +425,7 @@ class SpectralProcessingTests(TestCase):
         splitH.addWidget(splitV)
         splitH.addWidget(w)
 
-        speclibs = [w.speclib() for w in panel.spectralProfileBridge().destinations()]
+        speclibs = [sl for sl in panel.spectralProfileBridge().destinations()]
         canvas.setLayers(speclibs + canvas.layers())
         self.showGui(splitH)
         QgsProject.instance().removeAllMapLayers()
@@ -472,47 +471,6 @@ class SpectralProcessingTests(TestCase):
             if yValues != yValuesR:
                 s = ""
             self.assertListEqual(yValues, yValuesR)
-
-    def test_SpectralProfileDestinationModel(self):
-
-        sl1 = TestObjects.createSpectralLibrary(name='SpeclibA1', n_bands=[10, 20], profile_field_names=['p1', 'p2'])
-        sl2 = TestObjects.createSpectralLibrary(name='SpeclibA2', n_bands=[20], profile_field_names=['p1'])
-        sl3 = TestObjects.createSpectralLibrary(name='SpeclibB1', n_bands=[5], profile_field_names=['pB1-1'])
-
-        project = QgsProject.instance()
-        project.addMapLayers([sl1, sl2, sl3])
-        slwA = SpectralLibraryWidget()
-        slwB = SpectralLibraryWidget()
-        for slw in [slwA, slwB]:
-            slw.setProject(project)
-            slw.actionShowProfileViewSettings.setChecked(True)
-        slwA.libraryPlotWidget().createProfileVisualization(layer_id=sl2)
-        slwB.plotModel().visualizations()[0].setLayerField(sl3, 'pB1-1')
-
-        destinationModel = SpectralProfileDestinationModel()
-        QgsApplication.processEvents()
-        self.assertEqual(0, len(destinationModel))
-        destinationModel.addSpectralLibraryWidget(slwA)
-        QgsApplication.processEvents()
-        self.assertEqual(2, len(destinationModel))
-        destinationModel.addSpectralLibraryWidget(slwB)
-        # self.assertEqual(3, len(destinationModel))
-
-        view = QTreeView()
-
-        view.setModel(destinationModel)
-
-        w = QWidget()
-        l = QVBoxLayout()
-        l.addWidget(slwA)
-        l.addWidget(slwB)
-
-        hl = QHBoxLayout()
-        hl.addLayout(l)
-        hl.addWidget(view)
-
-        w.setLayout(hl)
-        self.showGui(w)
 
     def test_SpectralProfileSourceModel(self):
 

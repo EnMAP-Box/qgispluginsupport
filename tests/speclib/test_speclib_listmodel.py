@@ -1,8 +1,7 @@
 import unittest
 
-from PyQt5.QtTest import QAbstractItemModelTester
-from PyQt5.QtWidgets import QListView
-
+from qgis.PyQt.QtTest import QAbstractItemModelTester
+from qgis.PyQt.QtWidgets import QListView
 from qgis.core import QgsProject
 from qps.speclib.gui.spectrallibrarylistmodel import SpectralLibraryListModel
 from qps.testing import TestCase, TestObjects, start_app

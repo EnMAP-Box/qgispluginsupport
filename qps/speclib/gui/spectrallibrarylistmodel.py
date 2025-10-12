@@ -16,7 +16,7 @@ class SpectralLibraryListModel(FilteredMapLayerProxyModel):
 
         filter = lambda layer: is_spectral_library(layer)
         self.setFilterFunc(filter)
-        
+
     def __getitem__(self, slice):
         return self.spectralLibraries()[slice]
 
