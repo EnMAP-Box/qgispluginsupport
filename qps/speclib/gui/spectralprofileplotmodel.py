@@ -148,7 +148,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
         self.mSTATS_ITEMS = []
 
-        # allows to overwrite automatic generated plot styles
+        # allows overwriting automatic generated plot styles
         # self.mPROFILE_CANDIDATE_STYLES: Dict[Tuple[str, str], Dict[int, PlotStyle]] = {}
 
         self.mHoverHTML: Dict[SpotItem, str] = dict()
@@ -713,6 +713,17 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
     def layerRendererVisualizations(self) -> List[RasterRendererGroup]:
         return [v for v in self.propertyGroups() if isinstance(v, RasterRendererGroup)]
+
+    def sourceLayers(self) -> List[QgsVectorLayer]:
+        """
+        Returns the set source layers which is used to visualize profiles from
+        """
+        layers = []
+        for vis in self.visualizations():
+            lyr = vis.layer()
+            if isinstance(lyr, QgsVectorLayer) and lyr.isValid() and lyr not in layers:
+                layers.append(lyr)
+        return layers
 
     def visualizations(self) -> List[ProfileVisualizationGroup]:
 
@@ -1862,8 +1873,8 @@ class SpectralProfilePlotModel(QStandardItemModel):
                         fids.append(fid)
                 speclib.selectByIds(fids)
 
-    def speclib(self) -> QgsVectorLayer:
-        return self.mSpeclib
+    # def speclib(self) -> QgsVectorLayer:
+    #    return self.mSpeclib
 
     def profileFields(self) -> List[QgsField]:
         return profile_field_list(self.speclib())
