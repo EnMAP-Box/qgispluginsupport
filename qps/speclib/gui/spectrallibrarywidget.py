@@ -345,6 +345,9 @@ class SpectralLibraryWidget(QgsDockWidget):
     def profilePlotWidget(self) -> SpectralProfilePlotWidget:
         return self.mSpeclibPlotWidget.plotWidget()
 
+    def spectralLibraries(self) -> List[QgsVectorLayer]:
+        return self.plotModel().spectralLibraries()
+
     def plotModel(self) -> SpectralProfilePlotModel:
         return self.mSpeclibPlotWidget.mPlotModel
 
@@ -418,8 +421,8 @@ class SpectralLibraryWidget(QgsDockWidget):
         warnings.warn(DeprecationWarning('Use .speclib()'), stacklevel=2)
         return self.currentSpeclib()
 
-    def spectralLibrary(self) -> QgsVectorLayer:
-        return self.speclib()
+    # def spectralLibrary(self) -> QgsVectorLayer:
+    #    return self.speclib()
 
     def addSpeclib(self, speclib: QgsVectorLayer, askforNewFields: bool = False):
         """
@@ -582,13 +585,13 @@ class SpectralLibraryWidget(QgsDockWidget):
             # update plot
             self.plotModel().updatePlot()
 
-    def onImportFromRasterSource(self):
-        from ..io.rastersources import SpectralProfileImportPointsDialog
-        d = SpectralProfileImportPointsDialog(parent=self)
-        d.setWkbType(self.spectralLibrary().wkbType())
-        d.finished.connect(lambda *args, d0=d: self.onIODialogFinished(d0))
-        d.show()
-        self.mIODialogs.append(d)
+    # def onImportFromRasterSource(self):
+    #    from ..io.rastersources import SpectralProfileImportPointsDialog
+    #    d = SpectralProfileImportPointsDialog(parent=self)
+    #    d.setWkbType(self.spectralLibrary().wkbType())
+    #    d.finished.connect(lambda *args, d0=d: self.onIODialogFinished(d0))
+    #    d.show()
+    #    self.mIODialogs.append(d)
 
     def onIODialogFinished(self, w: QWidget):
         from ..io.rastersources import SpectralProfileImportPointsDialog

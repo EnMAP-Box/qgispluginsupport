@@ -1089,7 +1089,7 @@ class TestObjects(object):
         assert n >= 0
         assert 0 <= n_empty <= n
         if profile_field_names:
-            if n_bands == [-1]:
+            if n_bands in [[-1], None]:
                 n_bands = [-1 for _ in profile_field_names]
             assert len(profile_field_names) == len(n_bands)
 

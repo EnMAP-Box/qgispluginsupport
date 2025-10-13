@@ -41,14 +41,15 @@ class TestSpeclibIO_SVC(TestCase):
             if svc.picturePath():
                 self.assertIsInstance(svc.picturePath(), Path)
                 self.assertTrue(svc.picturePath().is_file())
-            profile = svc.asFeature()
-            self.assertIsInstance(profile, QgsFeature)
-            self.assertTrue(is_spectral_feature(profile))
 
-            picture_path = profile.attribute(SVCSigFile.KEY_Picture)
-            if picture_path:
-                self.assertIsInstance(picture_path, str)
-                self.assertTrue(os.path.isfile(picture_path))
+            for profile in svc.asFeatures():
+                self.assertIsInstance(profile, QgsFeature)
+                self.assertTrue(is_spectral_feature(profile))
+
+                picture_path = profile.attribute(SVCSigFile.KEY_Picture)
+                if picture_path:
+                    self.assertIsInstance(picture_path, str)
+                    self.assertTrue(os.path.isfile(picture_path))
 
         for file in self.svcFiles():
             settings = {}
@@ -82,8 +83,8 @@ class TestSpeclibIO_SVC(TestCase):
 
         formats = [
             '%d.%m.%Y %H:%M:%S',  # 27.05.2025 09:39:32
-            '%m/%d/%Y %H:%M:%S%p',  # 5/27/2025 9:39:32AM
-            '%m/%d/%Y %H:%M:%S %p',  # 5/27/2025 9:39:32 AM
+            '%m/%d/%Y %I:%M:%S%p',  # 5/27/2025 9:39:32AM
+            '%m/%d/%Y %I:%M:%S %p',  # 5/27/2025 9:39:32 AM
             '%m/%d/%Y %H:%M:%S',  # 5/27/2025 9:39:32
         ]
         self.assertEqual(dt, SVCSigFile._readDateTime(dt.isoformat()))
@@ -105,6 +106,7 @@ class TestSpeclibIO_SVC(TestCase):
 
         par = {
             ImportSpectralProfiles.P_INPUT: svc_files,
+            ImportSpectralProfiles.P_INPUT_TYPE: 'SVC',
             ImportSpectralProfiles.P_OUTPUT: path_test.as_posix(),
         }
 

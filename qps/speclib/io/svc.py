@@ -190,7 +190,15 @@ class SVCSigFile(SpectralProfileFileReader):
             '%m/%d/%Y %I:%M:%S %p',  # 5/27/2025 9:39:32 AM
             '%m/%d/%Y %H:%M:%S',  # 5/27/2025 9:39:32
             '%d/%m/%Y %H:%M:%S',  # 27/05/2025 09:39:32
+            '%m/%d/%Y %H:%M:%S%p',  # 5/27/2025 9:39:32AM
+            '%m/%d/%Y %H:%M:%S %p',  # 5/27/2025 9:39:32 AM
         ]
+
+        for fmt in formats:
+            try:
+                return datetime.datetime.strptime(text, fmt)
+            except ValueError:
+                pass
 
         raise ValueError(f'Unable to extract datetime from {text}')
 
@@ -320,7 +328,7 @@ class SVCSpectralLibraryIO(SpectralLibraryIO):
             file = Path(file)
             if file.name.endswith('.sig'):
                 sig: SVCSigFile = SVCSigFile(file)
-                profiles.append(sig.asFeature())
+                profiles.extend(sig.asFeatures())
             feedback.setProgress(int((i + 1) / n_total))
         return profiles
 

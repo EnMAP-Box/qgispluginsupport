@@ -381,7 +381,7 @@ class SpectralLibraryPlotWidget(QWidget):
         # self.plotWidget.sigPopulateContextMenuItems.connect(self.onPopulatePlotContextMenu)
 
         self.mPlotModel = SpectralProfilePlotModel()
-
+        # self.mPlotModel.mBlockUpdates = True
         self.mPlotModel.setPlotWidget(self.mPlotWidget)
         self.mPlotModel.sigPlotWidgetStyleChanged.connect(self.sigPlotWidgetStyleChanged.emit)
         self.mPlotModel.sigMaxProfilesExceeded.connect(self.onMaxProfilesReached)

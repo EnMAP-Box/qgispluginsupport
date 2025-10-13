@@ -31,11 +31,7 @@ class TestSpeclibIO_ASD(TestCase):
         for file in files:
             print(file)
             asd = ASDBinaryFile(file)
-
-            GPS = asd.gps_data
-            feature = asd.asFeature()
-            self.assertIsInstance(feature, QgsFeature)
-            features.append(feature)
+            features.extend(asd.asFeatures())
 
         io = ASDSpectralLibraryIO()
         conf = dict()
@@ -72,8 +68,8 @@ class TestSpeclibIO_ASD(TestCase):
             print(f'read {file}')
             asd = ASDBinaryFile(file)
             self.assertIsInstance(asd, ASDBinaryFile)
-            profile = asd.asFeature()
-            self.assertTrue(is_spectral_feature(profile))
+            for profile in asd.asFeatures():
+                self.assertTrue(is_spectral_feature(profile))
 
         for file in self.asdCSVFiles():
 

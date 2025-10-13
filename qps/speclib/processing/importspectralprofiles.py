@@ -72,7 +72,8 @@ def read_profiles(path: Union[str, Path],
     try:
         if reader is None:
             reader = file_reader(path, dtg_fmt=dtg_fmt)
-
+        else:
+            reader = reader(path)
         if isinstance(reader, SpectralProfileFileReader):
             features.extend(reader.asFeatures())
 
@@ -164,6 +165,7 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
             description='Input file type',
             options=self.INPUT_TYPES,
             defaultValue=0,
+            usesStaticStrings=True,
             allowMultiple=False,
         ))
 
@@ -244,16 +246,17 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
         crs = QgsCoordinateReferenceSystem('EPSG:4326')
         all_fields = QgsFields()
 
-        reader = self.parameterAsEnum(parameters, self.P_INPUT_TYPE, context)
-        if isinstance(reader, int):
-            reader = self.INPUT_TYPES[reader]
-        if reader == 'SVC':
+        reader = self.parameterAsString(parameters, self.P_INPUT_TYPE, context)
+        if reader == 'All':
+            reader = None
+        elif reader == 'SVC':
             reader = SVCSigFile
         elif reader == 'ASD':
             reader = ASDBinaryFile
         elif reader == 'SED':
             reader = SEDFile
-            reader = EcoSISSpectralLibraryIO
+        elif reader == 'EcoSIS':
+            reader = EcoSISSpectralLibraryReader
         PROFILES: Dict[Tuple, List[QgsFeature]] = dict()
         n_files = len(self._input_files)
 

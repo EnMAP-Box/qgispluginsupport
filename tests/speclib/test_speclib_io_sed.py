@@ -37,16 +37,16 @@ class TestSpeclibIO_SED(TestCase):
         for file in files:
             asd = SEDFile(file)
 
-            feature: QgsFeature = asd.asFeature()
-            self.assertIsInstance(feature, QgsFeature)
-            is_spectral_feature(feature)
+            for feature in asd.asFeatures():
+                self.assertIsInstance(feature, QgsFeature)
+                is_spectral_feature(feature)
 
-            g = feature.geometry()
-            self.assertIsInstance(g, QgsGeometry)
-            self.assertTrue(g.isSimple())
-            self.assertTrue(g.isGeosValid())
+                g = feature.geometry()
+                self.assertIsInstance(g, QgsGeometry)
+                self.assertTrue(g.isSimple())
+                self.assertTrue(g.isGeosValid())
 
-            features.append(feature)
+                features.append(feature)
 
         io = SEDSpectralLibraryIO()
         conf = dict()

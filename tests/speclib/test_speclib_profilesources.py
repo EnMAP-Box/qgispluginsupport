@@ -82,17 +82,19 @@ class SpectralProcessingTests(TestCase):
             self.assertTrue(len(profiles) < x * y)
 
             s = ""
-        slw = SpectralLibraryWidget()
+
+        sl = TestObjects.createSpectralLibrary()
+        slw = SpectralLibraryWidget(speclib=sl)
         panel = SpectralProfileSourcePanel()
         panel.addSources(lyr)
         panel.addSpectralLibraryWidgets(slw)
         gnode = panel.createRelation()
-        gnode.setSpeclibWidget(slw)
+        gnode.setSpeclib(sl)
         for n in gnode.spectralProfileGeneratorNodes():
             n.setProfileSource(lyr)
 
         canvas = QgsMapCanvas()
-        canvas.setLayers([slw.speclib(), lyr])
+        canvas.setLayers([sl, lyr])
         canvas.zoomToFullExtent()
         mt = CursorLocationMapTool(canvas, showCrosshair=True)
         mt.sigLocationRequest.connect(lambda crs, pt: panel.loadCurrentMapSpectra(SpatialPoint(crs, pt)))
@@ -209,6 +211,7 @@ class SpectralProcessingTests(TestCase):
         canvas.setExtent(sources[0].extent())
         mt = CursorLocationMapTool(canvas, True)
         canvas.setMapTool(mt)
+        mt.sigLocationRequest.connect(lambda crs, pt: panel.loadCurrentMapSpectra(SpatialPoint(crs, pt)))
 
         center = SpatialPoint.fromMapCanvasCenter(canvas)
 
@@ -236,7 +239,7 @@ class SpectralProcessingTests(TestCase):
         splitH.addWidget(splitV)
         splitH.addWidget(w)
 
-        speclibs = [w.speclib() for w in panel.spectralProfileBridge().destinations()]
+        speclibs = [sl for sl in panel.spectralProfileBridge().destinations()]
         canvas.setLayers(speclibs + canvas.layers())
         self.showGui(splitH)
 
@@ -329,7 +332,7 @@ class SpectralProcessingTests(TestCase):
         with edit(sl1):
             assert SpectralLibraryUtils.addSpectralProfileField(sl1, 'profile2')
 
-        speclib_sources = [slw1.speclib(), slw2.speclib()]
+        speclib_sources = slw1.spectralLibraries()
         QgsProject.instance().addMapLayers(speclib_sources, False)
         maskLayer = TestObjects.createMultiMaskExample(nb=25, ns=50, nl=50)
 
@@ -374,8 +377,7 @@ class SpectralProcessingTests(TestCase):
 
         panel.mBridge
         RESULTS = panel.loadCurrentMapSpectra(center, mapCanvas=canvas, runAsync=False)
-        sl1 = slw1.speclib()
-        sl2 = slw2.speclib()
+
         if False:
             self.assertEqual(sl2.featureCount(), 9)
             self.assertTrue(sl1.id() in RESULTS.keys())

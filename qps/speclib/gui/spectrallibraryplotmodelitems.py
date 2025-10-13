@@ -1880,8 +1880,6 @@ class ProfileVisualizationGroup(PropertyItemGroup):
 
         self.mZValue = 2
         self.mAutoName: bool = True
-        # self.setText('Visualization')
-        self.mAutoName: bool = True
         self.setIcon(QIcon(':/qps/ui/icons/profile.svg'))
         self.mFirstColumnSpanned = False
 

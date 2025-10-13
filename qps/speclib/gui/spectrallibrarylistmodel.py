@@ -1,8 +1,8 @@
 from typing import List
 
 from qgis.core import QgsVectorLayer, QgsMapLayerModel
-from qps.layerfielddialog import FilteredMapLayerProxyModel
-from qps.speclib.core import is_spectral_library
+from ..core import is_spectral_library
+from ...layerfielddialog import FilteredMapLayerProxyModel
 
 
 class SpectralLibraryListModel(FilteredMapLayerProxyModel):

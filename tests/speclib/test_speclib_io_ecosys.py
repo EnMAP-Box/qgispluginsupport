@@ -3,7 +3,8 @@ from math import isnan
 from qgis.core import QgsFeature
 from qps.speclib.core import is_spectral_feature
 from qps.speclib.core.spectrallibraryio import SpectralLibraryIO
-from qps.speclib.io.ecosis import EcoSISSpectralLibraryIO
+from qps.speclib.io.ecosis import EcoSISSpectralLibraryIO, EcoSISSpectralLibraryReader
+from qps.speclib.processing.importspectralprofiles import ImportSpectralProfiles
 from qps.testing import start_app, TestCase
 from qps.utils import file_search
 from qpstestdata import DIR_ECOSIS
@@ -25,6 +26,34 @@ class TestSpeclibIO_EcoSIS(TestCase):
             EcoSISSpectralLibraryIO(),
         ]
         SpectralLibraryIO.registerSpectralLibraryIO(ios)
+
+    def test_EcoSIS_Reader(self):
+        ecosysFiles = file_search(DIR_ECOSIS, '*.csv', recursive=True)
+
+        for file in ecosysFiles:
+
+            reader = EcoSISSpectralLibraryReader(file)
+            features = reader.asFeatures()
+            assert len(features) > 0
+            for f in features:
+                assert is_spectral_feature(f)
+
+    def test_read_EcoSIS_processing_alg(self):
+
+        ecosysFiles = file_search(DIR_ECOSIS, '*.csv', recursive=True)
+
+        for file in ecosysFiles:
+            alg = ImportSpectralProfiles()
+            alg.initAlgorithm({})
+
+            context, feedback = self.createProcessingContextFeedback()
+            par = {alg.P_INPUT: file,
+                   alg.P_INPUT_TYPE: 'EcoSIS'}
+
+            self.assertTrue(alg.prepareAlgorithm(par, context, feedback))
+            results = alg.processAlgorithm(par, context, feedback)
+
+            s = ""
 
     def test_read_EcoSIS(self):
 

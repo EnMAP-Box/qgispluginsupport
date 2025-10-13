@@ -561,7 +561,7 @@ class ASDSpectralLibraryIO(SpectralLibraryIO):
                 profiles.extend(ASDSpectralLibraryIO.readCSVFile(file))
             else:
                 asd: ASDBinaryFile = ASDBinaryFile(file)
-                profiles.append(asd.asFeature())
+                profiles.extend(asd.asFeatures())
             progress = int((i + 1) / n_total)
             feedback.setProgress(progress)
         return profiles

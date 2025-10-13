@@ -784,6 +784,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
             self.insertRow(new_group_order.index(item), item)
 
         if layers_changed:
+            self.updateSpeclibConnections()
             self.sigLayersChanged.emit()
 
     def removePropertyItemGroups(self, groups: Union[PropertyItemGroup, List[PropertyItemGroup]]):
@@ -806,6 +807,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
                         break
 
             self.sigLayersChanged.emit()
+            self.updateSpeclibConnections()
             self.updatePlot()
 
     def selectedCurveFeatures(self) -> Dict[str, set]:
@@ -1256,13 +1258,12 @@ class SpectralProfilePlotModel(QStandardItemModel):
         for vis in visualizations:
             lid = vis.get('layer_id')
             layer_ids.append(lid)
+
             if lid in self.mLayerCaches:
                 continue
             else:
                 # lsrc = vis.get('layer_source', speclib.source())
                 lyr = self.project().mapLayer(lid)
-                if lyr is None:
-                    s = ""
 
                 if isinstance(lyr, QgsVectorLayer) and lyr.isValid():
                     self.mLayerCaches[lid] = QgsVectorLayerCache(lyr, 1024)
@@ -1681,7 +1682,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
                         #     for field_name, plot_style in layer_styles.items():
                         #         fid_styles = {fid: plot_style for fid in new_fids}
                         #         self.mPROFILE_CANDIDATE_STYLES[(layer_id, field_name)] = fid_styles
-        self.updatePlot()
+        # self.updatePlot()
         self.sigProfileCandidatesChanged.emit()
 
     def clearProfileCandidates(self):
@@ -1715,6 +1716,21 @@ class SpectralProfilePlotModel(QStandardItemModel):
             for s in signals:
                 s.flush()
 
+    def updateSpeclibConnections(self):
+
+        required = []
+        for vis in self.visualizations():
+            lid = vis.layerId()
+            required.append(lid)
+            if lid not in self.mSignalProxies.keys():
+                layer = vis.layer()
+                if isinstance(layer, QgsVectorLayer):
+                    self.connectSpeclibSignals(layer)
+
+        to_remove = [k for k in self.mSignalProxies.keys() if k not in required]
+        for k in to_remove:
+            self.disconnectSpeclibSignals(k)
+
     def connectSpeclibSignals(self, speclib: QgsVectorLayer):
         """"
         Connects signals to the given spectral library vector layer.
@@ -1726,13 +1742,18 @@ class SpectralProfilePlotModel(QStandardItemModel):
             if aid in self.mLastReferencedColumns.get(lid, set()):
                 self.updatePlot()
 
+        def onFeatureAdded(*args, **kwargs):
+            s = ""
+
         if speclib.id() not in self.mSignalProxies:
+            # speclib.featureAdded.connect(onFeatureAdded)
             proxies = [
                 SignalProxyUndecorated(speclib.selectionChanged, rateLimit=rl, slot=self.onSpeclibSelectionChanged),
                 SignalProxy(speclib.attributeValueChanged, delay=1, rateLimit=rl * 10,
                             slot=lambda *args, lid=speclib.id(): _plotted_value_changed(lid, args)),
                 SignalProxyUndecorated(speclib.featuresDeleted, rateLimit=rl, slot=lambda: self.updatePlot()),
-                SignalProxy(speclib.featureAdded, rateLimit=rl, slot=lambda: self.updatePlot()),
+                SignalProxyUndecorated(speclib.featureAdded, rateLimit=rl, slot=lambda: self.updatePlot()),
+
                 SignalProxy(speclib.styleChanged, rateLimit=rl, slot=self.onSpeclibStyleChanged),
                 SignalProxy(speclib.updatedFields, rateLimit=rl, slot=lambda: self.onSpeclibFieldsUpdated),
             ]

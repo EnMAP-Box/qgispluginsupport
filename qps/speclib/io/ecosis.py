@@ -44,8 +44,80 @@ class EcoSISSpectralLibraryReader(SpectralProfileFileReader):
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
 
+        self.path()
+
     def asFeatures(self) -> List[QgsFeature]:
+
+        csvLyr = self.loadCSVLayer()
+
+        profiles: List[QgsFeature] = []
+
+        dstFields, otherFields, profileField, wl, wlFields = cls.dataFields(lyr)
+
+        n = lyr.featureCount()
+        next_step = 5  # step size in percent
+        feedback.setProgressText(f'Load {n} profiles')
+        for i, f in enumerate(lyr.getFeatures()):
+            f: QgsFeature
+            f2 = QgsFeature(dstFields)
+
+            y = [f.attribute(field.name()) for field in wlFields]
+            xUnit = None
+            d = prepareProfileValueDict(x=wl, y=y, xUnit=xUnit)
+            dump = encodeProfileValueDict(d, profileField)
+            f2.setAttribute(cls.FIELDNAME_PROFILE, dump)
+
+            if f.hasGeometry():
+                g = f.geometry()
+                f2.setGeometry(QgsGeometry(g))
+
+            for field in otherFields:
+                f2.setAttribute(field.name(), f.attribute(field.name()))
+            profiles.append(f2)
+
+            progress = 100 * i / n
+            if progress >= next_step:
+                next_step += 5
+                feedback.setProgress(progress)
+        return profiles
         s = ""
+
+    def loadCSVLayer(self, **kwargs) -> QgsVectorLayer:
+        cLat = cLon = None
+        with open(self.path(), newline='') as csvfile:
+            reader = csv.reader(csvfile)
+            hdr_row = next(reader)
+
+            for c in hdr_row:
+                if re.match(r'^(lat|latitude)$', c, re.I):
+                    cLat = c
+                if re.match(r'^(lon|longitude)$', c, re.I):
+                    cLon = c
+        # see https://api.qgis.org/api/classQgsVectorLayer.html#details or
+        # https://qgis.org/pyqgis/master/core/QgsVectorLayer.html#delimited-text-file-data-provider-delimitedtext
+        # for details of the delimitedtext driver
+        query = QUrlQuery()
+        # query.addQueryItem('encoding', 'UTF-8')
+        query.addQueryItem('detectTypes', 'yes')
+        # query.addQueryItem('watchFile', 'no')
+        # query.addQueryItem('type', 'csv')
+        # query.addQueryItem('subsetIndex', 'no')
+        # query.addQueryItem('useHeader', 'yes')
+        query.addQueryItem('delimiter', kwargs.get('delimiter', ','))
+        query.addQueryItem('quote', kwargs.get('quote', '"'))
+        if 'xField' in kwargs and 'yField' in kwargs:
+            query.addQueryItem('xField', kwargs['xField'])
+            query.addQueryItem('yField', kwargs['yField'])
+        elif cLat and cLon:
+            query.addQueryItem('xField', cLon)
+            query.addQueryItem('yField', cLat)
+        query.addQueryItem('crs', kwargs.get('crs', 'EPSG:4326'))
+        query.addQueryItem('geomType', kwargs.get('geomType', 'point'))
+        uri = self.path().as_uri() + '?' + query.toString()
+        # uri = path.as_posix()
+        lyr = QgsVectorLayer(uri, self.path().name, 'delimitedtext')
+        assert lyr.isValid()
+        return lyr
 
 
 class EcoSISSpectralLibraryImportWidget(SpectralLibraryImportWidget):

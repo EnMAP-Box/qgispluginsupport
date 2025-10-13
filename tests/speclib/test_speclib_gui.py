@@ -187,7 +187,7 @@ class TestSpeclibWidgets(TestCase):
         vl = TestObjects.createVectorLayer()
 
         slw = SpectralLibraryWidget(speclib=vl)
-        self.assertTrue(not is_spectral_library(slw.speclib()))
+        self.assertTrue(not is_spectral_library(vl))
         self.assertIsInstance(slw, SpectralLibraryWidget)
         self.showGui(slw)
         QgsProject.instance().removeAllMapLayers()
@@ -250,7 +250,7 @@ class TestSpeclibWidgets(TestCase):
         # sl1.commitChanges()
         # fids_b = sl1.allFeatureIds()
 
-        QgsProject.instance().addMapLayer(slw.speclib())
+        QgsProject.instance().addMapLayers([sl1, sl2])
 
         # self.assertEqual(slw.speclib(), sl1)
         # self.assertIsInstance(slw.speclib(), QgsVectorLayer)
@@ -273,7 +273,7 @@ class TestSpeclibWidgets(TestCase):
         speclib = TestObjects.createSpectralLibrary()
         slw = SpectralLibraryWidget(speclib=speclib)
 
-        QgsProject.instance().addMapLayers([lyr, slw.speclib()])
+        QgsProject.instance().addMapLayers([lyr, speclib])
 
         canvas = QgsMapCanvas()
 

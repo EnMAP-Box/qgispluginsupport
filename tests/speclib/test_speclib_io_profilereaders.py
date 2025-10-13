@@ -75,24 +75,26 @@ class TestSpeclibIO_SpectralProfileReaders(TestCase):
                 raise NotImplementedError()
 
             self.assertIsInstance(reader, SpectralProfileFileReader)
-            profile = reader.asFeature()
-            pfields = profile_field_names(profile)
-            for name in pfields:
-                data = decodeProfileValueDict(profile.attribute(name))
-                self.assertTrue(validateProfileValueDict(data))
+            profiles = reader.asFeatures()
+            assert len(profiles) > 0
+            for profile in profiles:
+                pfields = profile_field_names(profile)
+                for name in pfields:
+                    data = decodeProfileValueDict(profile.attribute(name))
+                    self.assertTrue(validateProfileValueDict(data))
 
-            attributes = profile.attributeMap()
-            for k in [SpectralProfileFileReader.KEY_Metadata,
-                      SpectralProfileFileReader.KEY_Target,
-                      SpectralProfileFileReader.KEY_Path,
-                      SpectralProfileFileReader.KEY_Name,
-                      SpectralProfileFileReader.KEY_TargetTime]:
-                self.assertTrue(k in attributes, msg=f'Missing data "{k}" in {file}')
+                attributes = profile.attributeMap()
+                for k in [SpectralProfileFileReader.KEY_Metadata,
+                          SpectralProfileFileReader.KEY_Target,
+                          SpectralProfileFileReader.KEY_Path,
+                          SpectralProfileFileReader.KEY_Name,
+                          SpectralProfileFileReader.KEY_TargetTime]:
+                    self.assertTrue(k in attributes, msg=f'Missing data "{k}" in {file}')
 
-            metadata = profile.attribute(SpectralProfileFileReader.KEY_Metadata)
-            self.assertIsInstance(metadata, dict)
+                metadata = profile.attribute(SpectralProfileFileReader.KEY_Metadata)
+                self.assertIsInstance(metadata, dict)
 
-            self.assertTrue(is_spectral_feature(profile))
+                self.assertTrue(is_spectral_feature(profile))
 
     @unittest.skipIf(TestCase.runsInCI(), 'Skipped QDialog test in CI')
     def test_dialog(self):

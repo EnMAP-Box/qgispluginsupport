@@ -383,7 +383,7 @@ class ProcessingToolsTest(TestCase):
                     self.assertTrue(vl.featureCount() > 1)
                 else:
                     self.assertEqual(1, vl.featureCount(),
-                                     msg=f'Unable to save profiles from {input_file.name} to {path_test.name}')
+                                     msg=f'Unable to import profiles from {input_file.name} to {path_test.name}')
 
         # test multi-filetype import
         input_files = [Path(p).as_posix() for p in input_files]

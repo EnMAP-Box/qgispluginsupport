@@ -272,7 +272,7 @@ class SEDSpectralLibraryIO(SpectralLibraryIO):
             file = pathlib.Path(file)
 
             sed: SEDFile = SEDFile(file)
-            profiles.append(sed.asFeature())
+            profiles.extend(sed.asFeatures())
             if datetime.datetime.now() - t0 > dt:
                 feedback.setProgress((i + 1) / n_total)
                 t0 = datetime.datetime.now()
