@@ -27,7 +27,6 @@ from typing import List
 import processing
 import qgis.testing
 import qgis.utils
-from processing import AlgorithmDialog
 from processing.ProcessingPlugin import ProcessingPlugin
 from qgis.PyQt.QtCore import QModelIndex, QObject, Qt
 from qgis.PyQt.QtWidgets import QDialog
@@ -35,10 +34,11 @@ from qgis.core import edit, QgsApplication, QgsFeature, QgsField, QgsFields, Qgs
     QgsProcessingAlgRunnerTask, QgsProcessingOutputRasterLayer, QgsProcessingRegistry, QgsProject, QgsTaskManager, \
     QgsVectorLayer
 from qgis.gui import QgsProcessingRecentAlgorithmLog, QgsProcessingToolboxProxyModel
+from qps.processing.algorithmdialog import AlgorithmDialog
 from qps.processing.processingalgorithmdialog import ProcessingAlgorithmDialog
 from qps.qgisenums import QMETATYPE_QSTRING
 from qps.qgsfunctions import registerQgsExpressionFunctions
-from qps.speclib.core import create_profile_field, profile_field_names, profile_fields
+from qps.speclib.core import create_profile_field, profile_field_names, profile_fields, is_spectral_library
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
 from qps.speclib.core.spectrallibraryio import initSpectralLibraryIOs, SpectralLibraryIO
 from qps.speclib.core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict, isProfileValueDict, \
@@ -303,6 +303,31 @@ class ProcessingToolsTest(TestCase):
         seconds = dt.total_seconds()
         n_total = lyr.featureCount()
         print(f'Imported {n_total} files in {dt}. {seconds / n_total:.2f} s per file')
+
+    @unittest.skipIf(TestCase.runsInCI(), 'blocking dialog')
+    def test_spectralprofile_import_dialog(self):
+        alg = ImportSpectralProfiles()
+        alg.initAlgorithm({})
+
+        context, feedback = self.createProcessingContextFeedback()
+        p = QgsProject()
+        context.setProject(p)
+
+        results = {}
+
+        def onFinished(ok, res):
+            assert ok
+            results.update(res)
+
+        d = AlgorithmDialog(alg, context=context)
+        d.algorithmFinished.connect(onFinished)
+        d.exec_()
+
+        lyr = results[ImportSpectralProfiles.P_OUTPUT]
+        assert isinstance(lyr, QgsVectorLayer)
+        assert is_spectral_library(lyr)
+        assert lyr.featureCount() > 0
+        s = ""
 
     def test_spectralprofile_import(self):
 

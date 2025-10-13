@@ -2,9 +2,9 @@ from math import isnan
 
 from qgis.core import QgsFeature
 from qps.speclib.core import is_spectral_feature
-from qps.testing import start_app, TestCase
 from qps.speclib.core.spectrallibraryio import SpectralLibraryIO
 from qps.speclib.io.ecosis import EcoSISSpectralLibraryIO
+from qps.testing import start_app, TestCase
 from qps.utils import file_search
 from qpstestdata import DIR_ECOSIS
 
@@ -33,7 +33,9 @@ class TestSpeclibIO_EcoSIS(TestCase):
 
         for path in ecosysFiles:
             print('Read {}...'.format(path))
+
             profiles = EcoSISSpectralLibraryIO.importProfiles(path, feedback=feedback)
+            # profiles = EcoSISSpectralLibraryReader(path)
 
             self.assertIsInstance(profiles, list)
             self.assertTrue(len(profiles) > 0)

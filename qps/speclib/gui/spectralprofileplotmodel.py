@@ -143,7 +143,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
         super().__init__(*args, **kwds)
 
         self.mBlockUpdates: bool = False
-        self.mAddProfileCandidates: bool = False
+        self.mAddProfileCandidatesAutomatically: bool = False
         self.mPROFILE_CANDIDATES: Dict[str, List] = {}
 
         self.mSTATS_ITEMS = []
@@ -1627,12 +1627,15 @@ class SpectralProfilePlotModel(QStandardItemModel):
     def confirmProfileCandidates(self, update_plot: bool = True):
         """
         Confirms the profile candidates so that they will not be removed
-        when new candidates are added calling addProfileCandidates().
+        when new candidates are added.
         """
         self.mPROFILE_CANDIDATES.clear()
         if update_plot:
             self.updatePlot()
         self.sigProfileCandidatesChanged.emit()
+
+    def setAddProfileCandidatesAutomatically(self, b: bool):
+        self.mAddProfileCandidatesAutomatically = b
 
     def addProfileCandidates(self, candidates: Dict[str, List[QgsFeature]]):
         """
@@ -1642,9 +1645,10 @@ class SpectralProfilePlotModel(QStandardItemModel):
         assert isinstance(candidates, dict)
 
         with SpectralProfilePlotModel.UpdateBlocker(self) as blocker:
-            if self.mAddProfileCandidates:
+            if self.mAddProfileCandidatesAutomatically:
                 self.confirmProfileCandidates(update_plot=False)
             else:
+                # remove previous candidates
                 self.clearProfileCandidates()
 
             visualized_layer_ids = [v.layerId() for v in self.visualizations()]
@@ -1670,7 +1674,8 @@ class SpectralProfilePlotModel(QStandardItemModel):
                         layer.committedFeaturesAdded.connect(check_commited_features_added)
                         layer.commitChanges(stopEditing=stop_editing)
                         layer.committedFeaturesAdded.disconnect(check_commited_features_added)
-                        self.mPROFILE_CANDIDATES[layer_id] = new_fids
+                        if not self.mAddProfileCandidatesAutomatically:
+                            self.mPROFILE_CANDIDATES[layer_id] = new_fids
                         # if isinstance(styles, dict):
                         #     layer_styles = styles.get(layer_id, {})
                         #     for field_name, plot_style in layer_styles.items():

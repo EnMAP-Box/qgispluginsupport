@@ -20,11 +20,12 @@ from qgis.core import Qgis, QgsCoordinateReferenceSystem, QgsCoordinateTransform
     QgsExpressionContextGenerator, QgsExpressionContextScope, QgsExpressionContextUtils, QgsFeature, QgsField, \
     QgsFieldConstraints, QgsFields, QgsGeometry, QgsLayerItem, QgsMapToPixel, QgsPointXY, QgsProperty, QgsRasterLayer, \
     QgsRectangle, QgsVector, QgsVectorLayer, QgsWkbTypes
-from qgis.core import QgsProject
+from qgis.core import QgsProject, QgsMapLayerModel
 from qgis.gui import QgsColorButton, QgsDockWidget, QgsDoubleSpinBox, QgsFieldExpressionWidget, QgsFilterLineEdit, \
     QgsMapCanvas
 from .spectrallibrarylistmodel import SpectralLibraryListModel
 from .spectrallibrarywidget import SpectralLibraryWidget
+from .spectralprofileplotmodel import SpectralProfilePlotModel
 from .. import speclibUiPath
 from ..core import profile_field_names
 from ..core.spectralprofile import encodeProfileValueDict, \
@@ -1027,14 +1028,15 @@ class SpectralProfileGeneratorNode(FieldGeneratorNode):
         self.mSamplingNode = SpectralProfileSamplingModeNode('Sampling')
         self.mScalingNode = SpectralProfileScalingNode('Scaling')
 
-        self.mProfileStyleNode = PlotStyleNode('Style', toolTip='Style of temporary profile candidates')
+        # self.mProfileStyleNode = PlotStyleNode('Style', toolTip='Style of temporary profile candidates')
 
         self.appendChildNodes([
             # self.mColorNode,
-            self.mProfileStyleNode, self.mSourceNode, self.mSamplingNode, self.mScalingNode])
+            # self.mProfileStyleNode,
+            self.mSourceNode, self.mSamplingNode, self.mScalingNode])
 
-    def setColor(self, *args, **kwds):
-        self.mProfileStyleNode.value().setLineColor(QColor(*args))
+    # def setColor(self, *args, **kwds):
+    #    self.mProfileStyleNode.value().setLineColor(QColor(*args))
 
     def setScaling(self, *args, **kwds):
         self.mScalingNode.setScaling(*args, **kwds)
@@ -1042,8 +1044,8 @@ class SpectralProfileGeneratorNode(FieldGeneratorNode):
     def scale(self) -> float:
         return self.mScalingNode.scale()
 
-    def plotStyle(self) -> PlotStyle:
-        return self.mProfileStyleNode.plotStyle()
+    # def plotStyle(self) -> PlotStyle:
+    #    return self.mProfileStyleNode.plotStyle()
 
     def offset(self) -> float:
         return self.mScalingNode.offset()
@@ -1071,8 +1073,8 @@ class SpectralProfileGeneratorNode(FieldGeneratorNode):
         assert isinstance(mode, ProfileSamplingMode)
         return self.mSamplingNode.setProfileSamplingMode(mode)
 
-    def profileStyle(self) -> PlotStyle:
-        return self.mProfileStyleNode
+    # def profileStyle(self) -> PlotStyle:
+    #    return self.mProfileStyleNode
 
     def profiles(self, point, *args, **kwargs) -> List[Tuple[Dict, QgsExpressionContext]]:
 
@@ -1568,8 +1570,7 @@ class SpectralProfileBridge(TreeModel):
         to_remove = []
         for g in self[:]:
             g: SpectralFeatureGeneratorNode
-            if g.speclibWidget() not in self.destinations():
-                # remove node widget reference
+            if g.speclib() not in self.destinations():
                 to_remove.append(g)
         self.removeFeatureGenerators(to_remove)
 
@@ -1617,58 +1618,68 @@ class SpectralProfileBridge(TreeModel):
         # 3. generate features from a feature generators
         #    multiple feature generators can create features for the same speclib
         # store as RESULTS[layer id, ([features], {field_name:PlotStyle})
-        RESULTS: Dict[str, Tuple[List[QgsFeature], Dict[Tuple[int, str], PlotStyle]]] = dict()
+        RESULTS: Dict[str, List[QgsFeature]] = dict()
 
         for fgnode in featureGenerators:
             fgnode: SpectralFeatureGeneratorNode
 
             sid = fgnode.speclib().id()
 
-            features, feature_styles = RESULTS.get(sid, ([], dict()))
-            features: List[QgsFeature]
-            feature_styles: Dict[Tuple[int, str], PlotStyle]
+            features: List[QgsFeature] = RESULTS.get(sid, [])
 
             fid0 = len(features)
 
-            features1, styles = self.createFeatures(fgnode, spatialPoint, canvas=mapCanvas)
+            features1 = self.createFeatures(fgnode, spatialPoint, canvas=mapCanvas)
             for i, f in enumerate(features1):
                 fid = fid0 + i  # the unique feature ID
                 f.setId(fid)
-                for fname, style in styles.items():
-                    feature_styles[(fid, fname)] = style
                 features.append(f)
-                RESULTS[sid] = (features, feature_styles)
+                RESULTS[sid] = features
 
         # Add profiles to spectral libraries
 
-        candidate_features = {}
+        to_add = {}
 
-        for sid, (features, styles) in RESULTS.items():
-            candidate_features[sid] = candidate_features.get(sid, []) + features
+        for sid, features in RESULTS.items():
+            to_add[sid] = to_add.get(sid, []) + features
 
-        result = candidate_features.copy()
+        results = to_add.copy()
 
+        refresh_plot: List[SpectralProfilePlotModel] = []
         for slw in self.mSLWs:
-            slw_candidates = {}
+            candidates = {}
             model = slw.plotModel()
-            for vis in model.visualizations():
-                sid = vis.layerId()
-                if sid in candidate_features:
-                    slw_candidates[sid] = candidate_features.pop(sid)
+            for lyr in model.spectralLibraries():
+                sid = lyr.id()
+                if sid in to_add:
+                    candidates[sid] = to_add.pop(sid)
 
-            if len(slw_candidates) > 0:
-                model.addProfileCandidates(slw_candidates)
+            if len(candidates) > 0:
+                # add new profiles as profile candidates
+                # into 1st SpectralLibraryWidget that has a visualization for the layer
+                model.addProfileCandidates(candidates)
+            else:
+                model.addProfileCandidates({})
+                # refresh the SpectralLibraryWidget in case it has any layer
+                # that might have got updated by another SLW
+                # for lyr in model.spectralLibraries():
+                #     if lyr.id() in results:
+                #         refresh_plot.append(model)
+                #         break
 
-        if len(candidate_features) > 0:
+        if len(to_add) > 0:
             # add to speclibs which are not visualized in any profile widget
             pass
 
-        return result
+        for model in refresh_plot:
+            model.updatePlot()
+
+        return results
 
     def createFeatures(self,
                        fgnode: SpectralFeatureGeneratorNode,
                        point: SpatialPoint,
-                       canvas: QgsMapCanvas = None) -> Tuple[List[QgsFeature], Dict[str, PlotStyle]]:
+                       canvas: QgsMapCanvas = None) -> List[QgsFeature]:
         """
         Create the QgsFeatures related to position 'point'
         Parameters
@@ -1690,13 +1701,13 @@ class SpectralProfileBridge(TreeModel):
 
         new_features: List[QgsFeature] = []
         PROFILE_DATA: Dict[str, List[dict, QgsExpressionContext]] = dict()
-        PLOT_STYLES: Dict[str, PlotStyle] = dict()
+        # PLOT_STYLES: Dict[str, PlotStyle] = dict()
         for pgnode in fgnode.spectralProfileGeneratorNodes(checked=True):
             pgnode: SpectralProfileGeneratorNode
             results = pgnode.profiles(point, canvas=canvas, snap=self.mSnapToPixelCenter)
             if len(results) > 0:
                 PROFILE_DATA[pgnode.field().name()] = results
-                PLOT_STYLES[pgnode.field().name()] = pgnode.plotStyle().clone()
+                # PLOT_STYLES[pgnode.field().name()] = pgnode.plotStyle().clone()
 
         while len(PROFILE_DATA) > 0:
             pfields = list(PROFILE_DATA.keys())
@@ -1773,7 +1784,7 @@ class SpectralProfileBridge(TreeModel):
                     new_feature.setAttribute(field.name(), v)
 
             new_features.append(new_feature)
-        return new_features, PLOT_STYLES
+        return new_features  # , PLOT_STYLES
 
     def spectralLibraryModel(self) -> SpectralLibraryListModel:
         return self.mDstModel
@@ -2038,9 +2049,9 @@ class SpectralProfileBridge(TreeModel):
 
         elif isinstance(node, SpectralFeatureGeneratorNode):
             if col in [0, 1] and role == Qt.EditRole:
-                if isinstance(value, SpectralLibraryWidget):
+                if isinstance(value, QgsVectorLayer):
                     changed = True
-                    node.setSpeclibWidget(value)
+                    node.setSpeclib(value)
                     c0 = 0
                     c1 = 1
                     roles = [Qt.DisplayRole, Qt.ForegroundRole, Qt.FontRole]
@@ -2076,9 +2087,9 @@ class SpectralProfileBridge(TreeModel):
             if isinstance(value, Option):
                 node.setOption(value)
 
-        elif isinstance(node, ColorNode):
-            if isinstance(value, (QColor, str)):
-                node.setColor(value)
+        # elif isinstance(node, ColorNode):
+        #     if isinstance(value, (QColor, str)):
+        #         node.setColor(value)
 
         elif isinstance(node, PlotStyleNode):
             if isinstance(value, PlotStyle):
@@ -2147,6 +2158,7 @@ class SpectralProfileBridge(TreeModel):
             assert isinstance(slw, SpectralLibraryWidget)
             if slw not in self.mSLWs:
                 added_targets.append(slw)
+                slw.sigWindowIsClosing.connect(lambda *args, s=slw: self.removeSpectralLibraryWidgets(slw))
                 self.mSLWs.append(slw)
 
         if len(added_targets) == 0:
@@ -2356,11 +2368,13 @@ class SpectralProfileBridgeViewDelegate(QStyledItemDelegate):
         if isinstance(node, SpectralFeatureGeneratorNode) and index.column() in [0, 1]:
             assert isinstance(editor, QComboBox)
             model: SpectralLibraryListModel = editor.model()
-            slw = node.speclibWidget()
-            if slw:
-                idx = model.spectralLibraryWidgetModelIndex(slw)
-                if idx.isValid():
-                    editor.setCurrentIndex(idx.row())
+            sl = node.speclib()
+            if isinstance(sl, QgsVectorLayer):
+                for i in range(model.rowCount()):
+                    idx = model.index(i, 0)
+                    if sl == model.data(idx, QgsMapLayerModel.CustomRole.Layer):
+                        editor.setCurrentIndex(idx)
+                        break
 
         if isinstance(node, (SpectralProfileGeneratorNode, SpectralProfileSourceNode)) and index.column() == 1:
             assert isinstance(editor, QComboBox)
@@ -2404,7 +2418,7 @@ class SpectralProfileBridgeViewDelegate(QStyledItemDelegate):
         if isinstance(node, SpectralFeatureGeneratorNode):
             if index.column() in [0, 1]:
                 assert isinstance(w, QComboBox)
-                bridge.setData(index, w.currentData(Qt.UserRole), Qt.EditRole)
+                bridge.setData(index, w.currentData(QgsMapLayerModel.CustomRole.Layer), Qt.EditRole)
         elif isinstance(node, (SpectralProfileGeneratorNode, SpectralProfileSourceNode,
                                SpectralProfileSamplingModeNode, OptionTreeNode)):
             if index.column() in [1]:
