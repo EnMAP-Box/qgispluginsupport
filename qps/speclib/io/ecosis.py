@@ -29,13 +29,23 @@ import re
 from pathlib import Path
 from typing import List, Union
 
+from qgis.PyQt.QtCore import QUrlQuery
 from qgis.core import QgsExpressionContext, QgsFeature, QgsField, QgsFields, QgsGeometry, QgsProcessingFeedback, \
     QgsProviderRegistry, QgsVectorLayer
-from qgis.PyQt.QtCore import QUrlQuery
 from .envi import readCSVMetadata
 from ..core import create_profile_field
 from ..core.spectrallibraryio import SpectralLibraryImportWidget, SpectralLibraryIO
-from ..core.spectralprofile import encodeProfileValueDict, prepareProfileValueDict, ProfileEncoding
+from ..core.spectralprofile import encodeProfileValueDict, prepareProfileValueDict, ProfileEncoding, \
+    SpectralProfileFileReader
+
+
+class EcoSISSpectralLibraryReader(SpectralProfileFileReader):
+
+    def __init__(self, *args, **kwds):
+        super().__init__(*args, **kwds)
+
+    def asFeatures(self) -> List[QgsFeature]:
+        s = ""
 
 
 class EcoSISSpectralLibraryImportWidget(SpectralLibraryImportWidget):

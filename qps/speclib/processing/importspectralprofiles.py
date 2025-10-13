@@ -11,12 +11,12 @@ from qgis.core import QgsCoordinateReferenceSystem, QgsEditorWidgetSetup, QgsExp
     QgsProcessingMultiStepFeedback, QgsProcessingOutputLayerDefinition, QgsProcessingParameterBoolean, \
     QgsProcessingParameterFeatureSink, QgsProcessingParameterMultipleLayers, QgsProcessingUtils, QgsProject, \
     QgsProperty, QgsRemappingProxyFeatureSink, QgsRemappingSinkDefinition, QgsVectorFileWriter, QgsVectorLayer, \
-    QgsWkbTypes
+    QgsWkbTypes, QgsProcessingParameterEnum
 from qgis.core import QgsProcessingParameterString, QgsProcessingParameterDefinition
 from ..core import profile_field_names
 from ..core.spectralprofile import SpectralProfileFileReader
 from ..io.asd import RX_ASDFILE, ASDBinaryFile
-from ..io.ecosis import EcoSISSpectralLibraryIO
+from ..io.ecosis import EcoSISSpectralLibraryIO, EcoSISSpectralLibraryReader
 from ..io.envi import EnviSpectralLibraryIO
 from ..io.envi import canRead as canReadESL
 from ..io.spectralevolution import SEDFile, rx_sed_file
@@ -34,7 +34,8 @@ class SpectralLibraryOutputDefinition(QgsProcessingOutputLayerDefinition):
         return True
 
 
-def file_reader(path: Union[str, Path], dtg_fmt: Optional[str] = None) -> Optional[SpectralProfileFileReader]:
+def file_reader(path: Union[str, Path],
+                dtg_fmt: Optional[str] = None) -> Optional[SpectralProfileFileReader]:
     """
     Return a SpectralProfileFileReader to read profiles in the given file
     :param path:
@@ -48,13 +49,17 @@ def file_reader(path: Union[str, Path], dtg_fmt: Optional[str] = None) -> Option
         return ASDBinaryFile(path)
     elif rx_sed_file.search(path.name):
         return SEDFile(path)
+    elif path.name.endswith('.csv'):
+        return EcoSISSpectralLibraryReader(path)
     return None
 
 
 def read_profiles(path: Union[str, Path],
+                  reader: Optional[SpectralProfileFileReader] = None,
                   dtg_fmt: Optional[str] = None) -> Tuple[List[QgsFeature], Optional[str]]:
     """
     Tries to read spectral profiles from the given path
+    :param reader:
     :param dtg_fmt:
     :param path:
     :return: List of QgsFeatures, error
@@ -65,9 +70,11 @@ def read_profiles(path: Union[str, Path],
     path = Path(path)
 
     try:
-        reader = file_reader(path, dtg_fmt=dtg_fmt)
+        if reader is None:
+            reader = file_reader(path, dtg_fmt=dtg_fmt)
+
         if isinstance(reader, SpectralProfileFileReader):
-            features.append(reader.asFeature())
+            features.extend(reader.asFeatures())
 
         elif canReadESL(path):
             features.extend(EnviSpectralLibraryIO.importProfiles(path))
@@ -95,6 +102,10 @@ def read_profile_batch(paths: list) -> Tuple[List[QgsFeature], List[str]]:
 class ImportSpectralProfiles(QgsProcessingAlgorithm):
     NAME = 'importspectralprofiles'
     P_INPUT = 'INPUT'
+    P_INPUT_TYPE = 'INPUT_TYPE'
+
+    INPUT_TYPES = ['All', 'ENVI', 'ASD', 'SED', 'SVC', 'EcoSIS']
+
     P_RECURSIVE = 'RECURSIVE'
     P_OUTPUT = 'OUTPUT'
     P_USE_RELPATH = 'RELPATH'
@@ -122,8 +133,12 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
 
     def shortHelpString(self) -> str:
 
-        return """Imports spectral profiles from file formats like ENVI spectral libraries,
-        ASD (<code>.asd</code>), Spectral Evolution (<code>.sed</code>) or Spectral Vista Coorporation (SVC, <code>.sig</code>) Spectrometers.
+        return """Imports spectral profiles from file formats like 
+        ENVI spectral libraries (<code>*.hdr</code>),
+        EcoSIS CSV files (<code>*.csv</code>),
+        ASD (<code>*.asd</code>), 
+        Spectral Evolution (<code>*.sed</code>),
+        Spectral Vista Coorporation (SVC, <code>*.sig</code>).
         """
 
     def group(self) -> str:
@@ -143,6 +158,14 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
             layerType=QgsProcessing.SourceType.TypeFile,
             optional=False)
         )
+
+        self.addParameter(QgsProcessingParameterEnum(
+            self.P_INPUT_TYPE,
+            description='Input file type',
+            options=self.INPUT_TYPES,
+            defaultValue=0,
+            allowMultiple=False,
+        ))
 
         self.addParameter(QgsProcessingParameterBoolean(
             self.P_RECURSIVE,
@@ -221,6 +244,16 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
         crs = QgsCoordinateReferenceSystem('EPSG:4326')
         all_fields = QgsFields()
 
+        reader = self.parameterAsEnum(parameters, self.P_INPUT_TYPE, context)
+        if isinstance(reader, int):
+            reader = self.INPUT_TYPES[reader]
+        if reader == 'SVC':
+            reader = SVCSigFile
+        elif reader == 'ASD':
+            reader = ASDBinaryFile
+        elif reader == 'SED':
+            reader = SEDFile
+            reader = EcoSISSpectralLibraryIO
         PROFILES: Dict[Tuple, List[QgsFeature]] = dict()
         n_files = len(self._input_files)
 
@@ -272,7 +305,7 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
                     pt = datetime.datetime.now()
         else:
             for i, uri in enumerate(self._input_files):
-                profiles, error = read_profiles(uri, dtg_fmt=self._dtg_fmt)
+                profiles, error = read_profiles(uri, reader=reader, dtg_fmt=self._dtg_fmt)
                 if error:
                     feedback.reportError(error)
                 # profiles = SpectralLibraryIO.readProfilesFromUri(uri, feedback=multiFeedback)

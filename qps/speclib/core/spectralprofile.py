@@ -574,8 +574,11 @@ class SpectralProfileFileReader(object):
 
         return attributes
 
-    def asFeature(self) -> QgsFeature:
-        """Returns the file content as QgsFeature"""
+    def asFeatures(self) -> List[QgsFeature]:
+        """
+        Returns the QgsFeatures that can be read from the file
+        :return: list of QgsFeatures
+        """
 
         f = QgsFeature(self.standardFields())
         attributes = self.asMap()
@@ -588,7 +591,13 @@ class SpectralProfileFileReader(object):
         elif self.mReferenceCoordinate:
             f.setGeometry(QgsGeometry.fromPointXY(self.mReferenceCoordinate))
 
-        return f
+        return [f]
+
+    def asFeature(self) -> QgsFeature:
+        """Returns the file content as single QgsFeature"""
+        warnings.warn(DeprecationWarning('use .asFeatures()'), stacklevel=2)
+
+        return self.asFeatures()[0]
 
     def reference(self) -> Optional[dict]:
         """
