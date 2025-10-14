@@ -1,6 +1,7 @@
 from math import isnan
+from pathlib import Path
 
-from qgis.core import QgsFeature
+from qgis.core import QgsFeature, QgsProject
 from qps.speclib.core import is_spectral_feature
 from qps.speclib.core.spectrallibraryio import SpectralLibraryIO
 from qps.speclib.io.ecosis import EcoSISSpectralLibraryIO, EcoSISSpectralLibraryReader
@@ -32,9 +33,13 @@ class TestSpeclibIO_EcoSIS(TestCase):
 
         for file in ecosysFiles:
 
+            with open(file, 'r') as f:
+                data = f.read()
+                n_lines = len(data.strip().split('\n'))
+
             reader = EcoSISSpectralLibraryReader(file)
             features = reader.asFeatures()
-            assert len(features) > 0
+            assert len(features) == n_lines - 1
             for f in features:
                 assert is_spectral_feature(f)
 
@@ -42,13 +47,20 @@ class TestSpeclibIO_EcoSIS(TestCase):
 
         ecosysFiles = file_search(DIR_ECOSIS, '*.csv', recursive=True)
 
+        OUTPUT_DIR = self.createTestOutputDirectory()
+
         for file in ecosysFiles:
             alg = ImportSpectralProfiles()
             alg.initAlgorithm({})
 
+            path_output = OUTPUT_DIR / f'{Path(file).stem}.gpkg'
             context, feedback = self.createProcessingContextFeedback()
+            p = QgsProject()
+            context.setProject(p)
             par = {alg.P_INPUT: file,
-                   alg.P_INPUT_TYPE: 'EcoSIS'}
+                   alg.P_INPUT_TYPE: 'EcoSIS',
+                   alg.P_OUTPUT: path_output.as_posix()
+                   }
 
             self.assertTrue(alg.prepareAlgorithm(par, context, feedback))
             results = alg.processAlgorithm(par, context, feedback)
@@ -63,8 +75,8 @@ class TestSpeclibIO_EcoSIS(TestCase):
         for path in ecosysFiles:
             print('Read {}...'.format(path))
 
-            profiles = EcoSISSpectralLibraryIO.importProfiles(path, feedback=feedback)
-            # profiles = EcoSISSpectralLibraryReader(path)
+            # profiles = EcoSISSpectralLibraryIO.importProfiles(path, feedback=feedback)
+            profiles = EcoSISSpectralLibraryReader(path).asFeatures()
 
             self.assertIsInstance(profiles, list)
             self.assertTrue(len(profiles) > 0)

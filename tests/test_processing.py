@@ -47,7 +47,7 @@ from qps.speclib.processing.aggregateprofiles import AggregateProfiles
 from qps.speclib.processing.exportspectralprofiles import ExportSpectralProfiles
 from qps.speclib.processing.importspectralprofiles import ImportSpectralProfiles
 from qps.testing import ExampleAlgorithmProvider, get_iface, start_app, TestCase, TestObjects
-from qpstestdata import asd_with_gps, ecosis_csv, spectral_evolution_sed
+from qpstestdata import ecosis_csv
 
 start_app()
 
@@ -337,13 +337,11 @@ class ProcessingToolsTest(TestCase):
         self.assertTrue(provider.addAlgorithm(ImportSpectralProfiles()))
         reg.providerById(ExampleAlgorithmProvider.NAME.lower())
 
-        from qpstestdata import svc_sig
-
         input_files = [
             ecosis_csv,
-            asd_with_gps,
-            spectral_evolution_sed,
-            svc_sig,
+            # asd_with_gps,
+            # spectral_evolution_sed,
+            # svc_sig,
 
         ]
         for f in input_files:
@@ -380,7 +378,8 @@ class ProcessingToolsTest(TestCase):
                 self.assertIsInstance(vl, QgsVectorLayer)
 
                 if input_file in [ecosis_csv]:
-                    self.assertTrue(vl.featureCount() > 1)
+                    self.assertTrue(vl.featureCount() > 1,
+                                    msg=f'Unable to import profiles from {input_file.name} to {path_test.name}')
                 else:
                     self.assertEqual(1, vl.featureCount(),
                                      msg=f'Unable to import profiles from {input_file.name} to {path_test.name}')

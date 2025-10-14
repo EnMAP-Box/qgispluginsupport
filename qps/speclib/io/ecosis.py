@@ -50,14 +50,28 @@ class EcoSISSpectralLibraryReader(SpectralProfileFileReader):
 
         csvLyr = self.loadCSVLayer()
 
+        rxIsNum = re.compile(r'^\d+(\.\d+)?$')
+        wlFields = QgsFields()
+        mdFields = QgsFields()
+
+        dstFields = QgsFields()
+        profileField = create_profile_field(self.KEY_Reflectance, encoding=ProfileEncoding.Json)
+        dstFields.append(profileField)
+
+        wl = []
+
+        for i, field in enumerate(csvLyr.fields()):
+            field: QgsField
+            if field.isNumeric() and rxIsNum.match(field.name()):
+                wl.append(float(field.name()))
+                wlFields.append(field)
+            else:
+                mdFields.append(field)
+                dstFields.append(field)
+
         profiles: List[QgsFeature] = []
 
-        dstFields, otherFields, profileField, wl, wlFields = cls.dataFields(lyr)
-
-        n = lyr.featureCount()
-        next_step = 5  # step size in percent
-        feedback.setProgressText(f'Load {n} profiles')
-        for i, f in enumerate(lyr.getFeatures()):
+        for i, f in enumerate(csvLyr.getFeatures()):
             f: QgsFeature
             f2 = QgsFeature(dstFields)
 
@@ -65,20 +79,16 @@ class EcoSISSpectralLibraryReader(SpectralProfileFileReader):
             xUnit = None
             d = prepareProfileValueDict(x=wl, y=y, xUnit=xUnit)
             dump = encodeProfileValueDict(d, profileField)
-            f2.setAttribute(cls.FIELDNAME_PROFILE, dump)
+            f2.setAttribute(profileField.name(), dump)
 
             if f.hasGeometry():
                 g = f.geometry()
                 f2.setGeometry(QgsGeometry(g))
 
-            for field in otherFields:
-                f2.setAttribute(field.name(), f.attribute(field.name()))
+            # for field in mdFields:
+            #    f2.setAttribute(field.name(), f.attribute(field.name()))
             profiles.append(f2)
-
-            progress = 100 * i / n
-            if progress >= next_step:
-                next_step += 5
-                feedback.setProgress(progress)
+        del csvLyr
         return profiles
         s = ""
 

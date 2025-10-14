@@ -83,8 +83,8 @@ class TestSpeclibIO_SVC(TestCase):
 
         formats = [
             '%d.%m.%Y %H:%M:%S',  # 27.05.2025 09:39:32
-            '%m/%d/%Y %I:%M:%S%p',  # 5/27/2025 9:39:32AM
-            '%m/%d/%Y %I:%M:%S %p',  # 5/27/2025 9:39:32 AM
+            '%m/%d/%Y %H:%M:%S%p',  # 5/27/2025 9:39:32AM
+            '%m/%d/%Y %H:%M:%S %p',  # 5/27/2025 9:39:32 AM
             '%m/%d/%Y %H:%M:%S',  # 5/27/2025 9:39:32
         ]
         self.assertEqual(dt, SVCSigFile._readDateTime(dt.isoformat()))

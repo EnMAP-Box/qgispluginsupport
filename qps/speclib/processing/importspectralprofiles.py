@@ -76,6 +76,7 @@ def read_profiles(path: Union[str, Path],
             reader = reader(path)
         if isinstance(reader, SpectralProfileFileReader):
             features.extend(reader.asFeatures())
+            s = ""
 
         elif canReadESL(path):
             features.extend(EnviSpectralLibraryIO.importProfiles(path))
@@ -246,7 +247,12 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
         crs = QgsCoordinateReferenceSystem('EPSG:4326')
         all_fields = QgsFields()
 
-        reader = self.parameterAsString(parameters, self.P_INPUT_TYPE, context)
+        reader = self.parameterAsEnum(parameters, self.P_INPUT_TYPE, context)
+
+        if isinstance(reader, int):
+            reader = self.INPUT_TYPES[reader]
+        else:
+            reader = self.parameterAsString(parameters, self.P_INPUT_TYPE, context)
         if reader == 'All':
             reader = None
         elif reader == 'SVC':
@@ -340,7 +346,7 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
         if wkbType is None:
             wkbType = QgsWkbTypes.Type.NoGeometry
 
-        dst_fields = QgsFields()
+        # dst_fields = QgsFields()
         # Describe output fields.
         # If destination provide does not support field type
         # try to get a suitable conversion, e.g. QMap / JSON -> str
@@ -388,7 +394,8 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
                                             wkbType,
                                             crs)
 
-        sink: QgsFeatureSink
+        if not isinstance(sink, QgsFeatureSink):
+            raise QgsProcessingException(f'Unable to create output file: {parameters.get(self.P_OUTPUT)}')
 
         for i, (srcFieldNames, features) in enumerate(PROFILES.items()):
 

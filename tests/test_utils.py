@@ -30,6 +30,7 @@ from qgis.PyQt.QtCore import NULL, QByteArray, QObject, QPoint, QRect, QUrl, QVa
 from qgis.PyQt.QtGui import QColor
 from qgis.PyQt.QtWidgets import QDialog, QDockWidget, QGroupBox, QMainWindow, QMenu, QWidget
 from qgis.PyQt.QtXml import QDomDocument, QDomElement
+from qgis._gui import QgsDockWidget
 from qgis.core import QgsCoordinateReferenceSystem, QgsFeature, QgsFeatureRequest, QgsField, QgsGeometry, \
     QgsGeometryParameters, QgsMapLayerProxyModel, QgsMapLayerStore, QgsMapToPixel, QgsPointXY, QgsProcessingFeedback, \
     QgsProject, QgsRaster, QgsRasterDataProvider, QgsRasterIdentifyResult, QgsRasterLayer, QgsRectangle, QgsVector, \
@@ -96,6 +97,11 @@ class TestUtils(TestCase):
                         loadUi(pathUi, self)
             elif baseClass == 'QGroupBox':
                 class TestWidget(QGroupBox):
+                    def __init__(self):
+                        super().__init__()
+                        loadUi(pathUi, self)
+            elif baseClass == 'QgsDockWidget':
+                class TestWidget(QgsDockWidget):
                     def __init__(self):
                         super().__init__()
                         loadUi(pathUi, self)
