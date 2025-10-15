@@ -11,7 +11,8 @@ from qgis.PyQt.QtWidgets import QDialog, QMenu, QWidget
 from qgis.PyQt.QtWidgets import QToolButton
 from qgis.PyQt.QtXml import QDomElement
 from qgis.core import (QgsFeature, QgsProcessingOutputFile, QgsProject, QgsReadWriteContext,
-                       QgsVectorLayer, edit)
+                       QgsVectorLayer)
+from qgis.core import QgsProcessingContext, QgsProcessingFeedback
 from qgis.gui import QgsActionMenu, QgsAttributeTableView, QgsDockWidget, QgsMapCanvas
 from .spectrallibraryplotitems import SpectralProfilePlotItem, SpectralProfilePlotWidget
 from .spectrallibraryplotwidget import SpectralLibraryPlotWidget
@@ -20,9 +21,11 @@ from .spectralprofilefieldmodel import SpectralProfileFieldActivatorDialog
 from .spectralprofileplotmodel import SpectralProfilePlotModel
 from ..core import is_spectral_library
 from ..core.spectrallibrary import SpectralLibraryUtils
-from ..core.spectrallibraryio import SpectralLibraryExportDialog, SpectralLibraryImportDialog
+from ..core.spectrallibraryio import SpectralLibraryExportDialog
+from ..processing.importspectralprofiles import ImportSpectralProfiles
 from ...layerproperties import CopyAttributesDialog, showLayerPropertiesDialog
 from ...plotstyling.plotstyling import PlotStyle
+from ...processing.algorithmdialog import AlgorithmDialog
 from ...utils import loadUi
 
 logger = logging.getLogger(__name__)
@@ -567,23 +570,47 @@ class SpectralLibraryWidget(QgsDockWidget):
         """
         Imports a SpectralLibrary
         """
-        sl = self.currentSpeclib()
-        if isinstance(sl, QgsVectorLayer):
-            with edit(sl):
-                n_p = sl.featureCount()
-                has_vis = False
-                for vis in self.spectralLibraryPlotWidget().profileVisualizations():
-                    if vis.layerId() == sl.id():
-                        has_vis = True
-                        break
-                SpectralLibraryImportDialog.importProfiles(sl, parent=self)
 
-                # add a new visualization if no one exists
-                if not has_vis and sl.featureCount() > 0:
-                    self.spectralLibraryPlotWidget().createProfileVisualization(layer_id=sl)
+        context = QgsProcessingContext()
+        context.setProject(self.project())
 
-            # update plot
-            self.plotModel().updatePlot()
+        feedback = QgsProcessingFeedback()
+        context.setFeedback(feedback)
+
+        results = {}
+
+        def onFinished(ok, res):
+            assert ok
+            results.update(res)
+
+        alg = ImportSpectralProfiles()
+        alg.initAlgorithm({})
+        d = AlgorithmDialog(alg, context=context)
+        d.algorithmFinished.connect(onFinished)
+        d.exec_()
+
+        lyr = results.get(ImportSpectralProfiles.P_OUTPUT, None)
+        if isinstance(lyr, (QgsVectorLayer, str)):
+            self.libraryPlotWidget().createProfileVisualization(layer_id=lyr)
+            # self.addSpeclib(results['output'], askforNewFields=True)
+
+        # sl = self.currentSpeclib()
+        # if isinstance(sl, QgsVectorLayer):
+        #     with edit(sl):
+        #         n_p = sl.featureCount()
+        #         has_vis = False
+        #         for vis in self.spectralLibraryPlotWidget().profileVisualizations():
+        #             if vis.layerId() == sl.id():
+        #                 has_vis = True
+        #                 break
+        #         SpectralLibraryImportDialog.importProfiles(sl, parent=self)
+        #
+        #         # add a new visualization if no one exists
+        #         if not has_vis and sl.featureCount() > 0:
+        #             self.spectralLibraryPlotWidget().createProfileVisualization(layer_id=sl)
+        #
+        #     # update plot
+        #     self.plotModel().updatePlot()
 
     # def onImportFromRasterSource(self):
     #    from ..io.rastersources import SpectralProfileImportPointsDialog

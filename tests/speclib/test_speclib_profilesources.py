@@ -378,10 +378,6 @@ class SpectralProcessingTests(TestCase):
         panel.mBridge
         RESULTS = panel.loadCurrentMapSpectra(center, mapCanvas=canvas, runAsync=False)
 
-        if False:
-            self.assertEqual(sl2.featureCount(), 9)
-            self.assertTrue(sl1.id() in RESULTS.keys())
-            self.assertTrue(sl2.id() in RESULTS.keys())
         for speclib_ids, features in RESULTS.items():
             for feature in features:
                 self.assertIsInstance(feature, QgsFeature)

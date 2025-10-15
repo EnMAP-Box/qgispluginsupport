@@ -526,7 +526,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
             if not feature.isValid():
                 return None
 
-            raw_data = self.mCACHE_PROFILE_DATA[layer_id][fieldIndex].get(feature.id, NI)
+            raw_data = self.mCACHE_PROFILE_DATA[layer_id][fieldIndex].get(feature.id(), NI)
 
             if raw_data == NI or not self.mEnableCaching:
                 # load profile data

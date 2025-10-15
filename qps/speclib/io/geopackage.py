@@ -4,8 +4,8 @@ from typing import Any, List, Union
 
 from qgis.core import QgsCoordinateReferenceSystem, QgsCoordinateTransformContext, QgsExpressionContext, QgsFeature, \
     QgsFields, QgsProcessingFeedback, QgsVectorFileWriter, QgsVectorLayer
-
 from ..core.spectrallibraryio import SpectralLibraryExportWidget, SpectralLibraryImportWidget, SpectralLibraryIO
+from ..core.spectralprofile import SpectralProfileFileReader
 from ...fieldvalueconverter import GenericFieldValueConverter
 
 
@@ -174,5 +174,24 @@ class GeoPackageSpectralLibraryIO(SpectralLibraryIO):
                        feedback: QgsProcessingFeedback = QgsProcessingFeedback()) -> List[QgsFeature]:
         lyr = QgsVectorLayer(path)
         # load editor widget information on spectral profile fields
+        lyr.loadDefaultStyle()
+        return list(lyr.getFeatures())
+
+
+class GeoPackageSpectralLibraryReader(SpectralProfileFileReader):
+
+    def __init__(self, *args, **kwds):
+        super().__init__(*args, **kwds)
+
+    @classmethod
+    def id(cls) -> str:
+        return 'GeoPackage'
+
+    @classmethod
+    def canReadFile(cls, path: Union[str, pathlib.Path]) -> bool:
+        return pathlib.Path(path).suffix == '.gpkg'
+
+    def asFeatures(self) -> List[QgsFeature]:
+        lyr = QgsVectorLayer(self.path().as_posix())
         lyr.loadDefaultStyle()
         return list(lyr.getFeatures())

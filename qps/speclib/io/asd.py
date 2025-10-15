@@ -31,6 +31,7 @@ import pathlib
 import re
 import struct
 import warnings
+from pathlib import Path
 from typing import List, Tuple, Union
 
 import numpy as np
@@ -291,6 +292,15 @@ class ASDBinaryFile(SpectralProfileFileReader):
 
         if path is not None:
             self.readFromBinaryFile(path)
+
+    @classmethod
+    def id(cls) -> str:
+        return 'ASD'
+
+    @classmethod
+    def canReadFile(cls, path: Union[str, Path]) -> bool:
+        path = Path(path)
+        return RX_ASDFILE.search(path.name) is not None
 
     def xValues(self) -> np.ndarray:
         values = np.linspace(self.ch1_wavel, self.ch1_wavel + self.channels * self.wavel_step - 1, self.channels)

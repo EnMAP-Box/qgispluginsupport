@@ -28,6 +28,7 @@ import datetime
 import os
 import pathlib
 import re
+from pathlib import Path
 from typing import List, Union
 
 from qgis.core import QgsExpressionContext, QgsFeature, QgsFields, QgsPointXY, \
@@ -130,6 +131,15 @@ class SEDFile(SpectralProfileFileReader):
 
         if self.mPath is not None:
             self.readFromSEDFile(self.mPath)
+
+    @classmethod
+    def id(cls) -> str:
+        return 'SED'
+
+    @classmethod
+    def canReadFile(cls, path: Union[str, Path]) -> bool:
+        path = Path(path)
+        return rx_sed_file.search(path.name) is not None
 
     def readFromSEDFile(self, path: Union[str, pathlib.Path]):
         """

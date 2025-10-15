@@ -2,8 +2,10 @@ from math import isnan
 from pathlib import Path
 
 from qgis.core import QgsFeature, QgsProject
+from qgis.core import QgsVectorLayer
 from qps.speclib.core import is_spectral_feature
 from qps.speclib.core.spectrallibraryio import SpectralLibraryIO
+from qps.speclib.core.spectralprofile import decodeProfileValueDict
 from qps.speclib.io.ecosis import EcoSISSpectralLibraryIO, EcoSISSpectralLibraryReader
 from qps.speclib.processing.importspectralprofiles import ImportSpectralProfiles
 from qps.testing import start_app, TestCase
@@ -64,8 +66,14 @@ class TestSpeclibIO_EcoSIS(TestCase):
 
             self.assertTrue(alg.prepareAlgorithm(par, context, feedback))
             results = alg.processAlgorithm(par, context, feedback)
-
-            s = ""
+            results = alg.postProcessAlgorithm(context, feedback)
+            lyr = results.get(ImportSpectralProfiles.P_OUTPUT)
+            assert isinstance(lyr, QgsVectorLayer)
+            for f in lyr.getFeatures():
+                dump = f.attribute('reflectance')
+                data = decodeProfileValueDict(dump)
+                for k in ['x', 'y', 'xUnit']:
+                    assert k in data
 
     def test_read_EcoSIS(self):
 
@@ -76,6 +84,7 @@ class TestSpeclibIO_EcoSIS(TestCase):
             print('Read {}...'.format(path))
 
             # profiles = EcoSISSpectralLibraryIO.importProfiles(path, feedback=feedback)
+            self.assertTrue(EcoSISSpectralLibraryReader.canReadFile(path))
             profiles = EcoSISSpectralLibraryReader(path).asFeatures()
 
             self.assertIsInstance(profiles, list)
@@ -85,7 +94,9 @@ class TestSpeclibIO_EcoSIS(TestCase):
 
             print('Read {} (generic IO)...'.format(path))
 
-            profiles2 = SpectralLibraryIO.readProfilesFromUri(path)
+            context, feedback = self.createProcessingContextFeedback()
+
+            profiles2 = SpectralLibraryIO.readProfilesFromUri(path, feedback=feedback)
             self.assertIsInstance(profiles2, list)
             self.assertTrue(len(profiles2) > 0)
             for p1, p2 in zip(profiles, profiles2):

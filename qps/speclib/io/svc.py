@@ -85,6 +85,15 @@ class SVCSigFile(SpectralProfileFileReader):
         if self.mPath:
             self._readSIGFile(self.mPath)
 
+    @classmethod
+    def id(cls) -> str:
+        return 'SVC'
+
+    @classmethod
+    def canReadFile(cls, path: Union[str, Path]) -> bool:
+        path = Path(path)
+        return rxSIGFile.search(path.name) is not None
+
     def _parse_coordinates(self) -> None:
         """Parse coordinate information from metadata using precompiled regex"""
         if 'longitude' in self.mMetadata and 'latitude' in self.mMetadata:
@@ -173,6 +182,16 @@ class SVCSigFile(SpectralProfileFileReader):
         except ValueError:
             pass
 
+        try:
+            import dateutil.parser
+            from dateutil.parser import ParserError
+            try:
+                return dateutil.parser.parse(text)
+            except ParserError:
+                pass
+        except ImportError:
+            pass
+
         # test non-ISO formats
         formats = [
             '%d.%m.%Y %H:%M:%S',  # 27.05.2025 09:39:32
@@ -189,16 +208,6 @@ class SVCSigFile(SpectralProfileFileReader):
                 return datetime.datetime.strptime(text, fmt)
             except ValueError:
                 pass
-
-        try:
-            import dateutil.parser
-            from dateutil.parser import ParserError
-            try:
-                return dateutil.parser.parse(text)
-            except ParserError:
-                pass
-        except ImportError:
-            pass
 
         raise ValueError(f'Unable to extract datetime from {text}')
 

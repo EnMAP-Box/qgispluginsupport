@@ -1,7 +1,7 @@
 import os
-from pathlib import Path
 import sys
 import warnings
+from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 from qgis.PyQt.QtCore import pyqtSignal, QObject, QRegExp, QUrl
@@ -389,6 +389,11 @@ class SpectralLibraryIO(QObject):
         if feedback is None:
             feedback = QgsProcessingFeedback()
         # global SpectralLibraryIO
+        from ..processing.importspectralprofiles import read_profiles
+        profiles, error = read_profiles(uri, reader=None)
+        if error and error != '':
+            feedback.reportError(error)
+        return profiles
 
         ext = os.path.splitext(uri)[1]
 

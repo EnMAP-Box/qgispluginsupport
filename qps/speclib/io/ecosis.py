@@ -46,6 +46,15 @@ class EcoSISSpectralLibraryReader(SpectralProfileFileReader):
 
         self.path()
 
+    @classmethod
+    def id(cls) -> str:
+        return 'EcoSIS'
+
+    @classmethod
+    def canReadFile(cls, path: Union[str, Path]) -> bool:
+        path = Path(path)
+        return path.suffix == '.csv'
+
     def asFeatures(self) -> List[QgsFeature]:
 
         csvLyr = self.loadCSVLayer()
@@ -76,7 +85,7 @@ class EcoSISSpectralLibraryReader(SpectralProfileFileReader):
             f2 = QgsFeature(dstFields)
 
             y = [f.attribute(field.name()) for field in wlFields]
-            xUnit = None
+            xUnit = 'nm'
             d = prepareProfileValueDict(x=wl, y=y, xUnit=xUnit)
             dump = encodeProfileValueDict(d, profileField)
             f2.setAttribute(profileField.name(), dump)

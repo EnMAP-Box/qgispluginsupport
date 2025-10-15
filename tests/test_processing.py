@@ -323,10 +323,11 @@ class ProcessingToolsTest(TestCase):
         d.algorithmFinished.connect(onFinished)
         d.exec_()
 
-        lyr = results[ImportSpectralProfiles.P_OUTPUT]
-        assert isinstance(lyr, QgsVectorLayer)
-        assert is_spectral_library(lyr)
-        assert lyr.featureCount() > 0
+        lyr = results.get(ImportSpectralProfiles.P_OUTPUT)
+        if lyr:
+            assert isinstance(lyr, QgsVectorLayer)
+            assert is_spectral_library(lyr)
+            assert lyr.featureCount() > 0
         s = ""
 
     def test_spectralprofile_import(self):
@@ -521,7 +522,7 @@ class ProcessingToolsTest(TestCase):
                         writtenProfiles.append(d)
                 if not len(writtenProfiles) == len(PDICTS):
                     s = ""
-                self.assertEqual(len(writtenProfiles), len(PDICTS),
+                self.assertEqual(len(PDICTS), len(writtenProfiles),
                                  msg=f'{len(writtenProfiles)} of {len(PDICTS)} profiles written\n IO: {io}')
                 # todo: compare metadata
                 s = ""

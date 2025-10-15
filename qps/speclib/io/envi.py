@@ -48,7 +48,7 @@ from ..core import create_profile_field, profile_field_names, profile_fields
 from ..core.spectrallibrary import LUT_IDL2GDAL, VSI_DIR
 from ..core.spectrallibraryio import SpectralLibraryExportWidget, SpectralLibraryImportWidget, SpectralLibraryIO
 from ..core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict, groupBySpectralProperties, \
-    prepareProfileValueDict, SpectralSetting
+    prepareProfileValueDict, SpectralSetting, SpectralProfileFileReader
 from ...gdal_utils import GDALConfigChanges
 from ...qgisenums import QMETATYPE_DOUBLE, QMETATYPE_INT, QMETATYPE_QSTRING
 from ...qgsrasterlayerproperties import stringToType
@@ -617,6 +617,100 @@ class EnviSpectralLibraryIO(SpectralLibraryIO):
 
 REQUIRED_TAGS = ['byte order', 'data type', 'header offset', 'lines', 'samples', 'bands']
 SINGLE_VALUE_TAGS = REQUIRED_TAGS + ['description', 'wavelength', 'wavelength units']
+
+
+class EnviSpectralLibraryReader(SpectralProfileFileReader):
+
+    def __init__(self, *args, **kwds):
+        super().__init__(*args, **kwds)
+
+    @classmethod
+    def id(cls) -> str:
+        return 'ENVI'
+
+    @classmethod
+    def canReadFile(self, path: Union[str, Path]) -> bool:
+        path = Path(path)
+
+        if not path.is_file():
+            return False
+        hdr = readENVIHeader(path, typeConversion=False)
+        if hdr is None or hdr['file type'] != 'ENVI Spectral Library':
+            return False
+        return True
+
+    def asFeatures(self) -> List[QgsFeature]:
+        path = self.path()
+        pathHdr, pathESL = findENVIHeader(path)
+        fields, md = EnviSpectralLibraryIO.sourceFieldsMetadata(pathHdr)
+
+        config_changes = {'GDAL_VRT_ENABLE_RAWRASTERBAND': 'YES',
+                          'GDAL_VRT_RAWRASTERBAND_ALLOWED_SOURCE': 'ALL'}
+
+        with GDALConfigChanges(config_changes) as cs:
+            tmpVrt = tempfile.mktemp(prefix='tmpESLVrt', suffix='.esl.vrt', dir=os.path.join(VSI_DIR, 'ENVIIO'))
+            try:
+                ds = esl2vrt(pathESL, tmpVrt)
+            except AssertionError as ex:
+                # feedback.reportError(str(ex))
+                return []
+
+            profileArray = ds.ReadAsArray()
+
+        # remove the temporary VRT, as it was created internally only
+        ds.GetDriver().Delete(ds.GetDescription())
+
+        nSpectra, nbands = profileArray.shape
+        yUnit = None
+        xUnit = md.get('wavelength units')
+        xValues = md.get('wavelength')
+        zPlotTitles = md.get('z plot titles')
+        if isinstance(zPlotTitles, str) and len(zPlotTitles.split(',')) >= 2:
+            xUnit, yUnit = zPlotTitles.split(',')[0:2]
+
+        # get official ENVI Spectral Library standard values
+        # a) defined in header item "spectra names"
+        # b) implicitly by profile order as "Spectrum 1, Spectrum 2, ..."
+        spectraNames = md.get('spectra names', [f'Spectrum {i + 1}' for i in range(nSpectra)])
+
+        lyrCSV = readCSVMetadata(path)
+
+        bbl = md.get('bbl', None)
+        if bbl:
+            bbl = np.asarray(bbl, dtype=np.byte).tolist()
+
+        profiles: List[QgsFeature] = []
+
+        featureIterator = None
+        copyFields = []
+        if isinstance(lyrCSV, QgsVectorLayer):
+            request = QgsFeatureRequest()
+            featureIterator = lyrCSV.getFeatures(request)
+            copyFields = [n for n in lyrCSV.fields().names() if n in fields.names()]
+
+        for i in range(nSpectra):
+            f = QgsFeature(fields)
+
+            d = prepareProfileValueDict(y=profileArray[i, :],
+                                        x=xValues,
+                                        xUnit=xUnit,
+                                        yUnit=yUnit,
+                                        bbl=bbl)
+            dump = encodeProfileValueDict(d, f.attribute(FIELD_VALUES))
+            f.setAttribute(FIELD_VALUES, dump)
+            if FIELD_NAME in fields.names():
+                f.setAttribute(FIELD_NAME, spectraNames[i])
+
+            if isinstance(featureIterator, QgsFeatureIterator):
+                csvFeature = featureIterator.__next__()
+                if csvFeature.hasGeometry():
+                    f.setGeometry(csvFeature.geometry())
+                for n in copyFields:
+                    f.setAttribute(n, csvFeature.attribute(n))
+
+            profiles.append(f)
+
+        return profiles
 
 
 def canRead(pathESL: Union[str, Path]) -> bool:

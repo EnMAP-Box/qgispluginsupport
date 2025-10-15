@@ -9,7 +9,7 @@ from qgis.core import QgsCoordinateReferenceSystem, QgsCoordinateTransformContex
     QgsRemappingProxyFeatureSink, QgsRemappingSinkDefinition, QgsVectorFileWriter, QgsVectorLayer
 from ..core import is_profile_field
 from ..core.spectrallibraryio import SpectralLibraryExportWidget, SpectralLibraryImportWidget, SpectralLibraryIO
-from ..core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict
+from ..core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict, SpectralProfileFileReader
 from ...qgisenums import QMETATYPE_QSTRING
 
 
@@ -246,5 +246,24 @@ class GeoJsonSpectralLibraryIO(SpectralLibraryIO):
                        importSettings: dict = dict(),
                        feedback: QgsProcessingFeedback = QgsProcessingFeedback()) -> List[QgsFeature]:
         lyr = QgsVectorLayer(Path(path).as_posix())
+        lyr.loadDefaultStyle()
+        return list(lyr.getFeatures())
+
+
+class GeoJSONSpectralLibraryReader(SpectralProfileFileReader):
+
+    def __init__(self, *args, **kwds):
+        super().__init__(*args, **kwds)
+
+    @classmethod
+    def id(cls) -> str:
+        return 'GeoJSON'
+
+    @classmethod
+    def canReadFile(cls, path: Union[str, Path]) -> bool:
+        return Path(path).suffix == '.geojson'
+
+    def asFeatures(self) -> List[QgsFeature]:
+        lyr = QgsVectorLayer(self.path().as_posix())
         lyr.loadDefaultStyle()
         return list(lyr.getFeatures())

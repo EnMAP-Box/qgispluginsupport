@@ -28,7 +28,11 @@ class TestSpeclibIO_SVC(TestCase):
     def test_read_sigFile(self):
 
         for file in self.svcFiles():
+
             print(f'read {file}')
+
+            self.assertTrue(SVCSigFile.canReadFile(file))
+
             svc = SVCSigFile(file)
             self.assertIsInstance(svc, SVCSigFile)
             self.assertTrue(isProfileValueDict(svc.reference()))
@@ -79,8 +83,9 @@ class TestSpeclibIO_SVC(TestCase):
 
     def test_parse_datetime(self):
 
-        dt = datetime.now().replace(microsecond=0)
-
+        # dt = datetime.now().replace(microsecond=0)
+        dt = datetime(2025, 10, 15, 12, 21, 50)
+        # dt = datetime(2025, 10, 15, 8, 21, 50)
         formats = [
             '%d.%m.%Y %H:%M:%S',  # 27.05.2025 09:39:32
             '%m/%d/%Y %H:%M:%S%p',  # 5/27/2025 9:39:32AM
@@ -91,6 +96,8 @@ class TestSpeclibIO_SVC(TestCase):
         for fmt in formats:
             text = dt.strftime(fmt)
             dt2 = SVCSigFile._readDateTime(text)
+            if dt != dt2:
+                s = ""
             self.assertEqual(dt, dt2, msg=f'Failed for format "{fmt}" : {text}')
 
     # @unittest.skipIf(TestCase.runsInCI(), 'Skipped CI')

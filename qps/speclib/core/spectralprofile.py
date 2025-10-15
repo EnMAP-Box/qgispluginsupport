@@ -483,7 +483,7 @@ class SpectralProfileFileReader(object):
     KEY_Metadata = 'metadata'  # dictionary with more / original / untransformed metadata (file-type-specific)
     KEY_Name = 'name'  # file name (basename)
     KEY_Path = 'path'  # file path (full path)
-    KEY_Picture = 'picture'  # path of accompanying picture, e.g. made by an instrument
+    KEY_Picture = 'picture'  # path of accompanying picture, e.g., made by an instrument
 
     _STANDARD_FIELDS = None
 
@@ -514,10 +514,37 @@ class SpectralProfileFileReader(object):
     def dateTimeFormat(self) -> Optional[str]:
         return self._dtg_fmt
 
+    @classmethod
+    def shortHelp(cls) -> str:
+        """
+        Returns a short help string for the file reader.
+        :return:
+        """
+        return cls.id()
+
+    @classmethod
+    def id(cls) -> str:
+        """
+        Returns a unique identifier for the file reader, e.g., to select it from
+        a list of readers
+        :return:
+        """
+        raise NotImplementedError()
+
+    @classmethod
+    def canReadFile(cls, path: Union[str, Path]) -> bool:
+        """
+        This method can be used to determine if the file reader can read the file.
+        Implementations should "run fast" and avoid reading the entire file
+        :param path:
+        :return:
+        """
+        raise NotImplementedError()
+
     @staticmethod
     def standardFields() -> QgsFields:
         """
-        Standard field provided in a QgsFeature returned with .asFeature()
+        Standard fields, as provided in a QgsFeature returned with .asFeature()
         :return:
         """
         if not isinstance(SpectralProfileFileReader._STANDARD_FIELDS, QgsFields):
@@ -538,9 +565,17 @@ class SpectralProfileFileReader(object):
         return SpectralProfileFileReader._STANDARD_FIELDS
 
     def path(self) -> Path:
+        """
+        Returns the file path
+        :return:
+        """
         return self.mPath
 
     def name(self) -> str:
+        """
+        Returns the file name (basename)
+        :return:
+        """
         return self.mPath.name
 
     def asMap(self) -> dict:
@@ -643,13 +678,18 @@ class SpectralProfileFileReader(object):
         """
         return self.mTargetCoordinate
 
-    def referenceTime(self) -> datetime.datetime:
+    def referenceTime(self) -> Optional[datetime.datetime]:
         return self.mReferenceTime
 
-    def targetTime(self) -> datetime.datetime:
+    def targetTime(self) -> Optional[datetime.datetime]:
         return self.mTargetTime
 
     def metadata(self) -> dict:
+        """
+        Return additional metadata that is not returned in a standard field.
+        E.g., from file headers
+        :return:
+        """
         return self.mMetadata.copy()
 
 

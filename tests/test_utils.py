@@ -30,12 +30,12 @@ from qgis.PyQt.QtCore import NULL, QByteArray, QObject, QPoint, QRect, QUrl, QVa
 from qgis.PyQt.QtGui import QColor
 from qgis.PyQt.QtWidgets import QDialog, QDockWidget, QGroupBox, QMainWindow, QMenu, QWidget
 from qgis.PyQt.QtXml import QDomDocument, QDomElement
-from qgis._gui import QgsDockWidget
 from qgis.core import QgsCoordinateReferenceSystem, QgsFeature, QgsFeatureRequest, QgsField, QgsGeometry, \
     QgsGeometryParameters, QgsMapLayerProxyModel, QgsMapLayerStore, QgsMapToPixel, QgsPointXY, QgsProcessingFeedback, \
     QgsProject, QgsRaster, QgsRasterDataProvider, QgsRasterIdentifyResult, QgsRasterLayer, QgsRectangle, QgsVector, \
     QgsVectorLayer
 from qgis.core import QgsWkbTypes, QgsExpressionContextUtils
+from qgis.gui import QgsDockWidget
 from qps.speclib.core import is_spectral_library
 from qps.speclib.core.spectralprofile import decodeProfileValueDict
 from qps.testing import start_app, TestCase, TestObjects
