@@ -47,7 +47,7 @@ from qgis.core import edit, Qgis, QgsAction, QgsActionManager, QgsApplication, Q
     QgsWkbTypes
 from . import can_store_spectral_profiles, create_profile_field, is_profile_field, is_spectral_library, \
     profile_field_list, profile_field_names
-from .spectralprofile import decodeProfileValueDict, encodeProfileValueDict, groupBySpectralProperties, \
+from .spectralprofile import decodeProfileValueDict, encodeProfileValueDict, groupBySpectralProperties_depr, \
     prepareProfileValueDict, ProfileEncoding, SpectralSetting
 from .. import EDITOR_WIDGET_REGISTRY_KEY, FIELD_NAME, FIELD_VALUES, SPECLIB_EPSG_CODE
 from ...plotstyling.plotstyling import PlotStyle
@@ -319,7 +319,7 @@ class SpectralLibraryUtils:
 
     @staticmethod
     def groupBySpectralProperties(*args, **kwds) -> Dict[SpectralSetting, List[QgsFeature]]:
-        return groupBySpectralProperties(*args, **kwds)
+        return groupBySpectralProperties_depr(*args, **kwds)
 
     @staticmethod
     def readFromVectorLayer(source: Union[str, QgsVectorLayer]) -> Optional[QgsVectorLayer]:

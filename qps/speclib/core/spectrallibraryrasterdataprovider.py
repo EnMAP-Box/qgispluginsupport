@@ -4,14 +4,14 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 
+from qgis.PyQt.QtCore import NULL, QByteArray, QDateTime, QMetaType, QModelIndex, QObject, Qt, QUrl, QUrlQuery, QVariant
+from qgis.PyQt.QtGui import QColor, QIcon
 from qgis.core import Qgis, QgsColorRampShader, QgsCoordinateReferenceSystem, QgsDataProvider, QgsFeature, \
     QgsFeatureRequest, QgsField, QgsFields, QgsMapLayerModel, QgsMessageLog, QgsPointXY, QgsProject, \
     QgsProviderMetadata, QgsProviderRegistry, QgsRaster, QgsRasterBandStats, QgsRasterBlock, QgsRasterBlockFeedback, \
     QgsRasterDataProvider, QgsRasterIdentifyResult, QgsRasterInterface, QgsRasterLayer, QgsRectangle, QgsVectorLayer
-from qgis.PyQt.QtCore import NULL, QByteArray, QDateTime, QMetaType, QModelIndex, QObject, Qt, QUrl, QUrlQuery, QVariant
-from qgis.PyQt.QtGui import QColor, QIcon
 from ..core import is_profile_field, profile_fields
-from ..core.spectralprofile import decodeProfileValueDict, groupBySpectralProperties, SpectralSetting
+from ..core.spectralprofile import decodeProfileValueDict, groupBySpectralProperties_depr, SpectralSetting
 from ...qgisenums import QGIS_RASTERBANDSTATISTIC, QGIS_RASTERINTERFACECAPABILITY, QMETATYPE_BOOL, QMETATYPE_DOUBLE, \
     QMETATYPE_INT, \
     QMETATYPE_QDATE, QMETATYPE_QDATETIME, \
@@ -59,7 +59,7 @@ def createRasterLayers(features: Union[QgsVectorLayer, List[QgsFeature]],
     for field in fields:
         assert isinstance(field, QgsField)
         if is_profile_field(field):
-            GROUPS = groupBySpectralProperties(features, profile_field=field)
+            GROUPS = groupBySpectralProperties_depr(features, profile_field=field)
 
             for setting, profiles in GROUPS.items():
                 setting: SpectralSetting

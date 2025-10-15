@@ -413,9 +413,56 @@ class SpectralSetting(QgsRasterLayerSpectralProperties):
         return self.badBands()
 
 
-def groupBySpectralProperties(profiles: Union[QgsVectorLayer, List[QgsFeature]],
-                              profile_field: Union[int, str, QgsField] = None
-                              ) -> Dict[SpectralSetting, List[QgsFeature]]:
+def groupBySpectralProperties(features: Union[QgsVectorLayer, List[QgsFeature]],
+                              field: Union[None, int, str, QgsField] = None,
+                              mode: str = 'features') -> Dict[dict, List[Union[QgsFeature, dict]]]:
+    """
+    Returns SpectralProfiles grouped by spectral properties in field 'profile_field'
+    QgsFeatures with empty profiles are excluded from the returned groupings.
+
+    :return: {dict:[list-of-profiles]}
+    """
+    assert mode in ['features', 'data']
+    if isinstance(features, QgsVectorLayer):
+        profiles = features.getFeatures()
+    if isinstance(features, QgsFeature):
+        profiles = [features]
+    results = dict()
+
+    keys_to_consider = ['xUnit', 'yUnit', 'fwhm']
+
+    results = dict()
+
+    i_field = None
+    for f in features:
+        if i_field is None:
+            fields = f.fields()
+            if isinstance(field, int):
+                i_field = field
+            elif isinstance(field, str):
+                i_field = fields.lookupField(field)
+            elif isinstance(field, QgsField):
+                i_field = fields.lookupField(field.name())
+
+        dump = f.attribute(i_field)
+        if dump:
+            d = decodeProfileValueDict(dump)
+            if len(d) > 0:
+                wl = d.get('x')
+                wlu = d.get('xUnit')
+                fwhm = d.get('fwhm')
+
+                key = (wl, wlu, fwhm)
+                if mode == 'features':
+                    results[key] = results.get(key, []) + [f]
+                elif mode == 'data':
+                    results[key] = results.get(key, []) + [d]
+    return results
+
+
+def groupBySpectralProperties_depr(profiles: Union[QgsVectorLayer, List[QgsFeature]],
+                                   profile_field: Union[int, str, QgsField] = None
+                                   ) -> Dict[SpectralSetting, List[QgsFeature]]:
     """
     Returns SpectralProfiles grouped by key = (xValues, xUnit and yUnit):
 
@@ -469,6 +516,45 @@ def groupBySpectralProperties(profiles: Union[QgsVectorLayer, List[QgsFeature]],
         rlist.append(p)
         results[key] = rlist
     return results
+
+
+class SpectralProfileFileWriter(object):
+    """
+    Base class for writers that can write SpectralProfile data to a file
+    """
+
+    def __init__(self, *args, **kwds):
+        pass
+
+    @classmethod
+    def id(cls) -> str:
+        """
+        Returns a unique identifier for the writer class
+        :return:
+        """
+        raise NotImplementedError()
+
+    @classmethod
+    def filterString(cls) -> str:
+        """
+        Returns a string that can be used as input for a QFileDialog filter
+        :return:
+        """
+        raise NotImplementedError()
+
+    def writeFeatures(self,
+                      features: List[QgsFeature],
+                      path: Path,
+                      feedback: Optional[QgsProcessingFeedback] = None) -> List[Path]:
+        """
+        Writes the provided features into one or multiple files.
+        The returned list contains the paths to the written files.
+        :param feedback:
+        :param path:
+        :param features:
+        :return:
+        """
+        raise NotImplementedError()
 
 
 class SpectralProfileFileReader(object):
@@ -721,7 +807,7 @@ class SpectralProfileBlock(object):
         if crs is None:
             crs = defaultSpeclibCrs()
 
-        for spectral_setting, profiles in groupBySpectralProperties(profiles, profile_field=profile_field).items():
+        for spectral_setting, profiles in groupBySpectralProperties_depr(profiles, profile_field=profile_field).items():
             ns: int = len(profiles)
             fids = [p.id() for p in profiles]
             nb = spectral_setting.bandCount()

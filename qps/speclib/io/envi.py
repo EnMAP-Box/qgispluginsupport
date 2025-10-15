@@ -47,7 +47,7 @@ from .. import EMPTY_VALUES, FIELD_FID, FIELD_NAME, FIELD_VALUES
 from ..core import create_profile_field, profile_field_names, profile_fields
 from ..core.spectrallibrary import LUT_IDL2GDAL, VSI_DIR
 from ..core.spectrallibraryio import SpectralLibraryExportWidget, SpectralLibraryImportWidget, SpectralLibraryIO
-from ..core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict, groupBySpectralProperties, \
+from ..core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict, groupBySpectralProperties_depr, \
     prepareProfileValueDict, SpectralSetting, SpectralProfileFileReader
 from ...gdal_utils import GDALConfigChanges
 from ...qgisenums import QMETATYPE_DOUBLE, QMETATYPE_INT, QMETATYPE_QSTRING
@@ -514,7 +514,7 @@ class EnviSpectralLibraryIO(SpectralLibraryIO):
 
         iGrp = -1
 
-        for setting, profiles in groupBySpectralProperties(profiles, profile_field=profile_field).items():
+        for setting, profiles in groupBySpectralProperties_depr(profiles, profile_field=profile_field).items():
             if len(profiles) == 0:
                 continue
 

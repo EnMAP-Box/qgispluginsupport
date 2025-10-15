@@ -27,7 +27,7 @@
 import csv
 import re
 from pathlib import Path
-from typing import List, Union
+from typing import List, Union, Optional
 
 from qgis.PyQt.QtCore import QUrlQuery
 from qgis.core import QgsExpressionContext, QgsFeature, QgsField, QgsFields, QgsGeometry, QgsProcessingFeedback, \
@@ -36,7 +36,39 @@ from .envi import readCSVMetadata
 from ..core import create_profile_field
 from ..core.spectrallibraryio import SpectralLibraryImportWidget, SpectralLibraryIO
 from ..core.spectralprofile import encodeProfileValueDict, prepareProfileValueDict, ProfileEncoding, \
-    SpectralProfileFileReader
+    SpectralProfileFileReader, SpectralProfileFileWriter, groupBySpectralProperties_depr
+
+
+class EcoSISSpectralLibraryWriter(SpectralProfileFileWriter):
+    def __init__(self, *args, **kwds):
+        super().__init__(*args, **kwds)
+
+    @classmethod
+    def id(cls) -> str:
+        return 'EcoSIS'
+
+    @classmethod
+    def filterString(cls) -> bool:
+        return 'EcoSIS text file (*.csv)'
+
+    def writeFeatures(self,
+                      features: List[QgsFeature],
+                      field: str,
+                      path: Path,
+                      feedback: Optional[QgsProcessingFeedback] = None) -> List[Path]:
+        if feedback is None:
+            feedback = QgsProcessingFeedback()
+
+        groupBySpectralProperties_depr()
+
+        with open(path, 'w', newline='') as csvfile:
+            writer = csv.writer(csvfile)
+            writer.writerow(self.fieldNames())
+            for i, f in enumerate(features):
+                writer.writerow(self.featureValues(f))
+                feedback.setProgress(100 * i / len(features))
+
+        return [path]
 
 
 class EcoSISSpectralLibraryReader(SpectralProfileFileReader):

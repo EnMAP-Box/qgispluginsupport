@@ -425,6 +425,31 @@ class ProcessingToolsTest(TestCase):
         reg.removeProvider(provider)
         QgsProject.instance().removeAllMapLayers()
 
+    def test_spectralprofile_export_new(self):
+
+        alg = ExportSpectralProfiles()
+        alg.initAlgorithm({})
+
+        context, feedback = self.createProcessingContextFeedback()
+        p = QgsProject()
+        context.setProject(p)
+
+        sl = TestObjects.createSpectralLibrary(profile_field_names=['A', 'B'])
+        p.addMapLayers([sl])
+
+        test_dir = self.createTestOutputDirectory()
+        test_path = test_dir / 'spectral_export_new.csv'
+
+        par = {ExportSpectralProfiles.P_INPUT: sl,
+               ExportSpectralProfiles.P_FIELD: None,
+               ExportSpectralProfiles.P_OUTPUT: test_path.as_posix()}
+
+        self.assertTrue(alg.prepareAlgorithm(par, context, feedback))
+        results = alg.processAlgorithm(par, context, feedback)
+        results = alg.postProcessAlgorithm(context, feedback)
+
+        self.assertIsInstance(results, dict)
+
     def test_spectralprofile_export(self):
 
         provider = ExampleAlgorithmProvider.instance()

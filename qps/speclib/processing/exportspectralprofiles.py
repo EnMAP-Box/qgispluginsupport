@@ -1,42 +1,60 @@
-import os.path
-from typing import Dict, Any, List
+from pathlib import Path
+from typing import Dict, Any, List, Optional
 
+from qgis._core import QgsField
 from qgis.core import QgsProcessing, \
-    QgsProcessingFeedback, QgsProcessingContext, QgsVectorLayer
-from qgis.core import QgsProcessingAlgorithm, QgsProcessingParameterVectorLayer, QgsProcessingParameterFileDestination
-from ..core import profile_fields, profile_field_names
-from ..core.spectrallibraryio import SpectralLibraryIO
+    QgsProcessingFeedback, QgsProcessingContext, QgsVectorLayer, QgsProcessingParameterDefinition, QgsProcessingUtils
+from qgis.core import (QgsProcessingAlgorithm, QgsProcessingParameterVectorLayer,
+                       QgsProcessingParameterFileDestination, QgsProcessingParameterField)
+from ..core import is_profile_field, profile_fields
+from ..core.spectralprofile import groupBySpectralProperties, SpectralProfileFileWriter
+from ..io.ecosis import EcoSISSpectralLibraryWriter
+
+WRITERS = {r.id(): r for r in [
+    EcoSISSpectralLibraryWriter,
+]}
 
 
 class ExportSpectralProfiles(QgsProcessingAlgorithm):
     NAME = 'exportspectralprofiles'
     P_INPUT = 'INPUT'
+    P_FIELD = 'FIELD'
     P_FORMAT = 'FORMAT'
     P_OUTPUT = 'OUTPUT'
 
     def __init__(self):
         super().__init__()
 
-        self.mFormatNames = []
-        self.mFormatFilters = []
-        self.mFormatIOs = []
-
-        self.mInputLayer: QgsVectorLayer = None
-        self.mOutputFile: str = None
-        self.mOutputIO: SpectralLibraryIO = None
+        self.mInputLayer: Optional[QgsVectorLayer] = None
+        self.mField: Optional[QgsField] = None
+        self.mOutputFile: Optional[Path] = None
+        self.mOutputWriter: Optional[SpectralProfileFileWriter] = None
 
     def name(self) -> str:
         return self.NAME
 
     def displayName(self) -> str:
-        return 'Import Spectral Profiles into a vector layer'
+        return 'Export spectral profiles from a vector layer'
 
     def tags(self) -> List[str]:
         return ['spectral libraries', 'ASD', 'spectral evolution', 'ENVI spectral library']
 
     def shortHelpString(self) -> str:
-        info = """Exports spectral profiles."""
-        return info
+
+        D = {
+            'ALG_DESC': 'Imports spectral profiles from various file formats into a vector layer.',
+            'ALG_CREATOR': 'benjamin.jakimow@geo.hu-berlin.de',
+        }
+        for p in self.parameterDefinitions():
+            p: QgsProcessingParameterDefinition
+            infos = [f'<i>Identifier <code>{p.name()}</code></i>']
+            if i := p.help():
+                infos.append(i)
+            infos = [i for i in infos if i != '']
+            D[p.name()] = '<br>'.join(infos)
+
+        html = QgsProcessingUtils.formatHelpMapAsHtml(D, self)
+        return html
 
     def group(self) -> str:
         return 'Spectral Library'
@@ -54,22 +72,24 @@ class ExportSpectralProfiles(QgsProcessingAlgorithm):
             description='Spectral library',
             optional=False)
 
-        p.setHelp('Can be any vector layer with SpectralProfile fields')
+        p.setHelp('A vector layer with SpectralProfile fields')
         self.addParameter(p)
 
-        for io in SpectralLibraryIO.spectralLibraryIOs(write=True):
-            w = io.createExportWidget()
-            for f in w.filter().split(';;'):
-                self.mFormatNames.append(w.formatName())
-                self.mFormatIOs.append(io)
-                self.mFormatFilters.append(f)
+        p = QgsProcessingParameterField(self.P_FIELD,
+                                        parentLayerParameterName=self.P_INPUT,
+                                        description='Profile Field')
+        p.setHelp('The field that contains the spectral profiles to export')
+        self.addParameter(p)
 
+        filters = []
+        for k, w in WRITERS.items():
+            filters.append(w.filterString())
         p = QgsProcessingParameterFileDestination(
             self.P_OUTPUT,
             description='Output File',
-            fileFilter=';;'.join(self.mFormatFilters),
+            fileFilter=';;'.join(filters),
         )
-        p.setHelp('Output file type')
+        p.setHelp('The file to write spectral profiles to.')
         self.addParameter(p)
 
     def prepareAlgorithm(self,
@@ -78,66 +98,68 @@ class ExportSpectralProfiles(QgsProcessingAlgorithm):
                          feedback: QgsProcessingFeedback):
 
         self.mInputLayer = self.parameterAsVectorLayer(parameters, self.P_INPUT, context=context)
-        self.mOutputFile = self.parameterAsFileOutput(parameters, self.P_OUTPUT, context=context)
-        errors = []
+
         if not isinstance(self.mInputLayer, QgsVectorLayer):
-            errors.append(f'Cannot open "{self.P_INPUT}" as vector layer: {parameters.get(self.P_INPUT)}')
-        else:
-            if not len(profile_fields(self.mInputLayer)) > 0:
-                errors.append(f'No profile fields found in "{self.P_INPUT}" {parameters.get(self.P_INPUT)}')
-
-        if not isinstance(self.mOutputFile, str):
-            errors.append('Undefined output file')
-        else:
-            ext = os.path.splitext(self.mOutputFile)[1]
-            for i, filter in enumerate(self.mFormatFilters):
-                if ext in filter:
-                    self.mOutputIO = self.mFormatIOs[i]
-                    break
-            if not isinstance(self.mOutputIO, SpectralLibraryIO):
-                errors.append(f'Unsupported file format: "{ext}" ({self.mOutputFile})')
-
-        if len(errors) > 0:
-
-            feedback.reportError('\n'.join(errors))
+            feedback.reportError(f'Cannot open {parameters.get(self.P_INPUT)} as vector layer')
             return False
-        else:
-            return True
+
+        field = self.parameterAsString(parameters, self.P_FIELD, context=context)
+        if field == '':
+            field = None
+
+        if isinstance(field, str):
+            if not field in self.mInputLayer.fields().names():
+                feedback.reportError(f'Field "{field}" not found in {parameters.get(self.P_INPUT)}')
+                return False
+            field = self.mInputLayer.fields().field(field)
+        elif isinstance(field, int):
+            field = self.mInputLayer.fields().at(field)
+
+        if field is None:
+
+            for f in profile_fields(self.mInputLayer):
+                feedback.pushWarning(f'field undefined. Use 1st profile field: "{f.name()}"')
+                field = f
+                break
+
+        if not is_profile_field(field):
+            feedback.reportError(f'Field "{field.name()}" is not a spectral profile field')
+            return False
+
+        self.mField = field
+
+        output_path = self.parameterAsFileOutput(parameters, self.P_OUTPUT, context=context)
+        if not (isinstance(output_path, str) and output_path != ''):
+            feedback.reportError('Undefined output file')
+            return False
+
+        self.mOutputFile = Path(output_path)
+        return True
 
     def processAlgorithm(self,
                          parameters: Dict[str, Any],
                          context: QgsProcessingContext,
                          feedback: QgsProcessingFeedback) -> Dict[str, Any]:
 
-        exportSettings = dict()
+        # read and
+        feedback.pushInfo('Read and group profiles by wavelength setting')
+        grouped = groupBySpectralProperties(self.mInputLayer.getFeatures(),
+                                            field=self.mField,
+                                            mode='features')
 
-        if self.mOutputIO.createExportWidget().supportsMultipleProfileFields():
-            writtenFiles = self.mOutputIO.exportProfiles(
-                self.mOutputFile,
-                self.mInputLayer.getFeatures(),
-                exportSettings=exportSettings,
-                feedback=feedback)
-        else:
-            writtenFiles = []
-            pfieldnames = profile_field_names(self.mInputLayer)
+        files = []
 
-            outfile = self.mOutputFile
-            bn, ext = os.path.splitext(outfile)
-            for i, pfield in enumerate(pfieldnames):
+        writer = self.mOutputWriter
 
-                if i > 0:
-                    outfile = f'{bn}.{pfield}{ext}'
-                exportSettings['profile_field'] = pfield
-                wfiles = self.mOutputIO.exportProfiles(
-                    outfile,
-                    self.mInputLayer.getFeatures(),
-                    exportSettings=exportSettings,
-                    feedback=feedback)
+        for i, (d, features) in enumerate(grouped.items()):
 
-                writtenFiles.extend(wfiles)
-                s = ""
+            if i == 0:
+                path = self.mOutputFile
+            else:
+                path = self.mOutputFile.parent / f'{self.mOutputFile.stem}{i + 1}{self.mOutputFile.suffix}'
 
-        results = {self.P_OUTPUT: writtenFiles[0],
-                   self.P_OUTPUT + 'S': writtenFiles}
+            feedback.pushInfo(f'Write {len(features)} profiles to {path}')
+            files_ = writer.writeFeatures(features, path, feedback=feedback)
+            files.extend([f.as_posix() for f in files_])
 
-        return results
+        return {self.P_OUTPUT: files, }

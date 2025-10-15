@@ -14,7 +14,7 @@ from qgis.core import QgsCoordinateReferenceSystem, QgsExpressionContext, QgsExp
     QgsRemappingProxyFeatureSink, QgsRemappingSinkDefinition, QgsVectorLayer, QgsWkbTypes
 from qgis.gui import QgsFieldMappingWidget, QgsFileWidget
 from . import profile_field_list, profile_field_names
-from .spectralprofile import groupBySpectralProperties
+from .spectralprofile import groupBySpectralProperties_depr
 from .. import speclibSettings, speclibUiPath
 from ...fieldvalueconverter import GenericPropertyTransformer
 from ...layerproperties import CopyAttributesDialog
@@ -477,7 +477,8 @@ class SpectralLibraryIO(QObject):
 
                 if needs_setting_groups:
                     for field in pFields:
-                        for setting, profiles in groupBySpectralProperties(all_profiles, profile_field=field).items():
+                        for setting, profiles in groupBySpectralProperties_depr(all_profiles,
+                                                                                profile_field=field).items():
                             grp_profiles = GROUPS.get(field.name(), [])
                             grp_profiles.append(profiles)
                             GROUPS[field.name()] = grp_profiles
