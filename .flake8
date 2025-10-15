@@ -47,3 +47,4 @@ per-file-ignores =
     # see https://github.com/GispoCoding/flake8-qgis/issues/9
     qps/qgisenums.py:QGS101
     qps/qgisclasses.py:F401
+    qps/processing/algorithmdialog.py:QGS105
