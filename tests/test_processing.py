@@ -438,17 +438,19 @@ class ProcessingToolsTest(TestCase):
         p.addMapLayers([sl])
 
         test_dir = self.createTestOutputDirectory()
-        test_path = test_dir / 'spectral_export_new.csv'
 
-        par = {ExportSpectralProfiles.P_INPUT: sl,
-               ExportSpectralProfiles.P_FIELD: None,
-               ExportSpectralProfiles.P_OUTPUT: test_path.as_posix()}
+        for test_path in [test_dir / 'spectral_export_new.geojson',
+                          test_dir / 'spectral_export_new.csv',
+                          test_dir / 'spectral_export_new.gpkg', ]:
+            par = {ExportSpectralProfiles.P_INPUT: sl,
+                   ExportSpectralProfiles.P_FIELD: None,
+                   ExportSpectralProfiles.P_OUTPUT: test_path.as_posix()}
 
-        self.assertTrue(alg.prepareAlgorithm(par, context, feedback))
-        results = alg.processAlgorithm(par, context, feedback)
-        results = alg.postProcessAlgorithm(context, feedback)
+            self.assertTrue(alg.prepareAlgorithm(par, context, feedback))
+            results = alg.processAlgorithm(par, context, feedback)
+            results = alg.postProcessAlgorithm(context, feedback)
 
-        self.assertIsInstance(results, dict)
+            self.assertIsInstance(results, dict)
 
     def test_spectralprofile_export(self):
 

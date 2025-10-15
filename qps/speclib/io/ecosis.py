@@ -31,12 +31,13 @@ from typing import List, Union, Optional
 
 from qgis.PyQt.QtCore import QUrlQuery
 from qgis.core import QgsExpressionContext, QgsFeature, QgsField, QgsFields, QgsGeometry, QgsProcessingFeedback, \
-    QgsProviderRegistry, QgsVectorLayer
+    QgsProviderRegistry, QgsVectorLayer, QgsFileUtils
 from .envi import readCSVMetadata
-from ..core import create_profile_field
+from ..core import create_profile_field, is_profile_field
 from ..core.spectrallibraryio import SpectralLibraryImportWidget, SpectralLibraryIO
 from ..core.spectralprofile import encodeProfileValueDict, prepareProfileValueDict, ProfileEncoding, \
-    SpectralProfileFileReader, SpectralProfileFileWriter, groupBySpectralProperties_depr
+    SpectralProfileFileReader, SpectralProfileFileWriter, groupBySpectralProperties, decodeProfileValueDict
+from ...unitmodel import UnitConverterFunctionModel
 
 
 class EcoSISSpectralLibraryWriter(SpectralProfileFileWriter):
@@ -54,21 +55,72 @@ class EcoSISSpectralLibraryWriter(SpectralProfileFileWriter):
     def writeFeatures(self,
                       features: List[QgsFeature],
                       field: str,
-                      path: Path,
+                      path: str,
                       feedback: Optional[QgsProcessingFeedback] = None) -> List[Path]:
         if feedback is None:
             feedback = QgsProcessingFeedback()
 
-        groupBySpectralProperties_depr()
+        grouped = groupBySpectralProperties(features, field=field, mode='features')
+        files = []
 
-        with open(path, 'w', newline='') as csvfile:
-            writer = csv.writer(csvfile)
-            writer.writerow(self.fieldNames())
-            for i, f in enumerate(features):
-                writer.writerow(self.featureValues(f))
-                feedback.setProgress(100 * i / len(features))
+        converterModel = UnitConverterFunctionModel.instance()
 
-        return [path]
+        for i, (d, feat) in enumerate(grouped.items()):
+            p = QgsFileUtils.uniquePath(path)
+            feedback.pushInfo(f'Write {len(feat)} profiles to {p}')
+
+            f = feat[0]
+            f: QgsFeature
+            with open(p, 'w', newline='') as csvfile:
+                has_geom = f.hasGeometry()
+
+                wl, wlu, fwhm = d
+                wl = list(wl)
+                func = converterModel.convertFunction(wlu, 'nm')
+                wl = [int(v) for v in func(wl)]
+
+                FIELDNAMES = dict()
+                fields = f.fields()
+                for fld in fields:
+                    if fld.name() != field and not is_profile_field(fld):
+                        FIELDNAMES[fld.name()] = fields.indexOf(fld.name())
+
+                fieldnames = list(FIELDNAMES.keys())
+                if has_geom:
+                    fieldnames.append('latitude_y')
+                    fieldnames.append('longitude_x')
+
+                for v in wl:
+                    fieldnames.append(v)
+
+                writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+                writer.writeheader()
+                for f in feat:
+
+                    data = decodeProfileValueDict(f.attribute(field))
+                    row = dict()
+
+                    # define metadata
+                    for name, idx in FIELDNAMES.items():
+                        row[name] = f.attribute(idx)
+
+                    # define geometry data
+                    if has_geom:
+                        pt = f.geometry().asPoint()
+                        row['latitude_y'] = pt.y()
+                        row['longitude_x'] = pt.x()
+
+                    # define profile data
+                    y = data['y']
+
+                    for x, y in zip(wl, y):
+                        row[x] = y
+
+                    writer.writerow(row)
+
+            files.append(path)
+
+        return files
 
 
 class EcoSISSpectralLibraryReader(SpectralProfileFileReader):

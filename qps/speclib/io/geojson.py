@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from typing import Any, List, Union
+from typing import Any, List, Union, Optional
 
 import numpy as np
 
@@ -9,7 +9,8 @@ from qgis.core import QgsCoordinateReferenceSystem, QgsCoordinateTransformContex
     QgsRemappingProxyFeatureSink, QgsRemappingSinkDefinition, QgsVectorFileWriter, QgsVectorLayer
 from ..core import is_profile_field
 from ..core.spectrallibraryio import SpectralLibraryExportWidget, SpectralLibraryImportWidget, SpectralLibraryIO
-from ..core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict, SpectralProfileFileReader
+from ..core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict, SpectralProfileFileReader, \
+    SpectralProfileFileWriter
 from ...qgisenums import QMETATYPE_QSTRING
 
 
@@ -248,6 +249,32 @@ class GeoJsonSpectralLibraryIO(SpectralLibraryIO):
         lyr = QgsVectorLayer(Path(path).as_posix())
         lyr.loadDefaultStyle()
         return list(lyr.getFeatures())
+
+
+class GeoJSONSpectralLibraryWriter(SpectralProfileFileWriter):
+
+    def __init__(self, *args, **kwds):
+        super().__init__(*args, **kwds)
+
+    @classmethod
+    def id(cls) -> str:
+        return 'GeoJSON'
+
+    @classmethod
+    def filterString(cls) -> bool:
+        return "GeoJSON (*.geojson)"
+
+    def writeFeatures(self,
+                      features: List[QgsFeature],
+                      field: str,
+                      path: str,
+                      feedback: Optional[QgsProcessingFeedback] = None) -> List[Path]:
+        if feedback is None:
+            feedback = QgsProcessingFeedback()
+
+        files = []
+
+        return files
 
 
 class GeoJSONSpectralLibraryReader(SpectralProfileFileReader):

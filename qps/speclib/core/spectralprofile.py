@@ -417,19 +417,22 @@ def groupBySpectralProperties(features: Union[QgsVectorLayer, List[QgsFeature]],
                               field: Union[None, int, str, QgsField] = None,
                               mode: str = 'features') -> Dict[dict, List[Union[QgsFeature, dict]]]:
     """
-    Returns SpectralProfiles grouped by spectral properties in field 'profile_field'
+    Returns SpectralProfiles grouped by spectral properties in the field 'profile_field'
     QgsFeatures with empty profiles are excluded from the returned groupings.
 
     :return: {dict:[list-of-profiles]}
     """
     assert mode in ['features', 'data']
     if isinstance(features, QgsVectorLayer):
-        profiles = features.getFeatures()
+        features = features.getFeatures()
     if isinstance(features, QgsFeature):
-        profiles = [features]
-    results = dict()
+        features = [features]
 
-    keys_to_consider = ['xUnit', 'yUnit', 'fwhm']
+    def as_tuple(x):
+        if x:
+            return tuple(x)
+        else:
+            return None
 
     results = dict()
 
@@ -448,9 +451,9 @@ def groupBySpectralProperties(features: Union[QgsVectorLayer, List[QgsFeature]],
         if dump:
             d = decodeProfileValueDict(dump)
             if len(d) > 0:
-                wl = d.get('x')
+                wl = as_tuple(d.get('x'))
                 wlu = d.get('xUnit')
-                fwhm = d.get('fwhm')
+                fwhm = as_tuple(d.get('fwhm'))
 
                 key = (wl, wlu, fwhm)
                 if mode == 'features':
@@ -544,7 +547,8 @@ class SpectralProfileFileWriter(object):
 
     def writeFeatures(self,
                       features: List[QgsFeature],
-                      path: Path,
+                      field: str,
+                      path: str,
                       feedback: Optional[QgsProcessingFeedback] = None) -> List[Path]:
         """
         Writes the provided features into one or multiple files.
@@ -552,6 +556,7 @@ class SpectralProfileFileWriter(object):
         :param feedback:
         :param path:
         :param features:
+        :param field:
         :return:
         """
         raise NotImplementedError()

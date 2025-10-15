@@ -1,17 +1,19 @@
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 
-from qgis._core import QgsField
 from qgis.core import QgsProcessing, \
     QgsProcessingFeedback, QgsProcessingContext, QgsVectorLayer, QgsProcessingParameterDefinition, QgsProcessingUtils
 from qgis.core import (QgsProcessingAlgorithm, QgsProcessingParameterVectorLayer,
                        QgsProcessingParameterFileDestination, QgsProcessingParameterField)
 from ..core import is_profile_field, profile_fields
-from ..core.spectralprofile import groupBySpectralProperties, SpectralProfileFileWriter
+from ..core.spectralprofile import SpectralProfileFileWriter
 from ..io.ecosis import EcoSISSpectralLibraryWriter
+from ..io.geojson import GeoJSONSpectralLibraryWriter
 
 WRITERS = {r.id(): r for r in [
     EcoSISSpectralLibraryWriter,
+    GeoJSONSpectralLibraryWriter,
+    # GeoPackageSpectralLibraryWriter,
 ]}
 
 
@@ -26,7 +28,7 @@ class ExportSpectralProfiles(QgsProcessingAlgorithm):
         super().__init__()
 
         self.mInputLayer: Optional[QgsVectorLayer] = None
-        self.mField: Optional[QgsField] = None
+        self.mField: Optional[str] = None
         self.mOutputFile: Optional[Path] = None
         self.mOutputWriter: Optional[SpectralProfileFileWriter] = None
 
@@ -126,13 +128,30 @@ class ExportSpectralProfiles(QgsProcessingAlgorithm):
             feedback.reportError(f'Field "{field.name()}" is not a spectral profile field')
             return False
 
-        self.mField = field
+        self.mField = field.name()
 
         output_path = self.parameterAsFileOutput(parameters, self.P_OUTPUT, context=context)
         if not (isinstance(output_path, str) and output_path != ''):
             feedback.reportError('Undefined output file')
             return False
 
+        writer = None
+
+        if output_path.endswith('.csv'):
+            writer = EcoSISSpectralLibraryWriter()
+        elif output_path.endswith('.geojson'):
+            writer = GeoJSONSpectralLibraryWriter()
+        elif output_path.endswith('.gpkg'):
+            pass
+        elif output_path.endswith('.sli'):
+            pass
+        else:
+            feedback.reportError(f'Unsupported output file format: {output_path}')
+            return False
+
+        if writer is None:
+            feedback.reportError(f'Unsupported output file format: {output_path}')
+        self.mOutputWriter = writer
         self.mOutputFile = Path(output_path)
         return True
 
@@ -143,23 +162,12 @@ class ExportSpectralProfiles(QgsProcessingAlgorithm):
 
         # read and
         feedback.pushInfo('Read and group profiles by wavelength setting')
-        grouped = groupBySpectralProperties(self.mInputLayer.getFeatures(),
-                                            field=self.mField,
-                                            mode='features')
 
         files = []
 
         writer = self.mOutputWriter
 
-        for i, (d, features) in enumerate(grouped.items()):
-
-            if i == 0:
-                path = self.mOutputFile
-            else:
-                path = self.mOutputFile.parent / f'{self.mOutputFile.stem}{i + 1}{self.mOutputFile.suffix}'
-
-            feedback.pushInfo(f'Write {len(features)} profiles to {path}')
-            files_ = writer.writeFeatures(features, path, feedback=feedback)
-            files.extend([f.as_posix() for f in files_])
+        files = writer.writeFeatures(self.mInputLayer.getFeatures(), self.mField, self.mOutputFile.as_posix(),
+                                     feedback=feedback)
 
         return {self.P_OUTPUT: files, }
