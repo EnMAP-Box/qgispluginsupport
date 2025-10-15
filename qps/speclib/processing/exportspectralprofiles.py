@@ -21,6 +21,7 @@ class ExportSpectralProfiles(QgsProcessingAlgorithm):
     NAME = 'exportspectralprofiles'
     P_INPUT = 'INPUT'
     P_FIELD = 'FIELD'
+    P_SELECTED_ONLY = 'SELECTED_ONLY'
     P_FORMAT = 'FORMAT'
     P_OUTPUT = 'OUTPUT'
 
@@ -151,6 +152,8 @@ class ExportSpectralProfiles(QgsProcessingAlgorithm):
 
         if writer is None:
             feedback.reportError(f'Unsupported output file format: {output_path}')
+            return False
+
         self.mOutputWriter = writer
         self.mOutputFile = Path(output_path)
         return True
@@ -167,7 +170,14 @@ class ExportSpectralProfiles(QgsProcessingAlgorithm):
 
         writer = self.mOutputWriter
 
-        files = writer.writeFeatures(self.mInputLayer.getFeatures(), self.mField, self.mOutputFile.as_posix(),
+        selected_only = self.parameterAsBool(parameters, self.P_SELECTED_ONLY, context=context)
+
+        if selected_only:
+            features = self.mInputLayer.selectedFeatures()
+        else:
+            features = self.mInputLayer.getFeatures()
+
+        files = writer.writeFeatures(features, self.mField, self.mOutputFile.as_posix(),
                                      feedback=feedback)
 
         return {self.P_OUTPUT: files, }
