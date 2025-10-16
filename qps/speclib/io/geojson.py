@@ -4,9 +4,12 @@ from typing import Any, List, Union, Optional
 
 import numpy as np
 
-from qgis.core import QgsCoordinateReferenceSystem, QgsCoordinateTransformContext, QgsExpressionContext, \
-    QgsExpressionContextScope, QgsFeature, QgsField, QgsFields, QgsProcessingFeedback, QgsProject, QgsProperty, \
-    QgsRemappingProxyFeatureSink, QgsRemappingSinkDefinition, QgsVectorFileWriter, QgsVectorLayer
+from qgis.core import (QgsCoordinateReferenceSystem, QgsCoordinateTransformContext,
+                       QgsExpressionContext,
+                       QgsExpressionContextScope, QgsFeature, QgsMapLayer,
+                       QgsField, QgsFields, QgsProcessingFeedback, QgsProject, QgsProperty,
+                       QgsRemappingProxyFeatureSink, QgsRemappingSinkDefinition,
+                       QgsVectorFileWriter, QgsVectorLayer)
 from ..core import is_profile_field
 from ..core.spectrallibraryio import SpectralLibraryExportWidget, SpectralLibraryImportWidget, SpectralLibraryIO
 from ..core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict, SpectralProfileFileReader, \
@@ -253,8 +256,10 @@ class GeoJsonSpectralLibraryIO(SpectralLibraryIO):
 
 class GeoJSONSpectralLibraryWriter(SpectralProfileFileWriter):
 
-    def __init__(self, *args, **kwds):
+    def __init__(self, *args, crs: QgsCoordinateReferenceSystem, rfc7946=True, **kwds):
         super().__init__(*args, **kwds)
+        self.mCrs = crs
+        self.mRFC7946 = rfc7946
 
     @classmethod
     def id(cls) -> str:
@@ -272,9 +277,96 @@ class GeoJSONSpectralLibraryWriter(SpectralProfileFileWriter):
         if feedback is None:
             feedback = QgsProcessingFeedback()
 
-        files = []
+        if len(features) == 0:
+            feedback.pushInfo('No features to write')
+            return []
 
-        return files
+        f0 = features[0]
+
+        srcFields = f0.fields()
+        wkbType = f0.geometry().wkbType()
+
+        layerName = Path(path).stem
+
+        transformContext = QgsProject.instance().transformContext()
+        crsJson = QgsCoordinateReferenceSystem('EPSG:4326')
+
+        path: Path = Path(path)
+
+        datasourceOptions = []
+
+        layerOptions = [f'DESCRIPTION={layerName}']
+        layerOptions.insert(0, f'RFC7946={"YES" if self.mRFC7946 else "NO"}')
+
+        options = QgsVectorFileWriter.SaveVectorOptions()
+        options.actionOnExistingFile = QgsVectorFileWriter.ActionOnExistingFile.CreateOrOverwriteFile
+        options.feedback = feedback
+        options.datasourceOptions = datasourceOptions
+        options.layerOptions = layerOptions
+        options.fileEncoding = 'UTF-8'
+        options.skipAttributeCreation = False
+        options.driverName = 'GeoJSON'
+
+        converter = GeoJsonFieldValueConverter(srcFields)
+        options.fieldValueConverter = converter
+        dstFields = converter.convertedFields()
+
+        writer_crs: QgsCoordinateReferenceSystem = crsJson if self.mRFC7946 else self.mCrs
+        writer: QgsVectorFileWriter = QgsVectorFileWriter.create(path.as_posix(),
+                                                                 dstFields,
+                                                                 wkbType,
+                                                                 writer_crs,
+                                                                 transformContext,
+                                                                 options)
+        # we might need to transform the coordinates to JSON EPSG:4326
+        mappingDefinition = QgsRemappingSinkDefinition()
+        mappingDefinition.setSourceCrs(self.mCrs)
+        mappingDefinition.setDestinationCrs(writer_crs)
+        mappingDefinition.setDestinationFields(dstFields)
+        mappingDefinition.setDestinationWkbType(wkbType)
+
+        for field in srcFields:
+            field: QgsField
+            mappingDefinition.addMappedField(field.name(), QgsProperty.fromField(field.name()))
+
+        expressionContext = QgsExpressionContext()
+        expressionContext.setFields(srcFields)
+        expressionContext.setFeedback(feedback)
+
+        scope = QgsExpressionContextScope()
+        scope.setFields(srcFields)
+        expressionContext.appendScope(scope)
+        transformationContext = QgsCoordinateTransformContext()
+
+        featureSink = QgsRemappingProxyFeatureSink(mappingDefinition, writer)
+        featureSink.setExpressionContext(expressionContext)
+        featureSink.setTransformContext(transformationContext)
+
+        if writer.hasError() != QgsVectorFileWriter.NoError:
+            feedback.reportError(f'Error when creating {path}: {writer.errorMessage()}')
+            return []
+
+        featureSink.flushBuffer()
+
+        if not featureSink.addFeatures(features):
+            errSink = featureSink.lastError()
+            if writer.errorCode() != QgsVectorFileWriter.NoError:
+                feedback.reportError(f'Error when creating feature: {writer.errorMessage()}')
+                return []
+
+        del writer
+
+        lyr = QgsVectorLayer(path.as_posix())
+        if lyr.isValid():
+            for dstField in dstFields:
+                i = lyr.fields().lookupField(dstField.name())
+                if i >= 0:
+                    lyr.setEditorWidgetSetup(i, dstField.editorWidgetSetup())
+            msg, success = lyr.saveDefaultStyle(QgsMapLayer.StyleCategory.AllStyleCategories)
+            if not success:
+                feedback.reportError(msg)
+
+        return [path]
 
 
 class GeoJSONSpectralLibraryReader(SpectralProfileFileReader):

@@ -3,17 +3,21 @@ from typing import Dict, Any, List, Optional
 
 from qgis.core import QgsProcessing, \
     QgsProcessingFeedback, QgsProcessingContext, QgsVectorLayer, QgsProcessingParameterDefinition, QgsProcessingUtils
-from qgis.core import (QgsProcessingAlgorithm, QgsProcessingParameterVectorLayer,
+from qgis.core import (QgsProcessingAlgorithm, QgsProcessingParameterVectorLayer, QgsProcessingParameterExpression,
                        QgsProcessingParameterFileDestination, QgsProcessingParameterField)
+from qgis.core import QgsProcessingParameterBoolean
 from ..core import is_profile_field, profile_fields
 from ..core.spectralprofile import SpectralProfileFileWriter
 from ..io.ecosis import EcoSISSpectralLibraryWriter
+from ..io.envi import EnviSpectralLibraryWriter
 from ..io.geojson import GeoJSONSpectralLibraryWriter
+from ..io.geopackage import GeoPackageSpectralLibraryWriter
 
 WRITERS = {r.id(): r for r in [
+    GeoPackageSpectralLibraryWriter,
     EcoSISSpectralLibraryWriter,
     GeoJSONSpectralLibraryWriter,
-    # GeoPackageSpectralLibraryWriter,
+    EnviSpectralLibraryWriter,
 ]}
 
 
@@ -21,6 +25,7 @@ class ExportSpectralProfiles(QgsProcessingAlgorithm):
     NAME = 'exportspectralprofiles'
     P_INPUT = 'INPUT'
     P_FIELD = 'FIELD'
+    P_PROFILE_NAME = 'PROFILE_NAME'
     P_SELECTED_ONLY = 'SELECTED_ONLY'
     P_FORMAT = 'FORMAT'
     P_OUTPUT = 'OUTPUT'
@@ -78,10 +83,24 @@ class ExportSpectralProfiles(QgsProcessingAlgorithm):
         p.setHelp('A vector layer with SpectralProfile fields')
         self.addParameter(p)
 
+        p = QgsProcessingParameterBoolean(self.P_SELECTED_ONLY,
+                                          description='Selected only',
+                                          defaultValue=False)
+        p.setHelp('Export only profiles from selected features')
+
+        self.addParameter(p)
+
         p = QgsProcessingParameterField(self.P_FIELD,
                                         parentLayerParameterName=self.P_INPUT,
                                         description='Profile Field')
         p.setHelp('The field that contains the spectral profiles to export')
+        self.addParameter(p)
+
+        p = QgsProcessingParameterExpression(self.P_PROFILE_NAME,
+                                             defaultValue="format('Profile %1', $id)",
+                                             parentLayerParameterName=self.P_INPUT,
+                                             description='Profile Name Expression')
+        p.setHelp('An expression to generate a name for each profile')
         self.addParameter(p)
 
         filters = []
@@ -92,7 +111,12 @@ class ExportSpectralProfiles(QgsProcessingAlgorithm):
             description='Output File',
             fileFilter=';;'.join(filters),
         )
-        p.setHelp('The file to write spectral profiles to.')
+        help = 'The file to write spectral profiles to. Supported formats:'
+        help += '<ul>'
+        for filter in filters:
+            help += f'<li>{filter}</li>'
+        help += '</ul>'
+        p.setHelp(help)
         self.addParameter(p)
 
     def prepareAlgorithm(self,
@@ -111,7 +135,7 @@ class ExportSpectralProfiles(QgsProcessingAlgorithm):
             field = None
 
         if isinstance(field, str):
-            if not field in self.mInputLayer.fields().names():
+            if field not in self.mInputLayer.fields().names():
                 feedback.reportError(f'Field "{field}" not found in {parameters.get(self.P_INPUT)}')
                 return False
             field = self.mInputLayer.fields().field(field)
@@ -138,14 +162,18 @@ class ExportSpectralProfiles(QgsProcessingAlgorithm):
 
         writer = None
 
+        crs = self.mInputLayer.crs()
         if output_path.endswith('.csv'):
             writer = EcoSISSpectralLibraryWriter()
         elif output_path.endswith('.geojson'):
-            writer = GeoJSONSpectralLibraryWriter()
+            writer = GeoJSONSpectralLibraryWriter(crs=crs, rfc7946=True)
         elif output_path.endswith('.gpkg'):
-            pass
+            writer = GeoPackageSpectralLibraryWriter(crs=crs)
         elif output_path.endswith('.sli'):
-            pass
+            name_expression = self.parameterAsString(parameters, self.P_PROFILE_NAME, context)
+            if name_expression == '':
+                name_expression = None
+            writer = EnviSpectralLibraryWriter(name_expression=name_expression)
         else:
             feedback.reportError(f'Unsupported output file format: {output_path}')
             return False
@@ -173,9 +201,9 @@ class ExportSpectralProfiles(QgsProcessingAlgorithm):
         selected_only = self.parameterAsBool(parameters, self.P_SELECTED_ONLY, context=context)
 
         if selected_only:
-            features = self.mInputLayer.selectedFeatures()
+            features = list(self.mInputLayer.selectedFeatures())
         else:
-            features = self.mInputLayer.getFeatures()
+            features = list(self.mInputLayer.getFeatures())
 
         files = writer.writeFeatures(features, self.mField, self.mOutputFile.as_posix(),
                                      feedback=feedback)

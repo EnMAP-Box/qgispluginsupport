@@ -327,6 +327,38 @@ class ProcessingToolsTest(TestCase):
             assert lyr.featureCount() > 0
         s = ""
 
+    @unittest.skipIf(TestCase.runsInCI(), 'blocking dialog')
+    def test_spectralprofile_export_dialog(self):
+        alg = ExportSpectralProfiles()
+        alg.initAlgorithm({})
+
+        sl = TestObjects.createSpectralLibrary(name='speclib', profile_field_names=['p1', 'p2'])
+        vl = TestObjects.createVectorLayer(name='vector layer')
+        rl = TestObjects.createRasterLayer(name='raster layer')
+        context, feedback = self.createProcessingContextFeedback()
+        p = QgsProject()
+        p.addMapLayers([sl, vl, rl])
+        context.setProject(p)
+
+        sl.selectByIds(sl.allFeatureIds()[1:3])
+
+        results = {}
+
+        def onFinished(ok, res):
+            assert ok
+            results.update(res)
+
+        d = AlgorithmDialog(alg, context=context)
+        d.algorithmFinished.connect(onFinished)
+        d.exec_()
+
+        lyr = results.get(ExportSpectralProfiles.P_OUTPUT)
+        if lyr:
+            assert isinstance(lyr, QgsVectorLayer)
+            assert is_spectral_library(lyr)
+            assert lyr.featureCount() > 0
+        s = ""
+
     def test_spectralprofile_import(self):
 
         provider = ExampleAlgorithmProvider.instance()
@@ -429,25 +461,32 @@ class ProcessingToolsTest(TestCase):
         context.setProject(p)
 
         sl = TestObjects.createSpectralLibrary(profile_field_names=['A', 'B'])
+        sl.selectByIds(sl.allFeatureIds()[1:3])
         p.addMapLayers([sl])
 
         test_dir = self.createTestOutputDirectory()
 
         for test_path in [test_dir / 'spectral_export_new.geojson',
                           test_dir / 'spectral_export_new.csv',
-                          test_dir / 'spectral_export_new.gpkg', ]:
+                          test_dir / 'spectral_export_new.sli',
+                          test_dir / 'spectral_export_new.gpkg',
+                          ]:
             alg = ExportSpectralProfiles()
             alg.initAlgorithm({})
 
             par = {ExportSpectralProfiles.P_INPUT: sl,
+                   ExportSpectralProfiles.P_SELECTED_ONLY: True,
                    ExportSpectralProfiles.P_FIELD: None,
                    ExportSpectralProfiles.P_OUTPUT: test_path.as_posix()}
 
             self.assertTrue(alg.prepareAlgorithm(par, context, feedback))
             results = alg.processAlgorithm(par, context, feedback)
-            results = alg.postProcessAlgorithm(context, feedback)
 
-            self.assertIsInstance(results, dict)
+            files = results.get(ExportSpectralProfiles.P_OUTPUT)
+            self.assertIsInstance(files, list)
+            self.assertTrue(len(files) > 0)
+            for f in files:
+                self.assertTrue(Path(f).is_file())
 
 
 if __name__ == '__main__':

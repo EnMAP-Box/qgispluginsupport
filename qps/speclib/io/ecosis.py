@@ -25,6 +25,7 @@
 ***************************************************************************
 """
 import csv
+import json
 import re
 from pathlib import Path
 from typing import List, Union, Optional
@@ -49,7 +50,7 @@ class EcoSISSpectralLibraryWriter(SpectralProfileFileWriter):
         return 'EcoSIS'
 
     @classmethod
-    def filterString(cls) -> bool:
+    def filterString(cls) -> str:
         return 'EcoSIS text file (*.csv)'
 
     def writeFeatures(self,
@@ -60,12 +61,12 @@ class EcoSISSpectralLibraryWriter(SpectralProfileFileWriter):
         if feedback is None:
             feedback = QgsProcessingFeedback()
 
-        grouped = groupBySpectralProperties(features, field=field, mode='features')
+        grouped = groupBySpectralProperties(features, field=field, fwhm=False, bbl=False, mode='features')
         files = []
 
         converterModel = UnitConverterFunctionModel.instance()
 
-        for i, (d, feat) in enumerate(grouped.items()):
+        for i, (k, feat) in enumerate(grouped.items()):
             p = QgsFileUtils.uniquePath(path)
             feedback.pushInfo(f'Write {len(feat)} profiles to {p}')
 
@@ -73,9 +74,10 @@ class EcoSISSpectralLibraryWriter(SpectralProfileFileWriter):
             f: QgsFeature
             with open(p, 'w', newline='') as csvfile:
                 has_geom = f.hasGeometry()
+                k = json.loads(k)
+                wl = k.get('x')
+                wlu = k.get('xUnit')
 
-                wl, wlu, fwhm = d
-                wl = list(wl)
                 func = converterModel.convertFunction(wlu, 'nm')
                 wl = [int(v) for v in func(wl)]
 

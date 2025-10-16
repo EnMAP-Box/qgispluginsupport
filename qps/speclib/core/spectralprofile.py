@@ -415,7 +415,9 @@ class SpectralSetting(QgsRasterLayerSpectralProperties):
 
 def groupBySpectralProperties(features: Union[QgsVectorLayer, List[QgsFeature]],
                               field: Union[None, int, str, QgsField] = None,
-                              mode: str = 'features') -> Dict[dict, List[Union[QgsFeature, dict]]]:
+                              fwhm: bool = False,
+                              bbl: bool = False,
+                              mode: str = 'features') -> Dict[str, List[Union[QgsFeature, dict]]]:
     """
     Returns SpectralProfiles grouped by spectral properties in the field 'profile_field'
     QgsFeatures with empty profiles are excluded from the returned groupings.
@@ -451,11 +453,14 @@ def groupBySpectralProperties(features: Union[QgsVectorLayer, List[QgsFeature]],
         if dump:
             d = decodeProfileValueDict(dump)
             if len(d) > 0:
-                wl = as_tuple(d.get('x'))
-                wlu = d.get('xUnit')
-                fwhm = as_tuple(d.get('fwhm'))
 
-                key = (wl, wlu, fwhm)
+                key = {'x': d.get('x'),
+                       'xUnit': d.get('xUnit')}
+                if fwhm:
+                    key['fwhm'] = d.get('fwhm')
+                if bbl:
+                    key['bbl'] = d.get('bbl')
+                key = json.dumps(key, indent=0, sort_keys=True)
                 if mode == 'features':
                     results[key] = results.get(key, []) + [f]
                 elif mode == 'data':

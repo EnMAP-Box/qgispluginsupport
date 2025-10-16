@@ -21,7 +21,7 @@ from .spectralprofilefieldmodel import SpectralProfileFieldActivatorDialog
 from .spectralprofileplotmodel import SpectralProfilePlotModel
 from ..core import is_spectral_library
 from ..core.spectrallibrary import SpectralLibraryUtils
-from ..core.spectrallibraryio import SpectralLibraryExportDialog
+from ..processing.exportspectralprofiles import ExportSpectralProfiles
 from ..processing.importspectralprofiles import ImportSpectralProfiles
 from ...layerproperties import CopyAttributesDialog, showLayerPropertiesDialog
 from ...plotstyling.plotstyling import PlotStyle
@@ -648,6 +648,29 @@ class SpectralLibraryWidget(QgsDockWidget):
 
         speclib = self.currentSpeclib()
         if isinstance(speclib, QgsVectorLayer):
-            files = SpectralLibraryExportDialog.exportProfiles(speclib=speclib, parent=self)
+
+            context = QgsProcessingContext()
+            context.setProject(self.project())
+
+            feedback = QgsProcessingFeedback()
+            context.setFeedback(feedback)
+
+            results = dict()
+
+            def onFinished(ok, res):
+                assert ok
+                results.update(res)
+
+            alg = ExportSpectralProfiles()
+            alg.initAlgorithm({})
+            d = AlgorithmDialog(alg, context=context)
+            d.algorithmFinished.connect(onFinished)
+            d.exec_()
+
+            files = results.get(ExportSpectralProfiles.P_OUTPUT, [])
             if len(files) > 0:
                 self.sigFilesCreated.emit(files)
+
+            # files = SpectralLibraryExportDialog.exportProfiles(speclib=speclib, parent=self)
+            # if len(files) > 0:
+            #    self.sigFilesCreated.emit(files)

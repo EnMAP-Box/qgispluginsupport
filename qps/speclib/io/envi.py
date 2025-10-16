@@ -26,6 +26,7 @@
 """
 
 import csv
+import json
 import os
 import pathlib
 import re
@@ -48,7 +49,8 @@ from ..core import create_profile_field, profile_field_names, profile_fields
 from ..core.spectrallibrary import LUT_IDL2GDAL, VSI_DIR
 from ..core.spectrallibraryio import SpectralLibraryExportWidget, SpectralLibraryImportWidget, SpectralLibraryIO
 from ..core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict, groupBySpectralProperties_depr, \
-    prepareProfileValueDict, SpectralSetting, SpectralProfileFileReader
+    prepareProfileValueDict, SpectralSetting, SpectralProfileFileReader, SpectralProfileFileWriter, \
+    groupBySpectralProperties
 from ...gdal_utils import GDALConfigChanges
 from ...qgisenums import QMETATYPE_DOUBLE, QMETATYPE_INT, QMETATYPE_QSTRING
 from ...qgsrasterlayerproperties import stringToType
@@ -617,6 +619,166 @@ class EnviSpectralLibraryIO(SpectralLibraryIO):
 
 REQUIRED_TAGS = ['byte order', 'data type', 'header offset', 'lines', 'samples', 'bands']
 SINGLE_VALUE_TAGS = REQUIRED_TAGS + ['description', 'wavelength', 'wavelength units']
+
+
+class EnviSpectralLibraryWriter(SpectralProfileFileWriter):
+
+    def __init__(self, *args,
+                 name_expression: Optional[str] = None,
+                 **kwds):
+        super().__init__(*args, **kwds)
+
+        self._name_expression = name_expression
+
+    @classmethod
+    def id(cls) -> str:
+        return 'ENVI'
+
+    @classmethod
+    def filterString(cls) -> str:
+        return 'ENVI Spectral Library (*.sli)'
+
+    def writeFeatures(self,
+                      features: List[QgsFeature],
+                      field: str,
+                      path: str,
+                      feedback: Optional[QgsProcessingFeedback] = None) -> List[Path]:
+
+        if feedback is None:
+            feedback = QgsProcessingFeedback()
+
+        if len(features) == 0:
+            feedback.pushInfo('No features to write')
+            return []
+
+        path = pathlib.Path(path)
+        dn = path.parent
+        bn, ext = os.path.splitext(path.name)
+
+        if not re.search(r'\.(sli|esl)', ext, re.I):
+            ext = '.sli'
+
+        if self._name_expression:
+            expr = QgsExpression(self._name_expression)
+        else:
+            expr = QgsExpression("format('Profile %1', $id)")
+
+        writtenFiles = []
+
+        os.makedirs(dn, exist_ok=True)
+
+        drv: gdal.Driver = gdal.GetDriverByName('ENVI')
+        assert isinstance(drv, gdal.Driver)
+
+        iGrp = -1
+
+        PROFILES = groupBySpectralProperties(features, field=field, fwhm=True, bbl=True, mode='features')
+        for i, (k, profiles) in enumerate(PROFILES.items()):
+
+            iGrp += 1
+
+            k = json.loads(k)
+
+            xValues = k['x']
+            wlu = k['xUnit']
+            bbl = k['bbl']
+            fwhm = k['fwhm']
+
+            # get profile names
+            profileNames = []
+
+            context = QgsExpressionContext()
+            scope = QgsExpressionContextScope()
+            context.appendScope(scope)
+
+            pData = []
+            for p in profiles:
+                context.setFeature(p)
+                name = expr.evaluate(context)
+                if name is None:
+                    profileNames.append('')
+                else:
+                    profileNames.append(str(name))
+
+                d = decodeProfileValueDict(p.attribute(field))
+                pData.append(np.asarray(d['y']))
+
+            # stack profiles
+            pData = np.vstack(pData)
+
+            if bbl and len(bbl) != len(pData[0]):
+                s = ""
+            # convert array to a data type GDAL is able to write
+            if pData.dtype == np.int64:
+                pData = pData.astype(np.int32)
+            elif pData.dtype == object:
+                pData = pData.astype(float)
+
+            if iGrp == 0:
+                pathDst = dn / f'{bn}{ext}'
+            else:
+                pathDst = dn / f'{bn}.{iGrp}{ext}'
+
+            eType = gdal_array.NumericTypeCodeToGDALTypeCode(pData.dtype)
+
+            """
+            Create(utf8_path, int xsize, int ysize, int bands=1, GDALDataType eType, char ** options=None) -> Dataset
+            """
+
+            ds = drv.Create(pathDst.as_posix(), pData.shape[1], pData.shape[0], 1, eType)
+            band = ds.GetRasterBand(1)
+            assert isinstance(band, gdal.Band)
+            band.WriteArray(pData)
+
+            assert isinstance(ds, gdal.Dataset)
+
+            # write ENVI header metadata
+            # ds.SetDescription(speclib.name())
+            ds.SetMetadataItem('band names', 'Spectral Library', 'ENVI')
+            ds.SetMetadataItem('spectra names', value2hdrString(profileNames), 'ENVI')
+
+            hdrString = value2hdrString(xValues)
+            if hdrString not in ['', None]:
+                ds.SetMetadataItem('wavelength', hdrString, 'ENVI')
+
+            if wlu not in ['', '-', None]:
+                ds.SetMetadataItem('wavelength units', wlu, 'ENVI')
+
+            if bbl not in ['', '-', None]:
+                ds.SetMetadataItem('bbl', value2hdrString(bbl), 'ENVI')
+
+            if fwhm not in ['', '-', None]:
+                ds.SetMetadataItem('fwhm', value2hdrString(fwhm), 'ENVI')
+
+            flushCacheWithoutException(ds)
+
+            pathHDR = [p for p in ds.GetFileList() if p.endswith('.hdr')][0]
+            ds = None
+
+            # re-write ENVI Hdr with a file type = ENVI Spectral Library
+            file = open(pathHDR)
+            hdr = file.readlines()
+            file.close()
+            for iLine in range(len(hdr)):
+                if re.search(r'file type =', hdr[iLine]):
+                    hdr[iLine] = 'file type = ENVI Spectral Library\n'
+                    break
+
+            file = open(pathHDR, 'w', encoding='utf-8')
+            file.writelines(hdr)
+            file.flush()
+            file.close()
+
+            # write JSON properties
+            # speclib.writeJSONProperties(pathDst)
+
+            # write other metadata to CSV
+            pathCSV = os.path.splitext(pathHDR)[0] + '.csv'
+
+            writeCSVMetadata(pathCSV, profiles, profileNames)
+            writtenFiles.append(pathDst.as_posix())
+
+        return writtenFiles
 
 
 class EnviSpectralLibraryReader(SpectralProfileFileReader):
