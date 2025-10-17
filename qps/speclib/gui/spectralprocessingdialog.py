@@ -79,8 +79,9 @@ class SpectralProcessingAppliers(QObject):
 
 class SpectralProcessingAlgorithmModel(QgsProcessingToolboxProxyModel):
     """
-    This proxy model filters out all QgsProcessingAlgorithms that do not use
-    SpectralProcessingProfiles
+    A proxy model to show only QgsProcessingAlgorithms that use
+    rasters as inputs and outputs, and therefore can be used
+    to process spectral profiles.
     """
 
     def __init__(self,
@@ -93,11 +94,15 @@ class SpectralProcessingAlgorithmModel(QgsProcessingToolboxProxyModel):
 
     def filterAcceptsRow(self, sourceRow: int, sourceParent: QModelIndex):
 
-        sourceIdx = self.toolboxModel().index(sourceRow, 0, sourceParent)
-        if self.toolboxModel().isAlgorithm(sourceIdx):
-            alg = self.toolboxModel().algorithmForIndex(sourceIdx)
+        tbm = self.toolboxModel()
+        sourceIdx = tbm.index(sourceRow, 0, sourceParent)
+        if tbm.isAlgorithm(sourceIdx):
+            alg = tbm.algorithmForIndex(sourceIdx)
             return super().filterAcceptsRow(sourceRow, sourceParent) and has_raster_input(alg) and has_raster_output(
                 alg)
+        # isParameter was introduced with QGIS 3.44
+        if hasattr(tbm, 'isParameter') and tbm.isParameter(sourceIdx):
+            return False
         else:
             return super().filterAcceptsRow(sourceRow, sourceParent)
 

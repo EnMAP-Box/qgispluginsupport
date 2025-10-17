@@ -808,9 +808,6 @@ class ExampleAlgorithmProvider(QgsProcessingProvider):
         for a in self._algs:
             self.addAlgorithm(a.createInstance())
 
-    def supportedOutputRasterLayerExtensions(self):
-        return []
-
     def supportsNonFileBasedOutput(self) -> True:
         return True
 
