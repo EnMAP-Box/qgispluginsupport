@@ -35,6 +35,7 @@ from qps import registerEditorWidgets
 from qps.layerproperties import AddAttributeDialog
 from qps.speclib.core import is_spectral_library, profile_field_list
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
+from qps.speclib.core.spectrallibraryrasterdataprovider import registerDataProvider
 from qps.speclib.core.spectralprofile import decodeProfileValueDict
 from qps.speclib.gui.spectrallibraryplotitems import SpectralProfilePlotWidget
 from qps.speclib.gui.spectrallibraryplotunitmodels import SpectralProfilePlotXAxisUnitModel
@@ -201,7 +202,7 @@ class TestSpeclibWidgets(TestCase):
     @unittest.skipIf(TestCase.runsInCI(), 'GUI test only')
     def test_SpectralLibraryWidget_Simple(self):
         # QApplication.setStyle("Fusion")
-
+        registerDataProvider()
         logging.basicConfig(level=logging.DEBUG,
                             format='%(asctime)s %(levelname)s %(module)s %(funcName)s: %(message)s',
                             handlers=[

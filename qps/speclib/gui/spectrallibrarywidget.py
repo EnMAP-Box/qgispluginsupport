@@ -19,7 +19,7 @@ from .spectrallibraryplotwidget import SpectralLibraryPlotWidget
 from .spectralprocessingdialog import SpectralProcessingDialog
 from .spectralprofilefieldmodel import SpectralProfileFieldActivatorDialog
 from .spectralprofileplotmodel import SpectralProfilePlotModel
-from ..core import is_spectral_library
+from ..core import is_spectral_library, profile_field_names
 from ..core.spectrallibrary import SpectralLibraryUtils
 from ..processing.exportspectralprofiles import ExportSpectralProfiles
 from ..processing.importspectralprofiles import ImportSpectralProfiles
@@ -235,7 +235,7 @@ class SpectralLibraryWidget(QgsDockWidget):
         # self.actionShowSpectralProcessingDialog.setParent(self)
         # self.actionShowSpectralProcessingDialog.setCheckable(False)
         # self.actionShowSpectralProcessingDialog.setIcon(QIcon(':/qps/ui/icons/profile_processing.svg'))
-        # self.actionShowSpectralProcessingDialog.triggered.connect(self.showSpectralProcessingWidget)
+        self.actionShowSpectralProcessingDialog.triggered.connect(self.showSpectralProcessingWidget)
         # self.mToolbar.insertAction(self.mActionOpenFieldCalculator, self.actionShowSpectralProcessingDialog)
         # self.actionShowSpectralProcessingDialog.setEnabled(self.speclib().isEditable())
 
@@ -312,11 +312,6 @@ class SpectralLibraryWidget(QgsDockWidget):
 
     def project(self) -> QgsProject:
         return self.plotModel().project()
-
-    def editingToggled(self):
-        super().editingToggled()
-        if hasattr(self, 'actionShowSpectralProcessingDialog'):
-            self.actionShowSpectralProcessingDialog.setEnabled(self.speclib().isEditable())
 
     def tableView(self) -> QgsAttributeTableView:
         return self.mMainView.tableView()
@@ -465,15 +460,24 @@ class SpectralLibraryWidget(QgsDockWidget):
         # alg_key = 'qps/processing/last_alg_id'
         # reg: QgsProcessingRegistry = QgsApplication.instance().processingRegistry()
         # if not isinstance(self.mSpectralProcessingWidget, SpectralProcessingDialog):
-        dialog = SpectralProcessingDialog(
-            speclib=self.speclib(),
-            algorithmId=algorithmId,
-            parameters=parameters)
-        dialog.setMainMessageBar(self.mainMessageBar())
-        dialog.sigOutputsCreated.connect(self.onSpectralProcessingOutputsCreated)
-        dialog.exec_()
 
-        dialog.close()
+        sl = self.currentSpeclib()
+        if isinstance(sl, QgsVectorLayer):
+            if not sl.isEditable():
+                sl.startEditing()
+
+            profile_fields_before = profile_field_names(sl)
+            dialog = SpectralProcessingDialog(
+                speclib=sl,
+                algorithmId=algorithmId,
+                parameters=parameters)
+            # dialog.setMainMessageBar(self.mainMessageBar())
+            # dialog.sigOutputsCreated.connect(self.onSpectralProcessingOutputsCreated)
+            dialog.exec_()
+
+            dialog.close()
+
+            profile_fields_after = profile_field_names(sl)
 
     def onSpectralProcessingOutputsCreated(self, outputs: Dict):
 

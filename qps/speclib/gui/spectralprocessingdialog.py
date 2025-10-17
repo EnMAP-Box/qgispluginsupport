@@ -6,6 +6,13 @@ from difflib import SequenceMatcher
 from json import JSONDecodeError
 from typing import Any, Dict, List, Optional, Tuple, Union
 
+from processing import createContext
+from processing.gui.AlgorithmDialogBase import AlgorithmDialogBase
+from processing.gui.wrappers import WidgetWrapper, WidgetWrapperFactory
+from qgis.PyQt.QtCore import pyqtSignal, QModelIndex, QObject, Qt, QTimer
+from qgis.PyQt.QtGui import QIcon
+from qgis.PyQt.QtWidgets import QCheckBox, QComboBox, QDialog, QGridLayout, QLabel, QLineEdit, QPushButton, QSizePolicy, \
+    QVBoxLayout, QWidget
 from qgis.core import Qgis, QgsApplication, QgsCoordinateTransformContext, QgsEditorWidgetSetup, QgsFeature, QgsField, \
     QgsFields, QgsMapLayer, QgsMapLayerModel, QgsPalettedRasterRenderer, QgsProcessing, QgsProcessingAlgorithm, \
     QgsProcessingContext, QgsProcessingFeedback, QgsProcessingModelAlgorithm, QgsProcessingOutputDefinition, \
@@ -13,17 +20,10 @@ from qgis.core import Qgis, QgsApplication, QgsCoordinateTransformContext, QgsEd
     QgsProcessingParameterDefinition, QgsProcessingParameterMultipleLayers, QgsProcessingParameterRasterDestination, \
     QgsProcessingParameterRasterLayer, QgsProcessingRegistry, QgsProcessingUtils, QgsProject, QgsRasterBlockFeedback, \
     QgsRasterDataProvider, QgsRasterFileWriter, QgsRasterLayer, QgsRasterPipe, QgsVectorLayer
-from processing import createContext
-from processing.gui.AlgorithmDialogBase import AlgorithmDialogBase
-from processing.gui.wrappers import WidgetWrapper, WidgetWrapperFactory
 from qgis.gui import QgsAbstractProcessingParameterWidgetWrapper, QgsGui, QgsMessageBar, QgsPanelWidget, \
     QgsProcessingAlgorithmDialogBase, QgsProcessingContextGenerator, QgsProcessingGui, QgsProcessingHiddenWidgetWrapper, \
     QgsProcessingParametersGenerator, QgsProcessingParametersWidget, QgsProcessingParameterWidgetContext, \
     QgsProcessingRecentAlgorithmLog, QgsProcessingToolboxProxyModel
-from qgis.PyQt.QtCore import pyqtSignal, QModelIndex, QObject, Qt, QTimer
-from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.QtWidgets import QCheckBox, QComboBox, QDialog, QGridLayout, QLabel, QLineEdit, QPushButton, QSizePolicy, \
-    QVBoxLayout, QWidget
 from .. import EDITOR_WIDGET_REGISTRY_KEY, speclibSettings
 from ..core import can_store_spectral_profiles, is_profile_field
 from ..core.spectrallibrary import SpectralLibraryUtils
@@ -96,7 +96,8 @@ class SpectralProcessingAlgorithmModel(QgsProcessingToolboxProxyModel):
         sourceIdx = self.toolboxModel().index(sourceRow, 0, sourceParent)
         if self.toolboxModel().isAlgorithm(sourceIdx):
             alg = self.toolboxModel().algorithmForIndex(sourceIdx)
-            return super().filterAcceptsRow(sourceRow, sourceParent) and has_raster_input(alg)
+            return super().filterAcceptsRow(sourceRow, sourceParent) and has_raster_input(alg) and has_raster_output(
+                alg)
         else:
             return super().filterAcceptsRow(sourceRow, sourceParent)
 
@@ -297,7 +298,11 @@ class SpectralProcessingRasterLayerWidgetWrapper(QgsAbstractProcessingParameterW
         if isinstance(param, QgsProcessingParameterRasterLayer):
             label = QLabel(f'<html><img src=":/qps/ui/icons/field_to_raster.svg">   '
                            f'{self.parameterDefinition().description()}</html>')
-            label.setToolTip('A field whose values will be converted into a temporary raster image')
+            tt = 'A field whose values will be converted into a temporary raster image:'
+            tt += '<br>int, float -> 2D raster image'
+            tt += '<br>spectral profiles with n values -> 3D raster images with n bands'
+            tt += '<br>string -> 2D raster classification image, using the unique values field values as class name'
+            label.setToolTip(tt)
         elif isinstance(param, QgsProcessingParameterMultipleLayers):
             label = QLabel(f'<html><img src=":/qps/ui/icons/field_to_raster.svg">   '
                            f'{self.parameterDefinition().description()}')
@@ -617,9 +622,9 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
         self.layout().insertLayout(0, self.mTopGrid)
         self.mProcessingAlgorithmModel: SpectralProcessingAlgorithmModel = SpectralProcessingAlgorithmModel(self)
 
-        self.mSpeclib: QgsVectorLayer = None
-        self.mAlg: QgsProcessingAlgorithm = None
-        self.mPanelWidget: SpectralProcessingModelCreatorAlgorithmWrapper = None
+        self.mSpeclib: Optional[QgsVectorLayer] = None
+        self.mAlg: Optional[QgsProcessingAlgorithm] = None
+        self.mPanelWidget: Optional[SpectralProcessingModelCreatorAlgorithmWrapper] = None
         self.mProcessingFeedback: QgsProcessingFeedback = QgsProcessingFeedback()
         self.mProcessingContext: QgsProcessingContext = createContext(self.mProcessingFeedback)
         self.mProcessingContext.setTransformContext(QgsProject.instance().transformContext())
@@ -631,7 +636,7 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
         # self.mProcessingModelWrapper: SpectralProcessingModelCreatorAlgorithmWrapper = None
 
         self.mTestProfile = QgsFeature()
-        self.mCurrentFunction: QgsProcessingAlgorithm = None
+        self.mCurrentFunction: Optional[QgsProcessingAlgorithm] = None
 
         self.updateGui()
 

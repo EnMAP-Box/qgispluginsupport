@@ -19,6 +19,7 @@ from qps.speclib.gui.spectralprocessingdialog import SpectralProcessingDialog, \
 from qps.testing import ExampleAlgorithmProvider, TestCase, TestObjects, start_app
 
 start_app()
+initAll()
 
 
 class AlgorithmLogging(QgsProcessingAlgorithm):

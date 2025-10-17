@@ -18,7 +18,7 @@ from qgis.core import QgsExpression, QgsExpressionContext, QgsExpressionContextS
     QgsFeature, QgsFeatureRenderer, QgsFeatureRequest, QgsField, QgsMarkerSymbol, QgsProject, QgsProperty, \
     QgsReadWriteContext, QgsRenderContext, QgsSingleSymbolRenderer, QgsSymbol, QgsVectorLayer, QgsVectorLayerCache
 from .spectrallibraryplotitems import SpectralProfilePlotItem, SpectralViewBox
-from ..core import profile_field_indices, profile_field_list, profile_fields
+from ..core import profile_field_indices, profile_field_list, profile_fields, is_profile_field
 from ..core.spectrallibrary import SpectralLibraryUtils
 from ..core.spectralprofile import decodeProfileValueDict
 from ..gui.spectrallibraryplotitems import PlotUpdateBlocker, SpectralProfilePlotDataItem, SpectralProfilePlotWidget
@@ -1738,23 +1738,44 @@ class SpectralProfilePlotModel(QStandardItemModel):
         rl = self._update_rate_limit
 
         def _plotted_value_changed(lid, *args, **kwargs):
-            fid, aid, value = args[0][0]
-            if aid in self.mLastReferencedColumns.get(lid, set()):
-                self.updatePlot()
+            t = args[0][0]
+            if len(t) == 3:
+                fid, aidx, value = t
+                if aidx in self.mLastReferencedColumns.get(lid, set()):
+                    self.updatePlot()
 
-        def onFeatureAdded(*args, **kwargs):
+        def _attribute_added(lid, aid):
+            s = ""
+            lyr = self.project().mapLayer(lid)
+            if isinstance(lyr, QgsVectorLayer):
+
+                field = lyr.fields().field(aid)
+                if is_profile_field(field):
+                    s = ""
+
+        def _attribute_removed(lid, *args, **kwargs):
             s = ""
 
         if speclib.id() not in self.mSignalProxies:
             # speclib.featureAdded.connect(onFeatureAdded)
+            # speclib.attributeAdded.connect(_attribute_added)
             proxies = [
                 SignalProxyUndecorated(speclib.selectionChanged, rateLimit=rl, slot=self.onSpeclibSelectionChanged),
                 SignalProxy(speclib.attributeValueChanged, delay=1, rateLimit=rl * 10,
                             slot=lambda *args, lid=speclib.id(): _plotted_value_changed(lid, args)),
-                SignalProxyUndecorated(speclib.featuresDeleted, rateLimit=rl, slot=lambda: self.updatePlot()),
-                SignalProxyUndecorated(speclib.featureAdded, rateLimit=rl, slot=lambda: self.updatePlot()),
+                SignalProxyUndecorated(speclib.featuresDeleted, rateLimit=rl,
+                                       slot=lambda: self.updatePlot()),
+                SignalProxyUndecorated(speclib.featuresDeleted, rateLimit=rl,
+                                       slot=lambda: self.updatePlot()),
+
+                SignalProxyUndecorated(speclib.featureAdded, rateLimit=rl,
+                                       slot=lambda *args, lid=speclib.id(): self.updatePlot()),
 
                 SignalProxy(speclib.styleChanged, rateLimit=rl, slot=self.onSpeclibStyleChanged),
+
+                SignalProxyUndecorated(speclib.attributeAdded, rateLimit=rl,
+                                       slot=lambda aid, lid=speclib.id(): _attribute_added(lid, aid)),
+
                 SignalProxy(speclib.updatedFields, rateLimit=rl, slot=lambda: self.onSpeclibFieldsUpdated),
             ]
 
