@@ -30,16 +30,16 @@ from typing import Generator, List, Union
 
 import numpy as np
 from osgeo import gdal
+
+from qgis.PyQt import sip
+from qgis.PyQt.QtCore import Qt, QUrl
+from qgis.PyQt.QtWidgets import (QCheckBox, QComboBox, QDialog, QDialogButtonBox, QHBoxLayout, QLabel, QProgressBar,
+                                 QTextEdit)
 from qgis.core import Qgis, QgsApplication, QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsExpression, \
     QgsExpressionContext, QgsExpressionContextUtils, QgsFeature, QgsFeatureRequest, QgsField, QgsFields, QgsGeometry, \
     QgsMapLayerProxyModel, QgsPointXY, QgsProcessingFeedback, QgsProject, QgsProviderRegistry, QgsRasterDataProvider, \
     QgsRasterLayer, QgsTask, QgsTaskManager, QgsVectorLayer, QgsWkbTypes
 from qgis.gui import QgsMapLayerComboBox
-from qgis.PyQt import sip
-from qgis.PyQt.QtCore import Qt, QUrl
-from qgis.PyQt.QtWidgets import (QCheckBox, QComboBox, QDialog, QDialogButtonBox, QHBoxLayout, QLabel, QProgressBar,
-                                 QTextEdit)
-
 from .. import FIELD_NAME, FIELD_VALUES, speclibUiPath
 from ..core import create_profile_field
 from ..core.spectrallibrary import SpectralLibraryUtils

@@ -3,11 +3,15 @@ import pathlib
 import unittest
 
 from qgis.core import QgsFeature, QgsProject, QgsWkbTypes
+from qgis.core import QgsVectorLayer
+from qgis.gui import QgsMapCanvas
 from qps import registerExpressionFunctions
-from qps.speclib.core import is_profile_field
+from qps.layerproperties import AttributeTableWidget
+from qps.speclib.core import is_profile_field, is_spectral_library
 from qps.speclib.core.spectrallibraryio import SpectralLibraryIO, SpectralLibraryImportDialog
 from qps.speclib.core.spectralprofile import decodeProfileValueDict
 from qps.speclib.io.rastersources import RasterLayerSpectralLibraryIO, RasterLayerSpectralLibraryImportWidget
+from qps.speclib.processing.extractspectralprofiles import ExtractSpectralProfiles
 from qps.testing import TestCase, TestObjects, start_app
 from qps.utils import rasterArray
 
@@ -15,17 +19,59 @@ start_app()
 
 
 class TestSpeclibIO_Raster(TestCase):
-    @classmethod
-    def setUpClass(cls, *args, **kwds) -> None:
-        super(TestSpeclibIO_Raster, cls).setUpClass(*args, **kwds)
-
-    @classmethod
-    def tearDownClass(cls):
-        super(TestSpeclibIO_Raster, cls).tearDownClass()
 
     def registerIO(self):
         ios = [RasterLayerSpectralLibraryIO()]
         SpectralLibraryIO.registerSpectralLibraryIO(ios)
+
+    def test_extract_profiles(self):
+
+        alg = ExtractSpectralProfiles()
+        alg.initAlgorithm({})
+
+        rl = TestObjects.createRasterLayer(nb=25)
+        vl = TestObjects.createVectorLayer(wkbType=QgsWkbTypes.Point, )
+        context, feedback = self.createProcessingContextFeedback()
+
+        p = QgsProject()
+        p.addMapLayers([rl, vl])
+        context.setProject(p)
+
+        if False:
+            canvas = QgsMapCanvas()
+
+            canvas.setLayers([vl, rl])
+            canvas.setDestinationCrs(vl.crs())
+            canvas.zoomToFullExtent()
+            self.showGui(canvas)
+
+        dir_test = self.createTestOutputDirectory()
+
+        for i, ext in enumerate(['gpkg', 'geojson']):
+
+            path_test = dir_test / f'profiles{i}.{ext}'
+
+            par = {
+                alg.P_INPUT_RASTER: rl,
+                alg.P_INPUT_VECTOR: vl,
+                alg.P_OUTPUT: path_test.as_posix()
+            }
+            self.assertTrue(alg.prepareAlgorithm(par, context, feedback))
+            results = alg.processAlgorithm(par, context, feedback)
+
+            output = results[alg.P_OUTPUT]
+            if isinstance(output, str):
+                output = QgsVectorLayer(output)
+            self.assertIsInstance(output, QgsVectorLayer)
+            self.assertTrue(is_spectral_library(output))
+            self.assertTrue(output.featureCount() > 0)
+            self.assertTrue(vl.featureCount() > output.featureCount())
+
+            if True:
+                w = AttributeTableWidget(output)
+                self.showGui(w)
+        s = ""
+        s = ""
 
     def test_raster_reading(self):
         registerExpressionFunctions()
