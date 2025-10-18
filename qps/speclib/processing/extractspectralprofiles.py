@@ -119,7 +119,10 @@ class ExtractSpectralProfiles(QgsProcessingAlgorithm):
 
         xValues = spectral_props.wavelengths() if spectral_props else None
         xUnit = spectral_props.wavelengthUnits()[0] if spectral_props and spectral_props.wavelengthUnits() else None
-        bbl = spectral_props.badBands() if spectral_props else None
+        bbl = spectral_props.badBands(default=1) if spectral_props else None
+
+        if all([v == 1 for v in bbl]):
+            bbl = None
 
         if xValues and any(xValues):
             feedback.pushInfo(
@@ -276,7 +279,7 @@ class ExtractSpectralProfiles(QgsProcessingAlgorithm):
 
         lyr = QgsVectorLayer(output_path)
         assert lyr.isValid()
-        if False:
+        if True:
             for i in range(lyr.fields().count()):
                 name = lyr.fields().at(i).name()
                 j = self._dstFields.indexFromName(name)

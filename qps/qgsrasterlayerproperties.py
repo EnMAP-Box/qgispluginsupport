@@ -338,7 +338,7 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
         """
         Convenience function to return bad band (multiplier) values as list
         0 = False = do not use
-        1 = True = do not use
+        1 = True = do use
         None = Not set
         values > 1 might be used for other special meanings
 
