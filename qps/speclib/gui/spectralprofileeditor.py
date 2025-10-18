@@ -3,6 +3,7 @@ import logging
 import re
 import warnings
 from copy import copy
+from math import isnan
 from typing import Any, List, Optional, Tuple
 
 import numpy as np
@@ -90,12 +91,14 @@ class SpectralProfileTableModel(QAbstractTableModel):
         xValues = profile.get('x', None)
         yValues = profile.get('y', [])
         bblValues = profile.get('bbl', None)
-        self.mBooleanBBL = True
+        self.mBooleanBBL = False
         for i, y in enumerate(yValues):
             x = xValues[i] if xValues else None
-            bbl = int(bblValues[i]) if bblValues else 1
-            if bbl not in [0, 1]:
-                self.mBooleanBBL = False
+            bbl = None
+            if bblValues:
+                bbl = bblValues[i]
+            # if bbl not in [0, 1]:
+            #    self.mBooleanBBL = False
             item = {0: i + 1,
                     1: x,
                     2: y,
@@ -115,14 +118,11 @@ class SpectralProfileTableModel(QAbstractTableModel):
         y = np.asarray([v[2] for v in self.mValues])
         bbl = [v[3] for v in self.mValues]
 
+        bbl = [1 if v == None or isnan(v) else v for v in bbl]
+        if all([v == 1 for v in bbl]):
+            bbl = None
         if x.dtype.name == 'object':
             x = None
-        if self.mBooleanBBL:
-            bbl = np.asarray(bbl, dtype=bool).astype(np.uint8)
-        else:
-            bbl = np.asarray(bbl, dtype=int)
-        if np.all(bbl == 1):
-            bbl = None
 
         profile = prepareProfileValueDict(
             x=x,
@@ -164,7 +164,9 @@ class SpectralProfileTableModel(QAbstractTableModel):
                 if self.mBooleanBBL:
                     return True if bbl is None else bool(bbl)
                 else:
-                    return 1 if bbl is None else int(bbl)
+                    if bbl is None:
+                        return 1
+                    return bbl
 
         return None
 
