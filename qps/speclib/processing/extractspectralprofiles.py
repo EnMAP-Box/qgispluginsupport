@@ -257,6 +257,10 @@ class ExtractSpectralProfiles(QgsProcessingAlgorithm):
             encoded_profile = encodeProfileValueDict(profile_dict, pField)
             out_feature.setAttribute(self.F_PROFILE, encoded_profile)
 
+            out_feature.setAttribute(self.F_PX_X, px)
+            out_feature.setAttribute(self.F_PX_Y, py)
+            out_feature.setAttribute(self.F_SOURCE, raster_layer.source())
+
             # Copy attributes from input feature
             for field in vector_layer.fields():
                 if field.name() in [self.F_PROFILE, self.F_SOURCE, self.F_PX_X, self.F_PX_Y]:

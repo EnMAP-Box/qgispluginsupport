@@ -5,6 +5,7 @@ import unittest
 from qgis.core import QgsFeature, QgsProject, QgsWkbTypes
 from qgis.core import QgsVectorLayer
 from qgis.gui import QgsMapCanvas
+from qps import initAll
 from qps import registerExpressionFunctions
 from qps.layerproperties import AttributeTableWidget
 from qps.speclib.core import is_profile_field, is_spectral_library
@@ -16,6 +17,7 @@ from qps.testing import TestCase, TestObjects, start_app
 from qps.utils import rasterArray
 
 start_app()
+initAll()
 
 
 class TestSpeclibIO_Raster(TestCase):
@@ -63,13 +65,15 @@ class TestSpeclibIO_Raster(TestCase):
             if isinstance(output, str):
                 output = QgsVectorLayer(output)
             self.assertIsInstance(output, QgsVectorLayer)
-            self.assertTrue(is_spectral_library(output))
-            self.assertTrue(output.featureCount() > 0)
-            self.assertTrue(vl.featureCount() > output.featureCount())
 
             if True:
                 w = AttributeTableWidget(output)
                 self.showGui(w)
+
+            self.assertTrue(is_spectral_library(output))
+            self.assertTrue(output.featureCount() > 0)
+            self.assertTrue(vl.featureCount() > output.featureCount())
+
         s = ""
         s = ""
 
