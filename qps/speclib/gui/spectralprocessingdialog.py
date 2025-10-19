@@ -604,6 +604,7 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
         self.setWindowFlag(Qt.WindowContextHelpButtonHint, False)
         # QgsProcessingContextGenerator.__init__(self)
         self.mDialogName = 'Spectral Processing Dialog'
+        self.setWindowTitle(self.mDialogName)
         self.setWindowIcon(QIcon(r':/qps/ui/icons/profile_processing.svg'))
         self.btnAlgorithm: QPushButton = QPushButton('Algorithm')
         self.btnAlgorithm.setIcon(QIcon(':/images/themes/default/processingAlgorithm.svg'))
@@ -1091,7 +1092,6 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
         assert isinstance(alg, QgsProcessingAlgorithm)
 
         super().setAlgorithm(alg.create())
-        self.setWindowTitle(self.mDialogName)
         self.mAlg = alg
         w = self.getParametersPanel(alg, self)
         # mw = self.mainWidget()
@@ -1132,6 +1132,8 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
         assert isinstance(speclib, QgsVectorLayer)
         self.mSpeclib = speclib
         self.mSpeclib.willBeDeleted.connect(self.close)
+
+        self.setWindowTitle(f'{self.mDialogName} - {speclib.name()}')
 
     def updateGui(self):
 

@@ -118,7 +118,7 @@ class SpectralProfileTableModel(QAbstractTableModel):
         y = np.asarray([v[2] for v in self.mValues])
         bbl = [v[3] for v in self.mValues]
 
-        bbl = [1 if v == None or isnan(v) else v for v in bbl]
+        bbl = [1 if v is None or isnan(v) else v for v in bbl]
         if all([v == 1 for v in bbl]):
             bbl = None
         if x.dtype.name == 'object':

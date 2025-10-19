@@ -25,13 +25,13 @@ from qgis.core import (
     QgsVectorFileWriter
 )
 from qgis.core import QgsVectorLayer, QgsFeatureRequest, QgsMapLayer
-from qps.fieldvalueconverter import GenericFieldValueConverter
-from qps.qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
-from qps.speclib.core import create_profile_field
-from qps.speclib.core.spectralprofile import (
+from ..core import create_profile_field
+from ..core.spectralprofile import (
     prepareProfileValueDict,
     encodeProfileValueDict
 )
+from ...fieldvalueconverter import GenericFieldValueConverter
+from ...qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 
 
 class ExtractSpectralProfiles(QgsProcessingAlgorithm):

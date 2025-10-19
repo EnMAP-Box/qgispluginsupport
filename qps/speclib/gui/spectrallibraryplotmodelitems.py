@@ -929,22 +929,45 @@ class SpectralProfileLayerFieldItem(PropertyItem):
         return None
 
     def populateContextMenu(self, menu: QMenu):
+        from .spectralprofileplotmodel import SpectralProfilePlotModel
 
-        a = menu.addAction('Open attribute table')
+        def plotModel() -> Optional[SpectralProfilePlotModel]:
+            if not self.mLayerID:
+                return None
+            m = self.model()
+            if isinstance(m, SpectralProfilePlotModel):
+                return m
+            else:
+                return None
+
+        def onShowLayerProperties(*args):
+            if model := plotModel():
+                model.sigOpenLayerPropertiesRequest.emit(self.mLayerID)
+
+        def onOpenAttributeTableRequest(*args):
+            if model := plotModel():
+                model.sigOpenAttributeTableRequest.emit(self.mLayerID)
+
+        def onSpectralProcessingDialogRequest(*args):
+            if model := plotModel():
+                model.sigOpenSpectralProcessingRequest.emit(self.mLayerID)
 
         layer = self.layer()
-
-        def onOpenAttributeTableRequest(layer_id: str):
-            from .spectralprofileplotmodel import SpectralProfilePlotModel
-            model = self.model()
-            if isinstance(model, SpectralProfilePlotModel):
-                model.sigOpenAttributeTableRequest.emit(layer_id)
-
         if isinstance(layer, QgsVectorLayer):
-            a.setToolTip(f'Open the attribute table of layer "{layer.name()}"')
-            a.triggered.connect(lambda *args, lid=self.mLayerID: onOpenAttributeTableRequest(lid))
-        else:
-            a.setEnabled(False)
+            a = menu.addAction('Layer properties')
+            a.setIcon(QIcon(':/images/themes/default/propertyicons/system.svg'))
+            a.setToolTip(f'Open the layer properties for layer "{layer.name()}"')
+            a.triggered.connect(onShowLayerProperties)
+
+            a = menu.addAction('Attribute table')
+            a.setIcon(QIcon(':/images/themes/default/mActionOpenTable.svg'))
+            a.setToolTip(f'Open an attribute table for layer "{layer.name()}"')
+            a.triggered.connect(onOpenAttributeTableRequest)
+
+            a = menu.addAction('Spectral Processing')
+            a.setIcon(QIcon(':/qps/ui/icons/profile_processing.svg'))
+            a.setToolTip(f'Open a spectral processing dialog for layer "{layer.name()}"')
+            a.triggered.connect(onSpectralProcessingDialogRequest)
 
     def createEditor(self, parent):
         w = LayerFieldWidget(parent=parent)
