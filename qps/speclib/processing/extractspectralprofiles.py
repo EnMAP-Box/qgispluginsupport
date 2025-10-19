@@ -1,18 +1,22 @@
 import os
-from typing import Optional
+from typing import Optional, Dict, Any
 
 import numpy as np
 from osgeo import gdal
 
 from qgis.PyQt.QtCore import QMetaType
-from qgis._core import QgsVectorLayer, QgsFeatureRequest, QgsMapLayer
 from qgis.core import (
     Qgis,
+    QgsProcessingContext,
+    QgsProcessingFeedback,
     QgsProcessingAlgorithm,
     QgsProcessingParameterRasterLayer,
     QgsProcessingParameterVectorLayer,
     QgsProcessingParameterVectorDestination,
-    QgsProcessingException,
+    QgsProcessingException, QgsEditorWidgetSetup,
+    QgsProcessingUtils,
+
+    QgsFeatureSink,
     QgsFeature,
     QgsField, QgsFields,
     QgsCoordinateTransform,
@@ -20,6 +24,7 @@ from qgis.core import (
     QgsGeometry,
     QgsVectorFileWriter
 )
+from qgis.core import QgsVectorLayer, QgsFeatureRequest, QgsMapLayer
 from qps.fieldvalueconverter import GenericFieldValueConverter
 from qps.qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from qps.speclib.core import create_profile_field
@@ -49,6 +54,7 @@ class ExtractSpectralProfiles(QgsProcessingAlgorithm):
         super().__init__()
 
         self._dstFields: Optional[QgsFields] = None
+        self._results: dict = {}
 
     def createInstance(self):
         return ExtractSpectralProfiles()
@@ -96,7 +102,7 @@ class ExtractSpectralProfiles(QgsProcessingAlgorithm):
             )
         )
 
-    def processAlgorithm(self, parameters, context, feedback):
+    def processAlgorithm(self, parameters: dict, context: QgsProcessingContext, feedback: QgsProcessingFeedback):
 
         # Get input parameters
         raster_layer = self.parameterAsRasterLayer(parameters, self.P_INPUT_RASTER, context)
@@ -171,24 +177,31 @@ class ExtractSpectralProfiles(QgsProcessingAlgorithm):
         driver = QgsVectorFileWriter.driverForExtension(os.path.splitext(output_path)[1])
         output_fields = GenericFieldValueConverter.compatibleTargetFields(output_fields, driver)
 
-        self._dstFields = output_fields
-
         # Prepare output layer
-        writer_options = QgsVectorFileWriter.SaveVectorOptions()
-        writer_options.driverName = driver
-        writer_options.fileEncoding = 'UTF-8'
+        # writer_options = QgsVectorFileWriter.SaveVectorOptions()
+        # writer_options.driverName = driver
+        # writer_options.fileEncoding = 'UTF-8'
 
-        writer = QgsVectorFileWriter.create(
-            output_path,
-            output_fields,
-            vector_layer.wkbType(),
-            vector_layer.crs(),
-            context.transformContext(),
-            writer_options
-        )
+        writer, destId = self.parameterAsSink(parameters,
+                                              self.P_OUTPUT,
+                                              context, output_fields,
+                                              vector_layer.wkbType(),
+                                              vector_layer.crs())
 
-        if writer.hasError() != QgsVectorFileWriter.NoError:
-            raise QgsProcessingException(f'Error creating output layer: {writer.errorMessage()}')
+        # writer = QgsVectorFileWriter.create(
+        #    output_path,
+        #    output_fields,
+        #    vector_layer.wkbType(),
+        #    vector_layer.crs(),
+        #    context.transformContext(),
+        #    writer_options
+        # )
+
+        # if writer.hasError() != QgsVectorFileWriter.NoError:
+        #    raise QgsProcessingException(f'Error creating output layer: {writer.errorMessage()}')
+
+        if not isinstance(writer, QgsFeatureSink):
+            raise QgsProcessingException(f'Unable to create output file: {parameters.get(self.P_OUTPUT)}')
 
         feedback.setProgress(20)
 
@@ -281,19 +294,31 @@ class ExtractSpectralProfiles(QgsProcessingAlgorithm):
         del writer
         del ds
 
-        lyr = QgsVectorLayer(output_path)
-        assert lyr.isValid()
-        if True:
-            for i in range(lyr.fields().count()):
-                name = lyr.fields().at(i).name()
-                j = self._dstFields.indexFromName(name)
-                if j >= 0:
-                    lyr.setEditorWidgetSetup(i, self._dstFields.at(j).editorWidgetSetup())
-            lyr.saveDefaultStyle(QgsMapLayer.StyleCategory.AllStyleCategories)
+        results = {self.P_OUTPUT: destId}
+        self._dstFields = output_fields
+        self._results = results
+        return results
+
+    def postProcessAlgorithm(self, context: QgsProcessingContext, feedback: QgsProcessingFeedback) -> Dict[str, Any]:
+
+        vl = self._results.get(self.P_OUTPUT)
+        if isinstance(vl, str):
+            lyr_id = vl
+            vl = QgsProcessingUtils.mapLayerFromString(vl, context,
+                                                       allowLoadingNewLayers=True,
+                                                       typeHint=QgsProcessingUtils.LayerHint.Vector)
+
+        if isinstance(vl, QgsVectorLayer) and vl.isValid():
+            for f in self._dstFields:
+                idx = vl.fields().lookupField(f.name())
+                if idx > -1:
+                    setup = f.editorWidgetSetup()
+                    if isinstance(setup, QgsEditorWidgetSetup):
+                        vl.setEditorWidgetSetup(idx, setup)
+            vl.saveDefaultStyle(QgsMapLayer.StyleCategory.AllStyleCategories)
+            feedback.pushInfo(f'Created {vl.publicSource(True)}\nPost-processing finished.')
+        else:
+            feedback.pushWarning(f'Unable to reload {vl} as vectorlayer and set profile fields')
 
         feedback.setProgress(100)
-        feedback.pushInfo(f'Successfully processed {features_processed} features')
-        if features_skipped > 0:
-            feedback.pushInfo(f'Skipped {features_skipped} features')
-
-        return {self.P_OUTPUT: lyr}
+        return {self.P_OUTPUT: vl}
