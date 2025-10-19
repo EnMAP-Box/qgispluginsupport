@@ -22,6 +22,7 @@ from .spectralprofileplotmodel import SpectralProfilePlotModel
 from ..core import is_spectral_library, profile_field_names
 from ..core.spectrallibrary import SpectralLibraryUtils
 from ..processing.exportspectralprofiles import ExportSpectralProfiles
+from ..processing.extractspectralprofiles import ExtractSpectralProfiles
 from ..processing.importspectralprofiles import ImportSpectralProfiles
 from ...layerproperties import CopyAttributesDialog, showLayerPropertiesDialog
 from ...plotstyling.plotstyling import PlotStyle
@@ -180,7 +181,19 @@ class SpectralLibraryWidget(QgsDockWidget):
         # self.actionImportSpeclib = QAction(self.tr('Import Spectral Profiles'), parent=self)
         # self.actionImportSpeclib.setToolTip(self.tr('Import spectral profiles from other data sources'))
         # self.actionImportSpeclib.setIcon(QIcon(':/qps/ui/icons/speclib_add.svg'))
+
+        m = QMenu()
+        m.setToolTipsVisible(True)
+        m.addAction(self.actionImportSpeclib)
+        m.addAction(self.actionExtractProfiles)
+
         self.actionImportSpeclib.triggered.connect(self.onImportProfiles)
+        self.actionExtractProfiles.triggered.connect(self.onExtractProfiles)
+
+        self.actionGrpImportProfiles.triggered.connect(self.actionImportSpeclib.trigger)
+        self.actionGrpImportProfiles.setMenu(m)
+        btn: QToolButton = self.toolBar.widgetForAction(self.actionGrpImportProfiles)
+        btn.setPopupMode(QToolButton.ToolButtonPopupMode.MenuButtonPopup)
 
         # self.actionExportSpeclib = QAction(self.tr('Export Spectral Profiles'), parent=self)
         # self.actionExportSpeclib.setToolTip(self.tr('Export spectral profiles to other data formats'))
@@ -569,6 +582,34 @@ class SpectralLibraryWidget(QgsDockWidget):
 
         if event.proposedAction() == Qt.CopyAction and SpectralLibraryUtils.canReadFromMimeData(event.mimeData()):
             event.acceptProposedAction()
+
+    def onExtractProfiles(self):
+        """
+        Reads profiles for vector geometry positions from a raster images
+        :return:
+        """
+        context = QgsProcessingContext()
+        context.setProject(self.project())
+
+        feedback = QgsProcessingFeedback()
+        context.setFeedback(feedback)
+
+        results = {}
+
+        def onFinished(ok, res):
+            assert ok
+            results.update(res)
+
+        alg = ExtractSpectralProfiles()
+        alg.initAlgorithm({})
+        d = AlgorithmDialog(alg, context=context)
+        d.algorithmFinished.connect(onFinished)
+        d.exec_()
+
+        lyr = results.get(ExtractSpectralProfiles.P_OUTPUT, None)
+        if isinstance(lyr, (QgsVectorLayer, str)):
+            self.libraryPlotWidget().createProfileVisualization(layer_id=lyr)
+            # self.addSpeclib(results['output'], askforNewFields=True)
 
     def onImportProfiles(self):
         """

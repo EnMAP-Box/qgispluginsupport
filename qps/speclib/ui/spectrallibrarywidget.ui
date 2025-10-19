@@ -55,7 +55,7 @@
        <bool>false</bool>
       </property>
       <addaction name="actionGrpAddProfiles"/>
-      <addaction name="actionImportSpeclib"/>
+      <addaction name="actionGrpImportProfiles"/>
       <addaction name="actionExportSpeclib"/>
       <addaction name="separator"/>
       <addaction name="actionShowProfileViewSettings"/>
@@ -122,7 +122,7 @@
     <string>Import Spectral Profiles</string>
    </property>
    <property name="toolTip">
-    <string>Import spectral profiles from other data sources</string>
+    <string>Import spectral profiles from other data sources e.g. ASD, SED, SVC files</string>
    </property>
   </action>
   <action name="actionExportSpeclib">
@@ -237,6 +237,30 @@
    </property>
    <property name="toolTip">
     <string>Add profiles that have been collected from raster layers</string>
+   </property>
+  </action>
+  <action name="actionGrpImportProfiles">
+   <property name="icon">
+    <iconset resource="../../qpsresources.qrc">
+     <normaloff>:/qps/ui/icons/speclib_add.svg</normaloff>:/qps/ui/icons/speclib_add.svg</iconset>
+   </property>
+   <property name="text">
+    <string>Import Spectral Profiles</string>
+   </property>
+   <property name="toolTip">
+    <string>Import spectral profiles</string>
+   </property>
+  </action>
+  <action name="actionExtractProfiles">
+   <property name="icon">
+    <iconset resource="../../../../QGIS/images/images.qrc">
+     <normaloff>:/images/themes/default/mIconRaster.svg</normaloff>:/images/themes/default/mIconRaster.svg</iconset>
+   </property>
+   <property name="text">
+    <string>Extract Profiles</string>
+   </property>
+   <property name="toolTip">
+    <string>Extract profiles from raster images</string>
    </property>
   </action>
  </widget>

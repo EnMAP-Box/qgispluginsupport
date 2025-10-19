@@ -58,8 +58,10 @@ class TestSpeclibIO_Raster(TestCase):
                 alg.P_INPUT_VECTOR: vl,
                 alg.P_OUTPUT: path_test.as_posix()
             }
-            self.assertTrue(alg.prepareAlgorithm(par, context, feedback))
-            results = alg.processAlgorithm(par, context, feedback)
+
+            results, success = alg.run(par, context, feedback)
+
+            self.assertTrue(success)
 
             output = results[alg.P_OUTPUT]
             if isinstance(output, str):
