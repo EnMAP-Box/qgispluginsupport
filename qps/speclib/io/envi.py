@@ -791,6 +791,12 @@ class EnviSpectralLibraryReader(SpectralProfileFileReader):
         return 'ENVI'
 
     @classmethod
+    def shortHelp(cls) -> str:
+        return ('ENVI Spectral Library ('
+                '<a href="https://www.nv5geospatialsoftware.com/docs/enviheaderfiles.html#HeaderFields">'
+                'https://www.nv5geospatialsoftware.com/docs/enviheaderfiles.html#HeaderFields></a>)')
+
+    @classmethod
     def canReadFile(self, path: Union[str, Path]) -> bool:
         path = Path(path)
 

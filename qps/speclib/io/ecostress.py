@@ -20,6 +20,12 @@ class ECOSTRESSSpectralProfileReader(SpectralProfileFileReader):
         return 'ECOSTRESS'
 
     @classmethod
+    def shortHelp(cls) -> str:
+        info = ('NASA JPL ECOSTRESS Spectral Library '
+                '(<a href="https://speclib.jpl.nasa.gov/library">https://speclib.jpl.nasa.gov/library</a>)')
+        return info
+
+    @classmethod
     def canReadFile(cls, path: Union[str, Path]) -> bool:
         path = Path(path)
 

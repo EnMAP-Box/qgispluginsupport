@@ -233,8 +233,8 @@ class ASDBinaryFile(SpectralProfileFileReader):
     a PANalytical company, 2555 55th Street, Suite 100 Boulder, CO 80301.
     """
 
-    def __init__(self, path):
-        super(ASDBinaryFile, self).__init__(path)
+    def __init__(self, path, **kwds):
+        super().__init__(path, **kwds)
         self.name: str = ''
         # initialize all variables in the ASD Binary file header
         self.co: str = None
@@ -296,6 +296,13 @@ class ASDBinaryFile(SpectralProfileFileReader):
     @classmethod
     def id(cls) -> str:
         return 'ASD'
+
+    @classmethod
+    def shortHelp(cls) -> str:
+        info = ('Malvern Panalytical ASD Spectrometer '
+                '(<a href="https://www.malvernpanalytical.com/en/products/product-range/asd-range">'
+                'https://www.malvernpanalytical.com/en/products/product-range/asd-range</a>)')
+        return info
 
     @classmethod
     def canReadFile(cls, path: Union[str, Path]) -> bool:

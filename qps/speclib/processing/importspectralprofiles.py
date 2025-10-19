@@ -184,14 +184,14 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
             self.P_INPUT_TYPE,
             description='Input file type',
             options=self._input_readers,
-            defaultValue=0,
+            defaultValue=self._input_readers[0],
             usesStaticStrings=True,
             allowMultiple=False,
         )
 
-        infos = ['Allows to define a format reader:']
+        infos = ['Define the reader for the input files:']
         infos.append('<ul>')
-        infos.append('<li><code>All</code>: Tries all readers. May be slow.</li>')
+        infos.append('<li><code>All</code>: Try to find the input format automatically. May be slow.</li>')
         for k, v in READERS.items():
             infos.append(f'<li><code>{k}</code>: {v.shortHelp()}</li>')
         infos.append('</ul>')
@@ -218,8 +218,9 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
                                          defaultValue=None,
                                          description='Date-time format code',
                                          optional=True)
-        p.setHelp('Format code to read date-time stamps from text files, '
-                  'e.g. "%d.%m.%Y %H:%M:%S" to read "27.05.2025 09:39:32". '
+
+        p.setHelp('Allows to set the date-time format code to read localized / none-ISO time stamps.'
+                  'For example, "%d.%m.%Y %H:%M:%S" to read "27.05.2025 09:39:32". '
                   '<br>See <a href="https://docs.python.org/3/library/datetime.html#format-codes">'
                   'https://docs.python.org/3/library/datetime.html#format-codes</a> for details.')
         p.setFlags(p.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
@@ -274,7 +275,6 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
                          context: QgsProcessingContext,
                          feedback: QgsProcessingFeedback) -> Dict[str, Any]:
 
-        results = dict()
         wkbType = None
         crs = QgsCoordinateReferenceSystem('EPSG:4326')
         all_fields = QgsFields()
@@ -474,7 +474,7 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
         del sink
         multiFeedback.pushInfo(f'Writing done {measureTime()}')
         self._profile_field_names = profile_field_names(all_fields)
-        results[self.P_OUTPUT] = destId
+        results = {self.P_OUTPUT: destId}
         self._dstFields = dst_fields
         self._results = results
         return results
@@ -487,32 +487,34 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
             vl = QgsProcessingUtils.mapLayerFromString(vl, context,
                                                        allowLoadingNewLayers=True,
                                                        typeHint=QgsProcessingUtils.LayerHint.Vector)
-            if isinstance(vl, QgsVectorLayer) and vl.isValid():
-                for f in self._dstFields:
-                    idx = vl.fields().lookupField(f.name())
-                    if idx > -1:
-                        if f.name() == SpectralProfileFileReader.KEY_Picture:
-                            config = create_picture_viewer_config(self._use_rel_path, 300)
-                            setup = QgsEditorWidgetSetup('ExternalResource', config)
+        if isinstance(vl, QgsVectorLayer) and vl.isValid():
 
-                        else:
-                            setupOld = f.editorWidgetSetup()
-                            setup = QgsEditorWidgetSetup(setupOld.type(), setupOld.config())
+            for f in self._dstFields:
+                idx = vl.fields().lookupField(f.name())
+                if idx > -1:
+                    if f.name() == SpectralProfileFileReader.KEY_Picture:
+                        config = create_picture_viewer_config(self._use_rel_path, 300)
+                        setup = QgsEditorWidgetSetup('ExternalResource', config)
 
-                        if isinstance(setup, QgsEditorWidgetSetup):
-                            vl.setEditorWidgetSetup(idx, setup)
                     else:
-                        s = ""
-                        # setup = QgsEditorWidgetSetup()
-                # for fieldName in self._profile_field_names:
-                #    idx = vl.fields().lookupField(fieldName)
-                #    if idx > -1:
-                #        setup = QgsEditorWidgetSetup(EDITOR_WIDGET_REGISTRY_KEY, {})
-                #        vl.setEditorWidgetSetup(idx, setup)
-                vl.saveDefaultStyle(QgsMapLayer.StyleCategory.AllStyleCategories)
-                feedback.pushInfo(f'Created {vl.publicSource(True)}\nPost-processing finished.')
-            else:
-                feedback.pushWarning(f'Unable to reload {lyr_id} as vectorlayer and set profile fields')
+                        setupOld = f.editorWidgetSetup()
+                        setup = QgsEditorWidgetSetup(setupOld.type(), setupOld.config())
+
+                    if isinstance(setup, QgsEditorWidgetSetup):
+                        vl.setEditorWidgetSetup(idx, setup)
+                else:
+                    s = ""
+                    # setup = QgsEditorWidgetSetup()
+            # for fieldName in self._profile_field_names:
+            #    idx = vl.fields().lookupField(fieldName)
+            #    if idx > -1:
+            #        setup = QgsEditorWidgetSetup(EDITOR_WIDGET_REGISTRY_KEY, {})
+            #        vl.setEditorWidgetSetup(idx, setup)
+            vl.saveDefaultStyle(QgsMapLayer.StyleCategory.AllStyleCategories)
+            feedback.pushInfo(f'Created {vl.publicSource(True)}\nPost-processing finished.')
+        else:
+            feedback.pushWarning(f'Unable to reload {vl} as vectorlayer and set profile fields')
+
         feedback.setProgress(100)
 
         return {self.P_OUTPUT: vl}

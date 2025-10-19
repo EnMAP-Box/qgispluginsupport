@@ -137,6 +137,11 @@ class EcoSISSpectralLibraryReader(SpectralProfileFileReader):
         return 'EcoSIS'
 
     @classmethod
+    def shortHelp(cls) -> str:
+        info = 'Ecological Spectral Information System (<a href="https://ecosis.org/">https://ecosis.org/</a>)'
+        return info
+
+    @classmethod
     def canReadFile(cls, path: Union[str, Path]) -> bool:
         path = Path(path)
         return path.suffix == '.csv'

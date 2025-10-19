@@ -137,6 +137,10 @@ class SEDFile(SpectralProfileFileReader):
         return 'SED'
 
     @classmethod
+    def shortHelp(cls) -> str:
+        return 'Spectral Evolution (<a href="https://spectralevolution.com">https://spectralevolution.com</a>)'
+
+    @classmethod
     def canReadFile(cls, path: Union[str, Path]) -> bool:
         path = Path(path)
         return rx_sed_file.search(path.name) is not None

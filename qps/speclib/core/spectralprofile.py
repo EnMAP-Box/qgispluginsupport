@@ -585,7 +585,7 @@ class SpectralProfileFileReader(object):
 
     def __init__(self,
                  path: Union[str, Path],
-                 dtg_fmt: Optional[str] = None):
+                 dtg_fmt: Optional[str] = None, **kwds):
         path = Path(path)
         assert path.is_file()
 
