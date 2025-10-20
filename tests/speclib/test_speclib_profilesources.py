@@ -13,14 +13,14 @@ from qps import initAll
 from qps.maptools import CursorLocationMapTool
 from qps.qgisenums import QMETATYPE_DOUBLE, QMETATYPE_INT, QMETATYPE_QSTRING
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
-from qps.speclib.core.spectralprofile import isProfileValueDict, SpectralProfileBlock, SpectralSetting
+from qps.speclib.core.spectralprofile import isProfileValueDict
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
 from qps.speclib.gui.spectralprofilesources import MapCanvasLayerProfileSource, ProfileSamplingMode, \
-    SamplingBlockDescription, SpectralFeatureGeneratorNode, SpectralProfileBridge, SpectralProfileBridgeTreeView, \
+    SpectralFeatureGeneratorNode, SpectralProfileBridge, SpectralProfileBridgeTreeView, \
     SpectralProfileBridgeViewDelegate, SpectralProfileGeneratorNode, SpectralProfileSource, SpectralProfileSourceModel, \
     SpectralProfileSourcePanel, SpectralProfileSourceProxyModel, StandardFieldGeneratorNode, StandardLayerProfileSource
 from qps.testing import start_app, TestCase, TestObjects
-from qps.utils import parseWavelength, rasterArray, SpatialExtent, SpatialPoint
+from qps.utils import rasterArray, SpatialExtent, SpatialPoint
 from qpstestdata import enmap
 
 start_app()
@@ -569,19 +569,6 @@ class SpectralProcessingTests(TestCase):
                         self.assertEqual(c.geometry().type(), QgsWkbTypes.PointGeometry)
                     else:
                         self.assertEqual(c.geometry().type(), Qgis.GeometryType.Point)
-
-    def simulate_block_reading(self,
-                               description: SamplingBlockDescription,
-                               lyr: QgsRasterLayer) -> SpectralProfileBlock:
-
-        # simulate reading of requested inputBlock
-        self.assertEqual(lyr, description.layer())
-        array = rasterArray(lyr, description.rect())
-        self.assertEqual(array.shape, (lyr.bandCount(), description.rect().height(), description.rect().width()))
-        wl, wlu = parseWavelength(lyr)
-        spectral_setting = SpectralSetting(wl, xUnit=wlu)
-        inputBlock = SpectralProfileBlock(array, spectral_setting)
-        return inputBlock
 
     def test_MapCanvasLayerProfileSource(self):
 

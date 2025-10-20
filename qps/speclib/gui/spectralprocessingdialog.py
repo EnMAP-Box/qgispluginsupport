@@ -71,12 +71,6 @@ def has_raster_io(alg: QgsProcessingAlgorithm) -> bool:
     return has_raster_input(alg) and has_raster_output(alg)
 
 
-class SpectralProcessingAppliers(QObject):
-
-    def __init__(self):
-        super().__init__()
-
-
 class SpectralProcessingAlgorithmModel(QgsProcessingToolboxProxyModel):
     """
     A proxy model to show only QgsProcessingAlgorithms that use

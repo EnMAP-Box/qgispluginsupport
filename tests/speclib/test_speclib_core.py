@@ -39,7 +39,7 @@ from qps.speclib.core import can_store_spectral_profiles, create_profile_field, 
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
 from qps.speclib.core.spectrallibraryrasterdataprovider import featuresToArrays
 from qps.speclib.core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict, isProfileValueDict, \
-    nanToNone, prepareProfileValueDict, ProfileEncoding, SpectralProfileBlock, SpectralSetting, validateProfileValueDict
+    nanToNone, prepareProfileValueDict, ProfileEncoding, SpectralSetting, validateProfileValueDict
 from qps.testing import start_app, TestCase, TestObjects
 from qps.unitmodel import BAND_NUMBER
 from qps.utils import createQgsField, FeatureReferenceIterator, findTypeFromString, qgsFields2str, SpatialExtent, \
@@ -395,43 +395,6 @@ class SpeclibCoreTests(TestCase):
         fpi = FeatureReferenceIterator(all_profiles)
         self.assertIsInstance(fpi.referenceFeature(), QgsFeature)
         check_profiles(fpi)
-
-    # @unittest.skip('')
-    def test_SpectralProfileBlock(self):
-        CD = TestObjects.coreData()
-        coredata = CD['data']
-        core_wl = CD['wl']
-        core_wlu = CD['wlu']
-        core_gt = CD['gt']
-        core_wkt = CD['wkt']
-
-        setting = SpectralSetting(len(core_wl))
-        setting.setWavelengths(core_wl)
-        setting.setWavelengthUnits(core_wlu)
-        block1 = SpectralProfileBlock(coredata, setting)
-
-        self.assertIsInstance(block1, SpectralProfileBlock)
-        self.assertFalse(block1.hasGeoPositions())
-
-        kwds = block1.toVariantMap()
-        self.assertIsInstance(kwds, dict)
-
-        block2 = SpectralProfileBlock.fromVariantMap(kwds)
-        self.assertIsInstance(block2, SpectralProfileBlock)
-        self.assertEqual(block1, block2)
-
-        newCRS = QgsCoordinateReferenceSystem('EPSG:32632')
-        profiles = TestObjects.spectralProfiles()
-        for block3 in SpectralProfileBlock.fromSpectralProfiles(profiles):
-            self.assertIsInstance(block3, SpectralProfileBlock)
-            self.assertTrue(block3.hasGeoPositions())
-            setting = block3.spectralSetting()
-            for i, p in enumerate(block3.profiles()):
-                self.assertIsInstance(p, QgsFeature)
-                d = decodeProfileValueDict(p.attribute(setting.fieldName()))
-                self.assertTrue(len(d) > 0)
-            block3.toCrs(newCRS)
-            self.assertTrue(block3.crs() == newCRS)
 
     # @unittest.skip('')
     def test_SpectralProfileReading(self):
