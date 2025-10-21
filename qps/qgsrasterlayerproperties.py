@@ -791,8 +791,9 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
         assert isinstance(nb, int) and nb > 0
 
         p = cls(nb)
+        property_keys = [k.value for k in SpectralPropertyKeys]
         for k, v in d.items():
-            if k in SpectralPropertyKeys:
+            if k in property_keys:
                 p.setBandValues('*', k, v)
             else:
                 logger.warning(f'Invalid spectral property key/value: "{k}={v}"')

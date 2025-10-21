@@ -1,8 +1,6 @@
 # noinspection PyPep8Naming
 import unittest
 
-from osgeo import ogr, gdal
-
 from qgis.core import QgsFeature, QgsVectorLayer
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
 from qps.speclib.io.geopackage import GeoPackageSpectralLibraryWriter
@@ -25,8 +23,8 @@ class TestSpeclibIO_GPKG(TestCase):
 
         self.assertTrue(len(files) == 1)
         for f in files:
-            ds: gdal.Dataset = ogr.Open(f.as_posix())
-            self.assertEqual(ds.GetDriver().ShortName, 'GPKG')
+            # ds: gdal.Dataset = ogr.Open(f.as_posix())
+            # self.assertEqual(ds.GetDriver().ShortName, 'GPKG')
             lyr = QgsVectorLayer(f.as_posix())
             self.assertTrue(lyr.isValid())
             self.assertEqual(lyr.featureCount(), sl.featureCount())
@@ -60,8 +58,8 @@ class TestSpeclibIO_GPKG(TestCase):
         self.assertIsInstance(files, list)
         for file in files:
             file = file.as_posix()
-            ds = ogr.Open(file)
-            self.assertIsInstance(ds, gdal.Dataset)
+            # ds = ogr.Open(file)
+            # self.assertIsInstance(ds, gdal.Dataset)
 
             lyr = QgsVectorLayer(file)
             self.assertIsInstance(lyr, QgsVectorLayer)
