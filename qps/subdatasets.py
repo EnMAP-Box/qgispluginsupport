@@ -29,15 +29,14 @@ import datetime
 import pathlib
 import re
 import sys
-
+from pathlib import Path
 from typing import List, Dict, Tuple, Any, Union
 
-from qgis.PyQt.QtCore import QItemSelectionModel
-from qgis.PyQt.QtWidgets import QTableView, QPushButton
-
 from qgis.PyQt import sip
+from qgis.PyQt.QtCore import QItemSelectionModel
 from qgis.PyQt.QtCore import Qt, QModelIndex, QAbstractTableModel, QSortFilterProxyModel
 from qgis.PyQt.QtWidgets import QDialogButtonBox, QDialog
+from qgis.PyQt.QtWidgets import QTableView, QPushButton
 from qgis.core import QgsMapLayer, QgsProviderRegistry, QgsProject
 from qgis.core import QgsProviderSublayerTask, QgsProviderSublayerDetails, QgsProviderSublayerModel, \
     QgsProviderSublayerProxyModel
@@ -48,7 +47,7 @@ from .utils import loadUi
 
 class SubDatasetLoadingTask(QgsTask):
     def __init__(self,
-                 files: List[str],
+                 files: List[Union[str, Path]],
                  description: str = "Collect subdata sets",
                  callback=None,
                  progress_interval: int = 1):
@@ -74,9 +73,15 @@ class SubDatasetLoadingTask(QgsTask):
             assert isinstance(path, str)
 
             try:
-                task = QgsProviderSublayerTask(path)
-                task.run()
-                self.mSubDataSets[path] = task.results()
+                if False:
+                    task = QgsProviderSublayerTask(path)
+                    task.run()
+                    self.mSubDataSets[path] = task.results()
+                else:
+                    # flags = Qgis.SublayerQueryFlag.FastScan
+                    # flags = None
+                    sublayers = QgsProviderRegistry.instance().querySublayers(uri=path)
+                    self.mSubDataSets[path] = sublayers
             except Exception as ex:
                 self.mMessages[path] = str(ex)
 
@@ -272,14 +277,15 @@ class SubDatasetSelectionDialog(QDialog):
         if Qt.CheckStateRole in roles:
             self.validate()
 
-    def setFiles(self, files: List[str]):
+    def setFiles(self, files: List[Union[str, Path]]):
         assert isinstance(files, list)
+        files = [str(f) for f in files]
         fileString = ' '.join(['"{}"'.format(f) for f in files])
         self.fileWidget.setFilePath(fileString)
 
     def setSubDatasetDetails(self, details: List[QgsProviderSublayerDetails]):
         """
-        Allows to set SubDatasetDetails directly
+        Allows setting SubDatasetDetails directly
         """
         self.fileWidget.setFilePath('')
         self.subDatasetModel.setSublayerDetails([])

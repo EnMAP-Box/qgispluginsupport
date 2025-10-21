@@ -2,7 +2,6 @@ from typing import Dict, List, Union
 
 from qgis.PyQt.QtCore import QVariant
 from qgis.core import QgsFeature, QgsField, QgsFields, QgsVectorLayer
-
 from ...qgisenums import QMETATYPE_QBYTEARRAY, QMETATYPE_QSTRING, QMETATYPE_QVARIANTMAP
 
 
@@ -115,7 +114,7 @@ def profile_fields(fields: Union[QgsFeature, QgsVectorLayer, QgsFields]) -> QgsF
 
 def profile_field_list(spectralLibrary: Union[QgsFeature, QgsVectorLayer, QgsFields]) -> List[QgsField]:
     """
-    Returns the fields that contains values of SpectralProfiles
+    Returns the fields that contain values of SpectralProfiles
     :param spectralLibrary:
     :return:
     """

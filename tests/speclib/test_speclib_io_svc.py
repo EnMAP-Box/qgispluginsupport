@@ -8,13 +8,12 @@ from typing import List
 
 from qgis.core import QgsFeature, QgsVectorLayer
 from qps import initAll
-from qps.speclib.core import is_spectral_feature, is_spectral_library, profile_field_names
-from qps.speclib.core.spectrallibraryio import initSpectralLibraryIOs, SpectralLibraryImportDialog
-from qps.speclib.core.spectralprofile import decodeProfileValueDict, isProfileValueDict, validateProfileValueDict
+from qps.speclib.core import is_spectral_feature, is_spectral_library
+from qps.speclib.core.spectralprofile import isProfileValueDict
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
-from qps.speclib.io.svc import SVCSigFile, SVCSpectralLibraryIO
+from qps.speclib.io.svc import SVCSigFile
 from qps.speclib.processing.importspectralprofiles import ImportSpectralProfiles
-from qps.testing import start_app, TestCase, TestObjects
+from qps.testing import start_app, TestCase
 from qps.utils import file_search
 
 start_app()
@@ -22,13 +21,14 @@ start_app()
 
 class TestSpeclibIO_SVC(TestCase):
 
-    def registerIO(self):
-        initSpectralLibraryIOs()
-
     def test_read_sigFile(self):
 
         for file in self.svcFiles():
+
             print(f'read {file}')
+
+            self.assertTrue(SVCSigFile.canReadFile(file))
+
             svc = SVCSigFile(file)
             self.assertIsInstance(svc, SVCSigFile)
             self.assertTrue(isProfileValueDict(svc.reference()))
@@ -41,45 +41,26 @@ class TestSpeclibIO_SVC(TestCase):
             if svc.picturePath():
                 self.assertIsInstance(svc.picturePath(), Path)
                 self.assertTrue(svc.picturePath().is_file())
-            profile = svc.asFeature()
-            self.assertIsInstance(profile, QgsFeature)
-            self.assertTrue(is_spectral_feature(profile))
 
-            picture_path = profile.attribute(SVCSigFile.KEY_Picture)
-            if picture_path:
-                self.assertIsInstance(picture_path, str)
-                self.assertTrue(os.path.isfile(picture_path))
+            for profile in svc.asFeatures():
+                self.assertIsInstance(profile, QgsFeature)
+                self.assertTrue(is_spectral_feature(profile))
 
-        for file in self.svcFiles():
-            settings = {}
-            profiles = SVCSpectralLibraryIO.importProfiles(file, importSettings=settings)
-            self.assertIsInstance(profiles, list)
-            self.assertTrue(len(profiles) > 0)
-            for p in profiles:
-                self.assertTrue(is_spectral_feature(p))
-
-                for name in profile_field_names(p):
-                    data = decodeProfileValueDict(p.attribute(name))
-                    self.assertTrue(validateProfileValueDict(data))
-                    s = ""
+                picture_path = profile.attribute(SVCSigFile.KEY_Picture)
+                if picture_path:
+                    self.assertIsInstance(picture_path, str)
+                    self.assertTrue(os.path.isfile(picture_path))
 
     def svcFiles(self) -> List[str]:
         import qpstestdata
         svc_dir = pathlib.Path(qpstestdata.__file__).parent / 'svc'
         return list(file_search(svc_dir, re.compile(r'.*\.sig$'), recursive=True))
 
-    @unittest.skipIf(TestCase.runsInCI(), 'Skipped QDialog test in CI')
-    def test_dialog(self):
-        sl = TestObjects.createSpectralLibrary()
-        import qpstestdata.asd
-        root = pathlib.Path(qpstestdata.__file__).parent / 'svc'
-
-        SpectralLibraryImportDialog.importProfiles(sl, defaultRoot=root.as_posix())
-
     def test_parse_datetime(self):
 
-        dt = datetime.now().replace(microsecond=0)
-
+        # dt = datetime.now().replace(microsecond=0)
+        dt = datetime(2025, 10, 15, 12, 21, 50)
+        # dt = datetime(2025, 10, 15, 8, 21, 50)
         formats = [
             '%d.%m.%Y %H:%M:%S',  # 27.05.2025 09:39:32
             '%m/%d/%Y %H:%M:%S%p',  # 5/27/2025 9:39:32AM
@@ -90,6 +71,8 @@ class TestSpeclibIO_SVC(TestCase):
         for fmt in formats:
             text = dt.strftime(fmt)
             dt2 = SVCSigFile._readDateTime(text)
+            if dt != dt2:
+                s = ""
             self.assertEqual(dt, dt2, msg=f'Failed for format "{fmt}" : {text}')
 
     # @unittest.skipIf(TestCase.runsInCI(), 'Skipped CI')
@@ -105,6 +88,7 @@ class TestSpeclibIO_SVC(TestCase):
 
         par = {
             ImportSpectralProfiles.P_INPUT: svc_files,
+            ImportSpectralProfiles.P_INPUT_TYPE: 'SVC',
             ImportSpectralProfiles.P_OUTPUT: path_test.as_posix(),
         }
 

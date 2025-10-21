@@ -8,13 +8,13 @@ from osgeo import gdal
 
 from qgis.PyQt.QtCore import QEvent, QMetaType, QPointF, Qt
 from qgis.PyQt.QtGui import QColor, QMouseEvent, QPen
-from qgis.PyQt.QtWidgets import QHBoxLayout, QTreeView, QVBoxLayout, QWidget
+from qgis.PyQt.QtWidgets import QHBoxLayout, QVBoxLayout, QWidget
 from qgis.PyQt.QtXml import QDomDocument, QDomElement
 from qgis.core import edit, QgsApplication, QgsCategorizedSymbolRenderer, QgsClassificationRange, QgsEditorWidgetSetup, \
     QgsExpressionContextScope, QgsFeature, QgsField, QgsGraduatedSymbolRenderer, QgsMarkerSymbol, \
     QgsMultiBandColorRenderer, QgsNullSymbolRenderer, QgsProject, QgsProperty, QgsReadWriteContext, QgsRenderContext, \
     QgsRendererCategory, QgsRendererRange, QgsSingleBandGrayRenderer, QgsSingleSymbolRenderer, QgsVectorLayer
-from qgis.gui import QgsDualView, QgsMapCanvas
+from qgis.gui import QgsMapCanvas
 from qps import DIR_REPO, initAll
 from qps.plotstyling.plotstyling import MarkerSymbol, PlotStyle
 from qps.pyqtgraph.pyqtgraph import InfiniteLine
@@ -61,11 +61,9 @@ class TestSpeclibPlotting(TestCase):
     def test_SpectralLibraryWidget_deleteFeatures(self):
         speclib = TestObjects.createSpectralLibrary(10)
         slw = SpectralLibraryWidget(speclib=speclib, project=QgsProject())
-        speclib = slw.speclib()
-        speclib.startEditing()
-        speclib.selectAll()
-        speclib.deleteSelectedFeatures()
-        speclib.commitChanges()
+        with edit(speclib):
+            speclib.selectAll()
+            speclib.deleteSelectedFeatures()
         slw.project().removeAllMapLayers()
         self.showGui(slw)
 
@@ -94,8 +92,6 @@ class TestSpeclibPlotting(TestCase):
             speclib.setSubsetString('"fid" <= 200')
 
         slw = SpectralLibraryWidget(speclib=speclib)
-        VM = SpectralLibraryWidget.ViewType
-        slw.setViewVisibility(VM.ProfileViewSettings | VM.ProfileView)
         model = slw.plotModel()
         model: SpectralProfilePlotModel
         model.setShowLegend(True)
@@ -145,7 +141,7 @@ class TestSpeclibPlotting(TestCase):
             s.setMarkerSymbol('o')
             vis.setPlotStyle(s)
 
-        pw = slw.plotWidget()
+        pw = slw.profilePlotWidget()
 
         self.showGui(slw)
 
@@ -174,7 +170,6 @@ class TestSpeclibPlotting(TestCase):
     def test_SpectralLibraryWidget_addField(self):
         speclib = TestObjects.createSpectralLibrary(10)
         slw = SpectralLibraryWidget(speclib=speclib)
-        speclib: QgsVectorLayer = slw.speclib()
         slw.show()
         speclib.startEditing()
         pfields = profile_fields(speclib)
@@ -466,11 +461,14 @@ class TestSpeclibPlotting(TestCase):
 
     def test_SpectralProfilePlotModel_add_current_profiles(self):
 
-        sl1 = TestObjects.createSpectralLibrary(n=2, name='speclib1', profile_field_names=['p1'])
+        sl1 = TestObjects.createSpectralLibrary(n=2, name='speclib1',
+                                                n_bands=[5], profile_field_names=['p1'])
         sl2 = TestObjects.createSpectralLibrary(n=4, name='speclib2',
                                                 n_bands=[10, 20], profile_field_names=['p1', 'p2'])
 
         model = SpectralProfilePlotModel()
+        p = QgsProject()
+        model.setProject(p)
         model.project().addMapLayers([sl1, sl2])
 
         vis1 = ProfileVisualizationGroup()
@@ -510,77 +508,23 @@ class TestSpeclibPlotting(TestCase):
         self.assertEqual(sl2.featureCount(), n1_2 + 2)
 
         self.assertTrue(len(model.mPROFILE_CANDIDATES) > 0)
-        # model.clearProfileCandidates()
-        # self.assertEqual(sl1.featureCount(), n1_1)
-        # self.assertEqual(sl2.featureCount(), n1_2)
 
-        w = SpectralLibraryWidget(sl1, plot_model=model)
+    def test_ProfileVisualizationGroup(self):
 
-        self.showGui(w)
-        w.project().removeAllMapLayers()
+        sl = TestObjects.createSpectralLibrary(n=10, n_bands=[5, 12],
+                                               profile_field_names=['p1', 'p2'],
+                                               name='SL_A')
 
-    def test_SpectralProfilePlotModel(self):
+        p = QgsProject()
+        p.addMapLayer(sl)
+        g = ProfileVisualizationGroup()
+        g.setProject(p)
 
-        model = SpectralProfilePlotModel()
-        speclib = TestObjects.createSpectralLibrary()
-        canvas = QgsMapCanvas()
-        dv = QgsDualView()
-        dv.init(speclib, canvas)
-        pw = SpectralProfilePlotWidget()
-        model.setPlotWidget(pw)
-        model.setDualView(dv)
+        g.setLayerField(sl, 'p1')
 
-        self.assertIsInstance(json.dumps(model.settingsMap(), ensure_ascii=False), str)
-
-        tv = QTreeView()
-
-        tv.setModel(model)
-
-        lyr1 = TestObjects.createRasterLayer(nb=1)
-        lyr2 = TestObjects.createRasterLayer(nb=10)
-        vis1 = RasterRendererGroup(layer=lyr1)
-        vis2 = RasterRendererGroup(layer=lyr2)
-
-        vis3 = ProfileVisualizationGroup()
-        model.insertPropertyGroup(0, vis1)
-        model.insertPropertyGroup(1, vis2)
-        model.insertPropertyGroup(2, vis3)
-
-        vis1.setLayer(lyr2)
-        vis2.setLayer(lyr1)
-
-        indices = []
-        for grp in model.visualizations():
-            indices.append(grp.index())
-
-        settings1 = model.settingsMap()
-        jsonDump = json.dumps(settings1, ensure_ascii=False)
-        settings2 = json.loads(jsonDump)
-        self.assertIsInstance(settings1, dict)
-        self.assertEqual(settings1, settings2)
-
-        # restore mode
-        project2 = QgsProject()
-        model2 = SpectralProfilePlotModel.fromSettingsMap(settings1, project=project2)
-        self.assertIsInstance(model2, SpectralProfilePlotModel)
-        for vis1, vis2 in zip(model.visualizations(), model2.visualizations()):
-            self.assertEqual(vis1.name(), vis2.name())
-            self.assertEqual(vis1.fieldName(), vis2.fieldName())
-            self.assertEqual(vis1.layer().source(), vis2.layer().source())
-            self.assertEqual(vis1.filterExpression(), vis2.filterExpression())
-            self.assertEqual(vis1.colorExpression(), vis2.colorExpression())
-            self.assertEqual(vis1.labelExpression(), vis2.labelExpression())
-            self.assertEqual(vis1.isVisible(), vis2.isVisible())
-
-        # mimeData = model.mimeData(indices)
-        # grps = PropertyItemGroup.fromMimeData(mimeData)
-        # self.assertTrue(len(grps) > 0)
-        # self.assertTrue(model.canDropMimeData(mimeData, Qt.CopyAction, 0, 0, QModelIndex()))
-        # self.assertTrue(model.dropMimeData(mimeData, Qt.CopyAction, 0, 0, QModelIndex()))
-
-        self.showGui([tv, pw])
-
-        QgsProject.instance().removeAllMapLayers()
+        self.assertEqual('SL_A:p1', g.data(Qt.DisplayRole), )
+        g.setLayerField(sl, 'p2')
+        self.assertEqual('SL_A:p2', g.data(Qt.DisplayRole))
 
     def test_PlotStyleItem(self):
 
@@ -596,42 +540,21 @@ class TestSpeclibPlotting(TestCase):
         self.assertNotEqual(item1.plotStyle(), item2.plotStyle())
         self.assertNotEqual(item1, item2)
 
-    def test_sortBands(self):
-
-        d = prepareProfileValueDict(y=[1, 2, 3, 4, 4, 3, 2, 3, 3, 4],
-                                    x=[0, 1, 2, 6, 5, 4, 3, 7, 8, 9],
-                                    xUnit='Band Number')
-
-        slw = SpectralLibraryWidget()
-
-        speclib = slw.speclib()
-
-        feature = QgsFeature(speclib.fields())
-        for field in profile_fields(feature):
-            idx = feature.fields().lookupField(field.name())
-            feature.setAttribute(idx, encodeProfileValueDict(d, field))
-        self.assertTrue(speclib.startEditing())
-        speclib.addFeature(feature)
-        self.assertTrue(speclib.commitChanges())
-        self.showGui(slw)
-        QgsProject.instance().removeAllMapLayers()
-
     def test_badBands(self):
 
         d = prepareProfileValueDict(y=[1, 2, 3, 4, 4, 3, 2, 3, 3, 4],
                                     bbl=[1, 1, 0, 1, 0, 1, 0, 1, 1, 1])
 
-        slw = SpectralLibraryWidget()
-
-        speclib = slw.speclib()
+        speclib = TestObjects.createSpectralLibrary(n=0)
+        slw = SpectralLibraryWidget(speclib=speclib)
 
         feature = QgsFeature(speclib.fields())
         for field in profile_fields(feature):
             idx = feature.fields().lookupField(field.name())
             feature.setAttribute(idx, encodeProfileValueDict(d, field))
-        self.assertTrue(speclib.startEditing())
-        speclib.addFeature(feature)
-        self.assertTrue(speclib.commitChanges())
+        with edit(speclib):
+            speclib.addFeature(feature)
+
         self.showGui(slw)
         QgsProject.instance().removeAllMapLayers()
 
@@ -657,8 +580,6 @@ class TestSpeclibPlotting(TestCase):
         QgsProject.instance().addMapLayers([sl1, sl2, vl1, vl2, rl1, rl2])
 
         w = SpectralLibraryWidget(speclib=sl1, default_style=style)
-        VT = SpectralLibraryWidget.ViewType
-        w.setViewVisibility(VT.ProfileView | VT.ProfileViewSettings)  # | VT.AttributeTable)
         w.plotModel()
         self.showGui(w)
         QgsProject.instance().removeAllMapLayers()
@@ -697,17 +618,18 @@ class TestSpeclibPlotting(TestCase):
     def test_SpectralLibraryPlotWidget(self):
 
         speclib = TestObjects.createSpectralLibrary(n_bands=[-1, 12])
-        canvas = QgsMapCanvas()
-        dv = QgsDualView()
-        dv.init(speclib, canvas)
+        rl1 = TestObjects.createRasterLayer(nb=255)
+        rl2 = TestObjects.createRasterLayer(nb=1)
+        rl1.setName('MultiBand')
+        rl2.setName('SingleBand')
+        project = QgsProject()
 
+        project.addMapLayers([speclib, rl1, rl2])
         w = SpectralLibraryPlotWidget()
-        w.setDualView(dv)
-
-        proj = QgsProject()
-        w.setProject(proj)
+        w.setProject(project)
 
         visModel = w.treeView.model().sourceModel()
+        self.assertEqual(visModel, w.plotModel())
         cnt = visModel.rowCount()
         self.assertIsInstance(visModel, SpectralProfilePlotModel)
 
@@ -725,15 +647,6 @@ class TestSpeclibPlotting(TestCase):
 
         w.treeView.selectPropertyGroups(visModel.visualizations()[0])
         w.btnRemoveProfileVis.click()
-
-        rl1 = TestObjects.createRasterLayer(nb=255)
-        rl2 = TestObjects.createRasterLayer(nb=1)
-        rl1.setName('MultiBand')
-        rl2.setName('SingleBand')
-
-        proj.addMapLayers([rl1, rl2, speclib])
-
-        QgsProject.instance().removeAllMapLayers()
 
         speclib.startEditing()
         speclib.addAttribute(create_profile_field('profiles3'))
@@ -753,7 +666,7 @@ class TestSpeclibPlotting(TestCase):
         major.setLayout(layout)
 
         self.showGui(major)
-        QgsProject.instance().removeAllMapLayers()
+        project.removeAllMapLayers()
 
     def test_rendering(self):
 

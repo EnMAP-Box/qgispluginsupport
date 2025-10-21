@@ -9,17 +9,16 @@ from typing import Dict, Iterator, List, Optional, Set, Tuple, Union
 import numpy as np
 
 from qgis.PyQt.QtCore import QRectF
-from qgis.PyQt.QtCore import pyqtSignal, QMimeData, QModelIndex, QPoint, QSortFilterProxyModel, Qt
+from qgis.PyQt.QtCore import pyqtSignal, QMimeData, QModelIndex, QSortFilterProxyModel, Qt
 from qgis.PyQt.QtGui import QColor, QStandardItem, QStandardItemModel
-from qgis.PyQt.QtWidgets import QApplication, QTableView
+from qgis.PyQt.QtWidgets import QApplication
 from qgis.PyQt.QtWidgets import QGraphicsSceneMouseEvent
 from qgis.PyQt.QtXml import QDomDocument, QDomElement
 from qgis.core import QgsExpression, QgsExpressionContext, QgsExpressionContextScope, QgsExpressionContextUtils, \
     QgsFeature, QgsFeatureRenderer, QgsFeatureRequest, QgsField, QgsMarkerSymbol, QgsProject, QgsProperty, \
     QgsReadWriteContext, QgsRenderContext, QgsSingleSymbolRenderer, QgsSymbol, QgsVectorLayer, QgsVectorLayerCache
-from qgis.gui import QgsDualView
 from .spectrallibraryplotitems import SpectralProfilePlotItem, SpectralViewBox
-from ..core import is_spectral_library, profile_field_indices, profile_field_list, profile_fields
+from ..core import profile_field_indices, profile_field_list, profile_fields, is_profile_field
 from ..core.spectrallibrary import SpectralLibraryUtils
 from ..core.spectralprofile import decodeProfileValueDict
 from ..gui.spectrallibraryplotitems import PlotUpdateBlocker, SpectralProfilePlotDataItem, SpectralProfilePlotWidget
@@ -112,6 +111,11 @@ class SpectralProfilePlotModel(QStandardItemModel):
     sigPlotWidgetStyleChanged = pyqtSignal()
     sigMaxProfilesExceeded = pyqtSignal()
     sigOpenAttributeTableRequest = pyqtSignal(str)
+    sigOpenLayerPropertiesRequest = pyqtSignal(str)
+    sigOpenSpectralProcessingRequest = pyqtSignal(str)
+    sigProfileCandidatesChanged = pyqtSignal()
+    sigLayersChanged = pyqtSignal()
+
     NOT_INITIALIZED = -1
     MAX_PROFILES_DEFAULT: int = 516
 
@@ -141,14 +145,13 @@ class SpectralProfilePlotModel(QStandardItemModel):
         super().__init__(*args, **kwds)
 
         self.mBlockUpdates: bool = False
-
-        self.mAddProfileCandidates: bool = False
+        self.mAddProfileCandidatesAutomatically: bool = False
         self.mPROFILE_CANDIDATES: Dict[str, List] = {}
 
         self.mSTATS_ITEMS = []
 
-        # allows to overwrite automatic generated plot styles
-        self.mPROFILE_CANDIDATE_STYLES: Dict[Tuple[str, str], Dict[int, PlotStyle]] = {}
+        # allows overwriting automatic generated plot styles
+        # self.mPROFILE_CANDIDATE_STYLES: Dict[Tuple[str, str], Dict[int, PlotStyle]] = {}
 
         self.mHoverHTML: Dict[SpotItem, str] = dict()
         self.mSELECTED_SPOTS: Dict[str, Tuple[int, int]] = dict()
@@ -158,6 +161,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
         self.mLayerCaches: Dict[str, QgsVectorLayerCache] = dict()
         self.nUpdates: int = 0
         self.mProject: QgsProject = QgsProject.instance()
+        self.mProject.layersWillBeRemoved.connect(self.onLayersWillBeRemoved)
 
         self.mSignalProxies: Dict[str, List[SignalProxy]] = dict()
         self.mModelItems: Set[PropertyItemGroup] = set()
@@ -213,8 +217,6 @@ class SpectralProfilePlotModel(QStandardItemModel):
         # self.mCache3PlotData: Dict[PLOT_DATA_KEY, dict] = dict()
 
         self.mUnitConverterFunctionModel = UnitConverterFunctionModel.instance()
-        self.mDualView: QgsDualView = Optional[None]
-        self.mSpeclib: QgsVectorLayer = Optional[None]
 
         self.mXUnitModel: SpectralProfilePlotXAxisUnitModel = SpectralProfilePlotXAxisUnitModel.instance()
         self.mXUnit: UnitWrapper = self.mXUnitModel.findUnitWrapper(BAND_NUMBER)
@@ -381,8 +383,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
             # 1. check general settings
             requires_replot = ['x_unit',
                                'sort_bands', 'show_bad_bands',
-                               'max_profiles', '',
-                               'show_candidates', 'candidate_style']
+                               'max_profiles', '']
             requires_restats = ['statistics']
             for k in set(g_old.keys()) | set(g_new.keys()):
                 if g_old.get(k, None) != g_new.get(k, None):
@@ -403,7 +404,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
                     # check if visualization requires a reloading of vector layer
                     requires_replot = ['vis_id', 'name', 'field_name', 'layer_id',
                                        'layer_source', 'layer_name', 'layer_provider', 'label_expression',
-                                       'filter_expression',
+                                       'filter_expression', 'show_candidates', 'candidate_style',
                                        'color_expression', 'tooltip_expression', 'plot_style']
                     requires_restats = ['statistics']
                     for v_o, v_n in zip(v_old, v_new):
@@ -489,6 +490,10 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
     def setProject(self, project: QgsProject):
         assert isinstance(project, QgsProject)
+
+        if self.mProject != project:
+            self.mProject.layersWillBeRemoved.disconnect(self.onLayersWillBeRemoved)
+
         self.mProject = project
         for item in self.mModelItems:
             if isinstance(item, PropertyItemGroup):
@@ -523,7 +528,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
             if not feature.isValid():
                 return None
 
-            raw_data = self.mCACHE_PROFILE_DATA[layer_id][fieldIndex].get(feature.id, NI)
+            raw_data = self.mCACHE_PROFILE_DATA[layer_id][fieldIndex].get(feature.id(), NI)
 
             if raw_data == NI or not self.mEnableCaching:
                 # load profile data
@@ -711,9 +716,30 @@ class SpectralProfilePlotModel(QStandardItemModel):
     def layerRendererVisualizations(self) -> List[RasterRendererGroup]:
         return [v for v in self.propertyGroups() if isinstance(v, RasterRendererGroup)]
 
+    def sourceLayers(self) -> List[QgsVectorLayer]:
+        """
+        Returns the set source layers which is used to visualize profiles from
+        """
+        layers = []
+        for vis in self.visualizations():
+            lyr = vis.layer()
+            if isinstance(lyr, QgsVectorLayer) and lyr.isValid() and lyr not in layers:
+                layers.append(lyr)
+        return layers
+
     def visualizations(self) -> List[ProfileVisualizationGroup]:
 
         return [v for v in self.propertyGroups() if isinstance(v, ProfileVisualizationGroup)]
+
+    def spectralLibraries(self) -> List[QgsVectorLayer]:
+
+        speclibs = []
+
+        for vis in self.visualizations():
+            layer = vis.layer()
+            if layer and layer not in speclibs:
+                speclibs.append(layer)
+        return speclibs
 
     def insertPropertyGroup(self,
                             index: Union[int, QModelIndex],
@@ -728,6 +754,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
         if isinstance(index, QModelIndex):
             index = index.row()
 
+        layers_changed = False
         for i, item in enumerate(items):
             assert isinstance(item, PropertyItemGroup)
 
@@ -752,8 +779,15 @@ class SpectralProfilePlotModel(QStandardItemModel):
             for zLevel in sorted(GROUPS.keys()):
                 new_group_order += GROUPS[zLevel]
 
+            if isinstance(item, ProfileVisualizationGroup):
+                layers_changed = True
+
             self.mModelItems.add(item)
             self.insertRow(new_group_order.index(item), item)
+
+        if layers_changed:
+            self.updateSpeclibConnections()
+            self.sigLayersChanged.emit()
 
     def removePropertyItemGroups(self, groups: Union[PropertyItemGroup, List[PropertyItemGroup]]):
 
@@ -774,6 +808,8 @@ class SpectralProfilePlotModel(QStandardItemModel):
                         self.takeRow(r)
                         break
 
+            self.sigLayersChanged.emit()
+            self.updateSpeclibConnections()
             self.updatePlot()
 
     def selectedCurveFeatures(self) -> Dict[str, set]:
@@ -1016,10 +1052,12 @@ class SpectralProfilePlotModel(QStandardItemModel):
         for lid, fids in SELECTED_FEATURES.items():
             layer = self.project().mapLayer(lid)
             if isinstance(layer, QgsVectorLayer) and layer.isValid():
-                proxy: SignalProxy = self.mSignalProxies[layer.id()][0]
-                proxy.blockSignal = True
+                proxies = self.mSignalProxies.get(lid, [])
+                for p in proxies:
+                    p.blockSignal = True
                 layer.selectByIds(list(set(fids)))
-                proxy.blockSignal = False
+                for p in proxies:
+                    p.blockSignal = False
 
     def _updateCurveSelectionFromFeatures(self):
         """
@@ -1194,6 +1232,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
         settings = settings.copy()
         if self.updatesBlocked():
+            logger.debug('updatePlot - updateBlocked!')
             return
 
         if not isinstance(self.mPlotWidget, SpectralProfilePlotWidget):
@@ -1210,13 +1249,6 @@ class SpectralProfilePlotModel(QStandardItemModel):
         antialiasing = settings['general'].get('antialiasing', False)
         self.mCurrentSelectionColor = QColor(settings['general']['color_sc'])
 
-        show_candidates = settings['general'].get('show_candidates', False)
-        default_candidate_style = settings['general'].get('candidate_style')
-        if isinstance(default_candidate_style, dict):
-            default_candidate_style = PlotStyle.fromMap(default_candidate_style)
-        else:
-            default_candidate_style = self.mDefaultProfileCandidateStyle
-
         def func_selected_style(plotStyle: PlotStyle):
             style2 = plotStyle.clone()
             style2.setLineWidth(plotStyle.lineWidth() + 2)
@@ -1228,13 +1260,12 @@ class SpectralProfilePlotModel(QStandardItemModel):
         for vis in visualizations:
             lid = vis.get('layer_id')
             layer_ids.append(lid)
+
             if lid in self.mLayerCaches:
                 continue
             else:
                 # lsrc = vis.get('layer_source', speclib.source())
                 lyr = self.project().mapLayer(lid)
-                if lyr is None:
-                    s = ""
 
                 if isinstance(lyr, QgsVectorLayer) and lyr.isValid():
                     self.mLayerCaches[lid] = QgsVectorLayerCache(lyr, 1024)
@@ -1339,7 +1370,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
             vis_plot_style: PlotStyle = PlotStyle.fromMap(vis['plot_style'])
 
-            candidate_plot_styles = self.mPROFILE_CANDIDATE_STYLES.get((layer_id, field_name), {})
+            # candidate_plot_styles = self.mPROFILE_CANDIDATE_STYLES.get((layer_id, field_name), {})
 
             feature_renderer: QgsFeatureRenderer = layer.renderer()
             if isinstance(feature_renderer, QgsFeatureRenderer):
@@ -1349,6 +1380,13 @@ class SpectralProfilePlotModel(QStandardItemModel):
                 # layers without geometry do not have a symbol renderer
                 add_symbol_scope = False
                 feature_renderer = self.mDefaultSymbolRenderer.clone()
+
+            show_candidates = vis.get('show_candidates', False)
+            candidate_style = vis.get('candidate_style')
+            if isinstance(candidate_style, dict):
+                candidate_style = PlotStyle.fromMap(candidate_style)
+            else:
+                candidate_style = self.mDefaultProfileCandidateStyle.clone()
 
             for iFeature, feature in enumerate(layer_cache.getFeatures(request)):
                 feature: QgsFeature
@@ -1373,19 +1411,18 @@ class SpectralProfilePlotModel(QStandardItemModel):
                 # add_dt('plotData2', t0)
 
                 if not isinstance(plot_data, dict):
-                    # profile data can not be transformed to requested x-unit
+                    # profile data cannot be transformed to the requested x-unit
                     continue
 
                 feature_context = QgsExpressionContext(vis_context)
                 feature_context.setFeature(feature)
 
                 # get the curve plot style
-                if show_candidates and is_candidate:
-                    # apply a candidate style
-                    plot_style: PlotStyle = candidate_plot_styles.get(fid, default_candidate_style).clone()
-                    s = ""
-                    # line_color = candidate_style.lineColor()
-
+                if is_candidate:
+                    if show_candidates:
+                        plot_style = candidate_style
+                    else:
+                        continue
                 else:
                     # get standard visualization style
                     plot_style = vis_plot_style.clone()
@@ -1488,7 +1525,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
                 p.sigPointsClicked.connect(self.onPointsClicked)
                 p.sigPointsHovered.connect(self.onPointsHovered)
                 p.curve.setAcceptHoverEvents(True)
-
+                p.setCurveClickable(True, 3)
                 p.scatter.setAcceptHoverEvents(True)
 
                 p.scatter.setData(  # hoverSymbol=p.scatter.opts['symbol'],
@@ -1570,91 +1607,8 @@ class SpectralProfilePlotModel(QStandardItemModel):
             profileData['xUnit'] = xUnit
             return profileData
 
-    def featurePriority(self) -> List[int]:
-        """
-        Returns the list of potential feature keys to be visualized, ordered by its importance.
-        Can contain keys to "empty" profiles, where the value profile_field BLOB is NULL
-        1st position = most important, should be plotted on top of all other profiles
-        Last position = can be skipped if n_max is reached
-        """
-        if not is_spectral_library(self.speclib()):
-            return []
-
-        selectedOnly = self.mShowSelectedFeaturesOnly
-
-        EXISTING_IDs = self.speclib().allFeatureIds()
-
-        selectedIds = self.speclib().selectedFeatureIds()
-
-        dualView = self.dualView()
-        if isinstance(dualView, QgsDualView) and dualView.filteredFeatureCount() > 0:
-            allIDs = dualView.filteredFeatures()
-        else:
-            allIDs = EXISTING_IDs[:]
-
-        # Order:
-        # 1. Visible in table
-        # 2. Selected
-        # 3. Others
-
-        # overlaid features / current spectral
-
-        priority1: List[int] = []  # visible features
-        priority2: List[int] = []  # selected features
-        priority3: List[int] = []  # any other : not visible / not selected
-
-        if isinstance(dualView, QgsDualView):
-            tv = dualView.tableView()
-            assert isinstance(tv, QTableView)
-            if not selectedOnly:
-                rowHeight = tv.rowViewportPosition(1) - tv.rowViewportPosition(0)
-                if rowHeight > 0:
-                    visible_fids = []
-                    for y in range(0, tv.viewport().height(), rowHeight):
-                        idx = dualView.tableView().indexAt(QPoint(0, y))
-                        if idx.isValid():
-                            visible_fids.append(tv.model().data(idx, role=Qt.UserRole))
-                    priority1.extend(visible_fids)
-            priority2 = self.dualView().masterModel().layer().selectedFeatureIds()
-            if not selectedOnly:
-                priority3 = dualView.filteredFeatures()
-        else:
-            priority2 = selectedIds
-            if not selectedOnly:
-                priority3 = allIDs
-
-        toVisualize = sorted(set(priority1 + priority2 + priority3),
-                             key=lambda k: (k not in priority1, k not in priority2, k))
-
-        # remove deleted FIDs -> see QGIS bug
-        toVisualize = [fid for fid in toVisualize if fid in EXISTING_IDs]
-        return toVisualize
-
     def generalSettings(self) -> GeneralSettingsGroup:
         return self.mGeneralSettings
-
-    def dualView(self) -> QgsDualView:
-        return self.mDualView
-
-    def setDualView(self, dualView: QgsDualView):
-
-        if self.mDualView != dualView:
-            if isinstance(self.mDualView, QgsDualView):
-                # disconnect
-                self.mDualView.tableView().selectionModel().selectionChanged.disconnect(self.onDualViewSelectionChanged)
-                self.mDualView.tableView().verticalScrollBar().sliderMoved.disconnect(self.onDualViewSliderMoved)
-
-            self.mDualView = dualView
-
-            if isinstance(self.mDualView, QgsDualView):
-                self.mDualView.tableView().selectionModel().selectionChanged.connect(self.onDualViewSelectionChanged)
-                self.mDualView.tableView().verticalScrollBar().sliderMoved.connect(self.onDualViewSliderMoved)
-                # self.mDualView.view()
-                speclib = dualView.masterModel().layer()
-
-                if speclib.id() not in self.project().mapLayers().keys():
-                    self.project().addMapLayer(speclib)
-                self.connectSpeclibSignals(speclib)
 
     def clearCurveSelection(self):
         """
@@ -1670,31 +1624,34 @@ class SpectralProfilePlotModel(QStandardItemModel):
     def setDefaultProfileStyle(self, style: PlotStyle):
         self.mDefaultProfileStyle = style
 
+    def hasProfileCandidates(self) -> bool:
+        return len(self.mPROFILE_CANDIDATES) > 0
+
     def confirmProfileCandidates(self, update_plot: bool = True):
         """
-        Confirms the profile candidates, so that they will not be removed
-        when new candidates are added calling addProfileCandidates().
+        Confirms the profile candidates so that they will not be removed
+        when new candidates are added.
         """
         self.mPROFILE_CANDIDATES.clear()
         if update_plot:
             self.updatePlot()
+        self.sigProfileCandidatesChanged.emit()
 
-    def addProfileCandidates(self,
-                             candidates: Dict[str, List[QgsFeature]],
-                             styles: Optional[Dict[str, Dict[str, PlotStyle]]] = None):
+    def setAddProfileCandidatesAutomatically(self, b: bool):
+        self.mAddProfileCandidatesAutomatically = b
+
+    def addProfileCandidates(self, candidates: Dict[str, List[QgsFeature]]):
         """
         Adds QgsFeatures to be considered as profile candidates.
         :param candidates: Dictionary with profile candidates as {layer id:[List of QgsFeatures]}.
-        :param styles: optional, Dictionary with profile styles for candidate profiles,
-                       as {layer id: {field name: PlotStyle}}
-
         """
         assert isinstance(candidates, dict)
 
         with SpectralProfilePlotModel.UpdateBlocker(self) as blocker:
-            if self.mAddProfileCandidates:
+            if self.mAddProfileCandidatesAutomatically:
                 self.confirmProfileCandidates(update_plot=False)
             else:
+                # remove previous candidates
                 self.clearProfileCandidates()
 
             visualized_layer_ids = [v.layerId() for v in self.visualizations()]
@@ -1720,13 +1677,15 @@ class SpectralProfilePlotModel(QStandardItemModel):
                         layer.committedFeaturesAdded.connect(check_commited_features_added)
                         layer.commitChanges(stopEditing=stop_editing)
                         layer.committedFeaturesAdded.disconnect(check_commited_features_added)
-                        self.mPROFILE_CANDIDATES[layer_id] = new_fids
-                        if isinstance(styles, dict):
-                            layer_styles = styles.get(layer_id, {})
-                            for field_name, plot_style in layer_styles.items():
-                                fid_styles = {fid: plot_style for fid in new_fids}
-                                self.mPROFILE_CANDIDATE_STYLES[(layer_id, field_name)] = fid_styles
-        self.updatePlot()
+                        if not self.mAddProfileCandidatesAutomatically:
+                            self.mPROFILE_CANDIDATES[layer_id] = new_fids
+                        # if isinstance(styles, dict):
+                        #     layer_styles = styles.get(layer_id, {})
+                        #     for field_name, plot_style in layer_styles.items():
+                        #         fid_styles = {fid: plot_style for fid in new_fids}
+                        #         self.mPROFILE_CANDIDATE_STYLES[(layer_id, field_name)] = fid_styles
+        # self.updatePlot()
+        self.sigProfileCandidatesChanged.emit()
 
     def clearProfileCandidates(self):
         for layer_id, old_fids in list(self.mPROFILE_CANDIDATES.items()):
@@ -1749,6 +1708,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
                     layer.startEditing()
 
         self.mPROFILE_CANDIDATES.clear()
+        self.sigProfileCandidatesChanged.emit()
 
     def flushProxySignals(self):
         """
@@ -1758,6 +1718,21 @@ class SpectralProfilePlotModel(QStandardItemModel):
             for s in signals:
                 s.flush()
 
+    def updateSpeclibConnections(self):
+
+        required = []
+        for vis in self.visualizations():
+            lid = vis.layerId()
+            required.append(lid)
+            if lid not in self.mSignalProxies.keys():
+                layer = vis.layer()
+                if isinstance(layer, QgsVectorLayer):
+                    self.connectSpeclibSignals(layer)
+
+        to_remove = [k for k in self.mSignalProxies.keys() if k not in required]
+        for k in to_remove:
+            self.disconnectSpeclibSignals(k)
+
     def connectSpeclibSignals(self, speclib: QgsVectorLayer):
         """"
         Connects signals to the given spectral library vector layer.
@@ -1765,18 +1740,45 @@ class SpectralProfilePlotModel(QStandardItemModel):
         rl = self._update_rate_limit
 
         def _plotted_value_changed(lid, *args, **kwargs):
-            fid, aid, value = args[0][0]
-            if aid in self.mLastReferencedColumns.get(lid, set()):
-                self.updatePlot()
+            t = args[0][0]
+            if len(t) == 3:
+                fid, aidx, value = t
+                if aidx in self.mLastReferencedColumns.get(lid, set()):
+                    self.updatePlot()
+
+        def _attribute_added(lid, aid):
+            s = ""
+            lyr = self.project().mapLayer(lid)
+            if isinstance(lyr, QgsVectorLayer):
+                if isinstance(aid, tuple):
+                    aid = aid[0]
+                field = lyr.fields().field(aid)
+                if is_profile_field(field):
+                    s = ""
+
+        def _attribute_removed(lid, *args, **kwargs):
+            s = ""
 
         if speclib.id() not in self.mSignalProxies:
+            # speclib.featureAdded.connect(onFeatureAdded)
+            # speclib.attributeAdded.connect(_attribute_added)
             proxies = [
                 SignalProxyUndecorated(speclib.selectionChanged, rateLimit=rl, slot=self.onSpeclibSelectionChanged),
                 SignalProxy(speclib.attributeValueChanged, delay=1, rateLimit=rl * 10,
                             slot=lambda *args, lid=speclib.id(): _plotted_value_changed(lid, args)),
-                SignalProxyUndecorated(speclib.featuresDeleted, rateLimit=rl, slot=lambda: self.updatePlot()),
-                SignalProxy(speclib.featureAdded, rateLimit=rl, slot=lambda: self.updatePlot()),
+                SignalProxyUndecorated(speclib.featuresDeleted, rateLimit=rl,
+                                       slot=lambda: self.updatePlot()),
+                SignalProxyUndecorated(speclib.featuresDeleted, rateLimit=rl,
+                                       slot=lambda: self.updatePlot()),
+
+                SignalProxyUndecorated(speclib.featureAdded, rateLimit=rl,
+                                       slot=lambda *args, lid=speclib.id(): self.updatePlot()),
+
                 SignalProxy(speclib.styleChanged, rateLimit=rl, slot=self.onSpeclibStyleChanged),
+
+                SignalProxyUndecorated(speclib.attributeAdded, rateLimit=rl,
+                                       slot=lambda aid, lid=speclib.id(): _attribute_added(lid, aid)),
+
                 SignalProxy(speclib.updatedFields, rateLimit=rl, slot=lambda: self.onSpeclibFieldsUpdated),
             ]
 
@@ -1825,6 +1827,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
         if isinstance(item, SpectralProfileLayerFieldItem):
             if isinstance(grp, ProfileVisualizationGroup):
                 grp.mPColor.emitDataChanged()
+                self.sigLayersChanged.emit()
 
         if isinstance(item, RasterRendererGroup):
             s = ""
@@ -1920,8 +1923,8 @@ class SpectralProfilePlotModel(QStandardItemModel):
                         fids.append(fid)
                 speclib.selectByIds(fids)
 
-    def speclib(self) -> QgsVectorLayer:
-        return self.mSpeclib
+    # def speclib(self) -> QgsVectorLayer:
+    #    return self.mSpeclib
 
     def profileFields(self) -> List[QgsField]:
         return profile_field_list(self.speclib())

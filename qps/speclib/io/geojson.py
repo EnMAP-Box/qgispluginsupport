@@ -1,90 +1,19 @@
-import os
 from pathlib import Path
-from typing import Any, List, Union
+from typing import Any, List, Union, Optional
 
 import numpy as np
 
-from qgis.core import QgsCoordinateReferenceSystem, QgsCoordinateTransformContext, QgsExpressionContext, \
-    QgsExpressionContextScope, QgsFeature, QgsField, QgsFields, QgsProcessingFeedback, QgsProject, QgsProperty, \
-    QgsRemappingProxyFeatureSink, QgsRemappingSinkDefinition, QgsVectorFileWriter, QgsVectorLayer
+from qgis.core import (QgsCoordinateReferenceSystem, QgsCoordinateTransformContext,
+                       QgsExpressionContext,
+                       QgsExpressionContextScope, QgsFeature, QgsMapLayer,
+                       QgsField, QgsFields, QgsProcessingFeedback, QgsProject, QgsProperty,
+                       QgsRemappingProxyFeatureSink, QgsRemappingSinkDefinition,
+                       QgsVectorFileWriter, QgsVectorLayer)
+from qgis.core import QgsFeatureIterator
 from ..core import is_profile_field
-from ..core.spectrallibraryio import SpectralLibraryExportWidget, SpectralLibraryImportWidget, SpectralLibraryIO
-from ..core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict
+from ..core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict, SpectralProfileFileReader, \
+    SpectralProfileFileWriter
 from ...qgisenums import QMETATYPE_QSTRING
-
-
-class GeoJsonSpectralLibraryExportWidget(SpectralLibraryExportWidget):
-
-    def __init__(self, *args, **kwds):
-        super().__init__(*args, **kwds)
-
-    def formatName(self) -> str:
-        return GeoJsonSpectralLibraryIO.formatName()
-
-    def supportsMultipleSpectralSettings(self) -> bool:
-        return True
-
-    def supportsMultipleProfileFields(self) -> bool:
-        return True
-
-    def supportsLayerName(self) -> bool:
-        return True
-
-    def spectralLibraryIO(cls) -> 'SpectralLibraryIO':
-        return SpectralLibraryIO.spectralLibraryIOInstances(GeoJsonSpectralLibraryIO)
-
-    def filter(self) -> str:
-        return "GeoJSON (*.geojson)"
-
-    def exportSettings(self, settings: dict) -> dict:
-        speclib = self.speclib()
-        if isinstance(speclib, QgsVectorLayer):
-            settings['crs'] = speclib.crs()
-            settings['wkbType'] = speclib.wkbType()
-        return settings
-
-
-class GeoJsonSpectralLibraryImportWidget(SpectralLibraryImportWidget):
-
-    def __init__(self, *args, **kwds):
-        super(GeoJsonSpectralLibraryImportWidget, self).__init__(*args, **kwds)
-
-        self.mSource: QgsVectorLayer = None
-
-    def spectralLibraryIO(cls) -> 'SpectralLibraryIO':
-        return SpectralLibraryIO.spectralLibraryIOInstances(GeoJsonSpectralLibraryIO)
-
-    def filter(self) -> str:
-        return "GeoJSON (*.geojson)"
-
-    def setSource(self, source: str):
-        lyr = QgsVectorLayer(source)
-        if isinstance(lyr, QgsVectorLayer) and lyr.isValid():
-            lyr.loadDefaultStyle()
-            self.mSource = lyr
-        self.sigSourceChanged.emit()
-
-    def sourceFields(self) -> QgsFields:
-        if isinstance(self.mSource, QgsVectorLayer):
-            return self.mSource.fields()
-        else:
-            return QgsFields()
-
-    def sourceCrs(self) -> QgsCoordinateReferenceSystem:
-        if isinstance(self.mSource, QgsVectorLayer):
-            return self.mSource.crs()
-        else:
-            return None
-
-    def createExpressionContext(self) -> QgsExpressionContext:
-        context = QgsExpressionContext()
-        context.setFields(self.sourceFields())
-        if isinstance(self.mSource, QgsVectorLayer) and self.mSource.featureCount() > 0:
-            for f in self.mSource.getFeatures():
-                if isinstance(f, QgsFeature):
-                    context.setFeature(f)
-                    break
-        return context
 
 
 class GeoJsonFieldValueConverter(QgsVectorFileWriter.FieldValueConverter):
@@ -131,91 +60,100 @@ class GeoJsonFieldValueConverter(QgsVectorFileWriter.FieldValueConverter):
         return fields
 
 
-class GeoJsonSpectralLibraryIO(SpectralLibraryIO):
+class GeoJSONSpectralLibraryWriter(SpectralProfileFileWriter):
 
-    def __init__(self, *args, **kwds):
+    def __init__(self, *args,
+                 crs: QgsCoordinateReferenceSystem = None,
+                 rfc7946: bool = True, **kwds):
         super().__init__(*args, **kwds)
 
+        if crs is None:
+            crs = QgsCoordinateReferenceSystem('EPSG:4326')
+        self.mCrs = crs
+        self.mRFC7946 = rfc7946
+
     @classmethod
-    def formatName(cls) -> str:
+    def id(cls) -> str:
         return 'GeoJSON'
 
     @classmethod
-    def createExportWidget(cls) -> SpectralLibraryExportWidget:
-        return GeoJsonSpectralLibraryExportWidget()
+    def filterString(cls) -> bool:
+        return "GeoJSON (*.geojson)"
 
-    @classmethod
-    def createImportWidget(cls) -> SpectralLibraryImportWidget:
-        return GeoJsonSpectralLibraryImportWidget()
+    def writeFeatures(self,
+                      path: Union[str, Path],
+                      features: List[QgsFeature],
+                      feedback: Optional[QgsProcessingFeedback] = None) -> List[Path]:
 
-    @classmethod
-    def exportProfiles(cls,
-                       path: Union[str, Path],
-                       profiles,
-                       exportSettings: dict = dict(),
-                       feedback: QgsProcessingFeedback = QgsProcessingFeedback(), **kwargs) -> List[str]:
+        path = Path(path)
 
-        profiles, fields, crs, wkbType = cls.extractWriterInfos(profiles, exportSettings)
-        if len(profiles) == 0:
+        if feedback is None:
+            feedback = QgsProcessingFeedback()
+
+        if isinstance(features, QgsFeatureIterator):
+            features = list(features)
+
+        if len(features) == 0:
+            feedback.pushInfo('No features to write')
             return []
+
+        if isinstance(features, QgsFeatureIterator):
+            features = list(features)
+
+        f0 = features[0]
+
+        srcFields = f0.fields()
+        wkbType = f0.geometry().wkbType()
+
+        layerName = Path(path).stem
 
         transformContext = QgsProject.instance().transformContext()
         crsJson = QgsCoordinateReferenceSystem('EPSG:4326')
 
-        newLayerName = exportSettings.get('layer_name', '')
-
         path: Path = Path(path)
 
-        if newLayerName == '':
-            newLayerName = os.path.basename(newLayerName)
+        datasourceOptions = []
 
-        datasourceOptions = exportSettings.get('datasourceOptions', dict())
-        assert isinstance(datasourceOptions, dict)
-        rfc7946: bool = exportSettings.get('rfc7946', True) is True
-
-        datasourceOptions = exportSettings.get('datasourceOptions',
-                                               [])  # 'ATTRIBUTES_SKIP=NO', 'DATE_AS_STRING=YES', 'ARRAY_AS_STRING=YES']
-
-        layerOptions = exportSettings.get('layerOptions', [f'DESCRIPTION={newLayerName}'])
-        layerOptions.insert(0, f'RFC7946={"YES" if rfc7946 else "NO"}')
+        layerOptions = [f'DESCRIPTION={layerName}']
+        layerOptions.insert(0, f'RFC7946={"YES" if self.mRFC7946 else "NO"}')
 
         options = QgsVectorFileWriter.SaveVectorOptions()
         options.actionOnExistingFile = QgsVectorFileWriter.ActionOnExistingFile.CreateOrOverwriteFile
         options.feedback = feedback
         options.datasourceOptions = datasourceOptions
         options.layerOptions = layerOptions
-        options.fileEncoding = exportSettings.get('fileEncoding', 'UTF-8')
+        options.fileEncoding = 'UTF-8'
         options.skipAttributeCreation = False
         options.driverName = 'GeoJSON'
 
-        converter = GeoJsonFieldValueConverter(fields)
+        converter = GeoJsonFieldValueConverter(srcFields)
         options.fieldValueConverter = converter
-        convertedFields = converter.convertedFields()
+        dstFields = converter.convertedFields()
 
-        writer_crs: QgsCoordinateReferenceSystem = crsJson if rfc7946 else crs
+        writer_crs: QgsCoordinateReferenceSystem = crsJson if self.mRFC7946 else self.mCrs
         writer: QgsVectorFileWriter = QgsVectorFileWriter.create(path.as_posix(),
-                                                                 convertedFields,
+                                                                 dstFields,
                                                                  wkbType,
                                                                  writer_crs,
                                                                  transformContext,
                                                                  options)
         # we might need to transform the coordinates to JSON EPSG:4326
         mappingDefinition = QgsRemappingSinkDefinition()
-        mappingDefinition.setSourceCrs(crs)
+        mappingDefinition.setSourceCrs(self.mCrs)
         mappingDefinition.setDestinationCrs(writer_crs)
-        mappingDefinition.setDestinationFields(fields)
+        mappingDefinition.setDestinationFields(dstFields)
         mappingDefinition.setDestinationWkbType(wkbType)
 
-        for field in fields:
+        for field in srcFields:
             field: QgsField
             mappingDefinition.addMappedField(field.name(), QgsProperty.fromField(field.name()))
 
         expressionContext = QgsExpressionContext()
-        expressionContext.setFields(fields)
+        expressionContext.setFields(srcFields)
         expressionContext.setFeedback(feedback)
 
         scope = QgsExpressionContextScope()
-        scope.setFields(fields)
+        scope.setFields(srcFields)
         expressionContext.appendScope(scope)
         transformationContext = QgsCoordinateTransformContext()
 
@@ -224,27 +162,44 @@ class GeoJsonSpectralLibraryIO(SpectralLibraryIO):
         featureSink.setTransformContext(transformationContext)
 
         if writer.hasError() != QgsVectorFileWriter.NoError:
-            raise Exception(f'Error when creating {path}: {writer.errorMessage()}')
+            feedback.reportError(f'Error when creating {path}: {writer.errorMessage()}')
+            return []
 
         featureSink.flushBuffer()
 
-        if not featureSink.addFeatures(profiles):
-            errSink = featureSink.lastError()
-            if writer.errorCode() != QgsVectorFileWriter.NoError:
-                raise Exception(f'Error when creating feature: {writer.errorMessage()}')
+        if not featureSink.addFeatures(features):
+            feedback.reportError(f'Error when creating feature: {writer.errorMessage()}')
+            return []
 
         del writer
 
-        # set profile column styles etc.
-        cls.copyEditorWidgetSetup(path.as_posix(), fields)
+        lyr = QgsVectorLayer(path.as_posix())
+        if lyr.isValid():
+            for dstField in dstFields:
+                i = lyr.fields().lookupField(dstField.name())
+                if i >= 0:
+                    lyr.setEditorWidgetSetup(i, dstField.editorWidgetSetup())
+            msg, success = lyr.saveDefaultStyle(QgsMapLayer.StyleCategory.AllStyleCategories)
+            if not success:
+                feedback.reportError(msg)
 
-        return [path.as_posix()]
+        return [path]
+
+
+class GeoJSONSpectralLibraryReader(SpectralProfileFileReader):
+
+    def __init__(self, *args, **kwds):
+        super().__init__(*args, **kwds)
 
     @classmethod
-    def importProfiles(cls,
-                       path: str,
-                       importSettings: dict = dict(),
-                       feedback: QgsProcessingFeedback = QgsProcessingFeedback()) -> List[QgsFeature]:
-        lyr = QgsVectorLayer(Path(path).as_posix())
+    def id(cls) -> str:
+        return 'GeoJSON'
+
+    @classmethod
+    def canReadFile(cls, path: Union[str, Path]) -> bool:
+        return Path(path).suffix == '.geojson'
+
+    def asFeatures(self) -> List[QgsFeature]:
+        lyr = QgsVectorLayer(self.path().as_posix())
         lyr.loadDefaultStyle()
         return list(lyr.getFeatures())

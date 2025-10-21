@@ -35,6 +35,7 @@ from qgis.core import QgsCoordinateReferenceSystem, QgsFeature, QgsFeatureReques
     QgsProject, QgsRaster, QgsRasterDataProvider, QgsRasterIdentifyResult, QgsRasterLayer, QgsRectangle, QgsVector, \
     QgsVectorLayer
 from qgis.core import QgsWkbTypes, QgsExpressionContextUtils
+from qgis.gui import QgsDockWidget
 from qps.speclib.core import is_spectral_library
 from qps.speclib.core.spectralprofile import decodeProfileValueDict
 from qps.testing import start_app, TestCase, TestObjects
@@ -96,6 +97,11 @@ class TestUtils(TestCase):
                         loadUi(pathUi, self)
             elif baseClass == 'QGroupBox':
                 class TestWidget(QGroupBox):
+                    def __init__(self):
+                        super().__init__()
+                        loadUi(pathUi, self)
+            elif baseClass == 'QgsDockWidget':
+                class TestWidget(QgsDockWidget):
                     def __init__(self):
                         super().__init__()
                         loadUi(pathUi, self)
