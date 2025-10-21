@@ -37,6 +37,27 @@ class TestSubDataSets(TestCase):
             for r in results:
                 self.assertIsInstance(r, QgsProviderSublayerDetails)
 
+    def test_tanager_h5(self):
+
+        path_tanager = r'/home/jakimowb/Downloads/20250510_005001_00_4001_basic_radiance.h5'
+        if os.path.isfile(path_tanager):
+            task = SubDatasetLoadingTask([path_tanager])
+            assert task.run()
+
+            from qgis.gui import QgsProviderSublayersDialog
+
+            results = task.results()
+            for p, sublayers in results.items():
+                for d in sublayers:
+                    self.assertIsInstance(d, QgsProviderSublayerDetails)
+                    d2 = QgsProviderSublayersDialog(d.uri(), d.providerKey(), d.uri(), [])
+                    self.showGui(d2)
+                    d.providerKey()
+
+            d = SubDatasetSelectionDialog()
+            d.setFiles([path_tanager])
+            self.showGui(d)
+
     @unittest.skipIf(not TestObjects.repoDirGDAL(), 'Test requires GDAL repo testdata')
     def test_subdatasetDialog(self):
 
