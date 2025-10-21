@@ -1,5 +1,6 @@
 import os
 import unittest
+from pathlib import Path
 
 from osgeo import gdal
 
@@ -8,10 +9,10 @@ from qgis.core import QgsApplication, QgsProviderSublayerDetails
 from qps.subdatasets import SubDatasetLoadingTask, SubDatasetSelectionDialog
 from qps.testing import start_app, TestCase, TestObjects
 
+PATH_TANAGER = Path(os.environ.get('PATH_TANAGER_EXAMPLE', ''))
 start_app()
 
 
-@unittest.skipIf(not TestObjects.repoDirGDAL(), 'Test requires GDAL repo testdata')
 class TestSubDataSets(TestCase):
     @unittest.skipIf(not TestObjects.repoDirGDAL(), 'Test requires GDAL repo testdata')
     def test_subdatasettask(self):
@@ -37,26 +38,23 @@ class TestSubDataSets(TestCase):
             for r in results:
                 self.assertIsInstance(r, QgsProviderSublayerDetails)
 
+    @unittest.skipIf(not PATH_TANAGER.is_file(), 'Test requires Tanager h5 file. Set PATH_TANAGER_EXAMPLE')
     def test_tanager_h5(self):
 
-        path_tanager = r'/home/jakimowb/Downloads/20250510_005001_00_4001_basic_radiance.h5'
-        if os.path.isfile(path_tanager):
-            task = SubDatasetLoadingTask([path_tanager])
-            assert task.run()
+        task = SubDatasetLoadingTask([PATH_TANAGER])
+        assert task.run()
 
-            from qgis.gui import QgsProviderSublayersDialog
+        results = task.results()
+        for p, sublayers in results.items():
+            for d in sublayers:
+                self.assertIsInstance(d, QgsProviderSublayerDetails)
 
-            results = task.results()
-            for p, sublayers in results.items():
-                for d in sublayers:
-                    self.assertIsInstance(d, QgsProviderSublayerDetails)
-                    d2 = QgsProviderSublayersDialog(d.uri(), d.providerKey(), d.uri(), [])
-                    self.showGui(d2)
-                    d.providerKey()
+            # d2 = QgsProviderSublayersDialog(p, 'TEST', 'TEST', sublayers)
+            # self.showGui(d2)
 
-            d = SubDatasetSelectionDialog()
-            d.setFiles([path_tanager])
-            self.showGui(d)
+        d = SubDatasetSelectionDialog()
+        d.setFiles([PATH_TANAGER])
+        self.showGui(d)
 
     @unittest.skipIf(not TestObjects.repoDirGDAL(), 'Test requires GDAL repo testdata')
     def test_subdatasetDialog(self):

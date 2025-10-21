@@ -37,7 +37,7 @@ from qgis.PyQt.QtCore import QItemSelectionModel
 from qgis.PyQt.QtCore import Qt, QModelIndex, QAbstractTableModel, QSortFilterProxyModel
 from qgis.PyQt.QtWidgets import QDialogButtonBox, QDialog
 from qgis.PyQt.QtWidgets import QTableView, QPushButton
-from qgis.core import QgsMapLayer, QgsProviderRegistry, QgsProject, Qgis
+from qgis.core import QgsMapLayer, QgsProviderRegistry, QgsProject
 from qgis.core import QgsProviderSublayerTask, QgsProviderSublayerDetails, QgsProviderSublayerModel, \
     QgsProviderSublayerProxyModel
 from qgis.core import QgsTaskManager, QgsApplication, QgsTask
@@ -78,8 +78,9 @@ class SubDatasetLoadingTask(QgsTask):
                     task.run()
                     self.mSubDataSets[path] = task.results()
                 else:
-                    flags = Qgis.SublayerQueryFlag.FastScan
-                    sublayers = QgsProviderRegistry.instance().querySublayers(uri=path, flags=flags)
+                    # flags = Qgis.SublayerQueryFlag.FastScan
+                    # flags = None
+                    sublayers = QgsProviderRegistry.instance().querySublayers(uri=path)
                     self.mSubDataSets[path] = sublayers
             except Exception as ex:
                 self.mMessages[path] = str(ex)
@@ -284,7 +285,7 @@ class SubDatasetSelectionDialog(QDialog):
 
     def setSubDatasetDetails(self, details: List[QgsProviderSublayerDetails]):
         """
-        Allows to set SubDatasetDetails directly
+        Allows setting SubDatasetDetails directly
         """
         self.fileWidget.setFilePath('')
         self.subDatasetModel.setSublayerDetails([])
