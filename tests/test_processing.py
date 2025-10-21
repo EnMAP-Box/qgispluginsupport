@@ -37,14 +37,13 @@ from qps.processing.processingalgorithmdialog import ProcessingAlgorithmDialog
 from qps.qgsfunctions import registerQgsExpressionFunctions
 from qps.speclib.core import profile_field_names, profile_fields, is_spectral_library
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
-from qps.speclib.core.spectrallibraryio import initSpectralLibraryIOs, SpectralLibraryIO
 from qps.speclib.core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict, isProfileValueDict, \
     ProfileEncoding
 from qps.speclib.processing.aggregateprofiles import AggregateProfiles
 from qps.speclib.processing.exportspectralprofiles import ExportSpectralProfiles
 from qps.speclib.processing.importspectralprofiles import ImportSpectralProfiles
 from qps.testing import ExampleAlgorithmProvider, get_iface, start_app, TestCase, TestObjects
-from qpstestdata import ecosis_csv
+from qpstestdata import ecosis_csv, asd_with_gps, spectral_evolution_sed, svc_sig
 
 start_app()
 
@@ -362,22 +361,22 @@ class ProcessingToolsTest(TestCase):
     def test_spectralprofile_import(self):
 
         provider = ExampleAlgorithmProvider.instance()
-        initSpectralLibraryIOs()
         reg: QgsProcessingRegistry = QgsApplication.instance().processingRegistry()
         self.assertTrue(provider.addAlgorithm(ImportSpectralProfiles()))
         reg.providerById(ExampleAlgorithmProvider.NAME.lower())
 
         input_files = [
             ecosis_csv,
-            # asd_with_gps,
-            # spectral_evolution_sed,
-            # svc_sig,
+            asd_with_gps,
+            spectral_evolution_sed,
+            svc_sig,
 
         ]
         for f in input_files:
             self.assertTrue(Path(f).is_file)
-
-            profiles = SpectralLibraryIO.readProfilesFromUri(f)
+            sl = SpectralLibraryUtils.readFromSource(f)
+            self.assertTrue(is_spectral_library(sl))
+            profiles = list(sl.getFeatures())
             self.assertTrue(len(profiles) > 0, f'Failed to import profiles from {f}')
 
         DIR_TEST = self.createTestOutputDirectory()
@@ -479,8 +478,8 @@ class ProcessingToolsTest(TestCase):
                    ExportSpectralProfiles.P_FIELD: None,
                    ExportSpectralProfiles.P_OUTPUT: test_path.as_posix()}
 
-            self.assertTrue(alg.prepareAlgorithm(par, context, feedback))
-            results = alg.processAlgorithm(par, context, feedback)
+            results, success = alg.run(par, context, feedback)
+            self.assertTrue(success)
 
             files = results.get(ExportSpectralProfiles.P_OUTPUT)
             self.assertIsInstance(files, list)

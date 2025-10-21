@@ -1,11 +1,13 @@
+import json
 from pathlib import Path
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Union
 
 from qgis.core import QgsProcessing, \
     QgsProcessingFeedback, QgsProcessingContext, QgsVectorLayer, QgsProcessingParameterDefinition, QgsProcessingUtils
 from qgis.core import (QgsProcessingAlgorithm, QgsProcessingParameterVectorLayer, QgsProcessingParameterExpression,
                        QgsProcessingParameterFileDestination, QgsProcessingParameterField)
 from qgis.core import QgsProcessingParameterBoolean
+from qgis.core import QgsProcessingParameterString
 from ..core import is_profile_field, profile_fields
 from ..core.spectralprofile import SpectralProfileFileWriter
 from ..io.ecosis import EcoSISSpectralLibraryWriter
@@ -21,12 +23,29 @@ WRITERS = {r.id(): r for r in [
 ]}
 
 
+def file_writer(path: Union[str, Path], **kwds) -> Optional[SpectralProfileFileWriter]:
+    """
+    Tries to find a SpectralProfileFileWriter for the given path and arguments
+    :param path:
+    :return:
+    """
+    path = Path(path)
+    for writer in WRITERS.values():
+        if writer.canWriteFile(path):
+            try:
+                return writer(path, **kwds)
+            except Exception as e:
+                s = ""
+    return None
+
+
 class ExportSpectralProfiles(QgsProcessingAlgorithm):
     NAME = 'exportspectralprofiles'
     P_INPUT = 'INPUT'
     P_FIELD = 'FIELD'
     P_PROFILE_NAME = 'PROFILE_NAME'
     P_SELECTED_ONLY = 'SELECTED_ONLY'
+    P_WRITER_OPTIONS = 'WRITER_OPTIONS'
     P_FORMAT = 'FORMAT'
     P_OUTPUT = 'OUTPUT'
 
@@ -103,6 +122,14 @@ class ExportSpectralProfiles(QgsProcessingAlgorithm):
         p.setHelp('An expression to generate a name for each profile')
         self.addParameter(p)
 
+        p = QgsProcessingParameterString(self.P_WRITER_OPTIONS,
+                                         defaultValue=None,
+                                         description='Writer Options',
+                                         optional=True)
+        p.setHelp(
+            'Additional writer options. Can be defined as JSON dictionary, e.g. <code>{ "key1": "value", "key2", 42}</code>')
+        p.setFlags(p.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
+
         filters = []
         for k, w in WRITERS.items():
             filters.append(w.filterString())
@@ -160,25 +187,21 @@ class ExportSpectralProfiles(QgsProcessingAlgorithm):
             feedback.reportError('Undefined output file')
             return False
 
-        writer = None
+        writer_options = self.parameterAsString(parameters, self.P_WRITER_OPTIONS, context=context)
+        if writer_options == '':
+            writer_options = None
+        if isinstance(writer_options, str):
+            writer_options = json.loads(writer_options)
+        elif writer_options is None:
+            writer_options = {}
 
-        crs = self.mInputLayer.crs()
-        if output_path.endswith('.csv'):
-            writer = EcoSISSpectralLibraryWriter()
-        elif output_path.endswith('.geojson'):
-            writer = GeoJSONSpectralLibraryWriter(crs=crs, rfc7946=True)
-        elif output_path.endswith('.gpkg'):
-            writer = GeoPackageSpectralLibraryWriter(crs=crs)
-        elif output_path.endswith('.sli'):
-            name_expression = self.parameterAsString(parameters, self.P_PROFILE_NAME, context)
-            if name_expression == '':
-                name_expression = None
-            writer = EnviSpectralLibraryWriter(name_expression=name_expression)
-        else:
-            feedback.reportError(f'Unsupported output file format: {output_path}')
-            return False
+        if 'crs' not in writer_options:
+            writer_options['crs'] = self.mInputLayer.crs()
 
-        if writer is None:
+        writer_options['field'] = self.mField
+
+        writer = file_writer(output_path, **writer_options)
+        if not isinstance(writer, SpectralProfileFileWriter):
             feedback.reportError(f'Unsupported output file format: {output_path}')
             return False
 
@@ -205,7 +228,6 @@ class ExportSpectralProfiles(QgsProcessingAlgorithm):
         else:
             features = list(self.mInputLayer.getFeatures())
 
-        files = writer.writeFeatures(features, self.mField, self.mOutputFile.as_posix(),
-                                     feedback=feedback)
+        files = writer.writeFeatures(self.mOutputFile.as_posix(), features, feedback=feedback)
 
         return {self.P_OUTPUT: files, }

@@ -27,9 +27,9 @@ from osgeo import gdal, ogr
 from qgis.PyQt.QtCore import QMimeData, QPoint, Qt, QUrl
 from qgis.PyQt.QtCore import QSize
 from qgis.PyQt.QtGui import QDropEvent
-from qgis.PyQt.QtWidgets import QAction, QApplication, QComboBox, QDialog, QPushButton, QToolBar, QToolButton, \
+from qgis.PyQt.QtWidgets import QAction, QApplication, QComboBox, QPushButton, QToolBar, QToolButton, \
     QVBoxLayout, QWidget
-from qgis.core import QgsFeature, QgsProject, QgsRasterLayer, QgsVectorLayer, QgsWkbTypes
+from qgis.core import QgsFeature, QgsProject, QgsRasterLayer, QgsVectorLayer
 from qgis.gui import QgsGui, QgsMapCanvas
 from qps import registerEditorWidgets
 from qps.layerproperties import AddAttributeDialog
@@ -43,7 +43,7 @@ from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
 from qps.testing import start_app, TestCase, TestObjects
 from qps.unitmodel import BAND_NUMBER, UnitLookup
 from qps.utils import setToolButtonDefaultActionMenu
-from qpstestdata import enmap, hymap, speclib_geojson
+from qpstestdata import hymap, speclib_geojson
 
 start_app()
 
@@ -305,64 +305,6 @@ class TestSpeclibWidgets(TestCase):
 
         speclibs = w.plotModel().spectralLibraries()
         self.assertEqual(0, len(speclibs))
-
-    def test_SpectralProfileImportPointsDialog(self):
-
-        lyrRaster = QgsRasterLayer(enmap.as_posix())
-        lyrRaster.setName('EnMAP')
-        h, w = lyrRaster.height(), lyrRaster.width()
-
-        pxPositions = [QPoint(0, 0), QPoint(w - 1, h - 1)]
-
-        vl1 = TestObjects.createVectorLayer(QgsWkbTypes.Point)
-        vl2 = TestObjects.createVectorLayer(QgsWkbTypes.LineGeometry)
-        vl3 = TestObjects.createVectorLayer(QgsWkbTypes.Polygon)
-
-        layers = [vl1,
-                  vl2,
-                  vl3]
-        # layers = [speclib1]
-
-        QgsProject.instance().addMapLayers(layers)
-        from qps.speclib.io.rastersources import SpectralProfileImportPointsDialog
-
-        def onFinished(code):
-            self.assertTrue(code in [QDialog.Accepted, QDialog.Rejected])
-
-            if code == QDialog.Accepted:
-                slib = d.speclib()
-                profiles = d.profiles()
-                self.assertTrue(d.isFinished())
-                self.assertIsInstance(slib, QgsVectorLayer)
-                self.assertIsInstance(profiles, list)
-                self.assertTrue(len(profiles) > 0)
-                if len(profiles) != len(slib):
-                    s = ""
-                self.assertTrue(len(profiles) == len(slib))
-
-        for vl in layers:
-            d = SpectralProfileImportPointsDialog()
-            self.assertEqual(d.aggregation(), 'mean')
-            d.setAggregation('median')
-            d.setWkbType(vl.wkbType())
-            self.assertEqual(d.aggregation(), 'median')
-
-            self.assertIsInstance(d, SpectralProfileImportPointsDialog)
-            d.setRasterSource(lyrRaster)
-            d.setVectorSource(vl)
-            self.showGui(d)
-            self.assertEqual(lyrRaster, d.rasterSource())
-            self.assertEqual(vl, d.vectorSource())
-
-            d.finished.connect(onFinished)
-            d.run(run_async=False)
-            while not d.isFinished():
-                QApplication.processEvents()
-            d.hide()
-            d.close()
-
-        # self.showGui(d)
-        QgsProject.instance().removeAllMapLayers()
 
     @unittest.skipIf(TestCase.runsInCI(), 'Opens blocking dialog')
     def test_AttributeDialog(self):

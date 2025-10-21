@@ -1,4 +1,5 @@
 import enum
+import logging
 import os.path
 import re
 import sys
@@ -16,6 +17,8 @@ from qgis.core import QgsDefaultValue, QgsFeature, QgsField, QgsFieldConstraints
 from qgis.gui import QgsAttributeTableFilterModel, QgsAttributeTableModel, QgsAttributeTableView, QgsMapCanvas
 from .qgisenums import QMETATYPE_BOOL, QMETATYPE_DOUBLE, QMETATYPE_INT, QMETATYPE_QSTRING
 from .unitmodel import UnitLookup
+
+logger = logging.getLogger(__name__)
 
 rx_bands = re.compile(r'^band[_\s]*(?P<band>\d+)$', re.IGNORECASE)
 rx_more_information = re.compile(r'^more[_\n]*information$', re.IGNORECASE)
@@ -257,7 +260,7 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
     # def setBandValue(self, bandNo: Union[int, str], itemKey: str, value):
     #    self.setBandValues([bandNo], itemKey, [value])
 
-    def setBandValues(self, bands: Optional[List[int]], itemKey: str, values, origin: str = None):
+    def setBandValues(self, bands: Union[None, str, List[int]], itemKey: str, values, origin: str = None):
         """
         Sets the n values to the corresponding n bands
         if bands = None|'all'|'*'|':', it is expected values contains either a single value or n = bandCount() values.
@@ -285,12 +288,12 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
             data['_origin_'] = origin
         self.setValue(itemKey, data)
 
-    def bandValues(self, bands: Optional[List[int]], itemKey, default=None) -> List[Any]:
+    def bandValues(self, bands: Union[None, str, List[int]], itemKey, default=None) -> List[Any]:
         """
         Returns the n values for n bands and itemKey.
         Returns the default value in case the itemKey is undefined for a band.
         """
-        if bands in [None, 'all']:
+        if bands in [None, 'all', '*', ':']:
             bands = list(range(1, self.bandCount() + 1))
         itemKey = self.itemKey(itemKey)
         data: dict = self.value(itemKey, {})
@@ -419,7 +422,7 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
 
         return layer
 
-    def writeToSource(self, layer: [QgsRasterLayer, str, Path], write_envi: bool = False) -> bool:
+    def writeToSource(self, layer: Union[QgsRasterLayer, str, Path], write_envi: bool = False) -> bool:
         """
         Tries to save the spectral properties to a data source
         :param write_envi: bool, set True to write in case of GDAL Datasets values explicitly into the ENVI domain.
@@ -744,22 +747,55 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
         s = ""
 
     def asMap(self) -> dict:
-
+        """
+        Returns the spectral properties as a dictionary.
+        :return:
+        """
         d = dict()
-        d['_bandCount_'] = self.bandCount()
+        nb = self.bandCount()
+        d['band_count'] = nb
         for k in self.keys():
-            value = self.value(k, None)
-            if value:
-                d[k] = value
+            v = self.bandValues('*', k)
+            if isinstance(v, list) and len(v) == nb:
+                d[k] = v
         return d
 
     @classmethod
     def fromMap(cls, d: dict) -> 'QgsRasterLayerSpectralProperties':
+        """
+        Returns a QgsRasterLayerSpectralProperties instance from a dictionary.
+        :param d:
+        :return:
+        """
+        d = d.copy()
+        nb = None
+        for k in ['band_count', 'nb']:
+            if k in d:
+                nb = int(d.pop(k))
+        for k in ['x']:
+            if k in d:
+                d[SpectralPropertyKeys.Wavelength.value] = d.pop(k)
+        for k in ['xUnit']:
+            if k in d:
+                d[SpectralPropertyKeys.WavelengthUnit.value] = d.pop('xUnit')
 
-        p = cls(d['_bandCount_'])
+        # get number of bands from wl, bbl or fwhm
+        if nb is None:
+            for k in [SpectralPropertyKeys.Wavelength, SpectralPropertyKeys.BadBand, SpectralPropertyKeys.FWHM]:
+                if k in d:
+                    v = d[k]
+                    if isinstance(v, list):
+                        nb = len(v)
+                        break
+
+        assert isinstance(nb, int) and nb > 0
+
+        p = cls(nb)
         for k, v in d.items():
-            if not k.startswith('_'):
-                p.setValue(k, v)
+            if k in SpectralPropertyKeys:
+                p.setBandValues('*', k, v)
+            else:
+                logger.warning(f'Invalid spectral property key/value: "{k}={v}"')
         return p
 
     def deduceWavelengthUnit(self, wavelength: Union[float, List[float]]) -> str:

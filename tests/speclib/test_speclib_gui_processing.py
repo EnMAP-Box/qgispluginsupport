@@ -1,7 +1,6 @@
 import copy
 # noinspection PyPep8Naming
 import unittest
-from typing import Tuple
 
 import numpy as np
 from osgeo import gdal
@@ -13,11 +12,11 @@ from qgis.core import QgsApplication, QgsProcessingAlgorithm, QgsProcessingConte
 from qgis.core import (QgsProcessingParameterRasterLayer,
                        QgsProcessingParameterNumber, QgsRasterFileWriter,
                        QgsProcessingParameterRasterDestination)
-from qgis.gui import QgsGui, QgsProcessingAlgorithmDialogBase, QgsProcessingContextGenerator, \
-    QgsProcessingGui, QgsProcessingGuiRegistry, QgsProcessingParameterWidgetContext
+from qgis.gui import QgsProcessingAlgorithmDialogBase, QgsProcessingContextGenerator, \
+    QgsProcessingGui, QgsProcessingParameterWidgetContext
 from qps import initAll
+from qps.qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from qps.speclib.core import profile_field_list
-from qps.speclib.core.spectralprofile import SpectralSetting
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
 from qps.speclib.gui.spectralprocessingdialog import SpectralProcessingDialog, \
     SpectralProcessingRasterLayerWidgetWrapper
@@ -238,20 +237,11 @@ class AlgorithmLogging(QgsProcessingAlgorithm):
 
 class SpectralProcessingTests(TestCase):
 
-    def initProcessingRegistry(self) -> Tuple[QgsProcessingRegistry, QgsProcessingGuiRegistry]:
-        procReg = QgsApplication.instance().processingRegistry()
-        procGuiReg: QgsProcessingGuiRegistry = QgsGui.processingGuiRegistry()
-        assert isinstance(procReg, QgsProcessingRegistry)
-
-        # provider_names = [p.name() for p in procReg.providers()]
-
-        return procReg, procGuiReg
-
     def algorithmProviderTesting(self) -> 'ExampleAlgorithmProvider':
         return QgsApplication.instance().processingRegistry().providerById(ExampleAlgorithmProvider.NAME.lower())
 
     def test_example_algo(self):
-        self.initProcessingRegistry()
+
         alg = ExampleRasterProcessing()
         # alg.initAlgorithm({})
         ext_ref = QgsRasterFileWriter.supportedFormatExtensions()
@@ -286,7 +276,7 @@ class SpectralProcessingTests(TestCase):
         s = ""
 
     def test_resampling(self):
-        self.initProcessingRegistry()
+
         provider = ExampleAlgorithmProvider.instance()
         a = ExampleRasterProcessing()
         provider.addAlgorithm(a)
@@ -349,7 +339,7 @@ class SpectralProcessingTests(TestCase):
         QgsProject.instance().removeAllMapLayers()
 
     def test_algwidget(self):
-        self.initProcessingRegistry()
+
         from qps.speclib.core.spectrallibraryrasterdataprovider import registerDataProvider
         registerDataProvider()
         n_bands = [256]
@@ -369,7 +359,7 @@ class SpectralProcessingTests(TestCase):
 
     @unittest.skipIf(TestCase.runsInCI(), 'Blocking dialog')
     def test_SpectralProcessingWidget2(self):
-        self.initProcessingRegistry()
+
         from qps.speclib.core.spectrallibraryrasterdataprovider import registerDataProvider
         registerDataProvider()
         n_bands = [256, 13]
@@ -398,10 +388,20 @@ class SpectralProcessingTests(TestCase):
         procw.runAlgorithm(fail_fast=True)
         tempFiles = procw.temporaryRaster()
         for file in tempFiles:
-            setting = SpectralSetting.fromRasterLayer(file)
-            assert setting.xUnit() not in [None, '']
+            prop = QgsRasterLayerSpectralProperties.fromRasterLayer(file)
+
+            wl = prop.wavelengths()
+            wlu = prop.wavelengthUnits()
+
+            ds = gdal.Open(file)
+            nb = ds.RasterCount
+            self.assertEqual(nb, len(wl))
+            self.assertEqual(nb, len(wlu))
+
         self.assertTrue(True)
         self.showGui([slw, procw])
+
+        QgsProject.instance().removeAllMapLayers()
 
     def test_SpectralProcessingRasterLayerWidgetWrapper(self):
 
@@ -467,7 +467,6 @@ class SpectralProcessingTests(TestCase):
         d.exec_()
 
     def test_SpectralLibraryWidget(self):
-        self.initProcessingRegistry()
 
         from qps.speclib.core.spectrallibraryrasterdataprovider import registerDataProvider
         registerDataProvider()

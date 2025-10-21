@@ -11,7 +11,7 @@ from qgis.core import QgsCoordinateReferenceSystem, QgsEditorWidgetSetup, QgsExp
     QgsProcessingMultiStepFeedback, QgsProcessingOutputLayerDefinition, QgsProcessingParameterBoolean, \
     QgsProcessingParameterFeatureSink, QgsProcessingParameterMultipleLayers, QgsProcessingUtils, QgsProject, \
     QgsProperty, QgsRemappingProxyFeatureSink, QgsRemappingSinkDefinition, QgsVectorFileWriter, QgsVectorLayer, \
-    QgsWkbTypes, QgsProcessingParameterEnum
+    QgsWkbTypes, QgsProcessingParameterEnum, QgsFileUtils
 from qgis.core import QgsProcessingParameterString, QgsProcessingParameterDefinition
 from ..core import profile_field_names
 from ..core.spectralprofile import SpectralProfileFileReader
@@ -228,6 +228,7 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
 
         p = QgsProcessingParameterFeatureSink(
             self.P_OUTPUT,
+            defaultValue=QgsProcessing.TEMPORARY_OUTPUT,
             description='Spectral library',
             optional=True)
         p.setHelp('Vector layer with one or more fields that contain spectral profiles')
@@ -279,16 +280,25 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
         crs = QgsCoordinateReferenceSystem('EPSG:4326')
         all_fields = QgsFields()
 
-        reader = self.parameterAsEnum(parameters, self.P_INPUT_TYPE, context)
+        reader_key = self.parameterAsEnum(parameters, self.P_INPUT_TYPE, context)
 
-        if isinstance(reader, int):
-            reader = self._input_readers[reader]
+        reader_options = {}
+
+        if isinstance(reader_key, int):
+            reader_key = self._input_readers[reader_key]
         else:
-            reader = self.parameterAsString(parameters, self.P_INPUT_TYPE, context)
-        if reader not in self._input_readers:
-            feedback.reportError(f'Unknown reader: {reader}')
+            reader_key = self.parameterAsString(parameters, self.P_INPUT_TYPE, context)
+        if reader_key not in self._input_readers:
+            feedback.reportError(f'Unknown reader: {reader_key}')
 
-        reader = READERS.get(reader, None)
+        if self._dtg_fmt:
+            reader_options['dtg_fmt'] = self._dtg_fmt
+
+        if reader_key == 'All':
+            feedback.pushInfo('Reader not specified. Try to find the input format automatically. May be slow.')
+            reader = None
+        else:
+            reader = READERS.get(reader_key, None)
 
         PROFILES: Dict[Tuple, List[QgsFeature]] = dict()
         n_files = len(self._input_files)
@@ -379,11 +389,14 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
         # try to get a suitable conversion, e.g. QMap / JSON -> str
         #
         value_output = parameters.get(self.P_OUTPUT)
-        if isinstance(value_output, str):
-            driver = QgsVectorFileWriter.driverForExtension(os.path.splitext(value_output)[1])
-            dst_fields = GenericFieldValueConverter.compatibleTargetFields(all_fields, driver)
-        else:
-            dst_fields = QgsFields(all_fields)
+
+        if value_output in [None, QgsProcessing.TEMPORARY_OUTPUT]:
+            folder = QgsProcessingUtils.tempFolder(context)
+            value_output = QgsFileUtils.uniquePath(os.path.join(folder, 'spectrallibrary.gpkg'))
+            parameters[self.P_OUTPUT] = value_output
+
+        driver = QgsVectorFileWriter.driverForExtension(os.path.splitext(value_output)[1])
+        dst_fields = GenericFieldValueConverter.compatibleTargetFields(all_fields, driver)
 
         # outputPar = QgsProcessingOutputLayerDefinition(parameters.get(self.P_OUTPUT), context.project())
         # remapping = QgsRemappingSinkDefinition()

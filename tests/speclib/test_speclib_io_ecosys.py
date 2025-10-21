@@ -1,12 +1,11 @@
-from math import isnan
 from pathlib import Path
 
-from qgis.core import QgsFeature, QgsProject
+from qgis.core import QgsProject
 from qgis.core import QgsVectorLayer
-from qps.speclib.core import is_spectral_feature
-from qps.speclib.core.spectrallibraryio import SpectralLibraryIO
+from qps.speclib.core import is_spectral_feature, is_spectral_library
+from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
 from qps.speclib.core.spectralprofile import decodeProfileValueDict
-from qps.speclib.io.ecosis import EcoSISSpectralLibraryIO, EcoSISSpectralLibraryReader
+from qps.speclib.io.ecosis import EcoSISSpectralLibraryReader
 from qps.speclib.processing.importspectralprofiles import ImportSpectralProfiles
 from qps.testing import start_app, TestCase
 from qps.utils import file_search
@@ -18,17 +17,6 @@ start_app()
 
 
 class TestSpeclibIO_EcoSIS(TestCase):
-    @classmethod
-    def setUpClass(cls, *args, **kwds) -> None:
-        super(TestSpeclibIO_EcoSIS, cls).setUpClass(*args, **kwds)
-        cls.registerIO(cls)
-
-    def registerIO(self):
-
-        ios = [
-            EcoSISSpectralLibraryIO(),
-        ]
-        SpectralLibraryIO.registerSpectralLibraryIO(ios)
 
     def test_EcoSIS_Reader(self):
         ecosysFiles = file_search(DIR_ECOSIS, '*.csv', recursive=True)
@@ -96,18 +84,6 @@ class TestSpeclibIO_EcoSIS(TestCase):
 
             context, feedback = self.createProcessingContextFeedback()
 
-            profiles2 = SpectralLibraryIO.readProfilesFromUri(path, feedback=feedback)
-            self.assertIsInstance(profiles2, list)
-            self.assertTrue(len(profiles2) > 0)
-            for p1, p2 in zip(profiles, profiles2):
-                p1: QgsFeature
-                p2: QgsFeature
-                self.assertTrue(is_spectral_feature(p2))
-                data1 = p1.attributeMap()
-                data2 = p2.attributeMap()
-
-                for k in data1.keys():
-                    v1 = data1[k]
-                    v2 = data2[k]
-                    if v1 != v2 and not (isnan(v1) and isnan(v2)):
-                        self.assertEqual(v1, v2, msg=f'{p1}: {k} {v1} != {v2}')
+            sl = SpectralLibraryUtils.readFromSource(path)
+            self.assertTrue(is_spectral_library(sl))
+            self.assertTrue(sl.featureCount() > 0)

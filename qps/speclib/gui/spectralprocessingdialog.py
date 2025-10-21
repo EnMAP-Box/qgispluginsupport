@@ -1022,7 +1022,11 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
             field: QgsField = fieldConverter.field()
             if isinstance(fieldConverter, SpectralProfileValueConverter):
                 # write spectral properties like wavelength per band
-                fieldConverter.spectralSetting().writeToSource(file_name, write_envi=True)
+                spectral_settings = fieldConverter.spectralSetting().copy()
+
+                props = QgsRasterLayerSpectralProperties.fromMap(spectral_settings)
+                props.writeToSource(file_name, write_envi=True)
+
             elif fieldConverter.isClassification():
                 # set a categorical raster renderer with class names and colors
                 layer: QgsRasterLayer = qgsRasterLayer(file_name)

@@ -14,12 +14,10 @@ import numpy as np
 
 from qgis.PyQt.QtCore import NULL, QByteArray, QDateTime, QJsonDocument, Qt, QVariant
 from qgis.core import QgsExpressionContext, QgsFeature, QgsField, QgsFields, QgsGeometry, \
-    QgsPointXY, QgsProcessingFeedback, QgsPropertyTransformer, QgsRasterLayer, QgsVectorLayer
-from . import create_profile_field, is_profile_field, profile_fields
+    QgsPointXY, QgsProcessingFeedback, QgsPropertyTransformer, QgsVectorLayer
+from . import create_profile_field, profile_fields
 from .. import EMPTY_VALUES
 from ...qgisenums import QMETATYPE_QDATETIME, QMETATYPE_QSTRING, QMETATYPE_QVARIANTMAP
-from ...qgsrasterlayerproperties import QgsRasterLayerSpectralProperties, SpectralPropertyKeys
-from ...utils import qgsField
 
 # The values that describe a spectral profiles
 # y in 1st position ot show profile values in string representations first
@@ -332,85 +330,25 @@ def decodeProfileValueDict(dump: Union[QByteArray, str, dict], numpy_arrays: boo
     return d
 
 
-class SpectralSetting(QgsRasterLayerSpectralProperties):
-    KEY_FIELDNAME = 'fieldname'
+def spectralSettingsDict(profile: dict, bbl: bool = False, fwhm: bool = False) -> dict:
+    """
+    Returns a dictionary with the spectral properties of a profile.
+    :param profile: profile dictionary
+    :param bbl: False, set True to include the bad band values in the dictionary
+    :param fwhm: False, set True to include the FWHM values in the dictionary
+    :return: dict
+    """
+    key = {'band_count': len(profile.get('y', []))}
+    if x := profile.get('x'):
+        key['x'] = x
+    if xUnit := profile.get('xUnit'):
+        key['xUnit'] = xUnit
+    if fwhm:
+        key['fwhm'] = profile.get('fwhm')
+    if bbl:
+        key['bbl'] = profile.get('bbl')
 
-    def __init__(self, *args, **kwds):
-        super().__init__(*args, **kwds)
-        self.mHash = None
-
-    def __hash__(self):
-        if self.mHash is None:
-            self.mHash = hash(frozenset(self.asMap()))
-        return self.mHash
-
-    def setFieldName(self, name: str):
-        self.setValue(self.KEY_FIELDNAME, name)
-
-    def fieldName(self):
-        return self.value(self.KEY_FIELDNAME)
-
-    def fieldEncoding(self) -> ProfileEncoding:
-        warnings.warn(DeprecationWarning(), stacklevel=2)
-        return ProfileEncoding.Text
-
-    def setValue(self, *args, **kwds):
-        if self.mHash:
-            raise Exception('SpectralSetting is now immutable')
-        super().setValue(*args, **kwds)
-
-    def xUnit(self) -> str:
-        return self.wavelengthUnits()[0]
-
-    def readFromLayer(self, layer: QgsRasterLayer, overwrite: bool = False):
-        super().readFromLayer(layer, overwrite=overwrite)
-
-        fn = layer.customProperty(f'enmapbox/{self.KEY_FIELDNAME}')
-        if fn:
-            self.setValue(self.KEY_FIELDNAME, fn)
-
-    def writeToLayer(self, layer: Union[QgsRasterLayer, str, Path]) -> Optional[QgsRasterLayer]:
-        layer = super().writeToLayer(layer)
-        if isinstance(layer, QgsRasterLayer):
-            fn = self.fieldName()
-            if fn:
-                layer.setCustomProperty(f'enmapbox/{self.KEY_FIELDNAME}', self.fieldName())
-
-            return layer
-
-    @classmethod
-    def fromSpectralProfile(cls, input):
-        d = decodeProfileValueDict(input)
-        n = len(d['y'])
-        prop = SpectralSetting(n)
-
-        wl = d.get('x')
-        wlu = d.get('xUnit')
-        fwhm = d.get('fwhm')
-
-        if wl:
-            prop.setBandValues('*', SpectralPropertyKeys.Wavelength, wl)
-
-        if wlu is None and wl is not None:
-            wlu = QgsRasterLayerSpectralProperties.deduceWavelengthUnit(wl)
-        if wlu is not None:
-            prop.setBandValues('*', SpectralPropertyKeys.WavelengthUnit, wlu)
-
-        if fwhm is not None:
-            prop.setBandValues('*', SpectralPropertyKeys.FWHM, fwhm)
-        return prop
-
-    def n_bands(self):
-        warnings.warn(DeprecationWarning('use .bandCount()'), stacklevel=2)
-        return self.bandCount()
-
-    def x(self):
-        warnings.warn(DeprecationWarning('use .wavelengths()'), stacklevel=2)
-        return self.wavelengths()
-
-    def bbl(self):
-        warnings.warn(DeprecationWarning('use .badBands()'))
-        return self.badBands()
+    return key
 
 
 def groupBySpectralProperties(features: Union[QgsVectorLayer, List[QgsFeature]],
@@ -442,24 +380,25 @@ def groupBySpectralProperties(features: Union[QgsVectorLayer, List[QgsFeature]],
     for f in features:
         if i_field is None:
             fields = f.fields()
+
             if isinstance(field, int):
                 i_field = field
             elif isinstance(field, str):
                 i_field = fields.lookupField(field)
             elif isinstance(field, QgsField):
                 i_field = fields.lookupField(field.name())
+            elif field is None:
+                for fld in profile_fields(fields):
+                    i_field = fields.lookupField(fld.name())
+                    break
+        if i_field is None:
+            raise Exception(f'Unable to find profile field in {fields.names()}')
 
         dump = f.attribute(i_field)
         if dump:
             d = decodeProfileValueDict(dump)
             if len(d) > 0:
-
-                key = {'x': d.get('x'),
-                       'xUnit': d.get('xUnit')}
-                if fwhm:
-                    key['fwhm'] = d.get('fwhm')
-                if bbl:
-                    key['bbl'] = d.get('bbl')
+                key = spectralSettingsDict(d, bbl=bbl, fwhm=fwhm)
                 key = json.dumps(key, indent=0, sort_keys=True)
                 if mode == 'features':
                     results[key] = results.get(key, []) + [f]
@@ -468,71 +407,13 @@ def groupBySpectralProperties(features: Union[QgsVectorLayer, List[QgsFeature]],
     return results
 
 
-def groupBySpectralProperties_depr(profiles: Union[QgsVectorLayer, List[QgsFeature]],
-                                   profile_field: Union[int, str, QgsField] = None
-                                   ) -> Dict[SpectralSetting, List[QgsFeature]]:
-    """
-    Returns SpectralProfiles grouped by key = (xValues, xUnit and yUnit):
-
-        xValues: None | [list-of-xvalues with n>0 elements]
-        xUnit: None | str with len(str) > 0, e.g. a wavelength like 'nm'
-        yUnit: None | str with len(str) > 0, e.g. 'reflectance' or '-'
-
-    :return: {SpectralSetting:[list-of-profiles]}
-    """
-    if isinstance(profiles, QgsVectorLayer):
-        profiles = profiles.getFeatures()
-    if isinstance(profiles, QgsFeature):
-        profiles = [profiles]
-    results = dict()
-
-    # will be initialized with 1st SpectralProfile
-
-    pField: QgsField = None
-    pFieldIdx: int = None
-
-    for p in profiles:
-        assert isinstance(p, QgsFeature)
-        if pField is None:
-            # initialize the profile field to group profiles on
-            pFields: QgsFields = profile_fields(p.fields())
-            if pFields.count() == 0:
-                # no profile fields = nothing to group
-                return {}
-
-            if profile_field is None:
-                pField = pFields.at(0)
-            else:
-                pField = qgsField(p.fields(), profile_field)
-                pField = pFields.field(pField.name())
-
-            assert is_profile_field(pField)
-            pFieldIdx = p.fields().lookupField(pField.name())
-
-        dump = p.attribute(pFieldIdx)
-        if dump is NULL:
-            continue
-
-        d: dict = decodeProfileValueDict(dump)
-        y = d.get('y', [])
-        if not (isinstance(y, list) and len(y) > 0):
-            continue
-
-        key = SpectralSetting.fromSpectralProfile(d)
-        key.setFieldName(pField.name())
-        rlist = results.get(key, [])
-        rlist.append(p)
-        results[key] = rlist
-    return results
-
-
 class SpectralProfileFileWriter(object):
     """
     Base class for writers that can write SpectralProfile data to a file
     """
 
-    def __init__(self, *args, **kwds):
-        pass
+    def __init__(self, *args, field: str = None, **kwds):
+        self.mField = field
 
     @classmethod
     def id(cls) -> str:
@@ -550,18 +431,31 @@ class SpectralProfileFileWriter(object):
         """
         raise NotImplementedError()
 
+    @classmethod
+    def canWriteFile(cls, path: Union[str, Path]) -> bool:
+        """
+        Returns True if the writer can write a file of the given path.
+        The default implementation checks only if the path ends with a
+        file extension mentioned in the filterString().
+        """
+        supported = re.findall(r'\*\.(\w+)', cls.filterString())
+        ext = path.suffix
+        if ext.startswith('.'):
+            ext = ext[1:]
+        return ext in supported
+
     def writeFeatures(self,
+                      path: Union[str, Path],
                       features: List[QgsFeature],
-                      field: str,
-                      path: str,
                       feedback: Optional[QgsProcessingFeedback] = None) -> List[Path]:
         """
-        Writes the provided features into one or multiple files.
-        The returned list contains the paths to the written files.
-        :param feedback:
-        :param path:
+        Writes the provided features to path or, if necessary, multiple files.
+        The returned list contains the paths of the written files.
+
+        Other writing options should be set with the class constructor.
+        :param path: path to write
         :param features:
-        :param field:
+        :param feedback:
         :return:
         """
         raise NotImplementedError()

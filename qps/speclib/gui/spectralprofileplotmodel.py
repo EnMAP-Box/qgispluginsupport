@@ -1750,7 +1750,8 @@ class SpectralProfilePlotModel(QStandardItemModel):
             s = ""
             lyr = self.project().mapLayer(lid)
             if isinstance(lyr, QgsVectorLayer):
-
+                if isinstance(aid, tuple):
+                    aid = aid[0]
                 field = lyr.fields().field(aid)
                 if is_profile_field(field):
                     s = ""

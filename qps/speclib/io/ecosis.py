@@ -31,11 +31,9 @@ from pathlib import Path
 from typing import List, Union, Optional
 
 from qgis.PyQt.QtCore import QUrlQuery
-from qgis.core import QgsExpressionContext, QgsFeature, QgsField, QgsFields, QgsGeometry, QgsProcessingFeedback, \
-    QgsProviderRegistry, QgsVectorLayer, QgsFileUtils
-from .envi import readCSVMetadata
+from qgis.core import QgsFeature, QgsField, QgsFields, QgsGeometry, QgsProcessingFeedback, \
+    QgsVectorLayer, QgsFileUtils
 from ..core import create_profile_field, is_profile_field
-from ..core.spectrallibraryio import SpectralLibraryImportWidget, SpectralLibraryIO
 from ..core.spectralprofile import encodeProfileValueDict, prepareProfileValueDict, ProfileEncoding, \
     SpectralProfileFileReader, SpectralProfileFileWriter, groupBySpectralProperties, decodeProfileValueDict
 from ...unitmodel import UnitConverterFunctionModel
@@ -53,13 +51,13 @@ class EcoSISSpectralLibraryWriter(SpectralProfileFileWriter):
     def filterString(cls) -> str:
         return 'EcoSIS text file (*.csv)'
 
-    def writeFeatures(self,
+    def writeFeatures(self, path: str,
                       features: List[QgsFeature],
-                      field: str,
-                      path: str,
                       feedback: Optional[QgsProcessingFeedback] = None) -> List[Path]:
         if feedback is None:
             feedback = QgsProcessingFeedback()
+
+        field = self.mField
 
         grouped = groupBySpectralProperties(features, field=field, fwhm=False, bbl=False, mode='features')
         files = []
@@ -226,191 +224,5 @@ class EcoSISSpectralLibraryReader(SpectralProfileFileReader):
         uri = self.path().as_uri() + '?' + query.toString()
         # uri = path.as_posix()
         lyr = QgsVectorLayer(uri, self.path().name, 'delimitedtext')
-        assert lyr.isValid()
-        return lyr
-
-
-class EcoSISSpectralLibraryImportWidget(SpectralLibraryImportWidget):
-
-    def __init__(self, *args, **kwds):
-        super().__init__(*args, **kwds)
-        self.mENVIHdr: dict = dict()
-
-    @classmethod
-    def spectralLibraryIO(cls) -> 'EcoSISSpectralLibraryIO':
-        return SpectralLibraryIO.spectralLibraryIOInstances(EcoSISSpectralLibraryIO)
-
-    def sourceFields(self) -> QgsFields:
-
-        fields = QgsFields()
-        if self.source() in ['', None]:
-            return fields
-
-        fields.append(create_profile_field(EcoSISSpectralLibraryIO.FIELDNAME_PROFILE))
-        EcoSISSpectralLibraryIO.loadCSVLayer({}, self.source())
-        lyrCSV = readCSVMetadata(self.source())
-        if isinstance(lyrCSV, QgsVectorLayer):
-            n = lyrCSV.fields().count()
-            for i in range(n):
-                fieldCSV: QgsField = lyrCSV.fields().at(i)
-                if fieldCSV.name() not in fields.names():
-                    fields.append(fieldCSV)
-        return fields
-
-    def setSource(self, source: str):
-        self.mSource = source
-        self.mENVIHdr.clear()
-
-        self.sigSourceChanged.emit()
-
-    def createExpressionContext(self) -> QgsExpressionContext:
-        print('Create Expression Context')
-        context = QgsExpressionContext()
-
-        # context.setFields(self.sourceFields())
-        # scope = QgsExpressionContextScope()
-        # for k, v in self.mENVIHdr.items():
-        #    scope.setVariable(k, str(v))
-        # context.appendScope(scope)
-        # self._c = context
-        return context
-
-    def formatName(self) -> str:
-        return 'EcoSIS'
-
-    def filter(self) -> str:
-        return "EcoSIS text file (*.csv)"
-
-    def setSpeclib(self, speclib: QgsVectorLayer):
-
-        super().setSpeclib(speclib)
-
-    def importSettings(self, settings: dict) -> dict:
-        """
-        Returns the settings required to import the library
-        :param settings:
-        :return:
-        """
-        return settings
-
-
-class EcoSISSpectralLibraryIO(SpectralLibraryIO):
-    FIELDNAME_PROFILE = 'profile'
-
-    def __init__(self, *args, **kwds):
-        super(EcoSISSpectralLibraryIO, self).__init__(*args, **kwds)
-
-        assert 'delimitedtext' in QgsProviderRegistry.instance().providerList(), \
-            'QGIS runs without "delimitedtext" data provider '
-
-    @classmethod
-    def formatName(cls) -> str:
-        return 'EcoSIS dataset'
-
-    @classmethod
-    def filter(self) -> str:
-        return "EcoSIS dataset file (*.csv)"
-
-    @classmethod
-    def createImportWidget(cls) -> SpectralLibraryImportWidget:
-        return EcoSISSpectralLibraryImportWidget()
-
-    @classmethod
-    def importProfiles(cls,
-                       path: Union[str, Path],
-                       importSettings=None,
-                       feedback: QgsProcessingFeedback = QgsProcessingFeedback()) -> List[QgsFeature]:
-        if importSettings is None:
-            importSettings = dict()
-        path = Path(path)
-
-        lyr = cls.loadCSVLayer(importSettings, path)
-
-        profiles: List[QgsFeature] = []
-
-        dstFields, otherFields, profileField, wl, wlFields = cls.dataFields(lyr)
-
-        n = lyr.featureCount()
-        next_step = 5  # step size in percent
-        feedback.setProgressText(f'Load {n} profiles')
-        for i, f in enumerate(lyr.getFeatures()):
-            f: QgsFeature
-            f2 = QgsFeature(dstFields)
-
-            y = [f.attribute(field.name()) for field in wlFields]
-            xUnit = None
-            d = prepareProfileValueDict(x=wl, y=y, xUnit=xUnit)
-            dump = encodeProfileValueDict(d, profileField)
-            f2.setAttribute(cls.FIELDNAME_PROFILE, dump)
-
-            if f.hasGeometry():
-                g = f.geometry()
-                f2.setGeometry(QgsGeometry(g))
-
-            for field in otherFields:
-                f2.setAttribute(field.name(), f.attribute(field.name()))
-            profiles.append(f2)
-
-            progress = 100 * i / n
-            if progress >= next_step:
-                next_step += 5
-                feedback.setProgress(progress)
-        return profiles
-
-    @classmethod
-    def dataFields(cls, lyr):
-        rxIsNum = re.compile(r'^\d+(\.\d+)?$')
-        wlFields = QgsFields()
-        otherFields = QgsFields()
-        dstFields = QgsFields()
-        profileField = create_profile_field(cls.FIELDNAME_PROFILE, encoding=ProfileEncoding.Json)
-        dstFields.append(profileField)
-
-        wl = []
-        for i, field in enumerate(lyr.fields()):
-            field: QgsField
-            if field.isNumeric() and rxIsNum.match(field.name()):
-                wl.append(float(field.name()))
-                wlFields.append(field)
-            else:
-                otherFields.append(field)
-                dstFields.append(field)
-        return dstFields, otherFields, profileField, wl, wlFields
-
-    @classmethod
-    def loadCSVLayer(cls, importSettings, path):
-        cLat = cLon = None
-        with open(path, newline='') as csvfile:
-            reader = csv.reader(csvfile)
-            hdr_row = next(reader)
-
-            for c in hdr_row:
-                if re.match(r'^(lat|latitude)$', c, re.I):
-                    cLat = c
-                if re.match(r'^(lon|longitude)$', c, re.I):
-                    cLon = c
-        # see https://api.qgis.org/api/classQgsVectorLayer.html#details or
-        # https://qgis.org/pyqgis/master/core/QgsVectorLayer.html#delimited-text-file-data-provider-delimitedtext
-        # for detaisl of delimitedtext driver
-        query = QUrlQuery()
-        # query.addQueryItem('encoding', 'UTF-8')
-        query.addQueryItem('detectTypes', 'yes')
-        # query.addQueryItem('watchFile', 'no')
-        # query.addQueryItem('type', 'csv')
-        # query.addQueryItem('subsetIndex', 'no')
-        # query.addQueryItem('useHeader', 'yes')
-        query.addQueryItem('delimiter', importSettings.get('delimiter', ','))
-        query.addQueryItem('quote', importSettings.get('quote', '"'))
-        if 'xField' in importSettings and 'yField' in importSettings:
-            query.addQueryItem('xField', importSettings['xField'])
-            query.addQueryItem('yField', importSettings['yField'])
-        elif cLat and cLon:
-            query.addQueryItem('xField', cLon)
-            query.addQueryItem('yField', cLat)
-        query.addQueryItem('crs', importSettings.get('crs', 'EPSG:4326'))
-        query.addQueryItem('geomType', importSettings.get('geomType', 'point'))
-        uri = path.as_uri() + '?' + query.toString()
-        # uri = path.as_posix()
-        lyr = QgsVectorLayer(uri, path.name, 'delimitedtext')
         assert lyr.isValid()
         return lyr

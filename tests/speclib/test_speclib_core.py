@@ -35,11 +35,11 @@ from qps import initAll
 from qps.qgisenums import QMETATYPE_DOUBLE, QMETATYPE_INT, QMETATYPE_QBYTEARRAY, QMETATYPE_QSTRING
 from qps.speclib import EDITOR_WIDGET_REGISTRY_KEY
 from qps.speclib.core import can_store_spectral_profiles, create_profile_field, is_profile_field, is_spectral_library, \
-    profile_field_list, profile_fields
+    profile_field_list, profile_fields, is_spectral_feature
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
 from qps.speclib.core.spectrallibraryrasterdataprovider import featuresToArrays
 from qps.speclib.core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict, isProfileValueDict, \
-    nanToNone, prepareProfileValueDict, ProfileEncoding, SpectralSetting, validateProfileValueDict
+    nanToNone, prepareProfileValueDict, ProfileEncoding, validateProfileValueDict
 from qps.testing import start_app, TestCase, TestObjects
 from qps.unitmodel import BAND_NUMBER
 from qps.utils import createQgsField, FeatureReferenceIterator, findTypeFromString, qgsFields2str, SpatialExtent, \
@@ -469,15 +469,16 @@ class SpeclibCoreTests(TestCase):
     # @unittest.skip('')
     def test_groupBySpectralProperties(self):
 
-        sl1 = TestObjects.createSpectralLibrary(n_empty=1)
+        sl1 = TestObjects.createSpectralLibrary(n_empty=1, profile_field_names=['p1'])
         groups = SpectralLibraryUtils.groupBySpectralProperties(sl1)
         self.assertTrue(len(groups) > 0)
         for key, profiles in groups.items():
-            key: SpectralSetting
-            self.assertIsInstance(key, SpectralSetting)
+            assert isinstance(key, str)
+            data = json.loads(key)
+            self.assertIsInstance(data, dict)
 
-            xvalues = key.wavelengths()
-            xunit = key.xUnit()
+            xvalues = data['x']
+            xunit = data['xUnit']
             # yunit = key.yUnit()
 
             self.assertTrue(xvalues is None or isinstance(xvalues, list) and len(xvalues) > 0)
@@ -487,13 +488,13 @@ class SpeclibCoreTests(TestCase):
             self.assertIsInstance(profiles, list)
             self.assertTrue(len(profiles) > 0)
 
-            d = decodeProfileValueDict(profiles[0].attribute(key.fieldName()))
+            d = decodeProfileValueDict(profiles[0].attribute('p1'))
             if len(d) == 0:
                 continue
             x = d['x']
 
             for p in profiles:
-                d2 = decodeProfileValueDict(profiles[0].attribute(key.fieldName()))
+                d2 = decodeProfileValueDict(profiles[0].attribute('p1'))
                 self.assertEqual(d2['x'], x)
 
     # @unittest.skip('')
@@ -556,8 +557,17 @@ class SpeclibCoreTests(TestCase):
         self.assertTrue(isProfileValueDict(d))
 
         # read and set attribute dictionaries
-        f1 = vl.getFeature(1)
-        self.assertIsInstance(f1, QgsFeature)
+
+        fields = QgsFields()
+        fields.append(create_profile_field('profiles', encoding=ProfileEncoding.Text))
+
+        f1 = QgsFeature(fields)
+
+        data = prepareProfileValueDict(x=[1, 2, 3], y=[1, 2, 3], xUnit='nm')
+        dump = encodeProfileValueDict(data, ProfileEncoding.Text)
+        f1.setAttribute('profiles', dump)
+
+        self.assertTrue(is_spectral_feature(f1))
         d = f1.attributeMap()
         self.assertIsInstance(d['profiles'], str)
         d2 = SpectralLibraryUtils.attributeMap(f1)
@@ -571,7 +581,9 @@ class SpeclibCoreTests(TestCase):
         for dSrc in [d, d2, d3]:
             fDst = QgsFeature(vl.fields())
             SpectralLibraryUtils.setAttributeMap(fDst, dSrc)
-            self.assertEqual(f1['profiles'], fDst['profiles'])
+            d1 = decodeProfileValueDict(f1['profiles'])
+            d2 = decodeProfileValueDict(fDst['profiles'])
+            self.assertDictEqual(d1, d2)
         s = ""
 
     def test_save_gpkg_crs(self):
@@ -597,20 +609,18 @@ class SpeclibCoreTests(TestCase):
 
         pfields = profile_fields(SLIB)
 
-        ARRAYS = featuresToArrays(SLIB, spectral_profile_fields=pfields)
+        ARRAYS = featuresToArrays(SLIB, fields=pfields)
 
-        self.assertIsInstance(ARRAYS, dict)
-        self.assertTrue(len(ARRAYS) == 2)
-        for i in range(2):
-            settings = list(ARRAYS.keys())[i]
-            fids, arrays = list(ARRAYS.values())[i]
-            self.assertEqual(len(fids), n_features)
-            for j, setting in enumerate(settings):
-                self.assertIsInstance(setting, SpectralSetting)
-                array = arrays[j]
-                self.assertIsInstance(array, np.ndarray)
-                self.assertEqual(array.shape[0], setting.bandCount())
-                self.assertEqual(array.shape[1], len(fids))
+        self.assertEqual(len(ARRAYS), 4)
+        for k, data in ARRAYS.items():
+            settings = json.loads(k)
+            for m in ['x', 'xUnit', 'band_count']:
+                self.assertTrue(m in settings)
+            nb = settings['band_count']
+            fids = data['fids']
+            ns = len(fids)
+            arr = data['profiles']
+            self.assertEqual((nb, 1, ns), arr.shape)
 
     # @unittest.skip('')
     def test_others(self):

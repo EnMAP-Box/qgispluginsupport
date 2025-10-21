@@ -1,5 +1,4 @@
 # noinspection PyPep8Naming
-import pathlib
 import re
 import unittest
 from datetime import datetime
@@ -10,7 +9,6 @@ from qgis.core import edit, QgsFeature, QgsField
 from qps.fieldvalueconverter import collect_native_types
 from qps.qgisenums import QMETATYPE_QDATE, QMETATYPE_QDATETIME
 from qps.speclib.core import is_spectral_feature, profile_field_names
-from qps.speclib.core.spectrallibraryio import initSpectralLibraryIOs, SpectralLibraryImportDialog
 from qps.speclib.core.spectralprofile import decodeProfileValueDict, SpectralProfileFileReader, validateProfileValueDict
 from qps.speclib.io.asd import ASDBinaryFile
 from qps.speclib.io.spectralevolution import SEDFile
@@ -24,9 +22,6 @@ start_app()
 
 
 class TestSpeclibIO_SpectralProfileReaders(TestCase):
-
-    def registerIO(self):
-        initSpectralLibraryIOs()
 
     def profileFiles(self):
         return list(file_search(DIR_TESTDATA, re.compile(r'.*\.(asd|sed|sig)$'), recursive=True))
@@ -95,15 +90,6 @@ class TestSpeclibIO_SpectralProfileReaders(TestCase):
                 self.assertIsInstance(metadata, dict)
 
                 self.assertTrue(is_spectral_feature(profile))
-
-    @unittest.skipIf(TestCase.runsInCI(), 'Skipped QDialog test in CI')
-    def test_dialog(self):
-        self.registerIO()
-        sl = TestObjects.createSpectralLibrary()
-        import qpstestdata
-        root = pathlib.Path(qpstestdata.__file__).parent / 'svc'
-
-        SpectralLibraryImportDialog.importProfiles(sl, defaultRoot=root.as_posix())
 
     def test_fieldtypes(self):
 

@@ -26,20 +26,19 @@
 """
 import datetime
 import enum
-import os
 import pathlib
 import re
 import struct
 import warnings
 from pathlib import Path
-from typing import List, Tuple, Union
+from typing import Tuple, Union, List
 
 import numpy as np
 
-from qgis.core import QgsExpressionContext, QgsFeature, QgsFields, QgsPointXY, \
-    QgsProcessingFeedback, QgsVectorLayer
-from qgis.gui import QgsFileWidget
-from ..core.spectrallibraryio import SpectralLibraryImportWidget, SpectralLibraryIO
+from qgis.PyQt.QtCore import QMetaType
+from qgis.core import QgsFeature, QgsField, QgsFields
+from qgis.core import QgsPointXY
+from ..core import create_profile_field
 from ..core.spectralprofile import prepareProfileValueDict, SpectralProfileFileReader
 
 """
@@ -224,6 +223,64 @@ class TM_STRUCT(object):
 
     def year(self) -> int:
         return self.tm_year + 1900
+
+
+class ASDCSVFile(SpectralProfileFileReader):
+
+    def __init__(self, path, **kwds):
+        super().__init__(path, **kwds)
+
+    @classmethod
+    def canReadFile(cls, path: Union[str, Path]) -> bool:
+        return Path(path).suffix == '.csv'
+
+    @classmethod
+    def fileExtension(cls) -> str:
+        return 'csv'
+
+    def standardFields(self) -> QgsFields:
+
+        fields = QgsFields()
+        fields.append(create_profile_field(self.KEY_Target))
+        fields.append(QgsField(self.KEY_Name, QMetaType.QString))
+        fields.append(QgsField(self.KEY_Path, QMetaType.QString))
+        return fields
+
+    def asFeatures(self) -> List[QgsFeature]:
+
+        profiles = []
+
+        fields = self.standardFields()
+
+        with open(self.path(), 'r', encoding='utf-8') as f:
+            profiles = []
+            lines = f.readlines()
+            delimiter = ';'
+            if len(lines) >= 2:
+                hdrLine = lines[0].strip().split(delimiter)
+                if len(hdrLine) >= 2:
+                    profileNames = hdrLine[1:]
+
+                    xValues = []
+                    DATA = dict()
+                    for line in lines[1:]:
+                        line = line.split(delimiter)
+                        wl = float(line[0])
+                        xValues.append(wl)
+                        DATA[wl] = [float(v) for v in line[1:]]
+
+                    for i, name in enumerate(profileNames):
+                        yValues = [DATA[wl][i] for wl in xValues]
+                        xUnit = 'nm'
+
+                        profile = QgsFeature(fields)
+                        spectrum_dict = prepareProfileValueDict(x=xValues, y=yValues, xUnit=xUnit)
+                        profile.setAttribute(SpectralProfileFileReader.KEY_Target, spectrum_dict)
+                        profile.setAttribute(SpectralProfileFileReader.KEY_Name, name)
+                        profile.setAttribute(SpectralProfileFileReader.KEY_Path, self.path().as_posix())
+                        profiles.append(profile)
+
+            return profiles
 
 
 class ASDBinaryFile(SpectralProfileFileReader):
@@ -455,130 +512,3 @@ class ASDBinaryFile(SpectralProfileFileReader):
             s = ""
 
         return self
-
-
-class ASDSpectralLibraryImportWidget(SpectralLibraryImportWidget):
-
-    def __init__(self, *args, **kwds):
-        super(ASDSpectralLibraryImportWidget, self).__init__(*args, **kwds)
-
-        self.mSource: QgsVectorLayer = None
-
-    def spectralLibraryIO(cls) -> 'SpectralLibraryIO':
-        return SpectralLibraryIO.spectralLibraryIOInstances(ASDSpectralLibraryIO)
-
-    def supportsMultipleFiles(self) -> bool:
-        return True
-
-    def filter(self) -> str:
-        return "ASD Binary File (*.asd);;Any file (*.*)"
-
-    def setSource(self, source: str):
-        if self.mSource != source:
-            self.mSource = source
-            self.sigSourceChanged.emit()
-
-    def sourceFields(self) -> QgsFields:
-        return SpectralProfileFileReader.standardFields()
-
-    def createExpressionContext(self) -> QgsExpressionContext:
-        context = QgsExpressionContext()
-
-        return context
-
-
-class ASDSpectralLibraryIO(SpectralLibraryIO):
-
-    def __init__(self, *args, **kwds):
-        super().__init__(*args, **kwds)
-
-    @classmethod
-    def formatName(cls) -> str:
-        return 'ASD Field Spectrometer'
-
-    @classmethod
-    def createImportWidget(cls) -> SpectralLibraryImportWidget:
-        return ASDSpectralLibraryImportWidget()
-
-    @classmethod
-    def readBinaryFile(cls, filePath: str) -> QgsFeature:
-        """
-        Reads a binary ASD file (*.asd, *.as7)
-        :param filePath:
-        :return:
-        """
-        path = pathlib.Path(filePath)
-        return ASDBinaryFile(path).asFeature()
-
-    @classmethod
-    def readCSVFile(cls, filePath: str) -> List[QgsFeature]:
-        """
-        Read profiles from a text file
-        :param filePath:
-        :return: list of QgsFeatures
-        """
-        profiles = []
-
-        with open(filePath, 'r', encoding='utf-8') as f:
-            profiles = []
-            lines = f.readlines()
-            delimiter = ';'
-            if len(lines) >= 2:
-                hdrLine = lines[0].strip().split(delimiter)
-                if len(hdrLine) >= 2:
-                    profileNames = hdrLine[1:]
-
-                    xValues = []
-                    DATA = dict()
-                    for line in lines[1:]:
-                        line = line.split(delimiter)
-                        wl = float(line[0])
-                        xValues.append(wl)
-                        DATA[wl] = [float(v) for v in line[1:]]
-
-                    for i, name in enumerate(profileNames):
-                        yValues = [DATA[wl][i] for wl in xValues]
-                        xUnit = 'nm'
-
-                        profile = QgsFeature(SpectralProfileFileReader.standardFields())
-                        spectrum_dict = prepareProfileValueDict(x=xValues, y=yValues, xUnit=xUnit)
-                        profile.setAttribute(SpectralProfileFileReader.KEY_Target, spectrum_dict)
-
-                        profiles.append(profile)
-
-        return profiles
-
-    @classmethod
-    def importProfiles(cls,
-                       path: Union[str, pathlib.Path],
-                       importSettings: dict = dict(),
-                       feedback: QgsProcessingFeedback = QgsProcessingFeedback()) -> List[QgsFeature]:
-        profiles = []
-
-        if isinstance(path, str):
-            sources = QgsFileWidget.splitFilePaths(path)
-        elif isinstance(path, pathlib.Path):
-            sources = []
-            if path.is_dir():
-                for entry in os.scandir(path):
-                    if entry.is_file() and RX_ASDFILE.match(entry.name):
-                        sources.append(entry.path)
-            elif path.is_file():
-                sources.append(path.as_posix())
-
-        # expected_fields = importSettings.get()
-
-        rxCSV = re.compile(r'.*\.(csv|txt)$')
-        feedback.setProgress(0)
-        n_total = len(sources)
-        for i, file in enumerate(sources):
-            file = pathlib.Path(file)
-
-            if rxCSV.search(file.name):
-                profiles.extend(ASDSpectralLibraryIO.readCSVFile(file))
-            else:
-                asd: ASDBinaryFile = ASDBinaryFile(file)
-                profiles.extend(asd.asFeatures())
-            progress = int((i + 1) / n_total)
-            feedback.setProgress(progress)
-        return profiles
