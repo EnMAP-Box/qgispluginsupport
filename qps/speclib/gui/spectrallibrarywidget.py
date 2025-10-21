@@ -13,7 +13,8 @@ from qgis.PyQt.QtXml import QDomElement
 from qgis.core import (QgsFeature, QgsProcessingOutputFile, QgsProject, QgsReadWriteContext,
                        QgsVectorLayer)
 from qgis.core import QgsProcessingContext, QgsProcessingFeedback
-from qgis.gui import QgsAttributeTableView, QgsDockWidget, QgsMapCanvas
+from qgis.gui import QgsAttributeTableView, QgsMapCanvas
+from qgis.gui import QgsMessageBar
 from .spectrallibraryplotitems import SpectralProfilePlotItem, SpectralProfilePlotWidget
 from .spectrallibraryplotwidget import SpectralLibraryPlotWidget
 from .spectralprocessingdialog import SpectralProcessingDialog
@@ -32,7 +33,7 @@ from ...utils import loadUi
 logger = logging.getLogger(__name__)
 
 
-class SpectralLibraryWidget(QgsDockWidget):
+class SpectralLibraryWidget(QWidget):
     sigFilesCreated = pyqtSignal(list)
     sigLoadFromMapRequest = pyqtSignal()
     sigMapExtentRequested = pyqtSignal(object)
@@ -189,6 +190,9 @@ class SpectralLibraryWidget(QgsDockWidget):
         self.plotModel().sigOpenSpectralProcessingRequest.connect(
             lambda lid: self.openSpectralProcessingWidget(layer_id=lid))
         self.updateActions()
+
+    def setMainMessageBar(self, bar: QgsMessageBar):
+        pass
 
     def setDelegateOpenRequests(self, b: bool):
         """

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
  <class>SpectralLibraryWidget</class>
- <widget class="QgsDockWidget" name="SpectralLibraryWidget">
+ <widget class="QWidget" name="SpectralLibraryWidget">
   <property name="geometry">
    <rect>
     <x>0</x>
@@ -10,67 +10,84 @@
     <height>279</height>
    </rect>
   </property>
+  <property name="windowTitle">
+   <string>Spectral Library View</string>
+  </property>
   <property name="windowIcon">
    <iconset resource="../../qpsresources.qrc">
     <normaloff>:/qps/ui/icons/speclib.svg</normaloff>:/qps/ui/icons/speclib.svg</iconset>
   </property>
-  <property name="windowTitle">
-   <string>Spectral Library View</string>
-  </property>
-  <widget class="QWidget" name="dockWidgetContents">
-   <layout class="QVBoxLayout" name="verticalLayout">
-    <property name="spacing">
-     <number>0</number>
-    </property>
-    <property name="leftMargin">
-     <number>0</number>
-    </property>
-    <property name="topMargin">
-     <number>0</number>
-    </property>
-    <property name="rightMargin">
-     <number>0</number>
-    </property>
-    <property name="bottomMargin">
-     <number>0</number>
-    </property>
-    <item>
-     <widget class="QToolBar" name="toolBar">
-      <property name="windowTitle">
-       <string>toolBar</string>
-      </property>
-      <property name="movable">
-       <bool>false</bool>
-      </property>
-      <property name="iconSize">
-       <size>
-        <width>20</width>
-        <height>20</height>
-       </size>
-      </property>
-      <property name="toolButtonStyle">
-       <enum>Qt::ToolButtonIconOnly</enum>
-      </property>
-      <property name="floatable">
-       <bool>false</bool>
-      </property>
-      <addaction name="actionGrpAddProfiles"/>
-      <addaction name="actionGrpImportProfiles"/>
-      <addaction name="actionExportSpeclib"/>
-      <addaction name="separator"/>
-      <addaction name="actionShowProfileViewSettings"/>
-      <addaction name="actionRefreshPlot"/>
-      <addaction name="separator"/>
-      <addaction name="actionGrpLayerProperties"/>
-      <addaction name="actionShowAttributeTable"/>
-      <addaction name="actionShowSpectralProcessingDialog"/>
-     </widget>
-    </item>
-    <item>
-     <widget class="SpectralLibraryPlotWidget" name="mSpeclibPlotWidget" native="true"/>
-    </item>
-   </layout>
-  </widget>
+  <layout class="QVBoxLayout" name="verticalLayout_2">
+   <property name="spacing">
+    <number>0</number>
+   </property>
+   <property name="leftMargin">
+    <number>0</number>
+   </property>
+   <property name="topMargin">
+    <number>0</number>
+   </property>
+   <property name="rightMargin">
+    <number>0</number>
+   </property>
+   <property name="bottomMargin">
+    <number>0</number>
+   </property>
+   <item>
+    <layout class="QVBoxLayout" name="verticalLayout">
+     <property name="spacing">
+      <number>0</number>
+     </property>
+     <property name="leftMargin">
+      <number>0</number>
+     </property>
+     <property name="topMargin">
+      <number>0</number>
+     </property>
+     <property name="rightMargin">
+      <number>0</number>
+     </property>
+     <property name="bottomMargin">
+      <number>0</number>
+     </property>
+     <item>
+      <widget class="QToolBar" name="toolBar">
+       <property name="windowTitle">
+        <string>toolBar</string>
+       </property>
+       <property name="movable">
+        <bool>false</bool>
+       </property>
+       <property name="iconSize">
+        <size>
+         <width>20</width>
+         <height>20</height>
+        </size>
+       </property>
+       <property name="toolButtonStyle">
+        <enum>Qt::ToolButtonIconOnly</enum>
+       </property>
+       <property name="floatable">
+        <bool>false</bool>
+       </property>
+       <addaction name="actionGrpAddProfiles"/>
+       <addaction name="actionGrpImportProfiles"/>
+       <addaction name="actionExportSpeclib"/>
+       <addaction name="separator"/>
+       <addaction name="actionShowProfileViewSettings"/>
+       <addaction name="actionRefreshPlot"/>
+       <addaction name="separator"/>
+       <addaction name="actionGrpLayerProperties"/>
+       <addaction name="actionShowAttributeTable"/>
+       <addaction name="actionShowSpectralProcessingDialog"/>
+      </widget>
+     </item>
+     <item>
+      <widget class="SpectralLibraryPlotWidget" name="mSpeclibPlotWidget" native="true"/>
+     </item>
+    </layout>
+   </item>
+  </layout>
   <action name="actionAddCurrentProfiles">
    <property name="icon">
     <iconset resource="../../qpsresources.qrc">
@@ -139,7 +156,7 @@
   </action>
   <action name="actionShowProperties">
    <property name="icon">
-    <iconset theme=":/images/themes/default/propertyicons/system.svg" resource="../../../../QGIS/images/images.qrc">
+    <iconset theme=":/images/themes/default/propertyicons/system.svg">
      <normaloff>:/images/themes/default/propertyicons/system.svg</normaloff>:/images/themes/default/propertyicons/system.svg</iconset>
    </property>
    <property name="text">
@@ -181,7 +198,7 @@
     <bool>true</bool>
    </property>
    <property name="icon">
-    <iconset resource="../../../../QGIS/images/images.qrc">
+    <iconset>
      <normaloff>:/images/themes/default/legend.svg</normaloff>:/images/themes/default/legend.svg</iconset>
    </property>
    <property name="text">
@@ -193,7 +210,7 @@
   </action>
   <action name="actionShowAttributeTable">
    <property name="icon">
-    <iconset resource="../../../../QGIS/images/images.qrc">
+    <iconset>
      <normaloff>:/images/themes/default/mActionOpenTable.svg</normaloff>:/images/themes/default/mActionOpenTable.svg</iconset>
    </property>
    <property name="text">
@@ -217,7 +234,7 @@
   </action>
   <action name="actionGrpLayerProperties">
    <property name="icon">
-    <iconset resource="../../../../QGIS/images/images.qrc">
+    <iconset>
      <normaloff>:/images/themes/default/propertyicons/system.svg</normaloff>:/images/themes/default/propertyicons/system.svg</iconset>
    </property>
    <property name="text">
@@ -253,7 +270,7 @@
   </action>
   <action name="actionExtractProfiles">
    <property name="icon">
-    <iconset resource="../../../../QGIS/images/images.qrc">
+    <iconset>
      <normaloff>:/images/themes/default/mIconRaster.svg</normaloff>:/images/themes/default/mIconRaster.svg</iconset>
    </property>
    <property name="text">
@@ -265,12 +282,6 @@
   </action>
  </widget>
  <customwidgets>
-  <customwidget>
-   <class>QgsDockWidget</class>
-   <extends>QDockWidget</extends>
-   <header>qgsdockwidget.h</header>
-   <container>1</container>
-  </customwidget>
   <customwidget>
    <class>SpectralLibraryPlotWidget</class>
    <extends>QWidget</extends>
