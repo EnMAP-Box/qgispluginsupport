@@ -1,4 +1,4 @@
-from typing import Callable, Dict, Union, Optional
+from typing import Callable, Dict, Union, Optional, List
 
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtCore import pyqtSignal, QAbstractListModel
@@ -163,6 +163,19 @@ class FilteredMapLayerProxyModel(QgsMapLayerProxyModel):
 
     def project(self) -> QgsProject:
         return self.mProject
+
+    def layers(self) -> List[QgsMapLayer]:
+        results = []
+        for i in range(self.rowCount()):
+            idx = self.index(i, 0)
+            results.append(self.data(idx, role=QgsMapLayerModel.CustomRole.Layer))
+        return results
+
+    def __getitem__(self, slice):
+        return self.layers()[slice]
+
+    def __len__(self) -> int:
+        return self.rowCount()
 
     def flags(self, index):
         # disable selection of out-filtered layers

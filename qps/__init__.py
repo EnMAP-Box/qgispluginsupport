@@ -28,7 +28,7 @@ import os
 import pathlib
 import sys
 import warnings
-from typing import List
+from typing import List, Optional
 
 from qgis.PyQt.QtCore import PYQT_VERSION_STR
 from qgis.core import Qgis, QgsApplication, QgsProviderRegistry
@@ -62,7 +62,7 @@ def debugLog(msg: str, prefix: str = 'DEBUG:'):
         print(f'{prefix} {msg}', flush=True)
 
 
-def registerMapLayerConfigWidgetFactory(factory: QgsMapLayerConfigWidgetFactory) -> QgsMapLayerConfigWidgetFactory:
+def registerMapLayerConfigWidgetFactory(factory: QgsMapLayerConfigWidgetFactory) -> Optional[QgsMapLayerConfigWidgetFactory]:
     """
     Register a new tab in the map layer properties dialog.
     :param factory: QgsMapLayerConfigWidgetFactory
