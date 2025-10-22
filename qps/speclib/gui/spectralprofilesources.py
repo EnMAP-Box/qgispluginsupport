@@ -704,7 +704,7 @@ class SpectralProfileSourceNode(ValidateNode):
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
 
-        self.mProfileSource: StandardLayerProfileSource = None
+        self.mProfileSource: Optional[StandardLayerProfileSource] = None
         self.setValue('No Source')
         self.setToolTip('Please select a raster source')
 
@@ -716,7 +716,7 @@ class SpectralProfileSourceNode(ValidateNode):
         if not isinstance(self.mProfileSource, SpectralProfileSource):
             yield 'Profile source is undefined'
 
-    def profileSource(self) -> SpectralProfileSource:
+    def profileSource(self) -> Optional[SpectralProfileSource]:
         return self.mProfileSource
 
     def setSpectralProfileSource(self, source: SpectralProfileSource):
@@ -733,7 +733,7 @@ class SpectralProfileSourceNode(ValidateNode):
             self.setToolTip(self.mProfileSource.toolTip())
         else:
             self.setValue(None)
-            self.setToolTip(None)
+            self.setToolTip('')
 
 
 class SamplingBlockDescription(object):
@@ -1805,8 +1805,8 @@ class SpectralProfileBridge(TreeModel):
         else:
             g = self[-1].copy()
 
-        self.setDefaultSources(g)
         self.setDefaultDestination(g)
+        self.setDefaultSources(g)
         self.addFeatureGenerator(g)
         g.validate()
         return g
@@ -2049,7 +2049,7 @@ class SpectralProfileBridge(TreeModel):
 
         elif isinstance(node, SpectralFeatureGeneratorNode):
             if col in [0, 1] and role == Qt.EditRole:
-                if isinstance(value, QgsVectorLayer):
+                if isinstance(value, QgsVectorLayer) and node.speclib() != value:
                     changed = True
                     node.setSpeclib(value)
                     c0 = 0
