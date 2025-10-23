@@ -348,8 +348,8 @@ class SpectralLibraryWidget(QWidget):
         warnings.warn(DeprecationWarning('Use .speclib()'), stacklevel=2)
         return self.currentSpeclib()
 
-    # def spectralLibrary(self) -> QgsVectorLayer:
-    #    return self.speclib()
+    def sourceLayers(self) -> List[QgsVectorLayer]:
+        return self.plotModel().sourceLayers()
 
     def addSpeclib(self, speclib: QgsVectorLayer, askforNewFields: bool = False):
         """

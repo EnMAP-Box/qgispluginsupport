@@ -61,7 +61,7 @@ class ExportSpectralProfiles(QgsProcessingAlgorithm):
         return self.NAME
 
     def displayName(self) -> str:
-        return 'Export spectral profiles from a vector layer'
+        return 'Export spectral profiles'
 
     def tags(self) -> List[str]:
         return ['spectral libraries', 'ASD', 'spectral evolution', 'ENVI spectral library']
@@ -69,7 +69,7 @@ class ExportSpectralProfiles(QgsProcessingAlgorithm):
     def shortHelpString(self) -> str:
 
         D = {
-            'ALG_DESC': 'Imports spectral profiles from various file formats into a vector layer.',
+            'ALG_DESC': 'Exports spectral profiles into other file formats',
             'ALG_CREATOR': 'benjamin.jakimow@geo.hu-berlin.de',
         }
         for p in self.parameterDefinitions():
