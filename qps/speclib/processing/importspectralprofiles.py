@@ -135,7 +135,7 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
         return self.NAME
 
     def displayName(self) -> str:
-        return 'Import Spectral Profiles into a vector layer'
+        return 'Import spectral profiles'
 
     def tags(self) -> List[str]:
         return ['spectral libraries', 'ASD', 'spectral evolution', 'ENVI spectral library']
@@ -143,7 +143,7 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
     def shortHelpString(self) -> str:
 
         D = {
-            'ALG_DESC': 'Imports spectral profiles from various file formats into a vector layer.',
+            'ALG_DESC': 'Imports spectral profiles from various file formats into a new vector layer.',
             'ALG_CREATOR': 'benjamin.jakimow@geo.hu-berlin.de',
         }
         for p in self.parameterDefinitions():
@@ -177,6 +177,8 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
             description='Input Sources',
             layerType=QgsProcessing.SourceType.TypeFile,
             optional=False)
+        p.setLayerType(QgsProcessing.SourceType.TypeFile)
+
         p.setHelp('Files or folders to read spectral profiles from')
         self.addParameter(p)
 
@@ -386,14 +388,14 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
         # dst_fields = QgsFields()
         # Describe output fields.
         # If destination provide does not support field type
-        # try to get a suitable conversion, e.g. QMap / JSON -> str
+        # try to get a suitable conversion, e.g., QMap / JSON -> str
         #
-        value_output = parameters.get(self.P_OUTPUT)
+        value_output: str = self.parameterAsOutputLayer(parameters, self.P_OUTPUT, context)
 
-        if value_output in [None, QgsProcessing.TEMPORARY_OUTPUT]:
-            folder = QgsProcessingUtils.tempFolder(context)
-            value_output = QgsFileUtils.uniquePath(os.path.join(folder, 'spectrallibrary.gpkg'))
-            parameters[self.P_OUTPUT] = value_output
+        # if value_output in [None, QgsProcessing.TEMPORARY_OUTPUT]:
+        #     folder = QgsProcessingUtils.tempFolder(context)
+        #     value_output = QgsFileUtils.uniquePath(os.path.join(folder, 'spectrallibrary.gpkg'))
+        #     parameters[self.P_OUTPUT] = value_output
 
         driver = QgsVectorFileWriter.driverForExtension(os.path.splitext(value_output)[1])
         dst_fields = GenericFieldValueConverter.compatibleTargetFields(all_fields, driver)
