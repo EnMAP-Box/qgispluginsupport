@@ -1618,14 +1618,14 @@ class SpectralProfileBridge(TreeModel):
         # 3. generate features from a feature generators
         #    multiple feature generators can create features for the same speclib
         # store as RESULTS[layer id, ([features], {field_name:PlotStyle})
-        RESULTS: Dict[str, List[QgsFeature]] = dict()
+        CANDIDATES: Dict[str, List[QgsFeature]] = dict()
 
         for fgnode in featureGenerators:
             fgnode: SpectralFeatureGeneratorNode
 
             sid = fgnode.speclib().id()
 
-            features: List[QgsFeature] = RESULTS.get(sid, [])
+            features: List[QgsFeature] = CANDIDATES.get(sid, [])
 
             fid0 = len(features)
 
@@ -1634,47 +1634,44 @@ class SpectralProfileBridge(TreeModel):
                 fid = fid0 + i  # the unique feature ID
                 f.setId(fid)
                 features.append(f)
-                RESULTS[sid] = features
+                CANDIDATES[sid] = features
 
-        # Add profiles to spectral libraries
+        # Add profiles as candidates to visualized spectral libraries
+        # 1. check all SpectralLibraryWidgets if they are already connected to a speclib
+        #    and if so, add the profiles to the speclib
+        visualized = set()
+        for slw in self.mSLWs:
+            for lyr in slw.sourceLayers():
+                visualized.add(lyr)
+        missing_visualization = [lid for lid in CANDIDATES.keys() if lid not in visualized]
 
-        to_add = {}
+        CANDIDATE2SLWs = dict()
+        SLW2CANDIDATES = dict()
+        for i, slw in enumerate(self.mSLWs):
+            for sl in slw.plotModel().spectralLibraries():
+                lid = sl.id()
+                if lid in CANDIDATES and lid not in CANDIDATE2SLWs:
+                    CANDIDATE2SLWs[sl.id()] = slw
+                    SLW2CANDIDATES[i] = SLW2CANDIDATES.get(i, []) + [lid]
 
-        for sid, features in RESULTS.items():
-            to_add[sid] = to_add.get(sid, []) + features
+        for lid in CANDIDATES.keys():
+            if lid not in CANDIDATE2SLWs and len(self.mSLWs) > 0:
+                slw = self.mSLWs[0]
+                CANDIDATE2SLWs[lid] = slw
+                SLW2CANDIDATES[0] = SLW2CANDIDATES.get(0, []) + [lid]
 
-        results = to_add.copy()
 
         refresh_plot: List[SpectralProfilePlotModel] = []
-        for slw in self.mSLWs:
-            candidates = {}
-            model = slw.plotModel()
-            for lyr in model.spectralLibraries():
-                sid = lyr.id()
-                if sid in to_add:
-                    candidates[sid] = to_add.pop(sid)
+        for i, slw in enumerate(self.mSLWs):
+            lids = SLW2CANDIDATES.get(i, [])
+            candidates = {lid:CANDIDATES[lid] for lid in lids}
 
-            if len(candidates) > 0:
-                # add new profiles as profile candidates
-                # into 1st SpectralLibraryWidget that has a visualization for the layer
-                model.addProfileCandidates(candidates)
-            else:
-                model.addProfileCandidates({})
-                # refresh the SpectralLibraryWidget in case it has any layer
-                # that might have got updated by another SLW
-                # for lyr in model.spectralLibraries():
-                #     if lyr.id() in results:
-                #         refresh_plot.append(model)
-                #         break
-
-        if len(to_add) > 0:
-            # add to speclibs which are not visualized in any profile widget
-            pass
+            slw.plotModel().addProfileCandidates(candidates)
 
         for model in refresh_plot:
             model.updatePlot()
 
-        return results
+        return CANDIDATES
 
     def createFeatures(self,
                        fgnode: SpectralFeatureGeneratorNode,
