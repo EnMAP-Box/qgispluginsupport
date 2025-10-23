@@ -505,6 +505,14 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
     def onLayersWillBeRemoved(self, layerIds: List[str]):
 
+
+        to_remove = []
+        for vis in self.visualizations():
+            if vis.layerId() in layerIds:
+                to_remove.append(vis)
+        if len(to_remove) > 0:
+            self.removePropertyItemGroups(to_remove)
+
         to_remove = [r for r in self.layerRendererVisualizations() if r.layerId() in layerIds]
         for r in to_remove:
             r.onLayerRemoved()
@@ -1671,7 +1679,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
                 if lyr_vis is None:
                     # create new visualization
                     lyr_vis = ProfileVisualizationGroup()
-                    self.addVisualization(lyr_vis)
+                    self.insertPropertyGroup(-1, lyr_vis)
 
                 lyr_vis.setProject(self.project())
                 lyr_vis.setLayerField(lyr, None)
