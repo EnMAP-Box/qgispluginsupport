@@ -42,7 +42,7 @@ from qgis.core import Qgis, QgsExpression, QgsExpressionContext, QgsExpressionCo
     QgsTextFormat, QgsVectorLayer, QgsWkbTypes, QgsXmlUtils
 from qgis.gui import QgsColorButton, QgsDoubleSpinBox, QgsFieldExpressionWidget, QgsMapLayerComboBox, \
     QgsPropertyOverrideButton, QgsSpinBox
-from ..core import is_profile_field, is_spectral_library
+from ..core import is_profile_field, is_spectral_library, profile_field_names
 from ...layerfielddialog import LayerFieldWidget
 from ...plotstyling.plotstyling import PlotStyle, PlotStyleButton, PlotWidgetStyle, PlotStyleWidget
 from ...pyqtgraph.pyqtgraph import InfiniteLine, PlotDataItem
@@ -1000,11 +1000,17 @@ class SpectralProfileLayerFieldItem(PropertyItem):
     def setLayerField(self,
                       layer_id: Union[None, str, QgsVectorLayer],
                       field_name: Union[None, str, QgsField]):
-        if isinstance(field_name, QgsField):
-            field_name = field_name.name()
 
         if isinstance(layer_id, QgsVectorLayer):
             layer_id = layer_id.id()
+
+        if field_name is None and isinstance(layer_id, str):
+            lyr = self.project().mapLayer(layer_id)
+            for n in profile_field_names(lyr):
+                field_name = n
+                break
+        elif isinstance(field_name, QgsField):
+            field_name = field_name.name()
 
         if layer_id != self.mLayerID or field_name != self.mFieldName:
             self.mLayerID = layer_id
@@ -1031,6 +1037,15 @@ class SpectralProfileLayerFieldItem(PropertyItem):
                 return '<select field>'
             else:
                 return self.mFieldName
+
+        if role == Qt.ToolTipRole:
+            lyr = self.layer()
+            field = self.field()
+            if not isinstance(lyr, QgsVectorLayer):
+                tt = 'Layer and spectral profile field undefined'
+            else:
+                tt = f'Layer: "{lyr.name()}" Field: {field}<br>Layer ID: {lyr.id()}<br>Layer Source: {lyr.source()}'
+            return tt
 
         if role == Qt.ForegroundRole:
 
@@ -2065,6 +2080,8 @@ class ProfileVisualizationGroup(PropertyItemGroup):
         if role == Qt.DisplayRole:
             if self.mAutoName:
                 return self.autoName()
+        if role == Qt.ToolTipRole:
+            return self.mPField.toolTip()
         return super().data(role)
 
     def setColor(self, color: Union[str, QColor]):
@@ -2140,20 +2157,24 @@ class ProfileVisualizationGroup(PropertyItemGroup):
         """
         return self.mPLabel.property()
 
-    def setLayerField(self, layer: Union[QgsVectorLayer, str], field: Union[QgsField, str]):
+    def setLayerField(self, layer: Union[QgsVectorLayer, str], field: Union[QgsField, str, None]):
         self.mPField.setLayerField(layer, field)
 
-    def fieldName(self) -> str:
+    def fieldName(self) -> Optional[str]:
         return self.mPField.mFieldName
 
-    def layerId(self) -> str:
+    def layerId(self) -> Optional[str]:
         return self.mPField.mLayerID
 
-    def layer(self) -> QgsMapLayer:
+    def layer(self) -> Optional[QgsMapLayer]:
         """Returns the layer instance relating to the layerId.
         Requires that the layer is stored in the provided QgsProject instance.
         """
-        return self.project().mapLayer(self.layerId())
+        lid = self.layerId()
+        if lid:
+            return self.project().mapLayer(self.layerId())
+        else:
+            return None
 
     def setPlotStyle(self, style: PlotStyle):
         # update style
