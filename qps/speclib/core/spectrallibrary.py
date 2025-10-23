@@ -796,6 +796,7 @@ class SpectralLibraryUtils:
         refProfile = profiles[0]
 
         new_edit_command: bool = not speclib.isEditCommandActive()
+        new_edit_command = False
         if new_edit_command:
             speclib.beginEditCommand('Add profiles')
 

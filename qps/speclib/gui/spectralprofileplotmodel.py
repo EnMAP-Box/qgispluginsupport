@@ -505,7 +505,6 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
     def onLayersWillBeRemoved(self, layerIds: List[str]):
 
-
         to_remove = []
         for vis in self.visualizations():
             if vis.layerId() in layerIds:
@@ -1684,8 +1683,6 @@ class SpectralProfilePlotModel(QStandardItemModel):
                 lyr_vis.setProject(self.project())
                 lyr_vis.setLayerField(lyr, None)
 
-
-
             # add profile candidates
             visualized_layer_ids = [v.layerId() for v in self.visualizations()]
             for layer_id, features in candidates.items():
@@ -1697,9 +1694,10 @@ class SpectralProfilePlotModel(QStandardItemModel):
                         stop_editing = layer.startEditing()
                         if not isinstance(features, list):
                             features = list(features)
-                        layer.beginEditCommand('Add {} profiles'.format(len(features)))
+                        # layer.beginEditCommand('Add {} profiles'.format(len(features)))
                         new_fids = SpectralLibraryUtils.addProfiles(layer, features, addMissingFields=True)
-                        layer.endEditCommand()
+
+                        # layer.endEditCommand()
 
                         def check_commited_features_added(layer_id, idmap_2):
                             new_fids.clear()
@@ -1710,11 +1708,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
                         layer.committedFeaturesAdded.disconnect(check_commited_features_added)
                         if not self.mAddProfileCandidatesAutomatically:
                             self.mPROFILE_CANDIDATES[layer_id] = new_fids
-                        # if isinstance(styles, dict):
-                        #     layer_styles = styles.get(layer_id, {})
-                        #     for field_name, plot_style in layer_styles.items():
-                        #         fid_styles = {fid: plot_style for fid in new_fids}
-                        #         self.mPROFILE_CANDIDATE_STYLES[(layer_id, field_name)] = fid_styles
+
         self.updatePlot()
         self.sigProfileCandidatesChanged.emit()
 
@@ -1800,7 +1794,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
                 SignalProxyUndecorated(speclib.selectionChanged, rateLimit=rl, slot=self.onSpeclibSelectionChanged),
                 SignalProxy(speclib.attributeValueChanged, delay=1, rateLimit=rl * 10,
                             slot=lambda *args, lid=speclib.id(): _plotted_value_changed(lid, args)),
-                #SignalProxyUndecorated(speclib.featureDeleted, rateLimit=rl,
+                # SignalProxyUndecorated(speclib.featureDeleted, rateLimit=rl,
                 #                       slot=lambda: self.updatePlot()),
                 SignalProxyUndecorated(speclib.featuresDeleted, rateLimit=rl,
                                        slot=lambda: self.updatePlot()),
