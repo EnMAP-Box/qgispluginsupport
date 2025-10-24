@@ -1,6 +1,6 @@
 from typing import List
 
-from qgis.core import QgsVectorLayer, QgsMapLayerModel
+from qgis.core import QgsVectorLayer
 from ..core import is_spectral_library
 from ...layerfielddialog import FilteredMapLayerProxyModel
 
@@ -21,4 +21,4 @@ class SpectralLibraryListModel(FilteredMapLayerProxyModel):
         """
         Returns a list of QgsVectorLayers that contain at least one spectral profile field.
         """
-        return [l for l in self.layers() if isinstance(l, QgsVectorLayer) and is_spectral_library(l)]
+        return [lyr for lyr in self.layers() if isinstance(lyr, QgsVectorLayer) and is_spectral_library(lyr)]

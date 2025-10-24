@@ -288,7 +288,7 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
             data['_origin_'] = origin
         self.setValue(itemKey, data)
 
-    def bandValues(self, bands: Union[List[int], None, str, int], itemKey:str, default=None) -> List[Any]:
+    def bandValues(self, bands: Union[List[int], None, str, int], itemKey: str, default=None) -> List[Any]:
         """
         Returns the n values for n bands and itemKey.
         Returns the default value in case the itemKey is undefined for a band.

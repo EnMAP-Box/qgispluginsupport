@@ -1660,11 +1660,10 @@ class SpectralProfileBridge(TreeModel):
                 CANDIDATE2SLWs[lid] = slw
                 SLW2CANDIDATES[0] = SLW2CANDIDATES.get(0, []) + [lid]
 
-
         refresh_plot: List[SpectralProfilePlotModel] = []
         for i, slw in enumerate(self.mSLWs):
             lids = SLW2CANDIDATES.get(i, [])
-            candidates = {lid:CANDIDATES[lid] for lid in lids}
+            candidates = {lid: CANDIDATES[lid] for lid in lids}
 
             slw.plotModel().addProfileCandidates(candidates)
 
