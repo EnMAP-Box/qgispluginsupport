@@ -4,6 +4,7 @@ import io
 import json
 import logging
 import math
+import warnings
 from typing import Dict, Iterator, List, Optional, Set, Tuple, Union
 
 import numpy as np
@@ -1174,7 +1175,9 @@ class SpectralProfilePlotModel(QStandardItemModel):
                     if stat not in STATS_FUNCTIONS:
                         continue
 
-                    x2, y2 = STATS_FUNCTIONS[stat](x, Y)
+                    with warnings.catch_warnings():
+                        warnings.simplefilter("ignore", category=RuntimeWarning)
+                        x2, y2 = STATS_FUNCTIONS[stat](x, Y)
 
                     name = f'{vis_name} {stat}'
 
@@ -1551,6 +1554,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
             infos.append(f'\t{k}: {dtl.sum():.2f} s  {dtl.mean():.3f}s n = {len(dtl)}')
         logger.debug('\n'.join(infos))
 
+        self.updateStatistics(settings=settings)
         self.updateProfileLabel(len(PLOT_ITEMS), profile_limit_reached)
 
     def updateProfileLabel(self, n: int, limit_reached: bool):
