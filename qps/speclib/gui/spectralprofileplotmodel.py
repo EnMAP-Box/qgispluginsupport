@@ -505,6 +505,13 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
     def onLayersWillBeRemoved(self, layerIds: List[str]):
 
+        to_remove = []
+        for vis in self.visualizations():
+            if vis.layerId() in layerIds:
+                to_remove.append(vis)
+        if len(to_remove) > 0:
+            self.removePropertyItemGroups(to_remove)
+
         to_remove = [r for r in self.layerRendererVisualizations() if r.layerId() in layerIds]
         for r in to_remove:
             r.onLayerRemoved()
@@ -737,7 +744,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
         for vis in self.visualizations():
             layer = vis.layer()
-            if layer and layer not in speclibs:
+            if isinstance(layer, QgsVectorLayer) and layer not in speclibs:
                 speclibs.append(layer)
         return speclibs
 
@@ -1655,8 +1662,29 @@ class SpectralProfilePlotModel(QStandardItemModel):
                 self.clearProfileCandidates()
 
             visualized_layer_ids = [v.layerId() for v in self.visualizations()]
+            missing_layer_ids = [k for k in candidates.keys() if k not in visualized_layer_ids]
+            for lid in missing_layer_ids:
+                lyr = self.project().mapLayer(lid)
+
+                if not isinstance(lyr, QgsVectorLayer) and lyr.isValid():
+                    logger.warning(f'Can not get layer for layer id:{lid}')
+                    continue
+
+                lyr_vis = None
+                for vis in self.visualizations():
+                    if vis.layerId() is None:
+                        lyr_vis = vis
+                        break
+                if lyr_vis is None:
+                    # create new visualization
+                    lyr_vis = ProfileVisualizationGroup()
+                    self.insertPropertyGroup(-1, lyr_vis)
+
+                lyr_vis.setProject(self.project())
+                lyr_vis.setLayerField(lyr, None)
 
             # add profile candidates
+            visualized_layer_ids = [v.layerId() for v in self.visualizations()]
             for layer_id, features in candidates.items():
                 if layer_id in visualized_layer_ids:
                     layer = self.project().mapLayer(layer_id)
@@ -1666,9 +1694,10 @@ class SpectralProfilePlotModel(QStandardItemModel):
                         stop_editing = layer.startEditing()
                         if not isinstance(features, list):
                             features = list(features)
-                        layer.beginEditCommand('Add {} profiles'.format(len(features)))
+                        # layer.beginEditCommand('Add {} profiles'.format(len(features)))
                         new_fids = SpectralLibraryUtils.addProfiles(layer, features, addMissingFields=True)
-                        layer.endEditCommand()
+
+                        # layer.endEditCommand()
 
                         def check_commited_features_added(layer_id, idmap_2):
                             new_fids.clear()
@@ -1679,12 +1708,8 @@ class SpectralProfilePlotModel(QStandardItemModel):
                         layer.committedFeaturesAdded.disconnect(check_commited_features_added)
                         if not self.mAddProfileCandidatesAutomatically:
                             self.mPROFILE_CANDIDATES[layer_id] = new_fids
-                        # if isinstance(styles, dict):
-                        #     layer_styles = styles.get(layer_id, {})
-                        #     for field_name, plot_style in layer_styles.items():
-                        #         fid_styles = {fid: plot_style for fid in new_fids}
-                        #         self.mPROFILE_CANDIDATE_STYLES[(layer_id, field_name)] = fid_styles
-        # self.updatePlot()
+
+        self.updatePlot()
         self.sigProfileCandidatesChanged.emit()
 
     def clearProfileCandidates(self):
@@ -1759,15 +1784,18 @@ class SpectralProfilePlotModel(QStandardItemModel):
         def _attribute_removed(lid, *args, **kwargs):
             s = ""
 
+        def _dev_on_features_added(*args, **kwargs):
+            s = ""
+
         if speclib.id() not in self.mSignalProxies:
-            # speclib.featureAdded.connect(onFeatureAdded)
+            speclib.committedFeaturesAdded.connect(_dev_on_features_added)
             # speclib.attributeAdded.connect(_attribute_added)
             proxies = [
                 SignalProxyUndecorated(speclib.selectionChanged, rateLimit=rl, slot=self.onSpeclibSelectionChanged),
                 SignalProxy(speclib.attributeValueChanged, delay=1, rateLimit=rl * 10,
                             slot=lambda *args, lid=speclib.id(): _plotted_value_changed(lid, args)),
-                SignalProxyUndecorated(speclib.featuresDeleted, rateLimit=rl,
-                                       slot=lambda: self.updatePlot()),
+                # SignalProxyUndecorated(speclib.featureDeleted, rateLimit=rl,
+                #                       slot=lambda: self.updatePlot()),
                 SignalProxyUndecorated(speclib.featuresDeleted, rateLimit=rl,
                                        slot=lambda: self.updatePlot()),
 

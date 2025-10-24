@@ -26,23 +26,25 @@
 """
 
 import datetime
-import pathlib
+import logging
 import re
 import sys
 from pathlib import Path
-from typing import List, Dict, Tuple, Any, Union
+from typing import List, Dict, Tuple, Any, Union, Optional
 
 from qgis.PyQt import sip
 from qgis.PyQt.QtCore import QItemSelectionModel
 from qgis.PyQt.QtCore import Qt, QModelIndex, QAbstractTableModel, QSortFilterProxyModel
 from qgis.PyQt.QtWidgets import QDialogButtonBox, QDialog
 from qgis.PyQt.QtWidgets import QTableView, QPushButton
-from qgis.core import QgsMapLayer, QgsProviderRegistry, QgsProject
+from qgis.core import QgsMapLayer, QgsProviderRegistry, QgsProject, Qgis
 from qgis.core import QgsProviderSublayerTask, QgsProviderSublayerDetails, QgsProviderSublayerModel, \
     QgsProviderSublayerProxyModel
 from qgis.core import QgsTaskManager, QgsApplication, QgsTask
 from . import DIR_UI_FILES
 from .utils import loadUi
+
+logger = logging.getLogger(__name__)
 
 
 class SubDatasetLoadingTask(QgsTask):
@@ -50,11 +52,22 @@ class SubDatasetLoadingTask(QgsTask):
                  files: List[Union[str, Path]],
                  description: str = "Collect subdata sets",
                  callback=None,
+                 providers: Optional[List[str]] = None,
                  progress_interval: int = 1):
 
         super().__init__(description=description)
         self.mFiles: List[str] = [str(f) for f in files]
         self.mCallback = callback
+
+        all_providers = QgsProviderRegistry.instance().providerList()
+        if providers is None:
+            providers = all_providers
+        else:
+            assert isinstance(providers, list)
+            for p in providers:
+                assert p in all_providers, f'Provider {p} not found'
+
+        self.mProviders: List[str] = providers
         self.mMessages: Dict[str, str] = dict()
         self.mTimeOutSec = progress_interval
         self.mSubDataSets: Dict[str, List[QgsProviderSublayerDetails]] = dict()
@@ -73,16 +86,22 @@ class SubDatasetLoadingTask(QgsTask):
             assert isinstance(path, str)
 
             try:
-                if False:
-                    task = QgsProviderSublayerTask(path)
-                    task.run()
-                    self.mSubDataSets[path] = task.results()
-                else:
-                    # flags = Qgis.SublayerQueryFlag.FastScan
-                    # flags = None
-                    sublayers = QgsProviderRegistry.instance().querySublayers(uri=path)
-                    self.mSubDataSets[path] = sublayers
+                reg = QgsProviderRegistry.instance()
+                results = []
+                providerInfos = reg.querySublayers(uri=path, flags=Qgis.SublayerQueryFlag.FastScan)
+                for s in providerInfos:
+                    if s.providerKey() not in self.mProviders:
+                        continue
+                    try:
+                        task = QgsProviderSublayerTask(path, s.providerKey(), includeSystemTables=False)
+                        task.run()
+                        results.extend(task.results())
+                    except Exception as ex2:
+                        logger.error(f'Error loading subdataset {path} with provider {s.providerKey()}: {ex2}')
+
+                self.mSubDataSets[path] = results
             except Exception as ex:
+                logger.error(f'Error loading subdataset {path}: {ex}')
                 self.mMessages[path] = str(ex)
 
             if self.isCanceled():
@@ -92,7 +111,7 @@ class SubDatasetLoadingTask(QgsTask):
             if dt.seconds > self.mTimeOutSec:
                 self.setProgress(100 * (i + 1) / n)
 
-        self.setProgress(100 * (i + 1) / n)
+        self.setProgress(100)
         return True
 
     def finished(self, result):
@@ -101,16 +120,25 @@ class SubDatasetLoadingTask(QgsTask):
             self.mCallback(result, self)
 
 
-def subLayerDetails(uri: Union[str, pathlib.Path, QgsMapLayer]) -> List[QgsProviderSublayerDetails]:
+def subLayerDetails(uri: Union[str, Path, QgsMapLayer],
+                    providers=None) -> List[QgsProviderSublayerDetails]:
+    """
+    Wrapper for SubDatasetLoadingTask to return the sublayer details for a single file
+    :param uri: file path / uri
+    :param providers: list of providers to consider, defaults to all
+    :return: list of QgsProviderSublayerDetails
+    """
     if isinstance(uri, QgsMapLayer):
         uri = uri.source()
     else:
         uri = str(uri)
 
-    return QgsProviderRegistry.instance().querySublayers(uri)
+    task = SubDatasetLoadingTask(files=[uri], providers=providers)
+    task.run()
+    return task.results().get(uri)
 
 
-def subLayers(uri: Union[str, pathlib.Path, QgsMapLayer],
+def subLayers(uri: Union[str, Path, QgsMapLayer],
               options: QgsProviderSublayerDetails.LayerOptions = None) -> List[QgsMapLayer]:
     if options is None:
         options = QgsProviderSublayerDetails.LayerOptions(
@@ -235,7 +263,7 @@ class DatasetTableModel(QAbstractTableModel):
 
 class SubDatasetSelectionDialog(QDialog):
 
-    def __init__(self, *args, **kwds):
+    def __init__(self, *args, providers: List[str] = None, **kwds):
         super().__init__(*args, **kwds)
         loadUi(DIR_UI_FILES / 'subdatasetselectiondialog.ui', self)
 
@@ -250,6 +278,11 @@ class SubDatasetSelectionDialog(QDialog):
         self.subDatasetModel = QgsProviderSublayerModel()
         self.subDatasetFilterModel = QgsProviderSublayerProxyModel()
         self.subDatasetFilterModel.setSourceModel(self.subDatasetModel)
+
+        self.mProviders = []
+        if providers is None:
+            providers = ['all']
+        self.setProviders(providers)
 
         self.tvSubDatasets: QTableView
         self.tvDatasets.setModel(self.datasetFilterModel)
@@ -267,6 +300,17 @@ class SubDatasetSelectionDialog(QDialog):
         self.tbFilterDatasets.valueChanged.connect(self.datasetFilterModel.setFilterWildcard)
         self.tbFilterSubDatasets.valueChanged.connect(self.subDatasetFilterModel.setFilterString)
         self.validate()
+
+    def setProviders(self, providers: List[str]):
+        assert isinstance(providers, list)
+
+        all_providers = QgsProviderRegistry.instance().providerList()
+        if 'all' in providers:
+            providers = all_providers
+        else:
+            for p in providers:
+                assert p in all_providers, f'Provider {p} not found'
+        self.mProviders = providers
 
     def showMultiFiles(self, b: bool):
 
@@ -307,7 +351,10 @@ class SubDatasetSelectionDialog(QDialog):
 
         tm = QgsApplication.taskManager()
         assert isinstance(tm, QgsTaskManager)
-        qgsTask = SubDatasetLoadingTask(files, description='Search Subdatasets', callback=self.onCompleted)
+        qgsTask = SubDatasetLoadingTask(files,
+                                        description='Search Subdatasets',
+                                        providers=self.mProviders.copy(),
+                                        callback=self.onCompleted)
         self.startTask(qgsTask)
 
     def addDatasetInfos(self, infos: List[Tuple[str, List[QgsProviderSublayerDetails]]]):

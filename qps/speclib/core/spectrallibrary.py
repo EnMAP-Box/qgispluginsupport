@@ -357,7 +357,7 @@ class SpectralLibraryUtils:
         return writer.writeFeatures(uri, profiles, feedback=feedback)
 
     @staticmethod
-    def readFromSource(uri: str,
+    def readFromSource(uri: Union[str, Path],
                        context: QgsProcessingContext = None,
                        feedback: QgsProcessingFeedback = None) -> Optional[QgsVectorLayer]:
         from ..processing.importspectralprofiles import ImportSpectralProfiles, file_reader
@@ -796,6 +796,7 @@ class SpectralLibraryUtils:
         refProfile = profiles[0]
 
         new_edit_command: bool = not speclib.isEditCommandActive()
+        new_edit_command = False
         if new_edit_command:
             speclib.beginEditCommand('Add profiles')
 

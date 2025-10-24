@@ -15,7 +15,7 @@ from qgis.core import (
     QgsProcessingParameterVectorDestination,
     QgsProcessingException, QgsEditorWidgetSetup,
     QgsProcessingUtils,
-
+    QgsProcessingParameterDefinition,
     QgsFeatureSink,
     QgsFeature,
     QgsField, QgsFields,
@@ -63,19 +63,35 @@ class ExtractSpectralProfiles(QgsProcessingAlgorithm):
         return 'extractspectralprofiles'
 
     def displayName(self):
-        return 'Extract Spectral Profiles'
+        return 'Extract spectral profiles from raster layer'
 
-    def group(self):
+    def group(self) -> str:
         return 'Spectral Library'
 
-    def groupId(self):
-        return 'spectralibrary'
+    def groupId(self) -> str:
+        return 'spectrallibrary'
 
-    def shortHelpString(self):
-        return ('Extracts spectral profiles from a raster layer at each vector feature location.\n\n'
-                'For point geometries, the pixel value at that location is extracted. '
-                'For other geometries, the centroid is used.\n\n'
-                'The output is a vector layer with spectral profile data stored in a profile field.')
+    def shortHelpString(self) -> str:
+
+        alg_desc = ('Extracts spectral profiles from a raster layer and for each vector geometry.\n\n'
+                    'For point geometries, the pixel value at that location is extracted. '
+                    'For other geometries, the centroid is used.\n\n'
+                    'The output is a vector layer with spectral profile data stored in a profile field.')
+
+        D = {
+            'ALG_DESC': alg_desc,
+            'ALG_CREATOR': 'benjamin.jakimow@geo.hu-berlin.de',
+        }
+        for p in self.parameterDefinitions():
+            p: QgsProcessingParameterDefinition
+            infos = [f'<i>Identifier <code>{p.name()}</code></i>']
+            if i := p.help():
+                infos.append(i)
+            infos = [i for i in infos if i != '']
+            D[p.name()] = '<br>'.join(infos)
+
+        html = QgsProcessingUtils.formatHelpMapAsHtml(D, self)
+        return html
 
     def initAlgorithm(self, configuration=None):
 
