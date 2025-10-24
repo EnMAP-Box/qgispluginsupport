@@ -518,8 +518,8 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
         super().__init__(uri, providerOptions=providerOptions, flags=flags)
         self.mProviderOptions = providerOptions
         self.mFlags = flags
-        self.mField: QgsField = None
-        self.mFieldConverter: FieldToRasterValueConverter = None
+        self.mField: Optional[QgsField] = None
+        self.mFieldConverter: Optional[FieldToRasterValueConverter] = None
         self.mFeatures: List[QgsFeature] = []
         self.mStatsCache = dict()
         self.mYOffset: int = 0
@@ -534,8 +534,8 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
         url: QUrl = QUrl(uri)
         query: QUrlQuery = QUrlQuery(url)
 
-        layerID: str = None
-        layer: QgsVectorLayer = None
+        layerID: Optional[str] = None
+        layer: Optional[QgsVectorLayer] = None
         cacheSize: int = 2048
 
         if query.hasQueryItem('lid'):
