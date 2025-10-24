@@ -41,7 +41,7 @@ class TestSubDataSets(TestCase):
     @unittest.skipIf(not PATH_TANAGER.is_file(), 'Test requires Tanager h5 file. Set PATH_TANAGER_EXAMPLE')
     def test_tanager_h5(self):
 
-        task = SubDatasetLoadingTask([PATH_TANAGER])
+        task = SubDatasetLoadingTask([PATH_TANAGER], providers=['gdal'])
         assert task.run()
 
         results = task.results()
@@ -52,7 +52,7 @@ class TestSubDataSets(TestCase):
             # d2 = QgsProviderSublayersDialog(p, 'TEST', 'TEST', sublayers)
             # self.showGui(d2)
 
-        d = SubDatasetSelectionDialog()
+        d = SubDatasetSelectionDialog(providers=['gdal'])
         d.setFiles([PATH_TANAGER])
         self.showGui(d)
 
