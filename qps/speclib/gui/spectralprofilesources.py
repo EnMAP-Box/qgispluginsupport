@@ -255,7 +255,7 @@ class StandardLayerProfileSource(SpectralProfileSource):
         warnings.warn(DeprecationWarning('Use StandardLayerProfileSource(raster_layer)'))
         return StandardLayerProfileSource(layer)
 
-    def __init__(self, layer: [QgsRasterLayer, str, pathlib.Path]):
+    def __init__(self, layer: Union[QgsRasterLayer, str, pathlib.Path]):
         if not isinstance(layer, QgsRasterLayer):
             layer = QgsRasterLayer(str(layer))
         else:
