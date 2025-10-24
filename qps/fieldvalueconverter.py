@@ -98,7 +98,7 @@ def collect_native_types() -> Dict[str, List[QgsVectorDataProvider.NativeType]]:
         # add in-memory vector types
 
         vl = QgsVectorLayer("point?crs=epsg:4326&field=id:integer", "Scratch point layer", "memory")
-        __NATIVE_TYPES['memory'] = vl.dataProvider().nativeTypes()
+        __NATIVE_TYPES[vl.dataProvider().name()] = vl.dataProvider().nativeTypes()
 
     return __NATIVE_TYPES
 

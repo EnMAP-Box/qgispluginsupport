@@ -11,7 +11,7 @@ from qgis.core import QgsCoordinateReferenceSystem, QgsEditorWidgetSetup, QgsExp
     QgsProcessingMultiStepFeedback, QgsProcessingOutputLayerDefinition, QgsProcessingParameterBoolean, \
     QgsProcessingParameterFeatureSink, QgsProcessingParameterMultipleLayers, QgsProcessingUtils, QgsProject, \
     QgsProperty, QgsRemappingProxyFeatureSink, QgsRemappingSinkDefinition, QgsVectorFileWriter, QgsVectorLayer, \
-    QgsWkbTypes, QgsProcessingParameterEnum, QgsFileUtils
+    QgsWkbTypes, QgsProcessingParameterEnum
 from qgis.core import QgsProcessingParameterString, QgsProcessingParameterDefinition
 from ..core import profile_field_names
 from ..core.spectralprofile import SpectralProfileFileReader
@@ -397,7 +397,10 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
         #     value_output = QgsFileUtils.uniquePath(os.path.join(folder, 'spectrallibrary.gpkg'))
         #     parameters[self.P_OUTPUT] = value_output
 
-        driver = QgsVectorFileWriter.driverForExtension(os.path.splitext(value_output)[1])
+        if value_output.startswith('memory:'):
+            driver = 'memory'
+        else:
+            driver = QgsVectorFileWriter.driverForExtension(os.path.splitext(value_output)[1])
         dst_fields = GenericFieldValueConverter.compatibleTargetFields(all_fields, driver)
 
         # outputPar = QgsProcessingOutputLayerDefinition(parameters.get(self.P_OUTPUT), context.project())

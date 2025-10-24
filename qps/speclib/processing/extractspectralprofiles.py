@@ -74,9 +74,9 @@ class ExtractSpectralProfiles(QgsProcessingAlgorithm):
     def shortHelpString(self) -> str:
 
         alg_desc = ('Extracts spectral profiles from a raster layer and for each vector geometry.\n\n'
-                'For point geometries, the pixel value at that location is extracted. '
-                'For other geometries, the centroid is used.\n\n'
-                'The output is a vector layer with spectral profile data stored in a profile field.')
+                    'For point geometries, the pixel value at that location is extracted. '
+                    'For other geometries, the centroid is used.\n\n'
+                    'The output is a vector layer with spectral profile data stored in a profile field.')
 
         D = {
             'ALG_DESC': alg_desc,
