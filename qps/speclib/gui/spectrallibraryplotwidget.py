@@ -583,7 +583,7 @@ class SpectralLibraryPlotWidget(QWidget):
                                    color: Union[str, QColor] = None,
                                    color_expression: str = None,
                                    style: PlotStyle = None,
-                                   checked: bool = True):
+                                   checked: bool = True) -> ProfileVisualizationGroup:
         """
         Creates a new profile visualization
         :param args:
@@ -679,6 +679,7 @@ class SpectralLibraryPlotWidget(QWidget):
             item.setColorExpression(color_expression)
 
         self.mPlotModel.insertPropertyGroup(-1, item)
+        return item
         # self.mPlotControlModel.updatePlot()
 
     def profileVisualizations(self) -> List[ProfileVisualizationGroup]:

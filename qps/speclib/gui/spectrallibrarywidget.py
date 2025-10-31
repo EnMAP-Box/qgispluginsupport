@@ -1,5 +1,4 @@
 import logging
-import sys
 import warnings
 from pathlib import Path
 from typing import Dict, Generator, List, Optional, Set, Tuple
@@ -16,6 +15,7 @@ from qgis.core import QgsProcessingContext, QgsProcessingFeedback
 from qgis.gui import QgsAttributeTableView, QgsMapCanvas
 from qgis.gui import QgsMessageBar
 from .spectrallibraryplotitems import SpectralProfilePlotItem, SpectralProfilePlotWidget
+from .spectrallibraryplotmodelitems import ProfileVisualizationGroup
 from .spectrallibraryplotwidget import SpectralLibraryPlotWidget
 from .spectralprocessingdialog import SpectralProcessingDialog
 from .spectralprofilefieldmodel import SpectralProfileFieldActivatorDialog
@@ -25,7 +25,7 @@ from ..core.spectrallibrary import SpectralLibraryUtils
 from ..processing.exportspectralprofiles import ExportSpectralProfiles
 from ..processing.extractspectralprofiles import ExtractSpectralProfiles
 from ..processing.importspectralprofiles import ImportSpectralProfiles
-from ...layerproperties import CopyAttributesDialog, showLayerPropertiesDialog, AttributeTableWidget
+from ...layerproperties import showLayerPropertiesDialog, AttributeTableWidget
 from ...plotstyling.plotstyling import PlotStyle
 from ...processing.algorithmdialog import AlgorithmDialog
 from ...utils import loadUi
@@ -351,37 +351,16 @@ class SpectralLibraryWidget(QWidget):
     def sourceLayers(self) -> List[QgsVectorLayer]:
         return self.plotModel().sourceLayers()
 
-    def addSpeclib(self, speclib: QgsVectorLayer, askforNewFields: bool = False):
+    def addSpeclib(self, speclib: QgsVectorLayer) -> Optional[ProfileVisualizationGroup]:
         """
+        Create a new visualization for the provided spectral library
         :param speclib: QgsVectorLayer
         :param askforNewFields: bool, if True and speclib to add contains other fields, a dialog will be shown
                 that asks to add them first
         """
-        assert is_spectral_library(speclib)
-        speclib_dst = self.speclib()
-        wasEditable = speclib_dst.isEditable()
-
-        if askforNewFields:
-            dst_fields = speclib_dst.fields().names()
-            missing = [f for f in speclib.fields() if f.name() not in dst_fields]
-            if len(missing) > 0:
-                CopyAttributesDialog.copyLayerFields(speclib_dst, speclib, parent=self)
-
-        try:
-            speclib_dst.startEditing()
-            info = 'Add {} profiles from {} ...'.format(len(speclib), speclib.name())
-            speclib_dst.beginEditCommand(info)
-            SpectralLibraryUtils.addSpeclib(speclib_dst, speclib, addMissingFields=False)
-            speclib_dst.endEditCommand()
-
-            if not wasEditable:
-                speclib_dst.commitChanges()
-                s = ""
-            # self.plotControl().updatePlot()
-
-        except Exception as ex:
-            print(ex, file=sys.stderr)
-            pass
+        if not is_spectral_library(speclib):
+            return None
+        return self.spectralLibraryPlotWidget().createProfileVisualization(layer_id=speclib)
 
     def openSpectralProcessingWidget(self,
                                      layer_id: Optional[str] = None,
@@ -488,8 +467,8 @@ class SpectralLibraryWidget(QWidget):
 
         slNew = SpectralLibraryUtils.readFromMimeData(event.mimeData())
 
-        if isinstance(slNew, QgsVectorLayer) and slNew.featureCount() > 0:
-            self.addSpeclib(slNew, askforNewFields=True)
+        if is_spectral_library(slNew) and slNew not in self.spectralLibraries():
+            self.addSpeclib(slNew)
             event.acceptProposedAction()
 
     def dragEnterEvent(self, event: QDragEnterEvent):
