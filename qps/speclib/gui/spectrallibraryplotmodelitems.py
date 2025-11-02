@@ -2177,10 +2177,14 @@ class ProfileVisualizationGroup(PropertyItemGroup):
             return None
 
     def setPlotStyle(self, style: PlotStyle):
-        # update style
+        """Set the profile style"""
         self.mPStyle.setPlotStyle(style)
-        # trigger update of group icon
+        # trigger update of the group icon
         self.emitDataChanged()
+
+    def setCandidatePlotStyle(self, style: PlotStyle):
+        """Set the profile style for profile candidates"""
+        self.mProfileCandidates.setPlotStyle(style)
 
     def populateContextMenu(self, menu: QMenu):
 

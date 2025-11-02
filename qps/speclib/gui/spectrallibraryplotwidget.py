@@ -580,9 +580,10 @@ class SpectralLibraryPlotWidget(QWidget):
                                    name: str = None,
                                    layer_id: Union[QgsVectorLayer, str, None] = None,
                                    field_name: Union[QgsField, int, str] = None,
-                                   color: Union[str, QColor] = None,
-                                   color_expression: str = None,
-                                   style: PlotStyle = None,
+                                   color: Union[None, str, QColor] = None,
+                                   color_expression: Optional[str] = None,
+                                   style: Optional[PlotStyle] = None,
+                                   candidate_style: Optional[PlotStyle] = None,
                                    checked: bool = True) -> ProfileVisualizationGroup:
         """
         Creates a new profile visualization
@@ -671,6 +672,10 @@ class SpectralLibraryPlotWidget(QWidget):
         if not isinstance(style, PlotStyle):
             style = self.plotModel().defaultProfileStyle()
         item.setPlotStyle(style)
+
+        if not isinstance(candidate_style, PlotStyle):
+            candidate_style = self.plotModel().defaultProfileCandidateStyle()
+        item.setCandidatePlotStyle(candidate_style)
 
         if color:
             color = QColor(color)
