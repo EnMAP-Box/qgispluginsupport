@@ -48,6 +48,7 @@ class SpectralLibraryWidget(QWidget):
                  # plot_model: Optional[SpectralProfilePlotModel] = None,
                  profile_fields_check: Optional[str] = 'first_feature',
                  default_style: Optional[PlotStyle] = None,
+                 default_candidate_style: Optional[PlotStyle] = None,
                  speclib: Optional[QgsVectorLayer] = None,
                  **kwds):
 
@@ -109,6 +110,9 @@ class SpectralLibraryWidget(QWidget):
         s = ""
         if default_style:
             self.mSpeclibPlotWidget.plotModel().setDefaultProfileStyle(default_style)
+
+        if default_candidate_style:
+            self.mSpeclibPlotWidget.plotModel().setDefaultProfileCandidateStyle(default_candidate_style)
 
         # self.mSpeclibPlotWidget.setDualView(self.mMainView)
         self.mSpeclibPlotWidget.sigDragEnterEvent.connect(self.dragEnterEvent)

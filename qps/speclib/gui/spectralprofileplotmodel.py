@@ -1629,7 +1629,15 @@ class SpectralProfilePlotModel(QStandardItemModel):
         return self.mDefaultProfileStyle
 
     def setDefaultProfileStyle(self, style: PlotStyle):
+        assert isinstance(style, PlotStyle)
         self.mDefaultProfileStyle = style
+
+    def setDefaultProfileCandidateStyle(self, style: PlotStyle):
+        assert isinstance(style, PlotStyle)
+        self.mDefaultProfileCandidateStyle = style
+
+    def defaultProfileCandidateStyle(self) -> PlotStyle:
+        return self.mDefaultProfileCandidateStyle
 
     def hasProfileCandidates(self) -> bool:
         return len(self.mPROFILE_CANDIDATES) > 0
