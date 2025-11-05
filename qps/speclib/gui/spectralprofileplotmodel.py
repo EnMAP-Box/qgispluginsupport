@@ -491,9 +491,10 @@ class SpectralProfilePlotModel(QStandardItemModel):
     def setProject(self, project: QgsProject):
         assert isinstance(project, QgsProject)
 
-        if self.mProject != project:
-            self.mProject.layersWillBeRemoved.disconnect(self.onLayersWillBeRemoved)
+        if self.mProject == project:
+            return
 
+        self.mProject.layersWillBeRemoved.disconnect(self.onLayersWillBeRemoved)
         self.mProject = project
         for item in self.mModelItems:
             if isinstance(item, PropertyItemGroup):
@@ -1369,6 +1370,11 @@ class SpectralProfilePlotModel(QStandardItemModel):
             vis_context = QgsExpressionContext()
             vis_context.appendScope(QgsExpressionContextUtils.globalScope())
             vis_context.appendScope(QgsExpressionContextUtils.layerScope(layer))
+            p = layer.project()
+            if not isinstance(p, QgsProject):
+                p = self.project()
+            if isinstance(p, QgsProject):
+                vis_context.appendScope(QgsExpressionContextUtils.projectScope(p))
 
             scope = QgsExpressionContextScope('profile_visualization')
             scope.setVariable('field_name', vis['field_name'])
