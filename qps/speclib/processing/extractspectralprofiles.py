@@ -185,7 +185,7 @@ class ExtractSpectralProfiles(QgsProcessingAlgorithm):
 
         if True:
             for f in vector_layer.fields():
-                if f.name() not in output_fields.names():
+                if f.name() not in output_fields.names() and f.name().lower() not in ['fid']:
                     f2 = QgsField(f)
                     f2.setEditorWidgetSetup(f.editorWidgetSetup())
                     output_fields.append(f2)
@@ -279,6 +279,7 @@ class ExtractSpectralProfiles(QgsProcessingAlgorithm):
 
             # Create output feature
             out_feature = QgsFeature(output_fields)
+            out_feature.setId(feature.id())
             out_feature.setGeometry(feature.geometry())  # Use original geometry
 
             # Add profile data
@@ -290,7 +291,7 @@ class ExtractSpectralProfiles(QgsProcessingAlgorithm):
             out_feature.setAttribute(self.F_PX_Y, py)
             out_feature.setAttribute(self.F_SOURCE, raster_layer.source())
 
-            # Copy attributes from input feature
+            # Copy attributes from the input feature
             for field in vector_layer.fields():
                 if field.name() in [self.F_PROFILE, self.F_SOURCE, self.F_PX_X, self.F_PX_Y]:
                     continue
@@ -298,7 +299,8 @@ class ExtractSpectralProfiles(QgsProcessingAlgorithm):
                     out_feature.setAttribute(field.name(), feature.attribute(field.name()))
 
             # Write feature
-            r = writer.addFeature(out_feature)
+            if not writer.addFeature(out_feature):
+                s = ""
 
             features_processed += 1
 
@@ -307,6 +309,8 @@ class ExtractSpectralProfiles(QgsProcessingAlgorithm):
             feedback.setProgress(progress)
 
         # Clean up
+        if hasattr(writer, 'finalize'):
+            writer.finalize()
         del writer
         del ds
 
