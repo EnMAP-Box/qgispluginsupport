@@ -309,7 +309,8 @@ class ExtractSpectralProfiles(QgsProcessingAlgorithm):
             feedback.setProgress(progress)
 
         # Clean up
-        writer.finalize()
+        if hasattr(writer, 'finalize'):
+            writer.finalize()
         del writer
         del ds
 
