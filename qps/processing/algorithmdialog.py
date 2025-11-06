@@ -17,7 +17,7 @@ import datetime
 import json
 import time
 import traceback
-from typing import Optional
+from typing import Optional, Tuple, Callable
 
 import qgis.utils
 from processing import getTempFilename, ProcessingConfig
@@ -35,7 +35,7 @@ from qgis.PyQt.QtCore import QCoreApplication, QDir, QFileInfo
 from qgis.PyQt.QtGui import QColor, QPalette
 from qgis.PyQt.QtWidgets import QDialogButtonBox, QFileDialog, QHeaderView, QMessageBox, QPushButton, QTableWidgetItem
 from qgis.core import Qgis, QgsApplication, QgsExpressionContext, QgsExpressionContextScope, QgsExpressionContextUtils, \
-    QgsFeatureRequest, QgsFileUtils, QgsLayerTreeGroup, QgsLayerTreeLayer, QgsMapLayer, QgsMessageLog, \
+    QgsFeatureRequest, QgsFileUtils, QgsLayerTreeGroup, QgsMapLayer, QgsMessageLog, \
     QgsProcessingAlgorithm, QgsProcessingAlgRunnerTask, QgsProcessingContext, \
     QgsProcessingFeatureSourceDefinition, QgsProcessingFeedback, QgsProcessingModelAlgorithm, \
     QgsProcessingOutputBoolean, QgsProcessingOutputHtml, QgsProcessingOutputLayerDefinition, QgsProcessingOutputNumber, \
@@ -114,9 +114,7 @@ def handleAlgorithmResults(
     )
     i = 0
 
-    added_layers: list[
-        tuple[QgsMapLayer, Optional[QgsLayerTreeGroup], QgsLayerTreeLayer, QgsProject]
-    ] = []
+    added_layers = []
     layers_to_post_process: list[
         tuple[QgsMapLayer, QgsProcessingContext.LayerDetails]
     ] = []
@@ -144,7 +142,7 @@ def handleAlgorithmResults(
                 post_process_layer(output_name, layer, alg)
 
                 # Load layer to layer tree root or to a specific group
-                results_group = layerTreeResultsGroup(details, context)
+                # results_group = layerTreeResultsGroup(details, context)
                 # results_group = QgsProcessingGuiUtils.layerTreeResultsGroup(details, context)
                 # results_group = get_layer_tree_results_group(details, context)
 
@@ -192,9 +190,13 @@ def handleAlgorithmResults(
     if iface is not None:
         iface.layerTreeView().setUpdatesEnabled(False)
 
-    # addResultLayers(
-    #    added_layers, context, iface.layerTreeView() if iface else None
-    # )
+    try:
+        from qgis.gui import QgsProcessingGuiUtils
+        QgsProcessingGuiUtils.addResultLayers(
+            added_layers, context, iface.layerTreeView() if iface else None
+        )
+    except ImportError:
+        pass
 
     # all layers have been added to the layer tree, so safe to call
     # postProcessors now
@@ -1028,6 +1030,8 @@ class BatchAlgorithmDialog(QgsProcessingBatchAlgorithmDialogBase):
         self._context = context
         self._project = context.project() if isinstance(context, QgsProcessingContext) else QgsProject.instance()
 
+        self._callback = None
+
         self.setAlgorithm(alg)
 
         self.setWindowTitle(
@@ -1684,7 +1688,9 @@ class BatchPanel(QgsPanelWidget, WIDGET):
 
 def executeAlgorithm(alg_id, parent, in_place=False, as_batch=False,
                      iface: QgisInterface = None,
-                     context: QgsProcessingContext = None):
+                     context: QgsProcessingContext = None,
+                     on_results: Optional[Callable] = None,
+                     ) -> Tuple[bool, dict]:
     """Executes a project model with GUI interaction if needed.
 
     :param alg_id: algorithm id
@@ -1708,6 +1714,8 @@ def executeAlgorithm(alg_id, parent, in_place=False, as_batch=False,
     config = {}
     if in_place:
         config["IN_PLACE"] = True
+
+    ok_result_list = []
 
     if isinstance(alg_id, str):
         alg = (
@@ -1755,17 +1763,50 @@ def executeAlgorithm(alg_id, parent, in_place=False, as_batch=False,
 
                 feedback.close()
                 # MessageBarProgress handles errors
+
+                if callable(on_results):
+                    on_results(ok, results)
+
                 return
 
             if alg.countVisibleParameters() > 0:
                 dlg = alg.createCustomParametersWidget(parent)
 
+                duplicated_layers = []
+
                 if not dlg:
+                    # use dialog that accounts for individual context and iface
                     dlg = AlgorithmDialog(alg, in_place, parent=parent, context=context, iface=iface)
+                else:
+
+                    # overwrite QgsProcessingContext.processingContext()
+                    def _get_processing_context(*args, **kwargs):
+                        return context
+
+                    dlg.processing_context = _get_processing_context
+
+                    # add layers to QgsProject.instance() (and remove afterwards!)
+                    if QgsProject.instance() != context.project():
+                        for lyr in context.project().mapLayers(validOnly=True).values():
+                            if lyr.id() not in QgsProject.instance().mapLayers():
+                                clone = lyr.clone()
+                                QgsProject.instance().addMapLayer(clone, addToLegend=False)
+                                duplicated_layers.append(clone)
+
                 canvas = iface.mapCanvas()
                 prevMapTool = canvas.mapTool()
+
+                def on_finished(ok: bool, results: dict):
+                    if callable(on_results):
+                        on_results(ok, results)
+
+                dlg.algorithmFinished.connect(on_finished)
                 dlg.show()
                 dlg.exec()
+
+                for lyr in duplicated_layers:
+                    QgsProject.instance().takeMapLayer(lyr)
+
                 if canvas.mapTool() != prevMapTool:
                     try:
                         canvas.mapTool().reset()
@@ -1779,6 +1820,11 @@ def executeAlgorithm(alg_id, parent, in_place=False, as_batch=False,
                 feedback = MessageBarProgress(algname=alg.displayName())
                 # context = dataobjects.createContext(feedback)
                 parameters = {}
+
                 ret, results = execute(alg, parameters, context, feedback)
-                handleAlgorithmResults(alg, context, feedback=feedback, iface=iface, parameters=parameters)
+                handleAlgorithmResults(alg, context, feedback=feedback, iface=iface,
+                                       parameters=parameters)
                 feedback.close()
+
+                if callable(on_results):
+                    on_results(ret, results)
