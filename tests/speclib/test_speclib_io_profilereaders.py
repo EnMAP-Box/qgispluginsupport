@@ -2,13 +2,14 @@
 import re
 import unittest
 from datetime import datetime
+from typing import List
 
 import qpstestdata
 from qgis.PyQt.QtCore import QDateTime, Qt
 from qgis.core import edit, QgsFeature, QgsField
 from qps.fieldvalueconverter import collect_native_types
 from qps.qgisenums import QMETATYPE_QDATE, QMETATYPE_QDATETIME
-from qps.speclib.core import is_spectral_feature, profile_field_names
+from qps.speclib.core import is_spectral_feature, profile_field_names, is_spectral_library
 from qps.speclib.core.spectralprofile import decodeProfileValueDict, SpectralProfileFileReader, validateProfileValueDict
 from qps.speclib.io.asd import ASDBinaryFile
 from qps.speclib.io.spectralevolution import SEDFile
@@ -23,7 +24,7 @@ start_app()
 
 class TestSpeclibIO_SpectralProfileReaders(TestCase):
 
-    def profileFiles(self):
+    def profileFiles(self) -> List[str]:
         return list(file_search(DIR_TESTDATA, re.compile(r'.*\.(asd|sed|sig)$'), recursive=True))
 
     def test_read_svc_de(self):
@@ -55,6 +56,20 @@ class TestSpeclibIO_SpectralProfileReaders(TestCase):
         results, success = alg.run(par, context, feedback)
         self.assertTrue(success, msg=feedback.textLog())
         s = ""
+
+    def test_import_files(self):
+        from processing import run
+        alg = ImportSpectralProfiles()
+        alg.initAlgorithm({})
+        par = {
+            ImportSpectralProfiles.P_INPUT: self.profileFiles(),
+        }
+        context, feedback = self.createProcessingContextFeedback()
+
+        results = run(alg, par, context=context, feedback=feedback)
+        lyr = results[alg.P_OUTPUT]
+        self.assertTrue(is_spectral_library(lyr))
+        self.assertTrue(lyr.featureCount() > 0)
 
     def test_readFiles(self):
 
