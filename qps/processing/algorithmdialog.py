@@ -45,7 +45,7 @@ from qgis.core import Qgis, QgsApplication, QgsExpressionContext, QgsExpressionC
 from qgis.gui import QgisInterface, QgsGui, QgsPanelWidget, QgsProcessingAlgorithmDialogBase, \
     QgsProcessingBatchAlgorithmDialogBase, QgsProcessingContextGenerator, QgsProcessingGui, \
     QgsProcessingHiddenWidgetWrapper, QgsProcessingParametersGenerator, QgsProcessingParametersWidget, \
-    QgsProcessingParameterWidgetContext, QgsProcessingGuiUtils
+    QgsProcessingParameterWidgetContext
 
 
 def layerTreeResultsGroup(
@@ -190,9 +190,13 @@ def handleAlgorithmResults(
     if iface is not None:
         iface.layerTreeView().setUpdatesEnabled(False)
 
-    QgsProcessingGuiUtils.addResultLayers(
-        added_layers, context, iface.layerTreeView() if iface else None
-    )
+    try:
+        from qgis.gui import QgsProcessingGuiUtils
+        QgsProcessingGuiUtils.addResultLayers(
+            added_layers, context, iface.layerTreeView() if iface else None
+        )
+    except ImportError:
+        pass
 
     # all layers have been added to the layer tree, so safe to call
     # postProcessors now
