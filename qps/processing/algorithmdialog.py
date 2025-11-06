@@ -1711,6 +1711,17 @@ def executeAlgorithm(alg_id, parent, in_place=False, as_batch=False,
         context = QgsProcessingContext()
         context.setProject(QgsProject.instance())
 
+    def emit_results(ok: bool, results: dict):
+        print('Emit results')
+        if callable(on_results):
+
+            for k in results.keys():
+                v = results[k]
+                if isinstance(v, str) and v in context.project().mapLayers():
+                    results[k] = context.project().mapLayer(v)
+
+            on_results(ok, results)
+
     config = {}
     if in_place:
         config["IN_PLACE"] = True
@@ -1763,9 +1774,7 @@ def executeAlgorithm(alg_id, parent, in_place=False, as_batch=False,
 
                 feedback.close()
                 # MessageBarProgress handles errors
-
-                if callable(on_results):
-                    on_results(ok, results)
+                emit_results(ok, results)
 
                 return
 
@@ -1796,11 +1805,7 @@ def executeAlgorithm(alg_id, parent, in_place=False, as_batch=False,
                 canvas = iface.mapCanvas()
                 prevMapTool = canvas.mapTool()
 
-                def on_finished(ok: bool, results: dict):
-                    if callable(on_results):
-                        on_results(ok, results)
-
-                dlg.algorithmFinished.connect(on_finished)
+                dlg.algorithmFinished.connect(emit_results)
                 dlg.show()
                 dlg.exec()
 
@@ -1826,5 +1831,4 @@ def executeAlgorithm(alg_id, parent, in_place=False, as_batch=False,
                                        parameters=parameters)
                 feedback.close()
 
-                if callable(on_results):
-                    on_results(ret, results)
+                emit_results(ret, results)
