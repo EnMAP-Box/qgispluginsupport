@@ -726,7 +726,7 @@ class PlotStyle(QObject):
         self.markerSize = plotStyle.markerSize
         self.backgroundColor = QColor(plotStyle.backgroundColor)
         self.linePen = QPen(plotStyle.linePen)
-
+        self.antialias = plotStyle.antialias
         self.setVisibility(plotStyle.isVisible())
 
     def createIcon(self, size=None) -> QIcon:

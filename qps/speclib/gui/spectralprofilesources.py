@@ -2162,24 +2162,25 @@ class SpectralProfileBridge(TreeModel):
 
         # create a new generator node for each speclib that
         # is shown in the added SLWs and not covered by existing generator nodes
-        self.destinations()
+        if False:
+            self.destinations()
 
-        existing_targets = [g.speclib() for g in self[:]]
-        missing_targets = []
-        for slw in slws:
-            for sl in slw.spectralLibraries():
-                if sl not in existing_targets:
-                    missing_targets.append(sl)
+            existing_targets = [g.speclib() for g in self[:]]
+            missing_targets = []
+            for slw in slws:
+                for sl in slw.spectralLibraries():
+                    if sl not in existing_targets:
+                        missing_targets.append(sl)
 
-        if len(missing_targets) > 0:
-            for speclib in missing_targets:
-                self.project().addMapLayer(speclib)
-                # create a new generator for the 1st speclib target
-                g = SpectralFeatureGeneratorNode()
-                g.setSpeclib(speclib)
-                self.setDefaultSources(g)
-                self.addFeatureGenerator(g)
-                break
+            if len(missing_targets) > 0:
+                for speclib in missing_targets:
+                    self.project().addMapLayer(speclib)
+                    # create a new generator for the 1st speclib target
+                    g = SpectralFeatureGeneratorNode()
+                    g.setSpeclib(speclib)
+                    self.setDefaultSources(g)
+                    self.addFeatureGenerator(g)
+                    break
 
     def setDefaultDestination(self, generator: SpectralFeatureGeneratorNode):
         assert isinstance(generator, SpectralFeatureGeneratorNode)

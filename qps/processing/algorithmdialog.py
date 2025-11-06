@@ -26,6 +26,8 @@ from processing.gui.AlgorithmDialogBase import AlgorithmDialogBase
 from processing.gui.AlgorithmExecutor import execute, execute_in_place, executeIterating
 from processing.gui.BatchOutputSelectionPanel import BatchOutputSelectionPanel
 from processing.gui.BatchPanel import BatchPanelFillWidget, WIDGET
+from processing.gui.MessageBarProgress import MessageBarProgress
+from processing.gui.MessageDialog import MessageDialog
 from processing.gui.Postprocessing import determine_output_name, post_process_layer
 from processing.gui.wrappers import WidgetWrapper, WidgetWrapperFactory
 from processing.tools import dataobjects
@@ -1678,3 +1680,105 @@ class BatchPanel(QgsPanelWidget, WIDGET):
                 parameters[out.name()] = text
 
         return parameters, True
+
+
+def executeAlgorithm(alg_id, parent, in_place=False, as_batch=False,
+                     iface: QgisInterface = None,
+                     context: QgsProcessingContext = None):
+    """Executes a project model with GUI interaction if needed.
+
+    :param alg_id: algorithm id
+    :type alg_id: string
+    :param parent: parent widget
+    :type parent: QWidget
+    :param in_place: in place flag, defaults to False
+    :type in_place: bool, optional
+    :param as_batch: execute as batch flag, defaults to False
+    :type as_batch: bool, optional
+    """
+
+    if iface is None:
+        from qgis.utils import iface as iface0
+        iface = iface0
+
+    if context is None:
+        context = QgsProcessingContext()
+        context.setProject(QgsProject.instance())
+
+    config = {}
+    if in_place:
+        config["IN_PLACE"] = True
+
+    if isinstance(alg_id, str):
+        alg = (
+            QgsApplication.instance()
+            .processingRegistry()
+            .createAlgorithmById(alg_id, config)
+        )
+    elif isinstance(alg_id, QgsProcessingAlgorithm):
+        alg = alg_id
+    else:
+        raise NotImplementedError()
+
+    if alg is not None:
+
+        ok, message = alg.canExecute()
+        if not ok:
+            dlg = MessageDialog()
+            dlg.setTitle("Error executing algorithm")
+            dlg.setMessage("<h3>This algorithm cannot " "be run :-( </h3>\n{0}".format(message))
+            dlg.exec()
+            return
+
+        if as_batch:
+            dlg = BatchAlgorithmDialog(alg, iface.mainWindow())
+            dlg.show()
+            dlg.exec()
+        else:
+            in_place_input_parameter_name = "INPUT"
+            if hasattr(alg, "inputParameterName"):
+                in_place_input_parameter_name = alg.inputParameterName()
+
+            if in_place and not [
+                d
+                for d in alg.parameterDefinitions()
+                if d.name() not in (in_place_input_parameter_name, "OUTPUT")
+            ]:
+                parameters = {}
+                feedback = MessageBarProgress(algname=alg.displayName())
+                ok, results = execute_in_place(alg, parameters, context=context, feedback=feedback)
+                if ok:
+                    iface.messageBar().pushSuccess(
+                        "{algname} completed. %n feature(s) processed.",
+                        n=results["__count"],
+                    ).format(algname=alg.displayName())
+
+                feedback.close()
+                # MessageBarProgress handles errors
+                return
+
+            if alg.countVisibleParameters() > 0:
+                dlg = alg.createCustomParametersWidget(parent)
+
+                if not dlg:
+                    dlg = AlgorithmDialog(alg, in_place, parent=parent, context=context, iface=iface)
+                canvas = iface.mapCanvas()
+                prevMapTool = canvas.mapTool()
+                dlg.show()
+                dlg.exec()
+                if canvas.mapTool() != prevMapTool:
+                    try:
+                        canvas.mapTool().reset()
+                    except Exception:
+                        pass
+                    try:
+                        canvas.setMapTool(prevMapTool)
+                    except RuntimeError:
+                        pass
+            else:
+                feedback = MessageBarProgress(algname=alg.displayName())
+                # context = dataobjects.createContext(feedback)
+                parameters = {}
+                ret, results = execute(alg, parameters, context, feedback)
+                handleAlgorithmResults(alg, context, feedback=feedback, iface=iface, parameters=parameters)
+                feedback.close()
