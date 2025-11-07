@@ -178,7 +178,9 @@ class QgisMockup(QgisInterface):
         self.mLayerTreeModel.setFlag(QgsLayerTreeModel.Flag.AllowNodeRename, True)
         self.mLayerTreeModel.setFlag(QgsLayerTreeModel.Flag.AllowNodeChangeVisibility, True)
 
-        QgsProject.instance().layersWillBeRemoved.connect(self._onRemoveLayers)
+        p = QgsProject.instance()
+        p.legendLayersAdded.connect(self._onAddLayers)
+        p.layersWillBeRemoved.connect(self._onRemoveLayers)
 
         self.mLayerTreeView.setModel(self.mLayerTreeModel)
         self.mLayerTreeMapCanvasBridge = QgsLayerTreeMapCanvasBridge(self.mRootNode, self.mCanvas)
@@ -222,11 +224,21 @@ class QgisMockup(QgisInterface):
                 except Exception:
                     setattr(self, n, getattr(self._mock, n))
 
-    def _onRemoveLayers(self, layerIDs):
+    def _onAddLayers(self, layers: List[QgsMapLayer]):
+        # from qgis.utils import iface
+        # grp = iface.layerTreeView().layerTreeModel().rootGroup()
+        grp = self.mRootNode
+        existing = grp.findLayerIds()
+        for lyr in layers:
+            if lyr.id() not in existing:
+                grp.addLayer(lyr)
+        s = ""
+
+    def _onRemoveLayers(self, layerIDs: List[str]):
         to_remove: List[QgsLayerTreeLayer] = []
         for lyr in self.mRootNode.findLayers():
             lyr: QgsLayerTreeLayer
-            if lyr.layerId() in layerIDs:
+            if lyr in layerIDs or lyr.layerId() in layerIDs:
                 to_remove.append(lyr)
         for lyr in reversed(to_remove):
             lyr.parent().removeChildNode(lyr)
@@ -441,6 +453,7 @@ class QgisMockup(QgisInterface):
 def get_iface() -> QgisInterface:
     if not isinstance(qgis.utils.iface, QgisInterface):
         iface = QgisMockup()
+
         qgis.utils.initInterface(sip.unwrapinstance(iface))
         # we use our own QgisInterface, so replace it where it might have been imported
         # like `iface = qgis.utils.iface`

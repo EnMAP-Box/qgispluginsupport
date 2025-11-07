@@ -1717,7 +1717,7 @@ def executeAlgorithm(alg_id, parent, in_place=False, as_batch=False,
         context.setProject(QgsProject.instance())
 
     def emit_results(ok: bool, results: dict):
-        print('Emit results')
+        # print('Emit results')
         if callable(on_results):
 
             for k in results.keys():
