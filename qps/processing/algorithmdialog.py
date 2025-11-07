@@ -150,15 +150,19 @@ def handleAlgorithmResults(
                 # output layer already exists in the destination project
                 owned_map_layer = context.temporaryLayerStore().takeMapLayer(layer)
                 if owned_map_layer:
-                    # we don't add the layer to the tree yet -- that's done
-                    # later, after we've sorted all added layers
-                    # old: details.project.addMapLayer(owned_map_layer, False)
-                    # layer_tree_layer = QgsProcessingGuiUtils.ResultLayerDetails(owned_map_layer)
-                    # workaround
-                    context.project().addMapLayer(owned_map_layer, addToLegend=True)
+                    # # we don't add the layer to the tree yet -- that's done
+                    # # later, after we've sorted all added layers
                     # result_layer_details = QgsProcessingGuiUtils.ResultLayerDetails(
-                    #    owned_map_layer
+                    #     owned_map_layer
                     # )
+                    # result_layer_details.targetLayerTreeGroup = results_group
+                    # result_layer_details.sortKey = details.layerSortKey or 0
+                    # result_layer_details.destinationProject = details.project
+                    # added_layers.append(result_layer_details)
+
+                    # workaround:
+                    added_layers.append(owned_map_layer)
+                    pass
 
                 # result_layer_details.targetLayerTreeGroup = results_group
                 # result_layer_details.sortKey = details.layerSortKey or 0
@@ -187,24 +191,25 @@ def handleAlgorithmResults(
             wrong_layers.append(str(dest_id))
         i += 1
 
-    if iface is not None:
-        iface.layerTreeView().setUpdatesEnabled(False)
+    context.project().addMapLayers(added_layers, addToLegend=True)
 
-    try:
-        from qgis.gui import QgsProcessingGuiUtils
-        QgsProcessingGuiUtils.addResultLayers(
-            added_layers, context, iface.layerTreeView() if iface else None
-        )
-    except ImportError:
-        pass
+    # if iface is not None:
+    #     iface.layerTreeView().setUpdatesEnabled(False)
+
+    # try:
+    #     from qgis.gui import QgsProcessingGuiUtils
+    #     QgsProcessingGuiUtils.addResultLayers(added_layers, context, iface.layerTreeView() if iface else None)
+    # except (ImportError, NameError):
+    #     s = ""
+    #     pass
 
     # all layers have been added to the layer tree, so safe to call
     # postProcessors now
     for layer, details in layers_to_post_process:
         details.postProcessor().postProcessLayer(layer, context, feedback)
 
-    if iface is not None:
-        iface.layerTreeView().setUpdatesEnabled(True)
+    # if iface is not None:
+    #     iface.layerTreeView().setUpdatesEnabled(True)
 
     feedback.setProgress(100)
 
@@ -1711,6 +1716,17 @@ def executeAlgorithm(alg_id, parent, in_place=False, as_batch=False,
         context = QgsProcessingContext()
         context.setProject(QgsProject.instance())
 
+    def emit_results(ok: bool, results: dict):
+        # print('Emit results')
+        if callable(on_results):
+
+            for k in results.keys():
+                v = results[k]
+                if isinstance(v, str) and v in context.project().mapLayers():
+                    results[k] = context.project().mapLayer(v)
+
+            on_results(ok, results)
+
     config = {}
     if in_place:
         config["IN_PLACE"] = True
@@ -1763,9 +1779,7 @@ def executeAlgorithm(alg_id, parent, in_place=False, as_batch=False,
 
                 feedback.close()
                 # MessageBarProgress handles errors
-
-                if callable(on_results):
-                    on_results(ok, results)
+                emit_results(ok, results)
 
                 return
 
@@ -1796,11 +1810,7 @@ def executeAlgorithm(alg_id, parent, in_place=False, as_batch=False,
                 canvas = iface.mapCanvas()
                 prevMapTool = canvas.mapTool()
 
-                def on_finished(ok: bool, results: dict):
-                    if callable(on_results):
-                        on_results(ok, results)
-
-                dlg.algorithmFinished.connect(on_finished)
+                dlg.algorithmFinished.connect(emit_results)
                 dlg.show()
                 dlg.exec()
 
@@ -1826,5 +1836,4 @@ def executeAlgorithm(alg_id, parent, in_place=False, as_batch=False,
                                        parameters=parameters)
                 feedback.close()
 
-                if callable(on_results):
-                    on_results(ret, results)
+                emit_results(ret, results)

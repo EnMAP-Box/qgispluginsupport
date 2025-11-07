@@ -2127,7 +2127,7 @@ def numpyToQgisDataType(t) -> Qgis.DataType:
     return NUMPY2QGIS_DATA_TYPES.get(t, Qgis.DataType.UnknownDataType)
 
 
-def qgisAppQgisInterface() -> QgisInterface:
+def qgisAppQgisInterface() -> Optional[QgisInterface]:
     """
     Returns the QgisInterface of the QgisApp in case everything was started from within the QGIS Main Application
     :return: QgisInterface | None in case the qgis.utils.iface points to another
