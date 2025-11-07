@@ -150,15 +150,19 @@ def handleAlgorithmResults(
                 # output layer already exists in the destination project
                 owned_map_layer = context.temporaryLayerStore().takeMapLayer(layer)
                 if owned_map_layer:
-                    # we don't add the layer to the tree yet -- that's done
-                    # later, after we've sorted all added layers
-                    # old: details.project.addMapLayer(owned_map_layer, False)
-                    # layer_tree_layer = QgsProcessingGuiUtils.ResultLayerDetails(owned_map_layer)
-                    # workaround
-                    context.project().addMapLayer(owned_map_layer, addToLegend=True)
+                    # # we don't add the layer to the tree yet -- that's done
+                    # # later, after we've sorted all added layers
                     # result_layer_details = QgsProcessingGuiUtils.ResultLayerDetails(
-                    #    owned_map_layer
+                    #     owned_map_layer
                     # )
+                    # result_layer_details.targetLayerTreeGroup = results_group
+                    # result_layer_details.sortKey = details.layerSortKey or 0
+                    # result_layer_details.destinationProject = details.project
+                    # added_layers.append(result_layer_details)
+
+                    # workaround:
+                    added_layers.append(owned_map_layer)
+                    pass
 
                 # result_layer_details.targetLayerTreeGroup = results_group
                 # result_layer_details.sortKey = details.layerSortKey or 0
@@ -187,24 +191,25 @@ def handleAlgorithmResults(
             wrong_layers.append(str(dest_id))
         i += 1
 
-    if iface is not None:
-        iface.layerTreeView().setUpdatesEnabled(False)
+    context.project().addMapLayers(added_layers, addToLegend=True)
 
-    try:
-        from qgis.gui import QgsProcessingGuiUtils
-        QgsProcessingGuiUtils.addResultLayers(
-            added_layers, context, iface.layerTreeView() if iface else None
-        )
-    except ImportError:
-        pass
+    # if iface is not None:
+    #     iface.layerTreeView().setUpdatesEnabled(False)
+
+    # try:
+    #     from qgis.gui import QgsProcessingGuiUtils
+    #     QgsProcessingGuiUtils.addResultLayers(added_layers, context, iface.layerTreeView() if iface else None)
+    # except (ImportError, NameError):
+    #     s = ""
+    #     pass
 
     # all layers have been added to the layer tree, so safe to call
     # postProcessors now
     for layer, details in layers_to_post_process:
         details.postProcessor().postProcessLayer(layer, context, feedback)
 
-    if iface is not None:
-        iface.layerTreeView().setUpdatesEnabled(True)
+    # if iface is not None:
+    #     iface.layerTreeView().setUpdatesEnabled(True)
 
     feedback.setProgress(100)
 
