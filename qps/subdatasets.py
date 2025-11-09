@@ -41,6 +41,7 @@ from qgis.core import QgsMapLayer, QgsProviderRegistry, QgsProject, Qgis
 from qgis.core import QgsProviderSublayerTask, QgsProviderSublayerDetails, QgsProviderSublayerModel, \
     QgsProviderSublayerProxyModel
 from qgis.core import QgsTaskManager, QgsApplication, QgsTask
+from qgis.gui import QgsFileWidget
 from . import DIR_UI_FILES
 from .utils import loadUi
 
@@ -397,6 +398,9 @@ class SubDatasetSelectionDialog(QDialog):
         if is_error:
             print(msg, file=sys.stderr)
         self.setInfo(msg)
+
+    def setStorageMode(self, mode: QgsFileWidget.StorageMode):
+        self.fileWidget.setStorageMode(mode)
 
     def setInfo(self, text: str):
         self.tbInfo.setText(text)
