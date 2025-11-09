@@ -552,7 +552,7 @@ class SpectralProfileFileReader(object):
             fields.append(QgsField(SpectralProfileFileReader.KEY_Metadata, QMETATYPE_QVARIANTMAP,
                                    typeName='map', subType=QMETATYPE_QSTRING))
             SpectralProfileFileReader._STANDARD_FIELDS = fields
-        return SpectralProfileFileReader._STANDARD_FIELDS
+        return QgsFields(SpectralProfileFileReader._STANDARD_FIELDS)
 
     def path(self) -> Path:
         """
