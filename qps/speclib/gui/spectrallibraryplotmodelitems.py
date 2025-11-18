@@ -971,8 +971,6 @@ class SpectralProfileLayerFieldItem(PropertyItem):
 
     def createEditor(self, parent):
         w = LayerFieldWidget(parent=parent)
-
-        # w = QLabel('TEST', parent=parent)
         return w
 
     def setEditorData(self, editor: QWidget, index: QModelIndex):
@@ -1011,6 +1009,8 @@ class SpectralProfileLayerFieldItem(PropertyItem):
                 break
         elif isinstance(field_name, QgsField):
             field_name = field_name.name()
+
+        assert layer_id is None or isinstance(layer_id, str)
 
         if layer_id != self.mLayerID or field_name != self.mFieldName:
             self.mLayerID = layer_id
