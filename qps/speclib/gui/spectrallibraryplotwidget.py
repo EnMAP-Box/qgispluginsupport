@@ -684,6 +684,15 @@ class SpectralLibraryPlotWidget(QWidget):
             item.setColorExpression(color_expression)
 
         self.mPlotModel.insertPropertyGroup(-1, item)
+
+        if isinstance(item, ProfileVisualizationGroup) and len(self.mPlotModel.visualizations()) == 1:
+            # auto-select the first profile visualization
+            idx = self.mPlotModel.indexFromItem(item)
+            tv = self.treeView
+            idx2 = tv.model().mapFromSource(idx)
+            if idx2.isValid():
+                tv.selectionModel().setCurrentIndex(idx, QItemSelectionModel.SelectCurrent | QItemSelectionModel.Rows)
+
         return item
         # self.mPlotControlModel.updatePlot()
 

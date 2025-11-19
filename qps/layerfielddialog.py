@@ -369,7 +369,7 @@ class LayerFieldWidget(QWidget):
         self.setMinimumSize(5, 5)
         self.setMaximumHeight(75)
 
-        self.mLayerFilterFunc = lambda layer: isinstance(layer, QgsMapLayer) and layer.isValid()
+        self.mLayerFilterFunc = lambda layer: isinstance(layer, QgsVectorLayer) and layer.isValid()
         self.mFieldFilterFunc = lambda field: isinstance(field, QgsField)
 
         self.mLayer = None

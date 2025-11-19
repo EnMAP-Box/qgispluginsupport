@@ -282,14 +282,15 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
         crs = QgsCoordinateReferenceSystem('EPSG:4326')
         all_fields = QgsFields()
 
-        reader_key = self.parameterAsEnum(parameters, self.P_INPUT_TYPE, context)
+        reader_key = parameters.get(self.P_INPUT_TYPE)
+        if not isinstance(reader_key, str):
+            reader_key = self.parameterAsEnum(parameters, self.P_INPUT_TYPE, context)
 
         reader_options = {}
 
         if isinstance(reader_key, int):
             reader_key = self._input_readers[reader_key]
-        else:
-            reader_key = self.parameterAsString(parameters, self.P_INPUT_TYPE, context)
+
         if reader_key not in self._input_readers:
             feedback.reportError(f'Unknown reader: {reader_key}')
 

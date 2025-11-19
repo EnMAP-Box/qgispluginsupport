@@ -25,6 +25,7 @@ from qgis.gui import QgsColorButton, QgsDockWidget, QgsDoubleSpinBox, QgsFieldEx
     QgsMapCanvas
 from .spectrallibrarylistmodel import SpectralLibraryListModel
 from .spectrallibrarywidget import SpectralLibraryWidget
+from .spectralprofilecandidates import SpectralProfileCandidates
 from .spectralprofileplotmodel import SpectralProfilePlotModel
 from .. import speclibUiPath
 from ..core import profile_field_names
@@ -1615,7 +1616,7 @@ class SpectralProfileBridge(TreeModel):
             idx1 = self.index(self.rowCount(idx_parent) - 1, 0, idx_parent)
             self.dataChanged.emit(idx0, idx1, [Qt.BackgroundColorRole])
 
-        # 3. generate features from a feature generators
+        # 3. generate features from feature generators
         #    multiple feature generators can create features for the same speclib
         # store as RESULTS[layer id, ([features], {field_name:PlotStyle})
         CANDIDATES: Dict[str, List[QgsFeature]] = dict()
@@ -1642,34 +1643,29 @@ class SpectralProfileBridge(TreeModel):
         visualized = set()
         for slw in self.mSLWs:
             for lyr in slw.sourceLayers():
-                visualized.add(lyr)
+                visualized.add(lyr.id())
         missing_visualization = [lid for lid in CANDIDATES.keys() if lid not in visualized]
 
-        CANDIDATE2SLWs = dict()
-        SLW2CANDIDATES = dict()
-        for i, slw in enumerate(self.mSLWs):
-            for sl in slw.plotModel().spectralLibraries():
-                lid = sl.id()
-                if lid in CANDIDATES and lid not in CANDIDATE2SLWs:
-                    CANDIDATE2SLWs[sl.id()] = slw
-                    SLW2CANDIDATES[i] = SLW2CANDIDATES.get(i, []) + [lid]
+        # create a visualization for each missing profile destination
+        add_automatically = False
+        if len(missing_visualization) > 0:
+            for slw in self.mSLWs:
+                slw: SpectralLibraryWidget
+                for lyr in missing_visualization:
+                    slw.createProfileVisualization(lyr, None)
 
-        for lid in CANDIDATES.keys():
-            if lid not in CANDIDATE2SLWs and len(self.mSLWs) > 0:
-                slw = self.mSLWs[0]
-                CANDIDATE2SLWs[lid] = slw
-                SLW2CANDIDATES[0] = SLW2CANDIDATES.get(0, []) + [lid]
-
-        refresh_plot: List[SpectralProfilePlotModel] = []
-        for i, slw in enumerate(self.mSLWs):
-            lids = SLW2CANDIDATES.get(i, [])
-            candidates = {lid: CANDIDATES[lid] for lid in lids}
-
-            slw.plotModel().addProfileCandidates(candidates)
-
-        for model in refresh_plot:
+        # add current profiles to project layers and inform linked spectral library widgets
+        models = []
+        for slw in self.mSLWs:
+            models.append(slw.plotModel())
+            if slw.optionAddCurrentProfilesAutomatically.isChecked():
+                add_automatically = True
+                break
+        with SpectralProfilePlotModel.UpdateBlocker(models):
+            SpectralProfileCandidates.addProfileCandidates(self.project(), CANDIDATES,
+                                                           add_automatically=add_automatically)
+        for model in models:
             model.updatePlot()
-
         return CANDIDATES
 
     def createFeatures(self,

@@ -250,7 +250,7 @@ class TestsGdalMetadata(TestCase):
     def test_modify_metadata(self):
         nb, nl, ns = 5, 2, 2
 
-        path = self.createTestOutputDirectory() / 'test.img'
+        path = self.createTestOutputDirectory() / 'test.bsq'
         path = path.as_posix()
 
         drv: gdal.Driver = gdal.GetDriverByName('ENVI')
