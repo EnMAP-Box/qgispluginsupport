@@ -1,7 +1,7 @@
 import logging
 import warnings
 from pathlib import Path
-from typing import Dict, Generator, List, Optional, Set, Tuple
+from typing import Dict, Generator, List, Optional, Tuple
 
 from qgis.PyQt.QtCore import pyqtSignal, Qt
 from qgis.PyQt.QtGui import QCloseEvent
@@ -66,48 +66,6 @@ class SpectralLibraryWidget(QWidget):
         model.sigProfileCandidatesChanged.connect(self.updateActions)
         self.mSpeclibPlotWidget.sigTreeSelectionChanged.connect(self.updateActions)
 
-        # if isinstance(plot_model, SpectralProfilePlotModel):
-        #     for vis in plot_model.visualizations():
-        #         speclib = vis.layer()
-        #         assert isinstance(speclib, QgsVectorLayer) and speclib.isValid()
-        #         break
-        # else:
-        #     plot_model = SpectralProfilePlotModel()
-        #     if isinstance(project, QgsProject):
-        #         plot_model.setProject(project)
-        #
-        #     if not isinstance(speclib, QgsVectorLayer):
-        #         speclib = SpectralLibraryUtils.createSpectralLibrary()
-        #         plot_model.project().addMapLayer(speclib)
-        #
-        #     if profile_fields_check:
-        #         SpectralLibraryUtils.activateProfileFields(speclib, check=profile_fields_check)
-
-        # super().__init__(speclib)
-        # self.setAttribute(Qt.WA_DeleteOnClose, on=True)
-        # self.setWindowIcon(QIcon(':/qps/ui/icons/speclib.svg'))
-        # self.mQgsStatusBar = QgsStatusBar()
-        # self.mQgsStatusBar
-        # self.mQgsStatusBar.setParentStatusBar(self.statusBar())
-        # self.mStatusLabel: SpectralLibraryInfoLabel = SpectralLibraryInfoLabel()
-        # self.mStatusLabel.setTextFormat(Qt.RichText)
-        # self.mQgsStatusBar.addPermanentWidget(self.mStatusLabel, 1, QgsStatusBar.AnchorLeft)
-        # self.mQgsStatusBar.setVisible(False)
-        # self.mSpectralProcessingWidget: SpectralProcessingDialog = None
-
-        # to be removed
-        # self.mLayer = speclib
-
-        # self.mToolbar: QToolBar
-        # self.mIODialogs: List[QWidget] = list()
-
-        # self.tableView().willShowContextMenu.connect(self.onWillShowContextMenuAttributeTable)
-        # self.mMainView.showContextMenuExternally.connect(self.onShowContextMenuAttributeEditor)
-
-        # self.mSpeclibPlotWidget: SpectralLibraryPlotWidget = SpectralLibraryPlotWidget(plot_model=plot_model)
-        # self.mSpeclibPlotWidget: SpectralLibraryPlotWidget
-
-        s = ""
         if default_style:
             self.mSpeclibPlotWidget.plotModel().setDefaultProfileStyle(default_style)
 
@@ -126,8 +84,8 @@ class SpectralLibraryWidget(QWidget):
 
             self.project().addMapLayer(speclib)
             self.mSpeclibPlotWidget.createProfileVisualization(layer_id=speclib)
-        else:
-            self.mSpeclibPlotWidget.createProfileVisualization()
+        # else:
+        #    self.mSpeclibPlotWidget.createProfileVisualization()
 
         self.actionSelectProfilesFromMap.setVisible(False)
         self.actionSelectProfilesFromMap.triggered.connect(self.sigLoadFromMapRequest.emit)
@@ -319,7 +277,8 @@ class SpectralLibraryWidget(QWidget):
         :return:
         :rtype:
         """
-        self.actionAddCurrentProfiles.setEnabled(len(self.plotModel().mPROFILE_CANDIDATES) > 0)
+
+        self.actionAddCurrentProfiles.setEnabled(self.plotModel().hasProfileCandidates())
 
         b = self.plotModel().hasProfileCandidates()
         self.actionAddCurrentProfiles.setEnabled(b)
@@ -399,6 +358,21 @@ class SpectralLibraryWidget(QWidget):
         if len(created_files) > 0:
             self.sigFilesCreated.emit(created_files)
 
+    def createProfileVisualization(self, layer, field=None):
+
+        vis = self.mSpeclibPlotWidget.createProfileVisualization(layer_id=layer, field_name=field)
+        # m = self.plotModel()
+        # vis = ProfileVisualizationGroup()
+        # vis.setProject(self.project())
+        # vis.setLayerField(layer, field)
+        # vis.setPlotStyle(m.defaultProfileStyle())
+        # vis.setCandidatePlotStyle(m.defaultProfileCandidateStyle())
+        # m.insertPropertyGroup(-1, vis)
+        #
+        # idx = m.indexFromItem(vis)
+        #
+        # self
+
     def addCurrentProfilesAutomatically(self, b: bool):
         self.optionAddCurrentProfilesAutomatically.setChecked(b)
 
@@ -408,24 +382,8 @@ class SpectralLibraryWidget(QWidget):
         """
         self.plotModel().confirmProfileCandidates()
 
-    def temporaryProfileIDs(self) -> Set[int]:
-        return self.plotModel().profileCandidates().count()
-        # return self.plotControl().mTemporaryProfileIDs
-
-    def deleteCurrentProfilesFromSpeclib(self, *args):
-        # delete previous current profiles
-        speclib = self.speclib()
-        if is_spectral_library(speclib):
-            oldCurrentIDs = list(self.plotModel().profileCandidates().candidateFeatureIds())
-            restart_editing: bool = not speclib.startEditing()
-            speclib.beginEditCommand('Remove temporary')
-            speclib.deleteFeatures(oldCurrentIDs)
-            speclib.endEditCommand()
-
-            if restart_editing:
-                speclib.startEditing()
-
-        self.updateActions()
+    def removeCurrentProfiles(self):
+        self.plotModel().clearProfileCandidates()
 
     def spectralLibraryPlotWidget(self) -> SpectralLibraryPlotWidget:
         return self.mSpeclibPlotWidget

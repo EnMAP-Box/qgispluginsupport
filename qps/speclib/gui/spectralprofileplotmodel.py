@@ -19,8 +19,8 @@ from qgis.core import QgsExpression, QgsExpressionContext, QgsExpressionContextS
     QgsFeature, QgsFeatureRenderer, QgsFeatureRequest, QgsField, QgsMarkerSymbol, QgsProject, QgsProperty, \
     QgsReadWriteContext, QgsRenderContext, QgsSingleSymbolRenderer, QgsSymbol, QgsVectorLayer, QgsVectorLayerCache
 from .spectrallibraryplotitems import SpectralProfilePlotItem, SpectralViewBox
+from .spectralprofilecandidates import CUSTOM_PROPERTY_CANDIDATE_FIDs, SpectralProfileCandidates
 from ..core import profile_field_indices, profile_field_list, profile_fields, is_profile_field
-from ..core.spectrallibrary import SpectralLibraryUtils
 from ..core.spectralprofile import decodeProfileValueDict
 from ..gui.spectrallibraryplotitems import PlotUpdateBlocker, SpectralProfilePlotDataItem, SpectralProfilePlotWidget
 from ..gui.spectrallibraryplotmodelitems import GeneralSettingsGroup, ProfileColorPropertyItem, \
@@ -123,23 +123,28 @@ class SpectralProfilePlotModel(QStandardItemModel):
     class UpdateBlocker(object):
         """Blocks plot updates and proxy signals"""
 
-        def __init__(self, plotModel: 'SpectralProfilePlotModel'):
-            self.mPlotModel = plotModel
-            self.mWasBlocked: bool = False
+        def __init__(self, plotModels: List['SpectralProfilePlotModel']):
+            if isinstance(plotModels, SpectralProfilePlotModel):
+                plotModels = [plotModels]
+
+            self.mPlotModels: List[SpectralProfilePlotModel] = plotModels
+            self.mWasBlocked: List[bool] = [False for m in plotModels]
 
         def __enter__(self):
-            self.mWasBlocked = self.mPlotModel.blockUpdates(True)
+            for i, model in enumerate(self.mPlotModels):
+                self.mWasBlocked[i] = model.blockUpdates(True)
 
-            for lid, signals in self.mPlotModel.mSignalProxies.items():
-                for signal in signals:
-                    signal.blockSignal = True
+                for lid, signals in model.mSignalProxies.items():
+                    for signal in signals:
+                        signal.blockSignal = True
 
         def __exit__(self, exc_type, exc_value, tb):
-            self.mPlotModel.blockUpdates(self.mWasBlocked)
 
-            for lid, signals in self.mPlotModel.mSignalProxies.items():
-                for signal in signals:
-                    signal.blockSignal = False
+            for wasBlocked, model in zip(self.mWasBlocked, self.mPlotModels):
+                model.blockUpdates(wasBlocked)
+                for lid, signals in model.mSignalProxies.items():
+                    for signal in signals:
+                        signal.blockSignal = False
 
     def __init__(self, *args, **kwds):
 
@@ -147,10 +152,18 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
         self.mBlockUpdates: bool = False
         self.mAddProfileCandidatesAutomatically: bool = False
-        self.mPROFILE_CANDIDATES: Dict[str, List] = {}
+        # self.mPROFILE_CANDIDATES: Dict[str, List] = {}
 
         self.mSTATS_ITEMS = []
 
+        def onCandidatesChanged(layer_ids: List[str]):
+            for layer in self.spectralLibraries():
+                if layer.id() in layer_ids:
+                    self.updatePlot()
+                    break
+
+        SpectralProfileCandidates.SHARED_SIGNALS.candidatesChanged.connect(onCandidatesChanged)
+        # self.sigProfileCandidatesChanged.connect(self.updatePlot)
         # allows overwriting automatic generated plot styles
         # self.mPROFILE_CANDIDATE_STYLES: Dict[Tuple[str, str], Dict[int, PlotStyle]] = {}
 
@@ -1328,7 +1341,8 @@ class SpectralProfilePlotModel(QStandardItemModel):
             layer_id = layer.id()
             vis_id = vis.get('vis_id')
             selected_fids = layer.selectedFeatureIds()
-            candidate_fids = self.mPROFILE_CANDIDATES.get(layer_id, [])
+
+            candidate_fids = layer.customProperty(CUSTOM_PROPERTY_CANDIDATE_FIDs, [])
 
             referenced_aids = []
             color_expression = QgsExpression(vis['color_expression'])
@@ -1650,108 +1664,84 @@ class SpectralProfilePlotModel(QStandardItemModel):
         return self.mDefaultProfileCandidateStyle
 
     def hasProfileCandidates(self) -> bool:
-        return len(self.mPROFILE_CANDIDATES) > 0
-
-    def confirmProfileCandidates(self, update_plot: bool = True):
-        """
-        Confirms the profile candidates so that they will not be removed
-        when new candidates are added.
-        """
-        self.mPROFILE_CANDIDATES.clear()
-        if update_plot:
-            self.updatePlot()
-        self.sigProfileCandidatesChanged.emit()
+        for layer in self.spectralLibraries():
+            candidates = layer.customProperty(CUSTOM_PROPERTY_CANDIDATE_FIDs, [])
+            if len(candidates) > 0:
+                return True
+        return False
 
     def setAddProfileCandidatesAutomatically(self, b: bool):
         self.mAddProfileCandidatesAutomatically = b
 
-    def addProfileCandidates(self, candidates: Dict[str, List[QgsFeature]]):
-        """
-        Adds QgsFeatures to be considered as profile candidates.
-        :param candidates: Dictionary with profile candidates as {layer id:[List of QgsFeatures]}.
-        """
-        assert isinstance(candidates, dict)
+    # def addProfileCandidates(self, candidates: Dict[str, List[QgsFeature]]):
+    #     """
+    #     Adds QgsFeatures to be considered as profile candidates.
+    #     :param candidates: Dictionary with profile candidates as {layer id:[List of QgsFeatures]}.
+    #     """
+    #     assert isinstance(candidates, dict)
+    #     changed_layers = set()
+    #     with SpectralProfilePlotModel.UpdateBlocker(self) as blocker:
+    #         if self.mAddProfileCandidatesAutomatically:
+    #             self.confirmProfileCandidates(update_plot=False)
+    #         else:
+    #             # remove previous candidates
+    #             self.clearProfileCandidates()
+    #
+    #         visualized_layer_ids = [v.layerId() for v in self.visualizations()]
+    #         missing_layer_ids = [k for k in candidates.keys() if k not in visualized_layer_ids]
+    #         for lid in missing_layer_ids:
+    #             lyr = self.project().mapLayer(lid)
+    #
+    #             if not isinstance(lyr, QgsVectorLayer) and lyr.isValid():
+    #                 logger.warning(f'Can not get layer for layer id:{lid}')
+    #                 continue
+    #
+    #             lyr_vis = None
+    #             for vis in self.visualizations():
+    #                 if vis.layerId() is None:
+    #                     lyr_vis = vis
+    #                     break
+    #             if lyr_vis is None:
+    #                 # create new visualization
+    #                 lyr_vis = ProfileVisualizationGroup()
+    #                 self.insertPropertyGroup(-1, lyr_vis)
+    #
+    #             lyr_vis.setProject(self.project())
+    #             lyr_vis.setLayerField(lyr, None)
+    #
+    #         # add profile candidates
+    #         visualized_layer_ids = [v.layerId() for v in self.visualizations()]
+    #         for layer_id, features in candidates.items():
+    #             if layer_id in visualized_layer_ids:
+    #                 layer = self.project().mapLayer(layer_id)
+    #                 if isinstance(layer, QgsVectorLayer) and layer.isValid():
+    #                     # insert
+    #                     s = ""
+    #                     stop_editing = layer.startEditing()
+    #                     if not isinstance(features, list):
+    #                         features = list(features)
+    #
+    #                     new_fids = SpectralLibraryUtils.addProfiles(layer, features, addMissingFields=True)
+    #
+    #                     def check_commited_features_added(layer_id, idmap_2):
+    #                         new_fids.clear()
+    #                         new_fids.extend([f.id() for f in idmap_2])
+    #
+    #                     layer.committedFeaturesAdded.connect(check_commited_features_added)
+    #                     layer.commitChanges(stopEditing=stop_editing)
+    #                     layer.committedFeaturesAdded.disconnect(check_commited_features_added)
+    #                     if not self.mAddProfileCandidatesAutomatically:
+    #                         layer.setCustomProperty(CUSTOM_PROPERTY_CANDIDATE_FIDs, new_fids)
+    #                         # self.mPROFILE_CANDIDATES[layer_id] = new_fids
+    #                 changed_layers.add(layer_id)
+    #
+    #     self.SHARED_SIGNALS.candidatesChanged.emit(changed_layers)
 
-        with SpectralProfilePlotModel.UpdateBlocker(self) as blocker:
-            if self.mAddProfileCandidatesAutomatically:
-                self.confirmProfileCandidates(update_plot=False)
-            else:
-                # remove previous candidates
-                self.clearProfileCandidates()
-
-            visualized_layer_ids = [v.layerId() for v in self.visualizations()]
-            missing_layer_ids = [k for k in candidates.keys() if k not in visualized_layer_ids]
-            for lid in missing_layer_ids:
-                lyr = self.project().mapLayer(lid)
-
-                if not isinstance(lyr, QgsVectorLayer) and lyr.isValid():
-                    logger.warning(f'Can not get layer for layer id:{lid}')
-                    continue
-
-                lyr_vis = None
-                for vis in self.visualizations():
-                    if vis.layerId() is None:
-                        lyr_vis = vis
-                        break
-                if lyr_vis is None:
-                    # create new visualization
-                    lyr_vis = ProfileVisualizationGroup()
-                    self.insertPropertyGroup(-1, lyr_vis)
-
-                lyr_vis.setProject(self.project())
-                lyr_vis.setLayerField(lyr, None)
-
-            # add profile candidates
-            visualized_layer_ids = [v.layerId() for v in self.visualizations()]
-            for layer_id, features in candidates.items():
-                if layer_id in visualized_layer_ids:
-                    layer = self.project().mapLayer(layer_id)
-                    if isinstance(layer, QgsVectorLayer) and layer.isValid():
-                        # insert
-                        s = ""
-                        stop_editing = layer.startEditing()
-                        if not isinstance(features, list):
-                            features = list(features)
-                        # layer.beginEditCommand('Add {} profiles'.format(len(features)))
-                        new_fids = SpectralLibraryUtils.addProfiles(layer, features, addMissingFields=True)
-
-                        # layer.endEditCommand()
-
-                        def check_commited_features_added(layer_id, idmap_2):
-                            new_fids.clear()
-                            new_fids.extend([f.id() for f in idmap_2])
-
-                        layer.committedFeaturesAdded.connect(check_commited_features_added)
-                        layer.commitChanges(stopEditing=stop_editing)
-                        layer.committedFeaturesAdded.disconnect(check_commited_features_added)
-                        if not self.mAddProfileCandidatesAutomatically:
-                            self.mPROFILE_CANDIDATES[layer_id] = new_fids
-
-        self.updatePlot()
-        self.sigProfileCandidatesChanged.emit()
+    def confirmProfileCandidates(self):
+        SpectralProfileCandidates.confirmProfileCandidates(self.spectralLibraries())
 
     def clearProfileCandidates(self):
-        for layer_id, old_fids in list(self.mPROFILE_CANDIDATES.items()):
-            layer = self.project().mapLayer(layer_id)
-            if isinstance(layer, QgsVectorLayer) and len(old_fids) > 0:
-
-                restart_editing: bool = not layer.startEditing()
-                layer.beginEditCommand('Remove profile candidates')
-
-                def onFeaturesRemoved(lid: str, fids):
-                    s = ""
-
-                del self.mPROFILE_CANDIDATES[layer_id]
-                layer.committedFeaturesRemoved.connect(onFeaturesRemoved)
-                b = layer.deleteFeatures(old_fids)
-                layer.endEditCommand()
-                layer.committedFeaturesRemoved.disconnect(onFeaturesRemoved)
-                # self.mPROFILE_CANDIDATES[layer_id] = [fid for fid in self.mPROFILE_CANDIDATES[layer_id] if fid not in old_fids]
-                if restart_editing:
-                    layer.startEditing()
-
-        self.mPROFILE_CANDIDATES.clear()
-        self.sigProfileCandidatesChanged.emit()
+        SpectralProfileCandidates.removeProfileCandidates(self.spectralLibraries())
 
     def flushProxySignals(self):
         """
@@ -1812,8 +1802,6 @@ class SpectralProfilePlotModel(QStandardItemModel):
                 SignalProxyUndecorated(speclib.selectionChanged, rateLimit=rl, slot=self.onSpeclibSelectionChanged),
                 SignalProxy(speclib.attributeValueChanged, delay=1, rateLimit=rl * 10,
                             slot=lambda *args, lid=speclib.id(): _plotted_value_changed(lid, args)),
-                # SignalProxyUndecorated(speclib.featureDeleted, rateLimit=rl,
-                #                       slot=lambda: self.updatePlot()),
                 SignalProxyUndecorated(speclib.featuresDeleted, rateLimit=rl,
                                        slot=lambda: self.updatePlot()),
 
