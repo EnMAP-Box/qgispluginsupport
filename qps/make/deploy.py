@@ -25,15 +25,12 @@
 """
 import os.path
 import pathlib
-import re
-
-from os import getenv
 import platform
+from os import getenv
 from typing import List
 
 from qgis.PyQt.QtCore import QStandardPaths, QSettings
 from qgis.core import QgsApplication
-
 from qgis.core import QgsUserProfileManager
 
 
@@ -133,7 +130,7 @@ class QGISMetadataFileWriter(object):
 
         lines.append(self.formatTag('qgisMinimumVersion', self.mQgisMinimumVersion))
         lines.append(self.formatTag('qgisMaximumVersion', self.mQgisMaximumVersion))
-        lines.append(self.formatTag('about', re.sub('\n', '', self.mAbout)))
+        lines.append(self.formatTag('about', self.mAbout, sep='\n\t'))
 
         lines.append(self.formatTag('icon', self.mIcon))
         lines.append(self.formatTag('tags', self.mTags))
