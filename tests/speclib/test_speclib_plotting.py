@@ -507,8 +507,6 @@ class TestSpeclibPlotting(TestCase):
         self.assertEqual(sl1.featureCount(), n1_1 + 1)
         self.assertEqual(sl2.featureCount(), n1_2 + 2)
 
-        self.assertTrue(len(model.mPROFILE_CANDIDATES) > 0)
-
     def test_ProfileVisualizationGroup(self):
 
         sl = TestObjects.createSpectralLibrary(n=10, n_bands=[5, 12],

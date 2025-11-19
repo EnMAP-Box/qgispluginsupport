@@ -1105,6 +1105,10 @@ class SpectralProfilePlotModel(QStandardItemModel):
         :param settings:
         :return:
         """
+        pw = self.plotWidget()
+
+        if not isinstance(pw, SpectralProfilePlotWidget):
+            return
 
         logger.debug('updateStatistics')
 
@@ -1130,8 +1134,9 @@ class SpectralProfilePlotModel(QStandardItemModel):
             DT[key] = dtl
 
         # collect data for each visualization
-        p1: SpectralProfilePlotItem = self.plotWidget().plotItem1
-        p2: SpectralProfilePlotItem = self.plotWidget().plotItem2
+
+        p1: SpectralProfilePlotItem = pw.plotItem1
+        p2: SpectralProfilePlotItem = pw.plotItem2
 
         # remove all stats profiles
         for item in self.mSTATS_ITEMS:
@@ -1736,6 +1741,12 @@ class SpectralProfilePlotModel(QStandardItemModel):
     #                 changed_layers.add(layer_id)
     #
     #     self.SHARED_SIGNALS.candidatesChanged.emit(changed_layers)
+
+    def addProfileCandidates(self, candidates: Dict[str, List[QgsFeature]]):
+
+        sids = [s.id() for s in self.spectralLibraries()]
+        candidates = {k: v for k, v in candidates.items() if k in sids}
+        SpectralProfileCandidates.addProfileCandidates(self.project(), candidates)
 
     def confirmProfileCandidates(self):
         SpectralProfileCandidates.confirmProfileCandidates(self.spectralLibraries())
