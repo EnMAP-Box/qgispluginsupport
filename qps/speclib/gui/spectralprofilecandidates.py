@@ -46,8 +46,10 @@ class SpectralProfileCandidates(object):
                     lyr.deleteFeatures(fids)
                     lyr.commitChanges(stopEditing=stop_editing)
                     lyr.removeCustomProperty(CUSTOM_PROPERTY_CANDIDATE_FIDs)
-        # no need to trigger cls.SHARED_SIGNALS.candidatesChanged,
-        # as the plot models are already triggered by the deletion of features
+                    changed.add(lyr.id())
+
+        if len(changed) > 0:
+            cls.SHARED_SIGNALS.candidatesChanged.emit(list(changed))
 
     @classmethod
     def addProfileCandidates(cls,
@@ -103,5 +105,5 @@ class SpectralProfileCandidates(object):
                 lyr.setCustomProperty(CUSTOM_PROPERTY_CANDIDATE_FIDs, new_fids)
             changed_layers.add(lyr.id())
 
-        # if len(changed_layers) > 0:
-        #    cls.SHARED_SIGNALS.candidatesChanged.emit(list(changed_layers))
+        if len(changed_layers) > 0:
+            cls.SHARED_SIGNALS.candidatesChanged.emit(list(changed_layers))

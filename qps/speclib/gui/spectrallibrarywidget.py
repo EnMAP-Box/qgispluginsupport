@@ -90,7 +90,7 @@ class SpectralLibraryWidget(QWidget):
         self.actionSelectProfilesFromMap.setVisible(False)
         self.actionSelectProfilesFromMap.triggered.connect(self.sigLoadFromMapRequest.emit)
 
-        self.actionAddCurrentProfiles.setShortcut(Qt.CTRL + Qt.SHIFT + Qt.Key_A)
+        self.actionAddCurrentProfiles.setShortcut(Qt.CTRL + Qt.Key_A)
         self.actionAddCurrentProfiles.setShortcutContext(Qt.WidgetWithChildrenShortcut)
         self.actionAddCurrentProfiles.triggered.connect(self.addCurrentProfilesToSpeclib)
 
@@ -99,9 +99,14 @@ class SpectralLibraryWidget(QWidget):
         self.optionAddCurrentProfilesAutomatically.toggled.connect(
             self.plotModel().setAddProfileCandidatesAutomatically)
 
+        self.actionRejectCurrentProfiles.setShortcut(Qt.CTRL + Qt.Key_Z)
+        self.actionRejectCurrentProfiles.setShortcutContext(Qt.WidgetWithChildrenShortcut)
+        self.actionRejectCurrentProfiles.triggered.connect(self.rejectCurrentProfiles)
+
         m = QMenu()
         m.setToolTipsVisible(True)
         m.addAction(self.actionAddCurrentProfiles)
+        m.addAction(self.actionRejectCurrentProfiles)
         m.addAction(self.optionAddCurrentProfilesAutomatically)
         m.addAction(self.actionSelectProfilesFromMap)
 
@@ -282,6 +287,7 @@ class SpectralLibraryWidget(QWidget):
 
         b = self.plotModel().hasProfileCandidates()
         self.actionAddCurrentProfiles.setEnabled(b)
+        self.actionRejectCurrentProfiles.setEnabled(b)
         # self.actionGrpAddProfiles.setEnabled(b)
 
         b = self.mSpeclibPlotWidget.panelVisualization.isVisible()
@@ -382,7 +388,7 @@ class SpectralLibraryWidget(QWidget):
         """
         self.plotModel().confirmProfileCandidates()
 
-    def removeCurrentProfiles(self):
+    def rejectCurrentProfiles(self):
         self.plotModel().clearProfileCandidates()
 
     def spectralLibraryPlotWidget(self) -> SpectralLibraryPlotWidget:

@@ -159,7 +159,9 @@ class SpectralProfilePlotModel(QStandardItemModel):
         def onCandidatesChanged(layer_ids: List[str]):
             for layer in self.spectralLibraries():
                 if layer.id() in layer_ids:
-                    self.updatePlot()
+                    if not self.mBlockUpdates:
+                        self.updatePlot()
+                    self.sigProfileCandidatesChanged.emit()
                     break
 
         SpectralProfileCandidates.SHARED_SIGNALS.candidatesChanged.connect(onCandidatesChanged)
