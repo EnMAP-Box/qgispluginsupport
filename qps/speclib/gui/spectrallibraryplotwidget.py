@@ -380,7 +380,7 @@ class SpectralLibraryPlotWidget(QWidget):
         assert isinstance(self.mPlotWidget, SpectralProfilePlotWidget)
         # self.plotWidget.sigPopulateContextMenuItems.connect(self.onPopulatePlotContextMenu)
 
-        self.mPlotModel = SpectralProfilePlotModel()
+        self.mPlotModel = SpectralProfilePlotModel(parent=self)
         # self.mPlotModel.mBlockUpdates = True
         self.mPlotModel.setPlotWidget(self.mPlotWidget)
         self.mPlotModel.sigPlotWidgetStyleChanged.connect(self.sigPlotWidgetStyleChanged.emit)
