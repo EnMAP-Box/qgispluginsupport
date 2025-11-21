@@ -27,18 +27,19 @@
 
 import datetime
 import os
-import pathlib
 import pickle
 import re
 import sys
 import warnings
 import weakref
+from pathlib import Path, PurePosixPath
 from typing import Dict, List, Optional, Union
 
 from osgeo import gdal, ogr
 
 from qgis.PyQt.QtCore import QDateTime, QMimeData, Qt, QUrl, QVariant
 from qgis.PyQt.QtWidgets import QWidget
+from qgis.core import QgsProcessingContext
 from qgis.core import edit, Qgis, QgsAction, QgsActionManager, QgsApplication, QgsAttributeTableConfig, \
     QgsCoordinateReferenceSystem, QgsCoordinateTransformContext, QgsEditorWidgetSetup, QgsExpression, \
     QgsExpressionContext, QgsExpressionContextScope, QgsExpressionContextUtils, QgsFeature, QgsFeatureIterator, \
@@ -47,8 +48,8 @@ from qgis.core import edit, Qgis, QgsAction, QgsActionManager, QgsApplication, Q
     QgsWkbTypes
 from . import can_store_spectral_profiles, create_profile_field, is_profile_field, is_spectral_library, \
     profile_field_list, profile_field_names
-from .spectralprofile import decodeProfileValueDict, encodeProfileValueDict, groupBySpectralProperties, \
-    prepareProfileValueDict, ProfileEncoding, SpectralSetting
+from .spectralprofile import decodeProfileValueDict, encodeProfileValueDict, prepareProfileValueDict, ProfileEncoding, \
+    groupBySpectralProperties, SpectralProfileFileWriter, SpectralProfileFileReader
 from .. import EDITOR_WIDGET_REGISTRY_KEY, FIELD_NAME, FIELD_VALUES, SPECLIB_EPSG_CODE
 from ...plotstyling.plotstyling import PlotStyle
 from ...qgisenums import QGIS_WKBTYPE, QMETATYPE_QBYTEARRAY, QMETATYPE_QDATE, QMETATYPE_QDATETIME, QMETATYPE_QSTRING, \
@@ -145,7 +146,7 @@ def vsiSpeclibs() -> list:
     entry = gdal.ReadDir(VSI_DIR)
     if entry is not None:
         for bn in entry:
-            p = pathlib.PurePosixPath(VSI_DIR) / bn
+            p = PurePosixPath(VSI_DIR) / bn
             p = p.as_posix()
             stats = gdal.VSIStatL(p)
             if isinstance(stats, gdal.StatBuf) and not stats.IsDirectory():
@@ -307,18 +308,90 @@ class SpectralLibraryUtils:
                         s = ""
                         pass
 
-    @staticmethod
-    def writeToSource(*args, **kwds) -> List[str]:
-        from .spectrallibraryio import SpectralLibraryIO
-        return SpectralLibraryIO.writeToSource(*args, **kwds)
+    @classmethod
+    def writeToSource(cls,
+                      profiles: Union[
+                          QgsFeature,
+                          QgsVectorLayer,
+                          QgsFeatureIterator,
+                          List[QgsFeature]],
+                      uri: Union[str, Path, QUrl],
+                      field: Union[str, QgsField] = None,
+                      feedback: Optional[QgsProcessingFeedback] = None,
+                      **kwargs: dict) -> List[Path]:
+
+        crs = None
+        if isinstance(profiles, QgsFeature):
+            profiles = [profiles]
+        elif isinstance(profiles, QgsVectorLayer):
+            crs = profiles.crs()
+            profiles = list(profiles.getFeatures())
+        elif isinstance(profiles, QgsFeatureIterator):
+            profiles = list(profiles)
+        elif isinstance(profiles, list):
+            pass
+        else:
+            raise Exception(f'Unsupported type for profiles: {type(profiles)}')
+
+        if len(profiles) == 0:
+            return []
+
+        fields = profile_field_list(profiles[0])
+
+        if isinstance(uri, QUrl):
+            uri = uri.toString(QUrl.PreferLocalFile | QUrl.RemoveQuery)
+
+        writer_options = kwargs.copy()
+        if isinstance(feedback, QgsProcessingFeedback):
+            writer_options['feedback'] = feedback
+        if field:
+            writer_options['field'] = field
+        if isinstance(crs, QgsCoordinateReferenceSystem):
+            writer_options['crs'] = crs
+
+        from ..processing.exportspectralprofiles import file_writer
+
+        writer = file_writer(uri, **writer_options)
+        assert isinstance(writer, SpectralProfileFileWriter), f'Unable to find writer for {writer}:'
+
+        return writer.writeFeatures(uri, profiles, feedback=feedback)
 
     @staticmethod
-    def readFromSource(uri: str, feedback: QgsProcessingFeedback = QgsProcessingFeedback()):
-        from .spectrallibraryio import SpectralLibraryIO
-        return SpectralLibraryIO.readSpeclibFromUri(uri, feedback=feedback)
+    def readFromSource(uri: Union[str, Path],
+                       context: QgsProcessingContext = None,
+                       feedback: QgsProcessingFeedback = None) -> Optional[QgsVectorLayer]:
+        from ..processing.importspectralprofiles import ImportSpectralProfiles, file_reader
+
+        reader = file_reader(uri)
+        if isinstance(reader, SpectralProfileFileReader):
+            reader_id = reader.id()
+        else:
+            reader_id = None
+        alg = ImportSpectralProfiles()
+        alg.initAlgorithm({})
+
+        if context is None:
+            context = QgsProcessingContext()
+            context.setProject(QgsProject.instance())
+            if feedback is None:
+                feedback = QgsProcessingFeedback()
+            context.setFeedback(feedback)
+
+        params = {alg.P_INPUT: str(uri),
+                  alg.P_INPUT_TYPE: reader_id,
+                  }
+        results, success = alg.run(params, context, feedback)
+        if success:
+            lyr = results[alg.P_OUTPUT]
+            if isinstance(lyr, str):
+                lyr = QgsVectorLayer(lyr)
+            if lyr.id() in context.temporaryLayerStore().mapLayers():
+                context.temporaryLayerStore().takeMapLayer(lyr)
+            return lyr
+        return None
 
     @staticmethod
-    def groupBySpectralProperties(*args, **kwds) -> Dict[SpectralSetting, List[QgsFeature]]:
+    def groupBySpectralProperties(*args, **kwds) -> Dict[str, List[Union[QgsFeature, dict]]]:
         return groupBySpectralProperties(*args, **kwds)
 
     @staticmethod
@@ -723,6 +796,7 @@ class SpectralLibraryUtils:
         refProfile = profiles[0]
 
         new_edit_command: bool = not speclib.isEditCommandActive()
+        new_edit_command = False
         if new_edit_command:
             speclib.beginEditCommand('Add profiles')
 

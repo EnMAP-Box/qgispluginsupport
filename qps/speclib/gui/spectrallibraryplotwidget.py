@@ -1,4 +1,5 @@
 import re
+import warnings
 from typing import List, Optional, Union
 
 from qgis.PyQt.QtCore import pyqtSignal, QAbstractItemModel, QItemSelectionModel, QMimeData, QModelIndex, \
@@ -8,11 +9,12 @@ from qgis.PyQt.QtGui import QColor, QContextMenuEvent, QDragEnterEvent, QDropEve
 from qgis.PyQt.QtWidgets import QAbstractItemView, QAction, QApplication, QComboBox, QDialog, QFrame, QHBoxLayout, \
     QMenu, QMessageBox, QStyle, QStyledItemDelegate, QStyleOptionButton, QStyleOptionViewItem, QTreeView, \
     QWidget
+from qgis.PyQt.QtWidgets import QLineEdit
 from qgis.core import QgsApplication, QgsField, QgsMapLayerProxyModel, QgsProject, QgsRasterLayer, \
     QgsSettings, QgsVectorLayer
-from qgis.gui import QgsDualView, QgsFilterLineEdit
+from qgis.gui import QgsFilterLineEdit
 from .spectrallibraryplotitems import SpectralProfilePlotWidget
-from .spectrallibraryplotmodelitems import GeneralSettingsGroup, PlotStyleItem, ProfileVisualizationGroup, PropertyItem, \
+from .spectrallibraryplotmodelitems import PlotStyleItem, ProfileVisualizationGroup, PropertyItem, \
     PropertyItemBase, PropertyItemGroup, PropertyLabel, RasterRendererGroup
 from .spectrallibraryplotunitmodels import SpectralProfilePlotXAxisUnitWidgetAction
 from .spectralprofileplotmodel import copy_items, SpectralProfilePlotModel, SpectralProfilePlotModelProxyModel
@@ -283,10 +285,8 @@ class SpectralProfilePlotViewDelegate(QStyledItemDelegate):
             elif isinstance(item, PlotStyleItem):
                 # self.initStyleOption(option, index)
                 grp = item.parent()
-                if isinstance(grp, ProfileVisualizationGroup):
+                if isinstance(grp, ProfileVisualizationGroup) and item.key() == 'style':
                     plot_style = grp.plotStyle(add_symbol_scope=True)
-                elif isinstance(grp, GeneralSettingsGroup) and item.key() == 'candidate_style':
-                    plot_style = grp.profileCandidateStyle()
                 else:
                     plot_style: PlotStyle = item.plotStyle()
 
@@ -340,7 +340,10 @@ class SpectralProfilePlotViewDelegate(QStyledItemDelegate):
         if callable(getattr(item, 'setEditorData', None)):
             item.setEditorData(editor, index)
         else:
-            super().setEditorData(editor, index)
+            if isinstance(item, ProfileVisualizationGroup) and isinstance(editor, QLineEdit):
+                editor.setText(item.text())
+            else:
+                super().setEditorData(editor, index)
 
         return
 
@@ -350,6 +353,9 @@ class SpectralProfilePlotViewDelegate(QStyledItemDelegate):
         if callable(getattr(item, 'setModelData', None)):
             item.setModelData(w, model, index)
         else:
+            if isinstance(item, ProfileVisualizationGroup) and isinstance(w, QLineEdit):
+                if item.text() != w.text():
+                    item.mAutoName = False
             super().setModelData(w, model, index)
 
 
@@ -357,11 +363,11 @@ class SpectralLibraryPlotWidget(QWidget):
     sigDragEnterEvent = pyqtSignal(QDragEnterEvent)
     sigDropEvent = pyqtSignal(QDropEvent)
     sigPlotWidgetStyleChanged = pyqtSignal()
+    sigTreeSelectionChanged = pyqtSignal()
 
     SHOW_MAX_PROFILES_HINT = True
 
-    def __init__(self, *args,
-                 plot_model: Optional[SpectralProfilePlotModel] = None, **kwds):
+    def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
         loadUi(speclibUiPath('spectrallibraryplotwidget.ui'), self)
 
@@ -374,11 +380,8 @@ class SpectralLibraryPlotWidget(QWidget):
         assert isinstance(self.mPlotWidget, SpectralProfilePlotWidget)
         # self.plotWidget.sigPopulateContextMenuItems.connect(self.onPopulatePlotContextMenu)
 
-        if not isinstance(plot_model, SpectralProfilePlotModel):
-            plot_model = SpectralProfilePlotModel()
-
-        self.mPlotModel = plot_model
-
+        self.mPlotModel = SpectralProfilePlotModel(parent=self)
+        # self.mPlotModel.mBlockUpdates = True
         self.mPlotModel.setPlotWidget(self.mPlotWidget)
         self.mPlotModel.sigPlotWidgetStyleChanged.connect(self.sigPlotWidgetStyleChanged.emit)
         self.mPlotModel.sigMaxProfilesExceeded.connect(self.onMaxProfilesReached)
@@ -399,7 +402,7 @@ class SpectralLibraryPlotWidget(QWidget):
         self.mViewDelegate = SpectralProfilePlotViewDelegate(self.treeView)
         self.mViewDelegate.setItemDelegates(self.treeView)
 
-        self.mDualView: Union[QgsDualView] = None
+        # self.mDualView: Union[QgsDualView] = None
         self.mSettingsModel = SettingsModel(QgsSettings('qps'), key_filter='qps/spectrallibrary')
 
         self.optionShowVisualizationSettings: QAction
@@ -473,9 +476,9 @@ class SpectralLibraryPlotWidget(QWidget):
         self.plotModel().setProject(project)
 
         # ensure that the dual-view layer is added to the recent QgsProject
-        lyr = self.mDualView.masterModel().layer()
-        if isinstance(lyr, QgsVectorLayer) and lyr.id() not in project.mapLayers():
-            project.addMapLayer(lyr)
+        # lyr = self.mDualView.masterModel().layer()
+        # if isinstance(lyr, QgsVectorLayer) and lyr.id() not in project.mapLayers():
+        #     project.addMapLayer(lyr)
 
     def project(self) -> QgsProject:
         return self.plotModel().project()
@@ -534,6 +537,7 @@ class SpectralLibraryPlotWidget(QWidget):
         # rows = self.treeView.selectionModel().selectedRows()
         groups = [g for g in self.treeView.selectedPropertyGroups() if g.isRemovable()]
         self.actionRemoveProfileVis.setEnabled(len(groups) > 0)
+        self.sigTreeSelectionChanged.emit()
 
     def onMaxProfilesReached(self):
 
@@ -576,10 +580,11 @@ class SpectralLibraryPlotWidget(QWidget):
                                    name: str = None,
                                    layer_id: Union[QgsVectorLayer, str, None] = None,
                                    field_name: Union[QgsField, int, str] = None,
-                                   color: Union[str, QColor] = None,
-                                   color_expression: str = None,
-                                   style: PlotStyle = None,
-                                   checked: bool = True):
+                                   color: Union[None, str, QColor] = None,
+                                   color_expression: Optional[str] = None,
+                                   style: Optional[PlotStyle] = None,
+                                   candidate_style: Optional[PlotStyle] = None,
+                                   checked: bool = True) -> ProfileVisualizationGroup:
         """
         Creates a new profile visualization
         :param args:
@@ -592,6 +597,7 @@ class SpectralLibraryPlotWidget(QWidget):
         """
         item = ProfileVisualizationGroup()
         item.setCheckState(Qt.Checked if checked else Qt.Unchecked)
+
         # set defaults
 
         if isinstance(layer_id, QgsVectorLayer):
@@ -599,12 +605,22 @@ class SpectralLibraryPlotWidget(QWidget):
         if isinstance(field_name, QgsField):
             field_name = field_name.name()
 
+        # already shown speclib fields
         existing_fields = [(v.layerId(), v.fieldName())
                            for v in self.plotModel().visualizations()
                            if isinstance(v.fieldName(), str) and isinstance(v.layerId(), str)]
 
+        # other existing speclib fields
+        for lyr in self.project().mapLayers().values():
+            if isinstance(lyr, QgsVectorLayer):
+                for field in profile_field_list(lyr):
+                    k = (lyr.id(), field.name())
+                    if k not in existing_fields:
+                        existing_fields.append(k)
+
+        # try to find a good guess for the layer and field
         if layer_id is None and field_name is None:
-            last_speclib = self.speclib()
+            last_speclib = self.currentSpeclib()
             if isinstance(last_speclib, QgsVectorLayer):
 
                 layer_id = last_speclib.id()
@@ -617,24 +633,16 @@ class SpectralLibraryPlotWidget(QWidget):
         if layer_id is None and field_name is None and len(existing_fields) > 0:
             layer_id, field_name = existing_fields[-1]
 
+        if layer_id and field_name is None:
+            layer = self.project().mapLayer(layer_id)
+            if isinstance(layer, QgsVectorLayer):
+                profile_fields = profile_field_list(layer)
+                if len(profile_fields) > 0:
+                    field_name = profile_fields[0].name()
+
         # set profile source in speclib
         if isinstance(layer_id, str) and isinstance(field_name, str):
             item.setLayerField(layer_id, field_name)
-
-        if name is None:
-            if isinstance(item.fieldName(), str):
-                _name = f'Group "{item.fieldName()}"'
-            else:
-                _name = 'Group'
-
-            existing_names = [v.name() for v in self.mPlotModel]
-            n = 1
-            name = _name
-            while name in existing_names:
-                n += 1
-                name = f'{_name} {n}'
-
-        item.setName(name)
 
         if item.layerId() and item.fieldName():
             # get a good guess for the name expression
@@ -665,6 +673,10 @@ class SpectralLibraryPlotWidget(QWidget):
             style = self.plotModel().defaultProfileStyle()
         item.setPlotStyle(style)
 
+        if not isinstance(candidate_style, PlotStyle):
+            candidate_style = self.plotModel().defaultProfileCandidateStyle()
+        item.setCandidatePlotStyle(candidate_style)
+
         if color:
             color = QColor(color)
             item.setColor(color)
@@ -672,6 +684,16 @@ class SpectralLibraryPlotWidget(QWidget):
             item.setColorExpression(color_expression)
 
         self.mPlotModel.insertPropertyGroup(-1, item)
+
+        if isinstance(item, ProfileVisualizationGroup) and len(self.mPlotModel.visualizations()) == 1:
+            # auto-select the first profile visualization
+            idx = self.mPlotModel.indexFromItem(item)
+            tv = self.treeView
+            idx2 = tv.model().mapFromSource(idx)
+            if idx2.isValid():
+                tv.selectionModel().setCurrentIndex(idx, QItemSelectionModel.SelectCurrent | QItemSelectionModel.Rows)
+
+        return item
         # self.mPlotControlModel.updatePlot()
 
     def profileVisualizations(self) -> List[ProfileVisualizationGroup]:
@@ -688,13 +710,38 @@ class SpectralLibraryPlotWidget(QWidget):
         to_remove = [r.data(Qt.UserRole) for r in rows if isinstance(r.data(Qt.UserRole), PropertyItemGroup)]
         self.mPlotModel.removePropertyItemGroups(to_remove)
 
-    def setDualView(self, dualView):
-        self.mDualView = dualView
-        self.mPlotModel.setDualView(dualView)
+    # def setDualView(self, dualView):
+    #    self.mDualView = dualView
+    #    self.mPlotModel.setDualView(dualView)
 
-    def speclib(self) -> QgsVectorLayer:
-        # will be removed
-        return self.mDualView.masterModel().layer()
+    def currentVisualization(self) -> Optional[ProfileVisualizationGroup]:
+
+        for idx in self.treeView.selectionModel().selectedRows():
+            node = idx.data(Qt.UserRole)
+
+            if isinstance(node, PropertyLabel):
+                node = node.propertyItem()
+            if isinstance(node, PropertyItem):
+                node = node.parent()
+            if isinstance(node, ProfileVisualizationGroup):
+                return node
+
+        return None
+
+    def currentSpeclib(self) -> Optional[QgsVectorLayer]:
+        """
+        Returns the currently selected speclib layer, or None if not Visualization Group
+        """
+        vis = self.currentVisualization()
+        if isinstance(vis, ProfileVisualizationGroup):
+            return vis.layer()
+        else:
+            return None
+
+    def speclib(self) -> Optional[QgsVectorLayer]:
+        warnings.warn(DeprecationWarning('use currentSpeclib() instead'), stacklevel=2)
+        return self.currentSpeclib()
+        # return self.mDualView.masterModel().layer()
 
     # def addSpectralModel(self, model):
     #    self.mPlotControlModel.addModel(model)

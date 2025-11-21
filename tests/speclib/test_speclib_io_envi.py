@@ -1,40 +1,21 @@
 # noinspection PyPep8Naming
-import os
+import json
 import unittest
 
 import numpy as np
 
-from qgis.core import QgsFeature, QgsFields, QgsProcessingFeedback
-from qps.speclib import FIELD_NAME, FIELD_VALUES
-from qps.speclib.core import profile_field_list
-from qps.speclib.core.spectrallibraryio import SpectralLibraryExportWidget, SpectralLibraryImportWidget, \
-    SpectralLibraryIO
-from qps.speclib.io.envi import EnviSpectralLibraryExportWidget, EnviSpectralLibraryImportWidget, EnviSpectralLibraryIO, \
-    findENVIHeader
+from qps.speclib.core import is_spectral_feature, profile_field_names
+from qps.speclib.core.spectralprofile import decodeProfileValueDict
+from qps.speclib.io.envi import findENVIHeader, EnviSpectralLibraryReader, EnviSpectralLibraryWriter
 from qps.testing import start_app, TestCase, TestObjects
-from qpstestdata import enmap, envi_sli as speclibpath
+from qpstestdata import enmap, envi_sli as envi_sli_path
 
 start_app()
 
 
 class TestSpeclibIO_ENVI(TestCase):
-    @classmethod
-    def setUpClass(cls, *args, **kwds) -> None:
-        super(TestSpeclibIO_ENVI, cls).setUpClass(*args, **kwds)
-
-    @classmethod
-    def tearDownClass(cls):
-        super(TestSpeclibIO_ENVI, cls).tearDownClass()
-
-    def registerIO(self):
-
-        ios = [
-            EnviSpectralLibraryIO(),
-        ]
-        SpectralLibraryIO.registerSpectralLibraryIO(ios)
 
     def test_findEnviHeader(self):
-
         import qpstestdata
 
         hdr, bin = findENVIHeader(qpstestdata.envi_sli)
@@ -57,73 +38,54 @@ class TestSpeclibIO_ENVI(TestCase):
         hdr, bin = findENVIHeader(pathWrong)
         self.assertTrue((hdr, bin) == (None, None))
 
-    def test_ENVI_Import(self):
+    def test_read_ENVI(self):
+        reader = EnviSpectralLibraryReader(envi_sli_path)
 
-        w = EnviSpectralLibraryIO.createImportWidget()
-        w.setSource(speclibpath)
+        profiles = reader.asFeatures()
+        self.assertIsInstance(profiles, list)
+        self.assertTrue(len(profiles) > 0)
 
-        fields = w.sourceFields()
-        self.assertIsInstance(fields, QgsFields)
-        for n in [FIELD_VALUES, FIELD_NAME, 'source', 'wkt']:
-            self.assertTrue(n in fields.names())
-        settings = w.importSettings({})
-        profiles = EnviSpectralLibraryIO.importProfiles(speclibpath, settings)
-        s = ""
+        for p in profiles:
+            self.assertTrue(is_spectral_feature(p))
 
-    def test_ENVI_IO(self):
-
+    def test_write_ENVI(self):
         n_bands = [[25, 50],
                    [75, 100]
                    ]
         n_bands = np.asarray(n_bands)
         speclib = TestObjects.createSpectralLibrary(n_bands=n_bands)
 
-        ENVI_IO = EnviSpectralLibraryIO()
-        wExport = ENVI_IO.createExportWidget()
-        self.assertIsInstance(wExport, SpectralLibraryExportWidget)
-        self.assertIsInstance(wExport, EnviSpectralLibraryExportWidget)
-        wExport.setSpeclib(speclib)
-        self.assertEqual(EnviSpectralLibraryIO.formatName(), wExport.formatName())
-        filter = wExport.filter()
-        self.assertIsInstance(filter, str)
-        self.assertTrue('*.sli' in filter)
+        field_names = profile_field_names(speclib)
 
-        settings = dict()
-        settings = wExport.exportSettings(settings)
-
-        self.assertIsInstance(settings, dict)
-        feedback = QgsProcessingFeedback()
-        profiles = list(speclib.getFeatures())
         testdir = self.createTestOutputDirectory()
-        path = testdir / 'exampleENVI.sli'
-        files = ENVI_IO.exportProfiles(path.as_posix(), profiles, settings, feedback)
-        self.assertIsInstance(files, list)
-        self.assertTrue(len(files) == n_bands.shape[0])
+        for field_name in field_names:
+            path = testdir / f'exampleENVI.{field_name}.sli'
 
-        speclib2 = TestObjects.createSpectralLibrary(n=0)
-        wImport = ENVI_IO.createImportWidget()
-        self.assertIsInstance(wImport, SpectralLibraryImportWidget)
-        self.assertIsInstance(wImport, EnviSpectralLibraryImportWidget)
+            writer = EnviSpectralLibraryWriter(path, field=field_name)
 
-        for path, nb in zip(files, n_bands[:, 0]):
-            self.assertTrue(os.path.exists(path))
+            profiles = list(speclib.getFeatures())
+            files = writer.writeFeatures(path, profiles)
 
-            wImport.setSpeclib(speclib2)
-            wImport.setSource(path)
-            importSettings = wImport.importSettings({})
-            self.assertIsInstance(importSettings, dict)
-            feedback = QgsProcessingFeedback()
-            fields = wImport.sourceFields()
-            self.assertIsInstance(fields, QgsFields)
-            self.assertTrue(fields.count() > 0)
-            self.assertTrue(len(profile_field_list(fields)) > 0)
-            ENVI_IO.importProfiles(path, importSettings, feedback)
-            self.assertIsInstance(profiles, list)
-            self.assertTrue(len(profiles) > 0)
-            for profile in profiles:
-                self.assertIsInstance(profile, QgsFeature)
+            self.assertIsInstance(files, list)
+            self.assertEqual(len(files), 2)
 
-        self.showGui([wImport])
+            p_jsons_in = []
+            for p in profiles:
+                data = decodeProfileValueDict(p.attribute(field_name))
+                self.assertIsInstance(data, dict)
+                self.assertTrue(len(data) > 0)
+                p_jsons_in.append(json.dumps(data, sort_keys=True))
+            p_jsons_out = []
+            for file in files:
+                self.assertTrue(EnviSpectralLibraryReader.canReadFile(file))
+                reader = EnviSpectralLibraryReader(file)
+                profiles_out = reader.asFeatures()
+                for p in profiles_out:
+                    data = decodeProfileValueDict(p.attribute('profiles'))
+                    self.assertIsInstance(data, dict)
+                    self.assertTrue(len(data) > 0)
+                    dump = json.dumps(data, sort_keys=True)
+                    self.assertTrue(dump in p_jsons_in)
 
 
 if __name__ == '__main__':

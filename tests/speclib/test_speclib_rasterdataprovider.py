@@ -7,7 +7,7 @@ from qps import initResources
 from qps.speclib.core import profile_fields
 from qps.speclib.core.spectrallibraryrasterdataprovider import createRasterLayers, registerDataProvider, \
     VectorLayerFieldRasterDataProvider
-from qps.speclib.core.spectralprofile import decodeProfileValueDict, SpectralSetting
+from qps.speclib.core.spectralprofile import decodeProfileValueDict
 from qps.testing import start_app, TestCase, TestObjects
 from qps.utils import rasterArray
 
@@ -20,8 +20,6 @@ class RasterDataProviderTests(TestCase):
     def setUpClass(cls, *args, **kwds) -> None:
         super(RasterDataProviderTests, cls).setUpClass(*args, **kwds)
         initResources()
-        from qps.speclib.core.spectrallibraryio import initSpectralLibraryIOs
-        initSpectralLibraryIOs()
         registerDataProvider()
 
     def test_VectorLayerRasterDataProvider(self):
@@ -109,16 +107,17 @@ class RasterDataProviderTests(TestCase):
             dp: VectorLayerFieldRasterDataProvider = lyr.dataProvider()
             self.assertIsInstance(dp, VectorLayerFieldRasterDataProvider)
             setting = dp.spectralSetting()
-            self.assertIsInstance(setting, SpectralSetting)
-            self.assertEqual(dp.bandCount(), setting.bandCount())
+            self.assertIsInstance(setting, dict)
+            nb = setting['band_count']
+            self.assertEqual(dp.bandCount(), nb)
 
             # read entire raster image
             array = rasterArray(dp)
-            self.assertEqual(array.shape, (setting.bandCount(), 1, n_total - n_empty))
+            self.assertEqual(array.shape, (nb, 1, n_total - n_empty))
 
             # check for each profile its raster band values
             for iPx, fid in enumerate(dp.activeFeatureIds()):
-                value = vl.getFeature(fid).attribute(setting.fieldName())
+                value = vl.getFeature(fid).attribute(setting['field_name'])
                 data = decodeProfileValueDict(value)
                 yValues = data['y']
                 for y1, y2 in zip(array[:, 0, iPx], yValues):

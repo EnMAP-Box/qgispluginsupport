@@ -1,16 +1,15 @@
 # noinspection PyPep8Naming
-import pathlib
 import re
 import unittest
 from datetime import datetime
+from typing import List
 
 import qpstestdata
 from qgis.PyQt.QtCore import QDateTime, Qt
 from qgis.core import edit, QgsFeature, QgsField
 from qps.fieldvalueconverter import collect_native_types
 from qps.qgisenums import QMETATYPE_QDATE, QMETATYPE_QDATETIME
-from qps.speclib.core import is_spectral_feature, profile_field_names
-from qps.speclib.core.spectrallibraryio import initSpectralLibraryIOs, SpectralLibraryImportDialog
+from qps.speclib.core import is_spectral_feature, profile_field_names, is_spectral_library
 from qps.speclib.core.spectralprofile import decodeProfileValueDict, SpectralProfileFileReader, validateProfileValueDict
 from qps.speclib.io.asd import ASDBinaryFile
 from qps.speclib.io.spectralevolution import SEDFile
@@ -25,10 +24,7 @@ start_app()
 
 class TestSpeclibIO_SpectralProfileReaders(TestCase):
 
-    def registerIO(self):
-        initSpectralLibraryIOs()
-
-    def profileFiles(self):
+    def profileFiles(self) -> List[str]:
         return list(file_search(DIR_TESTDATA, re.compile(r'.*\.(asd|sed|sig)$'), recursive=True))
 
     def test_read_svc_de(self):
@@ -61,6 +57,20 @@ class TestSpeclibIO_SpectralProfileReaders(TestCase):
         self.assertTrue(success, msg=feedback.textLog())
         s = ""
 
+    def test_import_files(self):
+        from processing import run
+        alg = ImportSpectralProfiles()
+        alg.initAlgorithm({})
+        par = {
+            ImportSpectralProfiles.P_INPUT: self.profileFiles(),
+        }
+        context, feedback = self.createProcessingContextFeedback()
+
+        results = run(alg, par, context=context, feedback=feedback)
+        lyr = results[alg.P_OUTPUT]
+        self.assertTrue(is_spectral_library(lyr))
+        self.assertTrue(lyr.featureCount() > 0)
+
     def test_readFiles(self):
 
         for file in self.profileFiles():
@@ -75,33 +85,26 @@ class TestSpeclibIO_SpectralProfileReaders(TestCase):
                 raise NotImplementedError()
 
             self.assertIsInstance(reader, SpectralProfileFileReader)
-            profile = reader.asFeature()
-            pfields = profile_field_names(profile)
-            for name in pfields:
-                data = decodeProfileValueDict(profile.attribute(name))
-                self.assertTrue(validateProfileValueDict(data))
+            profiles = reader.asFeatures()
+            assert len(profiles) > 0
+            for profile in profiles:
+                pfields = profile_field_names(profile)
+                for name in pfields:
+                    data = decodeProfileValueDict(profile.attribute(name))
+                    self.assertTrue(validateProfileValueDict(data))
 
-            attributes = profile.attributeMap()
-            for k in [SpectralProfileFileReader.KEY_Metadata,
-                      SpectralProfileFileReader.KEY_Target,
-                      SpectralProfileFileReader.KEY_Path,
-                      SpectralProfileFileReader.KEY_Name,
-                      SpectralProfileFileReader.KEY_TargetTime]:
-                self.assertTrue(k in attributes, msg=f'Missing data "{k}" in {file}')
+                attributes = profile.attributeMap()
+                for k in [SpectralProfileFileReader.KEY_Metadata,
+                          SpectralProfileFileReader.KEY_Target,
+                          SpectralProfileFileReader.KEY_Path,
+                          SpectralProfileFileReader.KEY_Name,
+                          SpectralProfileFileReader.KEY_TargetTime]:
+                    self.assertTrue(k in attributes, msg=f'Missing data "{k}" in {file}')
 
-            metadata = profile.attribute(SpectralProfileFileReader.KEY_Metadata)
-            self.assertIsInstance(metadata, dict)
+                metadata = profile.attribute(SpectralProfileFileReader.KEY_Metadata)
+                self.assertIsInstance(metadata, dict)
 
-            self.assertTrue(is_spectral_feature(profile))
-
-    @unittest.skipIf(TestCase.runsInCI(), 'Skipped QDialog test in CI')
-    def test_dialog(self):
-        self.registerIO()
-        sl = TestObjects.createSpectralLibrary()
-        import qpstestdata
-        root = pathlib.Path(qpstestdata.__file__).parent / 'svc'
-
-        SpectralLibraryImportDialog.importProfiles(sl, defaultRoot=root.as_posix())
+                self.assertTrue(is_spectral_feature(profile))
 
     def test_fieldtypes(self):
 

@@ -21,7 +21,7 @@
    <item>
     <widget class="QLabel" name="label">
      <property name="text">
-      <string>Check a field to activate it for spectral profiles.</string>
+      <string>Check/uncheck fields to contain spectral profiles.</string>
      </property>
     </widget>
    </item>

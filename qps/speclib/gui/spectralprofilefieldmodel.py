@@ -20,7 +20,7 @@ class SpectralProfileFieldListModel(QgsFieldModel):
 
     def updateFields(self):
         """
-        Call this to update the list of spectral profile fields, e.g. after removal of fields or changing the
+        Call this to update the list of spectral profile fields, e.g., after removal of fields or changing the
         editor widget setup.
         """
 
@@ -222,13 +222,14 @@ class SpectralProfileFieldActivatorDialog(QDialog):
         super().__init__(*args, **kwds)
 
         loadUi(speclibUiPath(self), self)
+        self.mTitleBase = self.windowTitle()
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
         self.mModel = SpectralProfileFieldActivatorModel()
         self.tableView().setModel(self.mModel)
 
     def setLayer(self, layer: QgsVectorLayer):
         self.mModel.setLayer(layer)
-
+        self.setWindowTitle(f'{self.mTitleBase} - {layer.name()}')
         tv: QTableView = self.tableView()
         for col in range(3):
             tv.resizeColumnToContents(col)

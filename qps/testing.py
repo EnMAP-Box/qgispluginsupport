@@ -178,7 +178,9 @@ class QgisMockup(QgisInterface):
         self.mLayerTreeModel.setFlag(QgsLayerTreeModel.Flag.AllowNodeRename, True)
         self.mLayerTreeModel.setFlag(QgsLayerTreeModel.Flag.AllowNodeChangeVisibility, True)
 
-        QgsProject.instance().layersWillBeRemoved.connect(self._onRemoveLayers)
+        p = QgsProject.instance()
+        p.legendLayersAdded.connect(self._onAddLayers)
+        p.layersWillBeRemoved.connect(self._onRemoveLayers)
 
         self.mLayerTreeView.setModel(self.mLayerTreeModel)
         self.mLayerTreeMapCanvasBridge = QgsLayerTreeMapCanvasBridge(self.mRootNode, self.mCanvas)
@@ -222,11 +224,21 @@ class QgisMockup(QgisInterface):
                 except Exception:
                     setattr(self, n, getattr(self._mock, n))
 
-    def _onRemoveLayers(self, layerIDs):
+    def _onAddLayers(self, layers: List[QgsMapLayer]):
+        # from qgis.utils import iface
+        # grp = iface.layerTreeView().layerTreeModel().rootGroup()
+        grp = self.mRootNode
+        existing = grp.findLayerIds()
+        for lyr in layers:
+            if lyr.id() not in existing:
+                grp.addLayer(lyr)
+        s = ""
+
+    def _onRemoveLayers(self, layerIDs: List[str]):
         to_remove: List[QgsLayerTreeLayer] = []
         for lyr in self.mRootNode.findLayers():
             lyr: QgsLayerTreeLayer
-            if lyr.layerId() in layerIDs:
+            if lyr in layerIDs or lyr.layerId() in layerIDs:
                 to_remove.append(lyr)
         for lyr in reversed(to_remove):
             lyr.parent().removeChildNode(lyr)
@@ -441,6 +453,7 @@ class QgisMockup(QgisInterface):
 def get_iface() -> QgisInterface:
     if not isinstance(qgis.utils.iface, QgisInterface):
         iface = QgisMockup()
+
         qgis.utils.initInterface(sip.unwrapinstance(iface))
         # we use our own QgisInterface, so replace it where it might have been imported
         # like `iface = qgis.utils.iface`
@@ -808,9 +821,6 @@ class ExampleAlgorithmProvider(QgsProcessingProvider):
         for a in self._algs:
             self.addAlgorithm(a.createInstance())
 
-    def supportedOutputRasterLayerExtensions(self):
-        return []
-
     def supportsNonFileBasedOutput(self) -> True:
         return True
 
@@ -1061,13 +1071,14 @@ class TestObjects(object):
     @staticmethod
     def createSpectralLibrary(n: int = 10,
                               n_empty: int = 0,
-                              n_bands: Union[int, List[int], np.ndarray] = [-1],
-                              name: Optional[str] = None,
+                              n_bands: Union[None, int, List[int], np.ndarray] = None,
+                              name: Optional[str] = 'SpectralLibrary',
                               profile_field_names: List[str] = None,
                               wlu: str = None,
                               crs: QgsCoordinateReferenceSystem = None) -> QgsVectorLayer:
         """
         Creates a Spectral Library
+        :param name:
         :param crs:
         :param profile_field_names:
         :param n_bands:
@@ -1088,10 +1099,12 @@ class TestObjects(object):
         assert n >= 0
         assert 0 <= n_empty <= n
         if profile_field_names:
-            if n_bands == [-1]:
+            if n_bands in [[-1], None]:
                 n_bands = [-1 for _ in profile_field_names]
             assert len(profile_field_names) == len(n_bands)
 
+        if n_bands is None:
+            n_bands = [-1]
         if isinstance(n_bands, int):
             n_bands = np.asarray([[n_bands, ]])
         elif isinstance(n_bands, list):

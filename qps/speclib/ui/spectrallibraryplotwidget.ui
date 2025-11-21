@@ -75,7 +75,7 @@ QSplitter::handle:vertical {
         <number>2</number>
        </property>
        <property name="topMargin">
-        <number>3</number>
+        <number>0</number>
        </property>
        <property name="rightMargin">
         <number>2</number>
@@ -114,7 +114,7 @@ QSplitter::handle:vertical {
             <string>+VIS</string>
            </property>
            <property name="icon">
-            <iconset resource="../../../../QGIS/images/images.qrc">
+            <iconset>
              <normaloff>:/images/themes/default/mActionAdd.svg</normaloff>:/images/themes/default/mActionAdd.svg</iconset>
            </property>
            <property name="autoRaise">
@@ -128,7 +128,7 @@ QSplitter::handle:vertical {
             <string>+VIS</string>
            </property>
            <property name="icon">
-            <iconset resource="../../../../QGIS/images/images.qrc">
+            <iconset>
              <normaloff>:/images/themes/default/rendererCategorizedSymbol.svg</normaloff>:/images/themes/default/rendererCategorizedSymbol.svg</iconset>
            </property>
            <property name="autoRaise">
@@ -142,7 +142,7 @@ QSplitter::handle:vertical {
             <string>-VIS</string>
            </property>
            <property name="icon">
-            <iconset resource="../../../../QGIS/images/images.qrc">
+            <iconset>
              <normaloff>:/images/themes/default/mActionRemove.svg</normaloff>:/images/themes/default/mActionRemove.svg</iconset>
            </property>
            <property name="autoRaise">
@@ -156,7 +156,7 @@ QSplitter::handle:vertical {
             <string>...</string>
            </property>
            <property name="icon">
-            <iconset resource="../../../../QGIS/images/images.qrc">
+            <iconset>
              <normaloff>:/images/themes/default/mActionShowSelectedLayers.svg</normaloff>:/images/themes/default/mActionShowSelectedLayers.svg</iconset>
            </property>
            <property name="autoRaise">
@@ -170,7 +170,7 @@ QSplitter::handle:vertical {
             <string>...</string>
            </property>
            <property name="icon">
-            <iconset resource="../../../../QGIS/images/images.qrc">
+            <iconset>
              <normaloff>:/images/themes/default/mIconDeselected.svg</normaloff>:/images/themes/default/mIconDeselected.svg</iconset>
            </property>
            <property name="autoRaise">
@@ -238,7 +238,7 @@ QSplitter::handle:vertical {
   </layout>
   <action name="actionAddProfileVis">
    <property name="icon">
-    <iconset resource="../../../../QGIS/images/images.qrc">
+    <iconset>
      <normaloff>:/images/themes/default/mActionAdd.svg</normaloff>:/images/themes/default/mActionAdd.svg</iconset>
    </property>
    <property name="text">
@@ -250,7 +250,7 @@ QSplitter::handle:vertical {
   </action>
   <action name="actionRemoveProfileVis">
    <property name="icon">
-    <iconset resource="../../../../QGIS/images/images.qrc">
+    <iconset>
      <normaloff>:/images/themes/default/mActionRemove.svg</normaloff>:/images/themes/default/mActionRemove.svg</iconset>
    </property>
    <property name="text">
@@ -265,14 +265,14 @@ QSplitter::handle:vertical {
     <bool>true</bool>
    </property>
    <property name="icon">
-    <iconset resource="../../../../QGIS/images/images.qrc">
+    <iconset>
      <normaloff>:/images/themes/default/mActionShowSelectedLayers.svg</normaloff>:/images/themes/default/mActionShowSelectedLayers.svg</iconset>
    </property>
    <property name="text">
     <string>SelectedFeaturesOnly</string>
    </property>
    <property name="toolTip">
-    <string>Activate to show profiles for selected features only</string>
+    <string>Show profiles from selected vector features only</string>
    </property>
   </action>
   <action name="optionColorsFromFeatureRenderer">
@@ -295,7 +295,7 @@ QSplitter::handle:vertical {
   </action>
   <action name="optionCursorCrosshair">
    <property name="icon">
-    <iconset resource="../../../../QGIS/images/images.qrc">
+    <iconset>
      <normaloff>:/images/themes/default/cursors/mCrossHair.svg</normaloff>:/images/themes/default/cursors/mCrossHair.svg</iconset>
    </property>
    <property name="text">
@@ -333,7 +333,7 @@ QSplitter::handle:vertical {
     <bool>true</bool>
    </property>
    <property name="icon">
-    <iconset resource="../../../../QGIS/images/images.qrc">
+    <iconset>
      <normaloff>:/images/themes/default/legend.svg</normaloff>:/images/themes/default/legend.svg</iconset>
    </property>
    <property name="text">
@@ -345,7 +345,7 @@ QSplitter::handle:vertical {
   </action>
   <action name="actionAddRasterLayerRenderer">
    <property name="icon">
-    <iconset resource="../../../../QGIS/images/images.qrc">
+    <iconset>
      <normaloff>:/images/themes/default/rendererCategorizedSymbol.svg</normaloff>:/images/themes/default/rendererCategorizedSymbol.svg</iconset>
    </property>
    <property name="text">
@@ -354,7 +354,7 @@ QSplitter::handle:vertical {
   </action>
   <action name="actionClearSelection">
    <property name="icon">
-    <iconset resource="../../../../QGIS/images/images.qrc">
+    <iconset>
      <normaloff>:/images/themes/default/mIconSelectRemove.svg</normaloff>:/images/themes/default/mIconSelectRemove.svg</iconset>
    </property>
    <property name="text">

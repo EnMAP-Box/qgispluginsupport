@@ -26,10 +26,9 @@
 """
 import pathlib
 
-from qgis.core import QgsCoordinateReferenceSystem, QgsField, QgsFields, QgsSettings
 from qgis.PyQt.QtCore import NULL, QVariant
 from qgis.PyQt.QtWidgets import QWidget
-
+from qgis.core import QgsCoordinateReferenceSystem, QgsField, QgsFields, QgsSettings
 from ..qgisenums import QMETATYPE_QSTRING
 
 EDITOR_WIDGET_REGISTRY_KEY = 'SpectralProfile'

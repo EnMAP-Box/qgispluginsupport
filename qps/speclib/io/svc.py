@@ -1,17 +1,13 @@
 import datetime
-import os
 import re
 from datetime import timezone, timedelta
 from pathlib import Path
-from typing import List, Match, Optional, Union
+from typing import Match, Optional, Union
 
 import numpy as np
 
 from qgis.PyQt.QtCore import QDateTime, Qt
-from qgis.core import QgsEditorWidgetSetup, QgsExpressionContext, QgsFeature, QgsField, QgsFields, QgsPointXY, \
-    QgsProcessingFeedback, QgsVectorLayer
-from qgis.gui import QgsFileWidget
-from ..core.spectrallibraryio import SpectralLibraryImportWidget, SpectralLibraryIO
+from qgis.core import QgsEditorWidgetSetup, QgsField, QgsFields, QgsPointXY
 from ..core.spectralprofile import prepareProfileValueDict, SpectralProfileFileReader
 from ...qgisenums import QMETATYPE_QDATETIME, QMETATYPE_QSTRING
 
@@ -84,6 +80,15 @@ class SVCSigFile(SpectralProfileFileReader):
         self.mGpsTimeT: Optional[datetime.datetime] = None
         if self.mPath:
             self._readSIGFile(self.mPath)
+
+    @classmethod
+    def id(cls) -> str:
+        return 'SVC'
+
+    @classmethod
+    def canReadFile(cls, path: Union[str, Path]) -> bool:
+        path = Path(path)
+        return rxSIGFile.search(path.name) is not None
 
     def _parse_coordinates(self) -> None:
         """Parse coordinate information from metadata using precompiled regex"""
@@ -173,20 +178,32 @@ class SVCSigFile(SpectralProfileFileReader):
         except ValueError:
             pass
 
+        try:
+            import dateutil.parser
+            from dateutil.parser import ParserError
+            try:
+                return dateutil.parser.parse(text)
+            except ParserError:
+                pass
+        except ImportError:
+            pass
+
         # test non-ISO formats
         formats = [
             '%d.%m.%Y %H:%M:%S',  # 27.05.2025 09:39:32
-            '%m/%d/%Y %H:%M:%S%p',  # 5/27/2025 9:39:32AM
-            '%m/%d/%Y %H:%M:%S %p',  # 5/27/2025 9:39:32 AM
+            '%m/%d/%Y %I:%M:%S%p',  # 5/27/2025 9:39:32AM
+            '%m/%d/%Y %I:%M:%S %p',  # 5/27/2025 9:39:32 AM
             '%m/%d/%Y %H:%M:%S',  # 5/27/2025 9:39:32
             '%d/%m/%Y %H:%M:%S',  # 27/05/2025 09:39:32
+            '%m/%d/%Y %H:%M:%S%p',  # 5/27/2025 9:39:32AM
+            '%m/%d/%Y %H:%M:%S %p',  # 5/27/2025 9:39:32 AM
         ]
 
         for fmt in formats:
             try:
                 return datetime.datetime.strptime(text, fmt)
             except ValueError:
-                continue
+                pass
 
         raise ValueError(f'Unable to extract datetime from {text}')
 
@@ -247,80 +264,3 @@ class SVCSigFile(SpectralProfileFileReader):
             if path_img.is_file():
                 self.mPicture = path_img
                 break
-
-
-class SVCSpectralLibraryImportWidget(SpectralLibraryImportWidget):
-
-    def __init__(self, *args, **kwds):
-        super(SVCSpectralLibraryImportWidget, self).__init__(*args, **kwds)
-
-        self.mSource: Optional[QgsVectorLayer] = None
-
-    def spectralLibraryIO(cls) -> 'SpectralLibraryIO':
-        return SpectralLibraryIO.spectralLibraryIOInstances(SVCSpectralLibraryIO)
-
-    def supportsMultipleFiles(self) -> bool:
-        return True
-
-    def filter(self) -> str:
-        return "Spectra Vista Coorporation SVC) File (*.sig);;Any file (*.*)"
-
-    def setSource(self, source: str):
-        if self.mSource != source:
-            self.mSource = source
-            self.sigSourceChanged.emit()
-
-    def sourceFields(self) -> QgsFields:
-        return QgsFields(SpectralProfileFileReader.standardFields())
-
-    def createExpressionContext(self) -> QgsExpressionContext:
-        context = QgsExpressionContext()
-
-        return context
-
-
-class SVCSpectralLibraryIO(SpectralLibraryIO):
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-    @classmethod
-    def formatName(self) -> str:
-        return 'SVC Spectrometer'
-
-    @classmethod
-    def createImportWidget(cls) -> SpectralLibraryImportWidget:
-        return SVCSpectralLibraryImportWidget()
-
-    @classmethod
-    def importProfiles(cls,
-                       path: Union[str, Path],
-                       importSettings: Optional[dict] = None,
-                       feedback: QgsProcessingFeedback = QgsProcessingFeedback()) -> List[QgsFeature]:
-
-        sources = []
-        if isinstance(path, str):
-            sources = QgsFileWidget.splitFilePaths(path)
-        elif isinstance(path, Path):
-            if path.is_dir():
-                for entry in os.scandir(path):
-                    if entry.is_file() and rxSIGFile.match(entry.name):
-                        sources.append(entry.path)
-            elif path.is_file():
-                sources.append(path.as_posix())
-
-        feedback.setProgress(0)
-        n_total = len(sources)
-        profiles: List[QgsFeature] = []
-        for i, file in enumerate(sources):
-            file = Path(file)
-            if file.name.endswith('.sig'):
-                sig: SVCSigFile = SVCSigFile(file)
-                profiles.append(sig.asFeature())
-            feedback.setProgress(int((i + 1) / n_total))
-        return profiles
-
-    @classmethod
-    def filter(self) -> str:
-
-        return "SVC Signature File (*.sig);;Any file (*.*)"

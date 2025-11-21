@@ -25,15 +25,12 @@
 ***************************************************************************
 """
 import datetime
-import os
 import pathlib
 import re
-from typing import List, Union
+from pathlib import Path
+from typing import Union
 
-from qgis.core import QgsExpressionContext, QgsFeature, QgsFields, QgsPointXY, \
-    QgsProcessingFeedback, QgsVectorLayer
-from qgis.gui import QgsFileWidget
-from ..core.spectrallibraryio import SpectralLibraryImportWidget, SpectralLibraryIO
+from qgis.core import QgsPointXY
 from ..core.spectralprofile import prepareProfileValueDict, SpectralProfileFileReader
 from ...qgisenums import QMETATYPE_QSTRING
 
@@ -131,6 +128,19 @@ class SEDFile(SpectralProfileFileReader):
         if self.mPath is not None:
             self.readFromSEDFile(self.mPath)
 
+    @classmethod
+    def id(cls) -> str:
+        return 'SED'
+
+    @classmethod
+    def shortHelp(cls) -> str:
+        return 'Spectral Evolution (<a href="https://spectralevolution.com">https://spectralevolution.com</a>)'
+
+    @classmethod
+    def canReadFile(cls, path: Union[str, Path]) -> bool:
+        path = Path(path)
+        return rx_sed_file.search(path.name) is not None
+
     def readFromSEDFile(self, path: Union[str, pathlib.Path]):
         """
         Reads data from a binary file
@@ -189,91 +199,3 @@ class SEDFile(SpectralProfileFileReader):
             self.mReference = profile_r
             self.mTarget = profile_t
             self.mReflectance = profile_refl
-
-
-class SEDSpectralLibraryImportWidget(SpectralLibraryImportWidget):
-
-    def __init__(self, *args, **kwds):
-        super(SEDSpectralLibraryImportWidget, self).__init__(*args, **kwds)
-
-        self.mSource: QgsVectorLayer = None
-
-    def spectralLibraryIO(cls) -> 'SpectralLibraryIO':
-        return SpectralLibraryIO.spectralLibraryIOInstances(SEDSpectralLibraryIO)
-
-    def supportsMultipleFiles(self) -> bool:
-        return True
-
-    def filter(self) -> str:
-        return "Spectral Evolution File (*.sed);;Any file (*.*)"
-
-    def setSource(self, source: str):
-        if self.mSource != source:
-            self.mSource = source
-            self.sigSourceChanged.emit()
-
-    def sourceFields(self) -> QgsFields:
-        return QgsFields(SpectralProfileFileReader.standardFields())
-
-    def createExpressionContext(self) -> QgsExpressionContext:
-        context = QgsExpressionContext()
-
-        return context
-
-
-class SEDSpectralLibraryIO(SpectralLibraryIO):
-
-    def __init__(self, *args, **kwds):
-        super().__init__(*args, **kwds)
-
-    @classmethod
-    def formatName(cls) -> str:
-        return 'Spectral Evolutions'
-
-    @classmethod
-    def createImportWidget(cls) -> SpectralLibraryImportWidget:
-        return SEDSpectralLibraryImportWidget()
-
-    @classmethod
-    def readSEDFile(cls, filePath: str) -> QgsFeature:
-        """
-        Reads a Spectral Evolutions file (*.sed)
-        :param filePath:
-        :return:
-        """
-        path = pathlib.Path(filePath)
-        return SEDFile(path).asFeature()
-
-    @classmethod
-    def importProfiles(cls,
-                       path: Union[str, pathlib.Path],
-                       importSettings: dict = dict(),
-                       feedback: QgsProcessingFeedback = QgsProcessingFeedback()) -> List[QgsFeature]:
-        profiles = []
-
-        if isinstance(path, str):
-            sources = QgsFileWidget.splitFilePaths(path)
-        elif isinstance(path, pathlib.Path):
-            sources = []
-            if path.is_dir():
-                for entry in os.scandir(path):
-                    if entry.is_file() and rx_sed_file.match(entry.name):
-                        sources.append(entry.path)
-            elif path.is_file():
-                sources.append(path.as_posix())
-
-        # expected_fields = importSettings.get()
-
-        feedback.setProgress(0)
-        t0 = datetime.datetime.now()
-        dt = datetime.timedelta(seconds=3)
-        n_total = len(sources)
-        for i, file in enumerate(sources):
-            file = pathlib.Path(file)
-
-            sed: SEDFile = SEDFile(file)
-            profiles.append(sed.asFeature())
-            if datetime.datetime.now() - t0 > dt:
-                feedback.setProgress((i + 1) / n_total)
-                t0 = datetime.datetime.now()
-        return profiles

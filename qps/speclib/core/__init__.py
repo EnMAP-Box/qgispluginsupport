@@ -1,8 +1,7 @@
 from typing import Dict, List, Union
 
 from qgis.PyQt.QtCore import QVariant
-from qgis.core import QgsFeature, QgsField, QgsFields, QgsVectorLayer
-
+from qgis.core import QgsFeature, QgsField, QgsFields, QgsVectorLayer, QgsMapLayer
 from ...qgisenums import QMETATYPE_QBYTEARRAY, QMETATYPE_QSTRING, QMETATYPE_QVARIANTMAP
 
 
@@ -65,12 +64,14 @@ def contains_profile_field(object: Union[QgsVectorLayer, QgsFeature, QgsFields])
     return False
 
 
-def is_spectral_library(layer: QgsVectorLayer) -> bool:
+def is_spectral_library(layer: QgsMapLayer) -> bool:
     """
     Returns True if a vector layer contains at least one spectral profile field
     :param layer: QgsVectorLayer
     :return: bool
     """
+    if not isinstance(layer, QgsVectorLayer):
+        return False
     return contains_profile_field(layer)
 
 
@@ -115,7 +116,7 @@ def profile_fields(fields: Union[QgsFeature, QgsVectorLayer, QgsFields]) -> QgsF
 
 def profile_field_list(spectralLibrary: Union[QgsFeature, QgsVectorLayer, QgsFields]) -> List[QgsField]:
     """
-    Returns the fields that contains values of SpectralProfiles
+    Returns the fields that contain values of SpectralProfiles
     :param spectralLibrary:
     :return:
     """

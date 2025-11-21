@@ -18,36 +18,32 @@
 """
 import datetime
 import os.path
-import re
 # noinspection PyPep8Naming
 import unittest
 from pathlib import Path
-from typing import List
 
 import processing
 import qgis.testing
 import qgis.utils
-from processing import AlgorithmDialog
 from processing.ProcessingPlugin import ProcessingPlugin
 from qgis.PyQt.QtCore import QModelIndex, QObject, Qt
 from qgis.PyQt.QtWidgets import QDialog
-from qgis.core import edit, QgsApplication, QgsFeature, QgsField, QgsFields, QgsProcessingAlgorithm, \
+from qgis.core import edit, QgsApplication, QgsFeature, QgsProcessingAlgorithm, \
     QgsProcessingAlgRunnerTask, QgsProcessingOutputRasterLayer, QgsProcessingRegistry, QgsProject, QgsTaskManager, \
     QgsVectorLayer
 from qgis.gui import QgsProcessingRecentAlgorithmLog, QgsProcessingToolboxProxyModel
+from qps.processing.algorithmdialog import AlgorithmDialog
 from qps.processing.processingalgorithmdialog import ProcessingAlgorithmDialog
-from qps.qgisenums import QMETATYPE_QSTRING
 from qps.qgsfunctions import registerQgsExpressionFunctions
-from qps.speclib.core import create_profile_field, profile_field_names, profile_fields
+from qps.speclib.core import profile_field_names, profile_fields, is_spectral_library
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
-from qps.speclib.core.spectrallibraryio import initSpectralLibraryIOs, SpectralLibraryIO
 from qps.speclib.core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict, isProfileValueDict, \
-    prepareProfileValueDict, ProfileEncoding
+    ProfileEncoding
 from qps.speclib.processing.aggregateprofiles import AggregateProfiles
 from qps.speclib.processing.exportspectralprofiles import ExportSpectralProfiles
 from qps.speclib.processing.importspectralprofiles import ImportSpectralProfiles
 from qps.testing import ExampleAlgorithmProvider, get_iface, start_app, TestCase, TestObjects
-from qpstestdata import asd_with_gps, ecosis_csv, spectral_evolution_sed
+from qpstestdata import ecosis_csv, asd_with_gps, spectral_evolution_sed, svc_sig
 
 start_app()
 
@@ -304,15 +300,70 @@ class ProcessingToolsTest(TestCase):
         n_total = lyr.featureCount()
         print(f'Imported {n_total} files in {dt}. {seconds / n_total:.2f} s per file')
 
+    @unittest.skipIf(TestCase.runsInCI(), 'blocking dialog')
+    def test_spectralprofile_import_dialog(self):
+        alg = ImportSpectralProfiles()
+        alg.initAlgorithm({})
+
+        context, feedback = self.createProcessingContextFeedback()
+        p = QgsProject()
+        context.setProject(p)
+
+        results = {}
+
+        def onFinished(ok, res):
+            assert ok
+            results.update(res)
+
+        d = AlgorithmDialog(alg, context=context)
+        d.algorithmFinished.connect(onFinished)
+        d.exec_()
+
+        lyr = results.get(ImportSpectralProfiles.P_OUTPUT)
+        if lyr:
+            assert isinstance(lyr, QgsVectorLayer)
+            assert is_spectral_library(lyr)
+            assert lyr.featureCount() > 0
+        s = ""
+
+    @unittest.skipIf(TestCase.runsInCI(), 'blocking dialog')
+    def test_spectralprofile_export_dialog(self):
+        alg = ExportSpectralProfiles()
+        alg.initAlgorithm({})
+
+        sl = TestObjects.createSpectralLibrary(name='speclib', profile_field_names=['p1', 'p2'])
+        vl = TestObjects.createVectorLayer(name='vector layer')
+        rl = TestObjects.createRasterLayer(name='raster layer')
+        context, feedback = self.createProcessingContextFeedback()
+        p = QgsProject()
+        p.addMapLayers([sl, vl, rl])
+        context.setProject(p)
+
+        sl.selectByIds(sl.allFeatureIds()[1:3])
+
+        results = {}
+
+        def onFinished(ok, res):
+            assert ok
+            results.update(res)
+
+        d = AlgorithmDialog(alg, context=context)
+        d.algorithmFinished.connect(onFinished)
+        d.exec_()
+
+        lyr = results.get(ExportSpectralProfiles.P_OUTPUT)
+        if lyr:
+            assert isinstance(lyr, QgsVectorLayer)
+            assert is_spectral_library(lyr)
+            assert lyr.featureCount() > 0
+        s = ""
+
     def test_spectralprofile_import(self):
 
         provider = ExampleAlgorithmProvider.instance()
-        initSpectralLibraryIOs()
         reg: QgsProcessingRegistry = QgsApplication.instance().processingRegistry()
         self.assertTrue(provider.addAlgorithm(ImportSpectralProfiles()))
         reg.providerById(ExampleAlgorithmProvider.NAME.lower())
-
-        from qpstestdata import svc_sig
 
         input_files = [
             ecosis_csv,
@@ -323,8 +374,9 @@ class ProcessingToolsTest(TestCase):
         ]
         for f in input_files:
             self.assertTrue(Path(f).is_file)
-
-            profiles = SpectralLibraryIO.readProfilesFromUri(f)
+            sl = SpectralLibraryUtils.readFromSource(f)
+            self.assertTrue(is_spectral_library(sl))
+            profiles = list(sl.getFeatures())
             self.assertTrue(len(profiles) > 0, f'Failed to import profiles from {f}')
 
         DIR_TEST = self.createTestOutputDirectory()
@@ -355,10 +407,11 @@ class ProcessingToolsTest(TestCase):
                 self.assertIsInstance(vl, QgsVectorLayer)
 
                 if input_file in [ecosis_csv]:
-                    self.assertTrue(vl.featureCount() > 1)
+                    self.assertTrue(vl.featureCount() > 1,
+                                    msg=f'Unable to import profiles from {input_file.name} to {path_test.name}')
                 else:
                     self.assertEqual(1, vl.featureCount(),
-                                     msg=f'Unable to save profiles from {input_file.name} to {path_test.name}')
+                                     msg=f'Unable to import profiles from {input_file.name} to {path_test.name}')
 
         # test multi-filetype import
         input_files = [Path(p).as_posix() for p in input_files]
@@ -400,110 +453,39 @@ class ProcessingToolsTest(TestCase):
         reg.removeProvider(provider)
         QgsProject.instance().removeAllMapLayers()
 
-    def test_spectralprofile_export(self):
+    def test_spectralprofile_export_new(self):
 
-        provider = ExampleAlgorithmProvider.instance()
-        self.__keep_ref = provider
-        initSpectralLibraryIOs()
-        reg: QgsProcessingRegistry = QgsApplication.instance().processingRegistry()
-        p2 = reg.providerById(ExampleAlgorithmProvider.NAME.lower())
-        self.assertIsInstance(provider, ExampleAlgorithmProvider)
-        self.assertEqual(provider.id(), ExampleAlgorithmProvider.NAME.lower(),
-                         msg=f'Provider instance: {provider} {provider.id()}')
-        p3 = reg.providerById(provider.id())
-        self.assertEqual(provider, p2)
-        self.assertEqual(provider, p3)
-
-        provider.addAlgorithm(ExportSpectralProfiles())
-
-        alg: QgsProcessingAlgorithm = reg.algorithmById(f'{provider.id()}:{ExportSpectralProfiles.NAME}')
-        self.assertIsInstance(alg, ExportSpectralProfiles)
-
-        # create a spectral library with two speclib fields and two features
-        pA1 = prepareProfileValueDict(y=[23, 34, 45.5], x=[1, 2, 3], xUnit='nm')
-        pA2 = prepareProfileValueDict(y=[34, 35, 23.5], x=[1, 2, 3], xUnit='micrometers')
-        pB1 = prepareProfileValueDict(y=[34, 35, 23.5], x=[3, 4, 5], xUnit='nm')
-        pB2 = prepareProfileValueDict(y=[34, 35, 23.5], x=[3, 4, 5], xUnit='nm')
-
-        PDICTS = [pA1, pA2, pB1, pB2]
-        fields = QgsFields()
-        fields.append(create_profile_field('A'))
-        fields.append(create_profile_field('B'))
-        fields.append(QgsField('notes', QMETATYPE_QSTRING))
-
-        sl = TestObjects.createEmptyMemoryLayer(fields, name='MySpeclib')
-
-        f1 = QgsFeature(sl.fields())
-        f2 = QgsFeature(sl.fields())
-        SpectralLibraryUtils.setProfileValues(f1, field='A', profileDict=pA1)
-        SpectralLibraryUtils.setProfileValues(f1, field='B', profileDict=pB1)
-        SpectralLibraryUtils.setProfileValues(f2, field='A', profileDict=pA2)
-        SpectralLibraryUtils.setProfileValues(f2, field='B', profileDict=pB2)
-
-        with edit(sl):
-            sl.addFeatures([f1, f2])
-
-        vl = TestObjects.createVectorLayer()
-        QgsProject.instance().addMapLayers([sl, vl])
-
-        # if False:
-        #    from processing import createAlgorithmDialog
-        #    from qgis.utils import iface
-        #    d = AlgorithmDialog(alg, parent=iface.mainWindow())
-        #    d.exec_()
-
-        conf = {}
-        alg.initAlgorithm(conf)
-        par = {ExportSpectralProfiles.P_INPUT: sl,
-               # ExportSpectralProfiles.P_FORMAT: 'sli',
-               ExportSpectralProfiles.P_OUTPUT: 'TEMPORARY_OUTPUT'}
         context, feedback = self.createProcessingContextFeedback()
-        results, success = alg.run(par, context, feedback)
-        self.assertTrue(success)
+        p = QgsProject()
+        context.setProject(p)
 
-        testDir = self.createTestOutputDirectory()
+        sl = TestObjects.createSpectralLibrary(profile_field_names=['A', 'B'])
+        sl.selectByIds(sl.allFeatureIds()[1:3])
+        p.addMapLayers([sl])
 
-        rx = re.compile(r'\(\*(?P<extension>\.[^)]+)\)')
-        for i, io in enumerate(SpectralLibraryIO.spectralLibraryIOs(write=True)):
-            self.assertIsInstance(io, SpectralLibraryIO)
-            w = io.createExportWidget()
+        test_dir = self.createTestOutputDirectory()
 
-            outputfiles = []
-            for match in rx.findall(w.filter()):
-                outputfiles.append(testDir / f'format{i}{match}')
+        for test_path in [test_dir / 'spectral_export_new.geojson',
+                          test_dir / 'spectral_export_new.csv',
+                          test_dir / 'spectral_export_new.sli',
+                          test_dir / 'spectral_export_new.gpkg',
+                          ]:
+            alg = ExportSpectralProfiles()
+            alg.initAlgorithm({})
 
-            for output in outputfiles:
-                par = {ExportSpectralProfiles.P_INPUT: sl,
-                       ExportSpectralProfiles.P_OUTPUT: output.as_posix()}
-                results = processing.run(alg, par, feedback=feedback, context=context)
+            par = {ExportSpectralProfiles.P_INPUT: sl,
+                   ExportSpectralProfiles.P_SELECTED_ONLY: True,
+                   ExportSpectralProfiles.P_FIELD: None,
+                   ExportSpectralProfiles.P_OUTPUT: test_path.as_posix()}
 
-                file = results[ExportSpectralProfiles.P_OUTPUT]
-                files = results[ExportSpectralProfiles.P_OUTPUT + 'S']
+            results, success = alg.run(par, context, feedback)
+            self.assertTrue(success)
 
-                self.assertTrue(file in files)
-
-                writtenFeatures = []
-                for uri in files:
-                    self.assertTrue(os.path.isfile(uri), f'Not a file: {uri}: \nIO: {io}')
-                    features = SpectralLibraryIO.readProfilesFromUri(uri)
-                    writtenFeatures.extend(features)
-
-                # ensure that each profile has been written into one of the output files
-                writtenProfiles: List[dict] = []
-                for f in writtenFeatures:
-                    for n in profile_field_names(f.fields()):
-                        d = decodeProfileValueDict(f.attribute(n))
-                        self.assertTrue(d in PDICTS)
-                        writtenProfiles.append(d)
-                if not len(writtenProfiles) == len(PDICTS):
-                    s = ""
-                self.assertEqual(len(writtenProfiles), len(PDICTS),
-                                 msg=f'{len(writtenProfiles)} of {len(PDICTS)} profiles written\n IO: {io}')
-                # todo: compare metadata
-                s = ""
-                s = ""
-        reg.removeProvider(provider)
-        QgsProject.instance().removeAllMapLayers()
+            files = results.get(ExportSpectralProfiles.P_OUTPUT)
+            self.assertIsInstance(files, list)
+            self.assertTrue(len(files) > 0)
+            for f in files:
+                self.assertTrue(Path(f).is_file())
 
 
 if __name__ == '__main__':

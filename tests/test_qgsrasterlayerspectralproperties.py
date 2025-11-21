@@ -223,6 +223,33 @@ class TestQgsRasterLayerProperties(TestCase):
         with open(path_benchmark, 'w') as f:
             json.dump(JSON, f, indent=2, ensure_ascii=False)
 
+    def test_serialization(self):
+
+        lyr = TestObjects.createRasterLayer(nb=10)
+        prop = QgsRasterLayerSpectralProperties.fromRasterLayer(lyr)
+
+        data = prop.asMap()
+        self.assertIsInstance(data, dict)
+
+        def equalProps(p1: QgsRasterLayerSpectralProperties, p2: QgsRasterLayerSpectralProperties):
+            self.assertEqual(p1.bandCount(), p2.bandCount())
+            self.assertEqual(p1.keys(), p2.keys())
+            for k in p1.keys():
+                self.assertEqual(p1.bandValues('*', k), p2.bandValues('*', k))
+
+        dump = json.dumps(data)
+        prop2 = QgsRasterLayerSpectralProperties.fromMap(json.loads(dump))
+
+        equalProps(prop, prop2)
+
+        data2 = data.copy()
+        data2.pop('band_count')
+        data2['x'] = data2.pop('wavelength')
+        data2['xUnit'] = data2.pop('wavelength_unit')[0]
+
+        prop3 = QgsRasterLayerSpectralProperties.fromMap(data2)
+        equalProps(prop, prop3)
+
     def test_bandClosestToWavelength(self):
         with tempfile.TemporaryDirectory() as tdir:
             path = Path(tdir) / 'example.bsq'

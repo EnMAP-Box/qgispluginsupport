@@ -47,6 +47,8 @@ asd_with_gps = DIR_ASD_GPS / 'ww00045.asd'
 
 DIR_ARTMO = DIR_TESTDATA / 'artmo'
 
+DIR_ECOSTRESS = DIR_TESTDATA / 'ecostress'
+
 # Wavelength detection test data
 DIR_WAVELENGTH = DIR_TESTDATA / 'wavelength'
 

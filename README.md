@@ -12,7 +12,7 @@ This includes, for example
 - Interactive plotting
 - Tools to test python code that uses the QGIS API
 
-QPS is designed as python package that can be included as subpackage of other QGIS python plugins. 
+QPS is designed as a python package that can be included as a subpackage of other QGIS python plugins. 
 It is used in projects like:
 
 * EnMAP-Box https://bitbucket.org/hu-geomatics/enmap-box

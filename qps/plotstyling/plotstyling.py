@@ -726,7 +726,7 @@ class PlotStyle(QObject):
         self.markerSize = plotStyle.markerSize
         self.backgroundColor = QColor(plotStyle.backgroundColor)
         self.linePen = QPen(plotStyle.linePen)
-
+        self.antialias = plotStyle.antialias
         self.setVisibility(plotStyle.isVisible())
 
     def createIcon(self, size=None) -> QIcon:
@@ -900,6 +900,7 @@ class PlotStyleWidget(QWidget):
             sb: QSpinBox
             sb.valueChanged.connect(self.onStyleChanged)
 
+        self.mAntialias = plotStyle.antialias
         self.mLastPlotStyle = plotStyle
         self.cbIsVisible.toggled.connect(self.onStyleChanged)
         self.setPlotStyle(plotStyle)
@@ -1035,6 +1036,7 @@ class PlotStyleWidget(QWidget):
         self.mBlockUpdates = True
         self.sbSymbolSize.setValue(style.markerSize)
         self.cbSymbol.setMarkerSymbol(style.markerSymbol)
+        self.mAntialias = style.antialias
 
         assert isinstance(style.markerPen, QPen)
         assert isinstance(style.markerBrush, QBrush)
@@ -1113,6 +1115,7 @@ class PlotStyleWidget(QWidget):
         if self.cbIsVisible.isVisible():
             style.setVisibility(self.cbIsVisible.isChecked())
 
+        style.setAntialias(self.mAntialias)
         return style
 
 

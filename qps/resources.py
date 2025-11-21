@@ -34,10 +34,10 @@ from typing import Any, Generator, List, Optional, Union
 from qgis.PyQt.QtCore import QAbstractTableModel, QDirIterator, QFile, QModelIndex, QRegExp, QSortFilterProxyModel, Qt, \
     QTextStream
 from qgis.PyQt.QtGui import QContextMenuEvent, QIcon, QPixmap
+from qgis.PyQt.QtSvg import QGraphicsSvgItem
 from qgis.PyQt.QtWidgets import QAction, QApplication, QGraphicsPixmapItem, QGraphicsScene, QGraphicsView, QLabel, \
     QLineEdit, QMenu, QTableView, QTextBrowser, QToolButton, QWidget
 from qgis.PyQt.QtXml import QDomDocument, QDomElement
-from qgis.PyQt.QtSvg import QGraphicsSvgItem
 from .utils import file_search, findUpwardPath
 
 REGEX_FILEXTENSION_IMAGE = re.compile(r'\.([^.]+)$')
@@ -243,7 +243,7 @@ def compileQGISResourceFiles(qgis_repo: Union[str, Path, None], target: str = No
     compileResourceFiles(qgis_repo / 'images', targetDir=target, skip_qgis_images=False)
 
 
-def initQtResources(roots: list = []):
+def initQtResources(roots: Union[None, str, Path, list] = None):
     """
     Searches recursively for `*_rc.py` files and loads them into the QApplications resources system
     :param roots: list of root folders to search within
@@ -251,7 +251,9 @@ def initQtResources(roots: list = []):
     :return:
     :rtype:
     """
-    if not isinstance(roots, list):
+    if roots is None:
+        roots = []
+    elif not isinstance(roots, list):
         roots = [roots]
 
     if len(roots) == 0:

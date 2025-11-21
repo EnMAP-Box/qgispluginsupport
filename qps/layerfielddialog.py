@@ -1,4 +1,4 @@
-from typing import Callable, Dict, Union, Optional
+from typing import Callable, Dict, Union, Optional, List
 
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtCore import pyqtSignal, QAbstractListModel
@@ -135,15 +135,47 @@ class FilteredFieldProxyModel(QgsFieldProxyModel):
 
 
 class FilteredMapLayerProxyModel(QgsMapLayerProxyModel):
+    """
+    A proxy model to filter layers based on a filter function.
+
+    Use .setFilterFunc(func: Callable) to set a filter function.
+    The function must accept a QgsMapLayer as an argument and return True or False.
+
+    Use .setShowAll(b: bool) to either hide all layers that
+    do not pass the filter (b = False) or show them as disable (b = True))
+
+    """
+
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
         self.mFilterFunc: Callable = lambda layer: isinstance(layer, QgsMapLayer)
         self.mShowAll = True
         self.mSrcModel = self.sourceLayerModel()
+        self.mProject = QgsProject.instance()
 
     def setShowAll(self, show: bool):
         self.mShowAll = show
         self.invalidateFilter()
+
+    def setProject(self, project: QgsProject):
+        super().setProject(project)
+        self.mProject = project
+
+    def project(self) -> QgsProject:
+        return self.mProject
+
+    def layers(self) -> List[QgsMapLayer]:
+        results = []
+        for i in range(self.rowCount()):
+            idx = self.index(i, 0)
+            results.append(self.data(idx, role=QgsMapLayerModel.CustomRole.Layer))
+        return results
+
+    def __getitem__(self, slice):
+        return self.layers()[slice]
+
+    def __len__(self) -> int:
+        return self.rowCount()
 
     def flags(self, index):
         # disable selection of out-filtered layers
@@ -337,7 +369,7 @@ class LayerFieldWidget(QWidget):
         self.setMinimumSize(5, 5)
         self.setMaximumHeight(75)
 
-        self.mLayerFilterFunc = lambda layer: isinstance(layer, QgsMapLayer) and layer.isValid()
+        self.mLayerFilterFunc = lambda layer: isinstance(layer, QgsVectorLayer) and layer.isValid()
         self.mFieldFilterFunc = lambda field: isinstance(field, QgsField)
 
         self.mLayer = None

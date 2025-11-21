@@ -7,7 +7,8 @@ import zipfile
 
 import requests
 
-URL_QGIS_RESOURCES = r'https://box.hu-berlin.de/f/6949ab1099044018a5e4/?dl=1'
+# URL_QGIS_RESOURCES = r'https://box.hu-berlin.de/f/6949ab1099044018a5e4/?dl=1'
+URL_QGIS_RESOURCES = r'https://github.com/EnMAP-Box/qgispluginsupport/releases/download/qgisresources.zip_2025-11-07/qgisresources.zip'
 
 DIR_REPO = pathlib.Path(__file__).parents[1]
 

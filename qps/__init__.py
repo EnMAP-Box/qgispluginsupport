@@ -28,10 +28,10 @@ import os
 import pathlib
 import sys
 import warnings
-from typing import List
+from typing import List, Optional
 
 from qgis.PyQt.QtCore import PYQT_VERSION_STR
-from qgis.core import Qgis, QgsApplication
+from qgis.core import Qgis, QgsApplication, QgsProviderRegistry
 from qgis.gui import QgisInterface, QgsMapLayerConfigWidgetFactory
 
 os.environ.setdefault('PYQTGRAPH_QT_LIB', f'PyQt{PYQT_VERSION_STR[0]}')
@@ -62,7 +62,7 @@ def debugLog(msg: str, prefix: str = 'DEBUG:'):
         print(f'{prefix} {msg}', flush=True)
 
 
-def registerMapLayerConfigWidgetFactory(factory: QgsMapLayerConfigWidgetFactory) -> QgsMapLayerConfigWidgetFactory:
+def registerMapLayerConfigWidgetFactory(factory: QgsMapLayerConfigWidgetFactory) -> Optional[QgsMapLayerConfigWidgetFactory]:
     """
     Register a new tab in the map layer properties dialog.
     :param factory: QgsMapLayerConfigWidgetFactory
@@ -160,12 +160,24 @@ def registerSpectralProfileSamplingModes():
     warnings.warn(DeprecationWarning('is not required anymore'), stacklevel=2)
 
 
-def registerSpectralLibraryIOs():
-    from .speclib.core.spectrallibraryio import initSpectralLibraryIOs
-    initSpectralLibraryIOs()
+_ADDED_DATA_PROVIDERS = []
 
+
+def registerDataProviders():
     from .speclib.core.spectrallibraryrasterdataprovider import registerDataProvider
+
+    reg = QgsProviderRegistry.instance()
+    p1 = reg.providerList()
     registerDataProvider()
+    added = [p for p in reg.providerList() if p not in p1]
+    global _ADDED_DATA_PROVIDERS
+    _ADDED_DATA_PROVIDERS = added
+
+
+def unregisterDataProviders():
+    for p in _ADDED_DATA_PROVIDERS:
+        reg = QgsProviderRegistry.instance()
+        reg.removeProvider(p)
 
 
 def unregisterExpressionFunctions():
@@ -194,10 +206,11 @@ def initAll():
     registerEditorWidgets()
     registerExpressionFunctions()
     registerMapLayerConfigWidgetFactories()
-    registerSpectralLibraryIOs()
+    registerDataProviders()
 
 
 def unloadAll():
     unregisterEditorWidgets()
     unregisterExpressionFunctions()
     unregisterMapLayerConfigWidgetFactories()
+    unregisterDataProviders()
