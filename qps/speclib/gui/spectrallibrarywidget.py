@@ -6,7 +6,7 @@ from typing import Dict, Generator, List, Optional, Tuple
 from qgis.PyQt.QtCore import pyqtSignal, Qt
 from qgis.PyQt.QtGui import QCloseEvent
 from qgis.PyQt.QtGui import QDragEnterEvent, QDropEvent
-from qgis.PyQt.QtWidgets import QDialog, QMenu, QWidget
+from qgis.PyQt.QtWidgets import QMenu, QWidget
 from qgis.PyQt.QtWidgets import QToolButton
 from qgis.PyQt.QtXml import QDomElement
 from qgis.core import (QgsFeature, QgsProcessingOutputFile, QgsProject, QgsReadWriteContext,
@@ -52,7 +52,7 @@ class SpectralLibraryWidget(QWidget):
                  speclib: Optional[QgsVectorLayer] = None,
                  **kwds):
 
-        super(SpectralLibraryWidget, self).__init__(*args, **kwds)
+        super().__init__(*args, **kwds)
 
         ui_path = Path(__file__).parents[1] / "ui/spectrallibrarywidget.ui"
         loadUi(ui_path, self)
@@ -75,7 +75,7 @@ class SpectralLibraryWidget(QWidget):
         # self.mSpeclibPlotWidget.setDualView(self.mMainView)
         self.mSpeclibPlotWidget.sigDragEnterEvent.connect(self.dragEnterEvent)
         self.mSpeclibPlotWidget.sigDropEvent.connect(self.dropEvent)
-        model = self.plotModel()
+        # model = self.plotModel()
 
         if isinstance(speclib, QgsVectorLayer):
 
@@ -152,11 +152,17 @@ class SpectralLibraryWidget(QWidget):
         self.actionShowProperties.triggered.connect(lambda *args: self.openLayerProperties())
         self.actionShowSpectralProcessingDialog.triggered.connect(lambda *args: self.openSpectralProcessingWidget())
         self.actionShowAttributeTable.triggered.connect(lambda *args: self.openAttributeTable())
-        self.plotModel().sigOpenAttributeTableRequest.connect(self.openAttributeTable)
-        self.plotModel().sigOpenLayerPropertiesRequest.connect(self.openLayerProperties)
-        self.plotModel().sigOpenSpectralProcessingRequest.connect(
-            lambda lid: self.openSpectralProcessingWidget(layer_id=lid))
+
+        model = self.plotModel()
+
+        model.sigOpenAttributeTableRequest.connect(self.openAttributeTable)
+        model.sigOpenLayerPropertiesRequest.connect(self.openLayerProperties)
+        model.sigOpenSpectralProcessingRequest.connect(self.onOpenSpectralProcessingWidget)
+
         self.updateActions()
+
+    def onOpenSpectralProcessingWidget(self, lid, *args):
+        self.openSpectralProcessingWidget(layer_id=lid)
 
     def setMainMessageBar(self, bar: QgsMessageBar):
         pass
@@ -243,7 +249,7 @@ class SpectralLibraryWidget(QWidget):
         return self.plotModel().spectralLibraries()
 
     def plotModel(self) -> SpectralProfilePlotModel:
-        return self.mSpeclibPlotWidget.mPlotModel
+        return self.mSpeclibPlotWidget.plotModel()
 
     def plotControl(self) -> SpectralProfilePlotModel:
         warnings.warn(DeprecationWarning('Use .plotModel()'))
@@ -258,7 +264,7 @@ class SpectralLibraryWidget(QWidget):
     def readXml(self, parent: QDomElement, context: QgsReadWriteContext) -> bool:
         """
         Reads the visualization settings and tries to restore them on the given spectral library instance.
-        This method can not restore the QgsVectorLayer instance that has been associated with this widget.
+        This method cannot restore the QgsVectorLayer instance that has been associated with this widget.
         Use SpectralLibraryWidget.fromXml(...) instead
         """
         if not parent.tagName() == 'SpectralLibraryWidget':
@@ -282,7 +288,6 @@ class SpectralLibraryWidget(QWidget):
         :return:
         :rtype:
         """
-
         self.actionAddCurrentProfiles.setEnabled(self.plotModel().hasProfileCandidates())
 
         b = self.plotModel().hasProfileCandidates()
@@ -525,20 +530,6 @@ class SpectralLibraryWidget(QWidget):
     #    d.finished.connect(lambda *args, d0=d: self.onIODialogFinished(d0))
     #    d.show()
     #    self.mIODialogs.append(d)
-
-    def onIODialogFinished(self, w: QWidget):
-        from ..io.rastersources import SpectralProfileImportPointsDialog
-        if isinstance(w, SpectralProfileImportPointsDialog):
-            if w.result() == QDialog.Accepted:
-                profiles = w.profiles()
-                info = w.rasterSource().name()
-                self.addProfiles(profiles, add_missing_fields=w.allAttributes())
-            else:
-                s = ""
-
-        if w in self.mIODialogs:
-            self.mIODialogs.remove(w)
-        w.close()
 
     def addProfiles(self, profiles, add_missing_fields: bool = False):
         sl = self.speclib()

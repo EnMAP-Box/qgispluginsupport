@@ -152,19 +152,10 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
         self.mBlockUpdates: bool = False
         self.mAddProfileCandidatesAutomatically: bool = False
-        # self.mPROFILE_CANDIDATES: Dict[str, List] = {}
 
         self.mSTATS_ITEMS = []
 
-        def onCandidatesChanged(layer_ids: List[str]):
-            for layer in self.spectralLibraries():
-                if layer.id() in layer_ids:
-                    if not self.mBlockUpdates:
-                        self.updatePlot()
-                    self.sigProfileCandidatesChanged.emit()
-                    break
-
-        SpectralProfileCandidates.SHARED_SIGNALS.candidatesChanged.connect(onCandidatesChanged)
+        SpectralProfileCandidates.SHARED_SIGNALS.candidatesChanged.connect(self.onCandidatesChanged)
         # self.sigProfileCandidatesChanged.connect(self.updatePlot)
         # allows overwriting automatic generated plot styles
         # self.mPROFILE_CANDIDATE_STYLES: Dict[Tuple[str, str], Dict[int, PlotStyle]] = {}
@@ -176,11 +167,13 @@ class SpectralProfilePlotModel(QStandardItemModel):
         self.mLastReferencedColumns: dict = dict()
         self.mLayerCaches: Dict[str, QgsVectorLayerCache] = dict()
         self.nUpdates: int = 0
-        self.mProject: QgsProject = QgsProject.instance()
-        self.mProject.layersWillBeRemoved.connect(self.onLayersWillBeRemoved)
 
         self.mSignalProxies: Dict[str, List[SignalProxy]] = dict()
         self.mModelItems: Set[PropertyItemGroup] = set()
+
+        self.mProject: Optional[QgsProject] = None
+        self.setProject(QgsProject.instance())
+        # self.mProject.layersWillBeRemoved.connect(self.onLayersWillBeRemoved)
 
         # # workaround https://github.com/qgis/QGIS/issues/45228
         self.mStartedCommitEditWrapper: bool = False
@@ -275,6 +268,27 @@ class SpectralProfilePlotModel(QStandardItemModel):
         self.mDefaultProfileCandidateStyle = style
 
         self.mCurrentSelectionColor: QColor = QColor('white')
+
+    def onCandidatesChanged(self, layer_ids: List[str]):
+        s = ""
+
+        QApplication.processEvents()
+        import gc
+        gc.collect()
+        for d in [d for d in gc.get_objects() if
+                  isinstance(d, (SpectralProfilePlotModel))]:
+            if d != self:
+                for r in gc.get_referrers(d):
+                    for r2 in gc.get_referrers(r):
+                        for r3 in gc.get_referrers(r2):
+                            s = ""
+
+        for layer in self.spectralLibraries():
+            if layer.id() in layer_ids:
+                if not self.mBlockUpdates:
+                    self.updatePlot()
+                self.sigProfileCandidatesChanged.emit()
+                break
 
     @classmethod
     def fromSettingsMap(cls, settings: dict, project: Optional[QgsProject] = None):
@@ -509,8 +523,9 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
         if self.mProject == project:
             return
+        if isinstance(self.mProject, QgsProject):
+            self.mProject.layersWillBeRemoved.disconnect(self.onLayersWillBeRemoved)
 
-        self.mProject.layersWillBeRemoved.disconnect(self.onLayersWillBeRemoved)
         self.mProject = project
         for item in self.mModelItems:
             if isinstance(item, PropertyItemGroup):
@@ -719,6 +734,16 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
     def maxProfiles(self) -> int:
         return self.generalSettings().maximumProfiles()
+
+    def close(self):
+        """
+        Can be used to deregister signals and disconnect slots.
+        """
+        for proxies in self.mSignalProxies.values():
+            for proxy in proxies:
+                proxy.disconnect()
+        self.mSignalProxies.clear()
+        SpectralProfileCandidates.SHARED_SIGNALS.candidatesChanged.disconnect(self.onCandidatesChanged)
 
     def __len__(self) -> int:
         return len(self.visualizations())
