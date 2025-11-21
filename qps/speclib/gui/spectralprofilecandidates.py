@@ -1,5 +1,5 @@
 import logging
-from typing import List, Dict
+from typing import List, Dict, Set
 
 from qgis.PyQt.QtCore import QObject, pyqtSignal
 from qgis.core import QgsFeature, QgsProject, QgsVectorLayer
@@ -24,7 +24,14 @@ class SpectralProfileCandidates(object):
     SHARED_SIGNALS = SharedSignals()
 
     @classmethod
-    def confirmProfileCandidates(cls, layers: List[QgsVectorLayer]):
+    def hasProfileCandidates(cls, layer: QgsVectorLayer) -> bool:
+        """
+        Returns True if the layer has profile candidates.
+        """
+        return isinstance(layer, QgsVectorLayer) and len(layer.customProperty(CUSTOM_PROPERTY_CANDIDATE_FIDs, [])) > 0
+
+    @classmethod
+    def confirmProfileCandidates(cls, layers: List[QgsVectorLayer], block_signal: bool = False) -> Set[str]:
         changed = set()
         for lyr in layers:
             if (isinstance(lyr,
@@ -32,11 +39,12 @@ class SpectralProfileCandidates(object):
                 lyr.removeCustomProperty(CUSTOM_PROPERTY_CANDIDATE_FIDs)
                 changed.add(lyr.id())
 
-        if len(changed) > 0:
+        if len(changed) > 0 and not block_signal:
             cls.SHARED_SIGNALS.candidatesChanged.emit(list(changed))
+        return changed
 
     @classmethod
-    def removeProfileCandidates(cls, layers: List[QgsVectorLayer]):
+    def removeProfileCandidates(cls, layers: List[QgsVectorLayer], block_signal: bool = False) -> Set[str]:
         changed = set()
         for lyr in layers:
             if isinstance(lyr, QgsVectorLayer):
@@ -46,14 +54,18 @@ class SpectralProfileCandidates(object):
                     lyr.deleteFeatures(fids)
                     lyr.commitChanges(stopEditing=stop_editing)
                     lyr.removeCustomProperty(CUSTOM_PROPERTY_CANDIDATE_FIDs)
-        # no need to trigger cls.SHARED_SIGNALS.candidatesChanged,
-        # as the plot models are already triggered by the deletion of features
+                    changed.add(lyr.id())
+
+        if len(changed) > 0 and not block_signal:
+            cls.SHARED_SIGNALS.candidatesChanged.emit(list(changed))
+        return changed
 
     @classmethod
     def addProfileCandidates(cls,
                              project: QgsProject,
                              candidates: Dict[str, List[QgsFeature]],
-                             add_automatically: bool = False):
+                             add_automatically: bool = False,
+                             block_signal: bool = False) -> Set[str]:
         """
         Adds QgsFeatures to vector layers.
         If add_automatically is False (Default), new features are considered to be candidates.
@@ -76,10 +88,9 @@ class SpectralProfileCandidates(object):
                             if
                             isinstance(lyr,
                                        QgsVectorLayer) and CUSTOM_PROPERTY_CANDIDATE_FIDs in lyr.customPropertyKeys()]
-        if len(candidate_layers) > 0:
-            cls.removeProfileCandidates(candidate_layers)
-
         changed_layers = set()
+        if len(candidate_layers) > 0:
+            changed_layers.update(cls.removeProfileCandidates(candidate_layers, block_signal=True))
 
         for lid, features in candidates.items():
             lyr = project.mapLayer(lid)
@@ -103,5 +114,7 @@ class SpectralProfileCandidates(object):
                 lyr.setCustomProperty(CUSTOM_PROPERTY_CANDIDATE_FIDs, new_fids)
             changed_layers.add(lyr.id())
 
-        # if len(changed_layers) > 0:
-        #    cls.SHARED_SIGNALS.candidatesChanged.emit(list(changed_layers))
+        if len(changed_layers) > 0 and not block_signal:
+            s = ""
+            cls.SHARED_SIGNALS.candidatesChanged.emit(list(changed_layers))
+        return changed_layers
