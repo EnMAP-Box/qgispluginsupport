@@ -272,16 +272,16 @@ class SpectralProfilePlotModel(QStandardItemModel):
     def onCandidatesChanged(self, layer_ids: List[str]):
         s = ""
 
-        QApplication.processEvents()
-        import gc
-        gc.collect()
-        for d in [d for d in gc.get_objects() if
-                  isinstance(d, (SpectralProfilePlotModel))]:
-            if d != self:
-                for r in gc.get_referrers(d):
-                    for r2 in gc.get_referrers(r):
-                        for r3 in gc.get_referrers(r2):
-                            s = ""
+        # QApplication.processEvents()
+        # import gc
+        # gc.collect()
+        # for d in [d for d in gc.get_objects() if
+        #           isinstance(d, (SpectralProfilePlotModel))]:
+        #     if d != self:
+        #         for r in gc.get_referrers(d):
+        #             for r2 in gc.get_referrers(r):
+        #                 for r3 in gc.get_referrers(r2):
+        #                     s = ""
 
         for layer in self.spectralLibraries():
             if layer.id() in layer_ids:

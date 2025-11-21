@@ -24,6 +24,13 @@ class SpectralProfileCandidates(object):
     SHARED_SIGNALS = SharedSignals()
 
     @classmethod
+    def hasProfileCandidates(cls, layer: QgsVectorLayer) -> bool:
+        """
+        Returns True if the layer has profile candidates.
+        """
+        return isinstance(layer, QgsVectorLayer) and len(layer.customProperty(CUSTOM_PROPERTY_CANDIDATE_FIDs, [])) > 0
+
+    @classmethod
     def confirmProfileCandidates(cls, layers: List[QgsVectorLayer], block_signal: bool = False) -> Set[str]:
         changed = set()
         for lyr in layers:
