@@ -1,0 +1,381 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>Dialog</class>
+ <widget class="QDialog" name="Dialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>535</width>
+    <height>603</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Create Spectral Library</string>
+  </property>
+  <layout class="QGridLayout" name="gridLayout">
+   <item row="0" column="1" colspan="3">
+    <widget class="QLineEdit" name="lineEdit"/>
+   </item>
+   <item row="3" column="0" colspan="4">
+    <widget class="QGroupBox" name="gbNewField">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="title">
+      <string>New Field</string>
+     </property>
+     <layout class="QGridLayout" name="gridLayout_2">
+      <property name="leftMargin">
+       <number>0</number>
+      </property>
+      <property name="topMargin">
+       <number>0</number>
+      </property>
+      <property name="rightMargin">
+       <number>0</number>
+      </property>
+      <property name="bottomMargin">
+       <number>0</number>
+      </property>
+      <property name="spacing">
+       <number>2</number>
+      </property>
+      <item row="0" column="0">
+       <widget class="QLabel" name="label_4">
+        <property name="text">
+         <string>Name</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="2" colspan="2">
+       <widget class="QLineEdit" name="lineEdit_2"/>
+      </item>
+      <item row="2" column="2">
+       <widget class="QLineEdit" name="lineEdit_4"/>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="label_5">
+        <property name="text">
+         <string>Type</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="4">
+       <widget class="QLineEdit" name="lineEdit_5"/>
+      </item>
+      <item row="2" column="0" colspan="2">
+       <widget class="QLabel" name="label_6">
+        <property name="text">
+         <string>Length</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="3">
+       <widget class="QLabel" name="label_7">
+        <property name="text">
+         <string>Precision</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="4">
+       <widget class="QToolButton" name="mAddAttributeButton">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="toolTip">
+         <string>Add field to list</string>
+        </property>
+        <property name="layoutDirection">
+         <enum>Qt::LeftToRight</enum>
+        </property>
+        <property name="text">
+         <string>Add to Fields List</string>
+        </property>
+        <property name="icon">
+         <iconset resource="../../../../QGIS/images/images.qrc">
+          <normaloff>:/images/themes/default/mActionNewAttribute.svg</normaloff>:/images/themes/default/mActionNewAttribute.svg</iconset>
+        </property>
+        <property name="toolButtonStyle">
+         <enum>Qt::ToolButtonIconOnly</enum>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="2" colspan="2">
+       <widget class="QComboBox" name="mTypeBox"/>
+      </item>
+      <item row="1" column="4">
+       <widget class="QCheckBox" name="checkBox">
+        <property name="text">
+         <string>Store Spectral Profiles</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item row="0" column="0">
+    <widget class="QLabel" name="label_2">
+     <property name="text">
+      <string>Layer name</string>
+     </property>
+    </widget>
+   </item>
+   <item row="7" column="0" colspan="4">
+    <layout class="QHBoxLayout" name="horizontalLayout_2">
+     <property name="topMargin">
+      <number>0</number>
+     </property>
+     <item>
+      <widget class="QCheckBox" name="checkBox_2">
+       <property name="text">
+        <string>Scratch</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="label">
+       <property name="text">
+        <string>File</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QgsFileWidget" name="mQgsFileWidget">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+         <horstretch>1</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="dialogTitle">
+        <string>Create Spectral Library</string>
+       </property>
+       <property name="storageMode">
+        <enum>QgsFileWidget::SaveFile</enum>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item row="8" column="0" colspan="4">
+    <widget class="QDialogButtonBox" name="buttonBox">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+     <property name="standardButtons">
+      <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
+     </property>
+    </widget>
+   </item>
+   <item row="2" column="1" colspan="3">
+    <widget class="QgsProjectionSelectionWidget" name="mQgsProjectionSelectionWidget"/>
+   </item>
+   <item row="4" column="0" colspan="4">
+    <widget class="QGroupBox" name="gbFieldsList">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+       <horstretch>0</horstretch>
+       <verstretch>1</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="title">
+      <string>Fields List</string>
+     </property>
+     <layout class="QHBoxLayout" name="horizontalLayout">
+      <item>
+       <widget class="QTreeWidget" name="mFieldView">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="dragDropMode">
+         <enum>QAbstractItemView::NoDragDrop</enum>
+        </property>
+        <property name="alternatingRowColors">
+         <bool>true</bool>
+        </property>
+        <property name="rootIsDecorated">
+         <bool>false</bool>
+        </property>
+        <property name="columnCount">
+         <number>5</number>
+        </property>
+        <column>
+         <property name="text">
+          <string>Name</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
+          <string>Type</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
+          <string>Length</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
+          <string>Precision</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
+          <string>Profiles</string>
+         </property>
+        </column>
+       </widget>
+      </item>
+      <item>
+       <layout class="QVBoxLayout" name="layourFieldEditing" stretch="0,0,1,0">
+        <property name="spacing">
+         <number>4</number>
+        </property>
+        <item>
+         <widget class="QPushButton" name="btnUp">
+          <property name="maximumSize">
+           <size>
+            <width>50</width>
+            <height>16777215</height>
+           </size>
+          </property>
+          <property name="toolTip">
+           <string>Move up</string>
+          </property>
+          <property name="icon">
+           <iconset resource="../../../../QGIS/images/images.qrc">
+            <normaloff>:/images/themes/default/mActionArrowUp.svg</normaloff>:/images/themes/default/mActionArrowUp.svg</iconset>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="btnDown">
+          <property name="maximumSize">
+           <size>
+            <width>50</width>
+            <height>16777215</height>
+           </size>
+          </property>
+          <property name="toolTip">
+           <string>Move down</string>
+          </property>
+          <property name="icon">
+           <iconset resource="../../../../QGIS/images/images.qrc">
+            <normaloff>:/images/themes/default/mActionArrowDown.svg</normaloff>:/images/themes/default/mActionArrowDown.svg</iconset>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <spacer name="verticalSpacer_2">
+          <property name="orientation">
+           <enum>Qt::Vertical</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>0</width>
+            <height>0</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item>
+         <widget class="QToolButton" name="btnRemoveFields">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="toolTip">
+           <string>Delete selected field</string>
+          </property>
+          <property name="text">
+           <string>Remove Field</string>
+          </property>
+          <property name="icon">
+           <iconset resource="../../../../QGIS/images/images.qrc">
+            <normaloff>:/images/themes/default/mActionDeleteAttribute.svg</normaloff>:/images/themes/default/mActionDeleteAttribute.svg</iconset>
+          </property>
+          <property name="toolButtonStyle">
+           <enum>Qt::ToolButtonIconOnly</enum>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item row="1" column="0">
+    <widget class="QLabel" name="label_3">
+     <property name="text">
+      <string>Geometry Type</string>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="1" colspan="3">
+    <widget class="QComboBox" name="cbGeometry"/>
+   </item>
+  </layout>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>QgsFileWidget</class>
+   <extends>QWidget</extends>
+   <header>qgsfilewidget.h</header>
+  </customwidget>
+  <customwidget>
+   <class>QgsProjectionSelectionWidget</class>
+   <extends>QWidget</extends>
+   <header>qgsprojectionselectionwidget.h</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
+ <resources>
+  <include location="../../../../QGIS/images/images.qrc"/>
+ </resources>
+ <connections>
+  <connection>
+   <sender>buttonBox</sender>
+   <signal>accepted()</signal>
+   <receiver>Dialog</receiver>
+   <slot>accept()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>248</x>
+     <y>254</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>157</x>
+     <y>274</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>buttonBox</sender>
+   <signal>rejected()</signal>
+   <receiver>Dialog</receiver>
+   <slot>reject()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>316</x>
+     <y>260</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>286</x>
+     <y>274</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
+</ui>
