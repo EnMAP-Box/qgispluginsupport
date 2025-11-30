@@ -1897,6 +1897,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
             grp = None
 
         if isinstance(item, SpectralProfileLayerFieldItem):
+            self.updateSpeclibConnections()
             if isinstance(grp, ProfileVisualizationGroup):
                 grp.mPColor.emitDataChanged()
                 self.sigLayersChanged.emit()
