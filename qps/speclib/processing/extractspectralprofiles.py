@@ -24,7 +24,7 @@ from qgis.core import (
     QgsGeometry,
     QgsVectorFileWriter
 )
-from qgis.core import QgsVectorLayer, QgsFeatureRequest, QgsMapLayer
+from qgis.core import QgsProcessing, QgsVectorLayer, QgsFeatureRequest, QgsMapLayer
 from ..core import create_profile_field
 from ..core.spectralprofile import (
     prepareProfileValueDict,
@@ -111,19 +111,19 @@ class ExtractSpectralProfiles(QgsProcessingAlgorithm):
             )
         )
 
-        self.addParameter(
-            QgsProcessingParameterVectorDestination(
-                self.P_OUTPUT,
-                'Output vector layer with spectral profiles'
-            )
+        p = QgsProcessingParameterVectorDestination(
+            self.P_OUTPUT,
+            'Spectral Library'
         )
+        p.setHelp('Output vector layer with spectral profiles')
+
+        self.addParameter(p)
 
     def processAlgorithm(self, parameters: dict, context: QgsProcessingContext, feedback: QgsProcessingFeedback):
 
         # Get input parameters
         raster_layer = self.parameterAsRasterLayer(parameters, self.P_INPUT_RASTER, context)
         vector_layer = self.parameterAsVectorLayer(parameters, self.P_INPUT_VECTOR, context)
-        output_path = self.parameterAsOutputLayer(parameters, self.P_OUTPUT, context)
 
         if not raster_layer or not raster_layer.isValid():
             raise QgsProcessingException('Invalid input raster layer')
@@ -190,6 +190,14 @@ class ExtractSpectralProfiles(QgsProcessingAlgorithm):
                     f2.setEditorWidgetSetup(f.editorWidgetSetup())
                     output_fields.append(f2)
 
+        output_path = parameters.get(self.P_OUTPUT)
+
+        if not isinstance(output_path, str):
+            output_path = output_path.toVariant()['sink']['val']
+
+        if output_path == QgsProcessing.TEMPORARY_OUTPUT:
+            output_path = 'dummy.gpkg'
+        # self.parameterAsOutputLayer(parameters, self.P_OUTPUT, context)
         driver = QgsVectorFileWriter.driverForExtension(os.path.splitext(output_path)[1])
         output_fields = GenericFieldValueConverter.compatibleTargetFields(output_fields, driver)
 
