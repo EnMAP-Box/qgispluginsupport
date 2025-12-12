@@ -90,15 +90,20 @@ class SubDatasetLoadingTask(QgsTask):
                 reg = QgsProviderRegistry.instance()
                 results = []
                 providerInfos = reg.querySublayers(uri=path, flags=Qgis.SublayerQueryFlag.FastScan)
-                for s in providerInfos:
-                    if s.providerKey() not in self.mProviders:
-                        continue
-                    try:
-                        task = QgsProviderSublayerTask(path, s.providerKey(), includeSystemTables=False)
-                        task.run()
-                        results.extend(task.results())
-                    except Exception as ex2:
-                        logger.error(f'Error loading subdataset {path} with provider {s.providerKey()}: {ex2}')
+
+                if len(providerInfos) == 0:
+                    providerInfos = reg.querySublayers(uri=path)
+
+                if len(providerInfos) > 0:
+                    for s in providerInfos:
+                        if s.providerKey() not in self.mProviders:
+                            continue
+                        try:
+                            task = QgsProviderSublayerTask(path, s.providerKey(), includeSystemTables=False)
+                            task.run()
+                            results.extend(task.results())
+                        except Exception as ex2:
+                            logger.error(f'Error loading subdataset {path} with provider {s.providerKey()}: {ex2}')
 
                 self.mSubDataSets[path] = results
             except Exception as ex:
