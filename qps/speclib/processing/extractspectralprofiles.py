@@ -190,9 +190,11 @@ class ExtractSpectralProfiles(QgsProcessingAlgorithm):
                     f2.setEditorWidgetSetup(f.editorWidgetSetup())
                     output_fields.append(f2)
 
-        out_def = parameters.get(self.P_OUTPUT)
+        output_path = parameters.get(self.P_OUTPUT)
 
-        output_path = out_def.toVariant()['sink']['val']
+        if not isinstance(output_path, str):
+            output_path = output_path.toVariant()['sink']['val']
+
         if output_path == QgsProcessing.TEMPORARY_OUTPUT:
             output_path = 'dummy.gpkg'
         # self.parameterAsOutputLayer(parameters, self.P_OUTPUT, context)
