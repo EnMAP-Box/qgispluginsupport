@@ -765,7 +765,7 @@ class ParametersPanel(QgsProcessingParametersWidget):
         self.in_place = in_place
         self.active_layer = active_layer
 
-        if isinstance(context, QgsProcessingContext):
+        if isinstance(context, QgsProcessingContext) and isinstance(context.project(), QgsProject):
             _project = context.project()
         else:
             _project = QgsProject.instance()

@@ -474,6 +474,7 @@ class SpectralLibraryWidget(QWidget):
 
         lyr = results.get(ExtractSpectralProfiles.P_OUTPUT, None)
         if isinstance(lyr, (QgsVectorLayer, str)):
+            self.project().addMapLayer(lyr)
             self.libraryPlotWidget().createProfileVisualization(layer_id=lyr)
             # self.addSpeclib(results['output'], askforNewFields=True)
 
