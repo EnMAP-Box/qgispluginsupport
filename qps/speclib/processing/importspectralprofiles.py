@@ -386,22 +386,18 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
         if wkbType is None:
             wkbType = QgsWkbTypes.Type.NoGeometry
 
-        # dst_fields = QgsFields()
-        # Describe output fields.
-        # If destination provide does not support field type
-        # try to get a suitable conversion, e.g., QMap / JSON -> str
-        #
-        value_output: str = self.parameterAsOutputLayer(parameters, self.P_OUTPUT, context)
+        output_path = parameters.get(self.P_OUTPUT, self.parameterDefinition(self.P_OUTPUT).defaultValue())
 
-        # if value_output in [None, QgsProcessing.TEMPORARY_OUTPUT]:
-        #     folder = QgsProcessingUtils.tempFolder(context)
-        #     value_output = QgsFileUtils.uniquePath(os.path.join(folder, 'spectrallibrary.gpkg'))
-        #     parameters[self.P_OUTPUT] = value_output
+        if isinstance(output_path, QgsProcessingOutputLayerDefinition):
+            output_path = output_path.toVariant()['sink']['val']
 
-        if value_output.startswith('memory:'):
+        if output_path == QgsProcessing.TEMPORARY_OUTPUT:
+            output_path = 'dummy.gpkg'
+
+        if output_path.startswith('memory:'):
             driver = 'memory'
         else:
-            driver = QgsVectorFileWriter.driverForExtension(os.path.splitext(value_output)[1])
+            driver = QgsVectorFileWriter.driverForExtension(os.path.splitext(output_path)[1])
         dst_fields = GenericFieldValueConverter.compatibleTargetFields(all_fields, driver)
 
         # outputPar = QgsProcessingOutputLayerDefinition(parameters.get(self.P_OUTPUT), context.project())
