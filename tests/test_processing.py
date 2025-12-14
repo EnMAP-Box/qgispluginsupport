@@ -375,7 +375,7 @@ class ProcessingToolsTest(TestCase):
         for f in input_files:
             self.assertTrue(Path(f).is_file)
             sl = SpectralLibraryUtils.readFromSource(f)
-            self.assertTrue(is_spectral_library(sl))
+            self.assertTrue(is_spectral_library(sl), f'not a spectral library: {f}')
             profiles = list(sl.getFeatures())
             self.assertTrue(len(profiles) > 0, f'Failed to import profiles from {f}')
 
