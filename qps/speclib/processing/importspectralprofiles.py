@@ -386,7 +386,7 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
         if wkbType is None:
             wkbType = QgsWkbTypes.Type.NoGeometry
 
-        output_path = parameters.get(self.P_OUTPUT)
+        output_path = parameters.get(self.P_OUTPUT, self.parameterDefinition(self.P_OUTPUT).defaultValue())
 
         if isinstance(output_path, QgsProcessingOutputLayerDefinition):
             output_path = output_path.toVariant()['sink']['val']
