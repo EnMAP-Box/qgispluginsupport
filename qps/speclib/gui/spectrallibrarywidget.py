@@ -562,9 +562,11 @@ class SpectralLibraryWidget(QWidget):
             alg = ExportSpectralProfiles()
 
             conf = {}
-            sl = self.currentSpeclib()
-            if isinstance(sl, QgsVectorLayer):
-                conf[alg.P_INPUT] = sl
+
+            if vis := self.mSpeclibPlotWidget.currentVisualization():
+                conf[alg.P_INPUT] = vis.layer()
+                conf[alg.P_FIELD] = vis.fieldName()
+
             alg.initAlgorithm(conf)
             d = AlgorithmDialog(alg, context=context)
             d.algorithmFinished.connect(onFinished)

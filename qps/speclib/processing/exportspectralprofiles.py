@@ -105,26 +105,29 @@ class ExportSpectralProfiles(QgsProcessingAlgorithm):
 
         p = QgsProcessingParameterBoolean(self.P_SELECTED_ONLY,
                                           description='Selected only',
-                                          defaultValue=False)
+                                          defaultValue=configuration.get(self.P_SELECTED_ONLY, False))
         p.setHelp('Export only profiles from selected features')
 
         self.addParameter(p)
 
         p = QgsProcessingParameterField(self.P_FIELD,
                                         parentLayerParameterName=self.P_INPUT,
-                                        description='Profile Field')
+                                        description='Profile Field',
+                                        defaultValue=configuration.get(self.P_FIELD))
+
         p.setHelp('The field that contains the spectral profiles to export')
         self.addParameter(p)
 
         p = QgsProcessingParameterExpression(self.P_PROFILE_NAME,
-                                             defaultValue="format('Profile %1', $id)",
+                                             defaultValue=configuration.get(self.P_PROFILE_NAME,
+                                                                            "format('Profile %1', $id)"),
                                              parentLayerParameterName=self.P_INPUT,
                                              description='Profile Name Expression')
         p.setHelp('An expression to generate a name for each profile')
         self.addParameter(p)
 
         p = QgsProcessingParameterString(self.P_WRITER_OPTIONS,
-                                         defaultValue=None,
+                                         defaultValue=configuration.get(self.P_WRITER_OPTIONS, None),
                                          description='Writer Options',
                                          optional=True)
         p.setHelp(
