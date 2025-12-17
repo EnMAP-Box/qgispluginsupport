@@ -176,7 +176,9 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
             self.P_INPUT,
             description='Input Sources',
             layerType=QgsProcessing.SourceType.TypeFile,
-            optional=False)
+            optional=False,
+            defaultValue=configuration.get(self.P_INPUT))
+
         p.setLayerType(QgsProcessing.SourceType.TypeFile)
 
         p.setHelp('Files or folders to read spectral profiles from')
@@ -186,7 +188,7 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
             self.P_INPUT_TYPE,
             description='Input file type',
             options=self._input_readers,
-            defaultValue=self._input_readers[0],
+            defaultValue=configuration.get(self.P_INPUT_TYPE, self._input_readers[0]),
             usesStaticStrings=True,
             allowMultiple=False,
         )
@@ -204,7 +206,7 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
             self.P_RECURSIVE,
             description='Recursive search',
             optional=True,
-            defaultValue=False)
+            defaultValue=configuration.get(self.P_RECURSIVE, False))
         p.setHelp('Search recursively in sub-folders')
         self.addParameter(p)
 
@@ -212,12 +214,12 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
             self.P_USE_RELPATH,
             description='Relative paths',
             optional=True,
-            defaultValue=False)
+            defaultValue=configuration.get(self.P_USE_RELPATH, False))
         p.setHelp('Write filepaths relative to output spectral library.')
         self.addParameter(p)
 
         p = QgsProcessingParameterString(self.P_DATETIMEFORMAT,
-                                         defaultValue=None,
+                                         defaultValue=configuration.get(self.P_DATETIMEFORMAT, None),
                                          description='Date-time format code',
                                          optional=True)
 
@@ -230,7 +232,7 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
 
         p = QgsProcessingParameterFeatureSink(
             self.P_OUTPUT,
-            defaultValue=QgsProcessing.TEMPORARY_OUTPUT,
+            defaultValue=configuration.get(self.P_OUTPUT, QgsProcessing.TEMPORARY_OUTPUT),
             description='Spectral library',
             optional=True)
         p.setHelp('Vector layer with one or more fields that contain spectral profiles')
