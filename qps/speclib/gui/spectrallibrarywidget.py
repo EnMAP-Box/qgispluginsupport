@@ -560,7 +560,12 @@ class SpectralLibraryWidget(QWidget):
                 results.update(res)
 
             alg = ExportSpectralProfiles()
-            alg.initAlgorithm({})
+
+            conf = {}
+            sl = self.currentSpeclib()
+            if isinstance(sl, QgsVectorLayer):
+                conf[alg.P_INPUT] = sl
+            alg.initAlgorithm(conf)
             d = AlgorithmDialog(alg, context=context)
             d.algorithmFinished.connect(onFinished)
             d.exec_()
