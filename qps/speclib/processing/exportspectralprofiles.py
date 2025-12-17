@@ -97,6 +97,7 @@ class ExportSpectralProfiles(QgsProcessingAlgorithm):
             self.P_INPUT,
             types=[QgsProcessing.TypeVector],
             description='Spectral library',
+            defaultValue=configuration.get(self.P_INPUT),
             optional=False)
 
         p.setHelp('A vector layer with SpectralProfile fields')

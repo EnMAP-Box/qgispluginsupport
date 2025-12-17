@@ -269,12 +269,23 @@ Please not that not each aggregate function might be available for each field ty
 
     def initAlgorithm(self, configuration: Dict[str, Any] = ...) -> None:
         self.addParameter(
-            QgsProcessingParameterFeatureSource(self.P_INPUT, 'Input spectral library', [QgsProcessing.TypeVector]))
+            QgsProcessingParameterFeatureSource(self.P_INPUT,
+                                                'Input spectral library',
+                                                [QgsProcessing.TypeVector],
+                                                defaultValue=configuration.get(self.P_INPUT)))
         self.addParameter(
-            QgsProcessingParameterExpression(self.P_GROUP_BY, 'Group by expression (NULL to group all features)',
-                                             "NULL", self.P_INPUT))
-        self.addParameter(QgsProcessingParameterAggregate(self.P_AGGREGATES, 'Aggregates', self.P_INPUT))
-        self.addParameter(QgsProcessingParameterFeatureSink(self.P_OUTPUT, 'Aggregated'))
+            QgsProcessingParameterExpression(self.P_GROUP_BY,
+                                             description='Group by expression (NULL to group all features)',
+                                             defaultValue=configuration.get(self.P_GROUP_BY, "NULL"),
+                                             parentLayerParameterName=self.P_INPUT))
+        self.addParameter(
+            QgsProcessingParameterAggregate(self.P_AGGREGATES,
+                                            'Aggregates',
+                                            parentLayerParameterName=self.P_INPUT))
+        self.addParameter(
+            QgsProcessingParameterFeatureSink(self.P_OUTPUT,
+                                              description='Aggregated',
+                                              defaultValue=configuration.get(self.P_OUTPUT, None)))
 
     def prepareAlgorithm(self, parameters: Dict[str, Any], context: QgsProcessingContext,
                          feedback: QgsProcessingFeedback) -> bool:

@@ -99,7 +99,8 @@ class ExtractSpectralProfiles(QgsProcessingAlgorithm):
             QgsProcessingParameterRasterLayer(
                 self.P_INPUT_RASTER,
                 'Input raster layer (spectral data)',
-                optional=False
+                optional=False,
+                defaultValue=configuration.get(self.P_INPUT_RASTER),
             )
         )
 
@@ -107,13 +108,15 @@ class ExtractSpectralProfiles(QgsProcessingAlgorithm):
             QgsProcessingParameterVectorLayer(
                 self.P_INPUT_VECTOR,
                 'Input vector layer (sample locations)',
-                optional=False
+                optional=False,
+                defaultValue=configuration.get(self.P_INPUT_VECTOR),
             )
         )
 
         p = QgsProcessingParameterVectorDestination(
             self.P_OUTPUT,
-            'Spectral Library'
+            'Spectral Library',
+            defaultValue=configuration.get(self.P_OUTPUT),
         )
         p.setHelp('Output vector layer with spectral profiles')
 
