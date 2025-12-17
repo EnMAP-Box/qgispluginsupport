@@ -560,7 +560,14 @@ class SpectralLibraryWidget(QWidget):
                 results.update(res)
 
             alg = ExportSpectralProfiles()
-            alg.initAlgorithm({})
+
+            conf = {}
+
+            if vis := self.mSpeclibPlotWidget.currentVisualization():
+                conf[alg.P_INPUT] = vis.layer()
+                conf[alg.P_FIELD] = vis.fieldName()
+
+            alg.initAlgorithm(conf)
             d = AlgorithmDialog(alg, context=context)
             d.algorithmFinished.connect(onFinished)
             d.exec_()
