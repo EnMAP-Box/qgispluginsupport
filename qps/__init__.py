@@ -65,8 +65,8 @@ def debugLog(msg: str, prefix: str = 'DEBUG:'):
         print(f'{prefix} {msg}', flush=True)
 
 
-def registerMapLayerConfigWidgetFactory(factory: QgsMapLayerConfigWidgetFactory) -> Optional[
-    QgsMapLayerConfigWidgetFactory]:
+def registerMapLayerConfigWidgetFactory(factory: QgsMapLayerConfigWidgetFactory) \
+        -> Optional[QgsMapLayerConfigWidgetFactory]:
     """
     Register a new tab in the map layer properties dialog.
     :param factory: QgsMapLayerConfigWidgetFactory
