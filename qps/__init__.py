@@ -34,7 +34,10 @@ from qgis.PyQt.QtCore import PYQT_VERSION_STR
 from qgis.core import Qgis, QgsApplication, QgsProviderRegistry
 from qgis.gui import QgisInterface, QgsMapLayerConfigWidgetFactory
 
+# Qt version used by PyQtGraph
 os.environ.setdefault('PYQTGRAPH_QT_LIB', f'PyQt{PYQT_VERSION_STR[0]}')
+# Qt version used by matplotlib
+os.environ.setdefault('QT_API', f'PyQt{PYQT_VERSION_STR[0]}')
 MIN_QGIS_VERSION = '3.38'
 __version__ = '1.8'
 
@@ -62,7 +65,8 @@ def debugLog(msg: str, prefix: str = 'DEBUG:'):
         print(f'{prefix} {msg}', flush=True)
 
 
-def registerMapLayerConfigWidgetFactory(factory: QgsMapLayerConfigWidgetFactory) -> Optional[QgsMapLayerConfigWidgetFactory]:
+def registerMapLayerConfigWidgetFactory(factory: QgsMapLayerConfigWidgetFactory) \
+        -> Optional[QgsMapLayerConfigWidgetFactory]:
     """
     Register a new tab in the map layer properties dialog.
     :param factory: QgsMapLayerConfigWidgetFactory
