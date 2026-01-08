@@ -5,7 +5,6 @@ import unittest
 
 import numpy as np
 from osgeo import gdal
-
 from qgis.PyQt.QtCore import QEvent, QMetaType, QPointF, Qt
 from qgis.PyQt.QtGui import QColor, QMouseEvent, QPen
 from qgis.PyQt.QtWidgets import QHBoxLayout, QVBoxLayout, QWidget
@@ -15,6 +14,7 @@ from qgis.core import edit, QgsApplication, QgsCategorizedSymbolRenderer, QgsCla
     QgsMultiBandColorRenderer, QgsNullSymbolRenderer, QgsProject, QgsProperty, QgsReadWriteContext, QgsRenderContext, \
     QgsRendererCategory, QgsRendererRange, QgsSingleBandGrayRenderer, QgsSingleSymbolRenderer, QgsVectorLayer
 from qgis.gui import QgsMapCanvas
+
 from qps import DIR_REPO, initAll
 from qps.plotstyling.plotstyling import MarkerSymbol, PlotStyle
 from qps.pyqtgraph.pyqtgraph import InfiniteLine
@@ -561,7 +561,7 @@ class TestSpeclibPlotting(TestCase):
         sl1 = TestObjects.createSpectralLibrary(n=10, n_bands=[5, 12],
                                                 name='Speclib A', profile_field_names=['A1', 'A2'])
         with edit(sl1):
-            sl1.addAttribute(QgsField('color', QMetaType.QString))
+            sl1.addAttribute(QgsField('color', QMetaType.Type.QString))
 
         sl2 = TestObjects.createSpectralLibrary(n=3, n_bands=[50, 200],
                                                 name='Speclib B', profile_field_names=['B1', 'B2'])

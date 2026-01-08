@@ -52,7 +52,6 @@ from osgeo.ogr import OFSTBoolean, OFSTNone, OFTBinary, OFTDate, OFTDateTime, OF
     OFTString, \
     OFTStringList, OFTTime
 from osgeo.osr import SpatialReference
-
 from qgis.PyQt import uic
 from qgis.PyQt.QtCore import NULL, QByteArray, QDirIterator, QMetaType, QObject, QPoint, QPointF, QRect, Qt, QUrl, \
     QVariant
@@ -70,6 +69,7 @@ from qgis.core import Qgis, QgsApplication, QgsCoordinateReferenceSystem, QgsCoo
 from qgis.core import QgsExpressionContextScope, QgsExpressionContext, QgsFeatureRenderer, QgsSingleSymbolRenderer, \
     QgsMarkerSymbol, QgsExpressionContextUtils, QgsRenderContext, QgsSymbol
 from qgis.gui import QgisInterface, QgsDialog, QgsGui, QgsMapCanvas, QgsMapLayerComboBox, QgsMessageViewer
+
 from .qgisenums import QGIS_LAYERFILTER, QGIS_WKBTYPE, QMETATYPE_BOOL, QMETATYPE_DOUBLE, QMETATYPE_INT, \
     QMETATYPE_QBYTEARRAY, QMETATYPE_QCHAR, QMETATYPE_QDATE, QMETATYPE_QDATETIME, QMETATYPE_QSTRING, \
     QMETATYPE_QSTRINGLIST, \
@@ -171,10 +171,10 @@ def variant_type_to_ogr_field_type(variant_type):
     elif variant_type == QMETATYPE_INT:
         ogr_type = OFTInteger
 
-    elif variant_type == QMetaType.LongLong:
+    elif variant_type == QMetaType.Type.LongLong:
         ogr_type = OFTInteger64
 
-    elif variant_type == QMetaType.Double:
+    elif variant_type == QMetaType.Type.Double:
         ogr_type = OFTReal
 
     elif variant_type in [QMETATYPE_QCHAR, QMETATYPE_QSTRING]:

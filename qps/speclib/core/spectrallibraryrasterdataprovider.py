@@ -4,7 +4,6 @@ import re
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
-
 from qgis.PyQt.QtCore import NULL, QByteArray, QDateTime, QMetaType, QObject, QUrl, QUrlQuery, QVariant
 from qgis.PyQt.QtGui import QColor
 from qgis.core import Qgis, QgsColorRampShader, QgsCoordinateReferenceSystem, QgsDataProvider, QgsFeature, \
@@ -12,6 +11,7 @@ from qgis.core import Qgis, QgsColorRampShader, QgsCoordinateReferenceSystem, Qg
     QgsRaster, QgsRasterBandStats, QgsRasterBlock, QgsRasterBlockFeedback, \
     QgsRasterDataProvider, QgsRasterIdentifyResult, QgsRasterLayer, QgsRectangle, QgsVectorLayer, \
     QgsProviderMetadata, QgsProviderRegistry, QgsMessageLog
+
 from .spectralprofile import groupBySpectralProperties, spectralSettingsDict
 from ..core import is_profile_field, profile_fields
 from ..core.spectralprofile import decodeProfileValueDict  # , groupBySpectralProperties_depr, SpectralSetting
@@ -208,7 +208,7 @@ class FieldToRasterValueConverter(QObject):
         QMETATYPE_BOOL: Qgis.DataType.Byte,
         QMETATYPE_INT: Qgis.DataType.Int32,
         QMETATYPE_UINT: Qgis.DataType.UInt32,
-        QMetaType.LongLong: Qgis.DataType.Int32,
+        QMetaType.Type.LongLong: Qgis.DataType.Int32,
         QMETATYPE_ULONGLONG: Qgis.DataType.UInt32,
         QMETATYPE_DOUBLE: Qgis.DataType.Float32,
         QMETATYPE_QSTRING: Qgis.DataType.Int32,

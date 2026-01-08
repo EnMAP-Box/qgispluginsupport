@@ -3,6 +3,7 @@ from typing import Union, List, Tuple
 
 from qgis.PyQt.QtCore import QMetaType
 from qgis.core import QgsFields, QgsField, QgsFeature
+
 from ..core.spectralprofile import SpectralProfileFileReader, encodeProfileValueDict, ProfileEncoding
 
 
@@ -131,11 +132,11 @@ class ECOSTRESSSpectralProfileReader(SpectralProfileFileReader):
 
         for k in MD.keys():
             if k in to_int:
-                fields.append(QgsField(k, QMetaType.Int))
+                fields.append(QgsField(k, QMetaType.Type.Int))
             elif k in to_float:
-                fields.append(QgsField(k, QMetaType.Double))
+                fields.append(QgsField(k, QMetaType.Type.Double))
             elif k not in to_skip:
-                fields.append(QgsField(k, QMetaType.QString))
+                fields.append(QgsField(k, QMetaType.Type.QString))
 
         f = QgsFeature(fields)
 

@@ -3,7 +3,6 @@ from typing import Optional, Dict, Any
 
 import numpy as np
 from osgeo import gdal
-
 from qgis.PyQt.QtCore import QMetaType
 from qgis.core import (
     Qgis,
@@ -25,6 +24,7 @@ from qgis.core import (
     QgsVectorFileWriter
 )
 from qgis.core import QgsProcessing, QgsVectorLayer, QgsFeatureRequest, QgsMapLayer
+
 from ..core import create_profile_field
 from ..core.spectralprofile import (
     prepareProfileValueDict,
@@ -182,9 +182,9 @@ class ExtractSpectralProfiles(QgsProcessingAlgorithm):
         # Create output fields
         output_fields = QgsFields()
         output_fields.append(create_profile_field(self.F_PROFILE))
-        output_fields.append(QgsField(self.F_SOURCE, QMetaType.QString))
-        output_fields.append(QgsField(self.F_PX_X, QMetaType.Int))
-        output_fields.append(QgsField(self.F_PX_Y, QMetaType.Int))
+        output_fields.append(QgsField(self.F_SOURCE, QMetaType.Type.QString))
+        output_fields.append(QgsField(self.F_PX_X, QMetaType.Type.Int))
+        output_fields.append(QgsField(self.F_PX_Y, QMetaType.Type.Int))
 
         if True:
             for f in vector_layer.fields():

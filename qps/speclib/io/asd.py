@@ -34,10 +34,10 @@ from pathlib import Path
 from typing import Tuple, Union, List
 
 import numpy as np
-
 from qgis.PyQt.QtCore import QMetaType
 from qgis.core import QgsFeature, QgsField, QgsFields
 from qgis.core import QgsPointXY
+
 from ..core import create_profile_field
 from ..core.spectralprofile import prepareProfileValueDict, SpectralProfileFileReader
 
@@ -242,8 +242,8 @@ class ASDCSVFile(SpectralProfileFileReader):
 
         fields = QgsFields()
         fields.append(create_profile_field(self.KEY_Target))
-        fields.append(QgsField(self.KEY_Name, QMetaType.QString))
-        fields.append(QgsField(self.KEY_Path, QMetaType.QString))
+        fields.append(QgsField(self.KEY_Name, QMetaType.Type.QString))
+        fields.append(QgsField(self.KEY_Path, QMetaType.Type.QString))
         return fields
 
     def asFeatures(self) -> List[QgsFeature]:

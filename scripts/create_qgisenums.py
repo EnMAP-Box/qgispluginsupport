@@ -1,4 +1,6 @@
-# this script generates the qps/qgisenums.py which provided unified access to enumerations accross different QGIS API versions
+# this script generates the qps/qgisenums.py
+# qgisenums.py tries to provide unified access to enumerations
+# across different QGIS API versions
 import pathlib
 import re
 import urllib.request
@@ -10,12 +12,14 @@ import qgis.analysis
 import qgis.core
 from qgis.core import Qgis
 
+url = r'https://raw.githubusercontent.com/qgis/QGIS/master/src/core/qgis.h'
+path_qgisenums = pathlib.Path(__file__).parents[1] / 'qps' / 'qgisenums.py'
+
 NAMESPACE_CLASSES = {
     'qgis.core': vars(qgis.core),
     'qgis.gui': vars(qgis.gui),
     'qgis._3d': vars(qgis._3d),
     'qgis.analysis': vars(qgis.analysis)
-
 }
 
 NEW_NAME_VERSION_CORRECTION = {
@@ -35,15 +39,9 @@ NEW_NAME_CORRECTION = {
     'DataProviderReadFlag': 'DataProviderFlag'
 }
 
-url = r'https://raw.githubusercontent.com/qgis/QGIS/master/src/core/qgis.h'
-
-path_qgisenums = pathlib.Path(__file__).parents[1] / 'qps' / 'qgisenums.py'
-
 try:
-
     with urllib.request.urlopen(url) as response:
         code = response.read().decode('utf-8')
-
 except urllib.error.URLError as e:
     print(f"Failed to download qgis.h: {e}")
 
@@ -98,22 +96,22 @@ from qgis.core import Qgis
 
 manual_defined = """
 # QgsField - since QGIS 3.38, use the method with a QMetaType::Type argument instead
-QMETATYPE_QSTRING = QMetaType.QString if Qgis.versionInt() >= 33800 else QVariant.String
-QMETATYPE_QCHAR = QMetaType.QChar if Qgis.versionInt() >= 33800 else QVariant.Char
-QMETATYPE_QSTRINGLIST = QMetaType.QStringList if Qgis.versionInt() >= 33800 else QVariant.StringList
-QMETATYPE_BOOL = QMetaType.Bool if Qgis.versionInt() >= 33800 else QVariant.Bool
-QMETATYPE_INT = QMetaType.Int if Qgis.versionInt() >= 33800 else QVariant.Int
-QMETATYPE_DOUBLE = QMetaType.Double if Qgis.versionInt() >= 33800 else QVariant.Double
-QMETATYPE_UINT = QMetaType.UInt if Qgis.versionInt() >= 33800 else QVariant.UInt
-QMETATYPE_ULONG = QMetaType.ULong
-QMETATYPE_ULONGLONG = QMetaType.ULongLong if Qgis.versionInt() >= 33800 else QVariant.ULongLong
-QMETATYPE_LONGLONG = QMetaType.LongLong if Qgis.versionInt() >= 33800 else QVariant.LongLong
-QMETATYPE_QTIME = QMetaType.QTime if Qgis.versionInt() >= 33800 else QVariant.Time
-QMETATYPE_QDATE = QMetaType.QDate if Qgis.versionInt() >= 33800 else QVariant.Date
-QMETATYPE_QDATETIME = QMetaType.QDateTime if Qgis.versionInt() >= 33800 else QVariant.DateTime
-QMETATYPE_QVARIANTMAP = QMetaType.QVariantMap if Qgis.versionInt() >= 33800 else QVariant.Map
-QMETATYPE_QBYTEARRAY = QMetaType.QByteArray if Qgis.versionInt() >= 33800 else QVariant.ByteArray
-QMETATYPE_QVARIANTLIST = QMetaType.QVariantList if Qgis.versionInt() >= 33800 else QVariant.List
+QMETATYPE_QSTRING = QMetaType.Type.QString if Qgis.versionInt() >= 33800 else QVariant.String
+QMETATYPE_QCHAR = QMetaType.Type.QChar if Qgis.versionInt() >= 33800 else QVariant.Char
+QMETATYPE_QSTRINGLIST = QMetaType.Type.QStringList if Qgis.versionInt() >= 33800 else QVariant.StringList
+QMETATYPE_BOOL = QMetaType.Type.Bool if Qgis.versionInt() >= 33800 else QVariant.Bool
+QMETATYPE_INT = QMetaType.Type.Int if Qgis.versionInt() >= 33800 else QVariant.Int
+QMETATYPE_DOUBLE = QMetaType.Type.Double if Qgis.versionInt() >= 33800 else QVariant.Double
+QMETATYPE_UINT = QMetaType.Type.UInt if Qgis.versionInt() >= 33800 else QVariant.UInt
+QMETATYPE_ULONG = QMetaType.Type.ULong
+QMETATYPE_ULONGLONG = QMetaType.Type.ULongLong if Qgis.versionInt() >= 33800 else QVariant.ULongLong
+QMETATYPE_LONGLONG = QMetaType.Type.LongLong if Qgis.versionInt() >= 33800 else QVariant.LongLong
+QMETATYPE_QTIME = QMetaType.Type.QTime if Qgis.versionInt() >= 33800 else QVariant.Time
+QMETATYPE_QDATE = QMetaType.Type.QDate if Qgis.versionInt() >= 33800 else QVariant.Date
+QMETATYPE_QDATETIME = QMetaType.Type.QDateTime if Qgis.versionInt() >= 33800 else QVariant.DateTime
+QMETATYPE_QVARIANTMAP = QMetaType.Type.QVariantMap if Qgis.versionInt() >= 33800 else QVariant.Map
+QMETATYPE_QBYTEARRAY = QMetaType.Type.QByteArray if Qgis.versionInt() >= 33800 else QVariant.ByteArray
+QMETATYPE_QVARIANTLIST = QMetaType.Type.QVariantList if Qgis.versionInt() >= 33800 else QVariant.List
 """
 
 # init all

@@ -1,7 +1,6 @@
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
-
 from qgis.PyQt.QtCore import NULL, QByteArray, QMetaType, QVariant
 from qgis.core import edit, QgsAggregateCalculator, QgsCoordinateReferenceSystem, QgsCoordinateTransformContext, \
     QgsDistanceArea, QgsEditorWidgetSetup, QgsExpression, QgsExpressionContext, QgsExpressionContextScope, \
@@ -11,6 +10,7 @@ from qgis.core import edit, QgsAggregateCalculator, QgsCoordinateReferenceSystem
     QgsProcessingFeatureSource, QgsProcessingFeedback, QgsProcessingParameterAggregate, \
     QgsProcessingParameterExpression, QgsProcessingParameterFeatureSink, QgsProcessingParameterFeatureSource, \
     QgsProcessingUtils, QgsVectorLayer, QgsWkbTypes
+
 from .. import EDITOR_WIDGET_REGISTRY_KEY
 from ..core import is_profile_field
 from ..core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict, prepareProfileValueDict, \
@@ -186,7 +186,7 @@ class AggregateMemoryLayer(QgsVectorLayer):
         for field in fields:
             field: QgsField
             lengthPrecission = f'({field.length()},{field.precision()})'
-            if field.type() in [QVariant.List, QMetaType.QStringList]:
+            if field.type() in [QVariant.List, QMetaType.Type.QStringList]:
                 ftype = field.subType()
                 ltype = '[]'
             else:

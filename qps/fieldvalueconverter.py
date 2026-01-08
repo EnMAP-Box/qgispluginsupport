@@ -7,12 +7,12 @@ from uuid import uuid4
 
 import numpy as np
 from osgeo import gdal
-
 from qgis.PyQt.QtCore import QDate, QDateTime, QLocale, Qt, QTime
 from qgis.PyQt.QtCore import QMetaType
 from qgis.core import Qgis, QgsCoordinateReferenceSystem, QgsEditorWidgetSetup, QgsExpressionContext, QgsFeature, \
     QgsField, QgsFields, QgsProject, QgsProperty, QgsPropertyTransformer, QgsRemappingSinkDefinition, \
     QgsVectorDataProvider, QgsVectorFileWriter, QgsVectorLayer
+
 from .qgisenums import QMETATYPE_QDATE, QMETATYPE_QDATETIME, QMETATYPE_QSTRING, QMETATYPE_QTIME, \
     QMETATYPE_QVARIANTMAP
 from .speclib import EDITOR_WIDGET_REGISTRY_KEY
@@ -34,8 +34,8 @@ def create_vsimemfile(extension: str, path: Optional[Union[str, Path]] = None) -
 
     # Define fields
     fields = QgsFields()
-    fields.append(QgsField('name', QMetaType.QString))
-    fields.append(QgsField('num', QMetaType.Int))
+    fields.append(QgsField('name', QMetaType.Type.QString))
+    fields.append(QgsField('num', QMetaType.Type.Int))
 
     # Create a QgsVectorFileWriter to write the shapefile
     f: QgsFeature = QgsFeature()
