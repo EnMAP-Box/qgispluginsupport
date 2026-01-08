@@ -186,7 +186,7 @@ class PropertyItemBase(QStandardItem):
 
     def data(self, role: int = ...) -> Any:
 
-        if role == Qt.UserRole:
+        if role == Qt.ItemDataRole.UserRole:
             return self
             # return None
         else:
@@ -212,13 +212,13 @@ class PropertyLabel(QStandardItem):
         Should be in the column left to it
         """
         item = self.model().index(self.row(), self.column() + 1,
-                                  parent=self.parent().index()).data(Qt.UserRole)
+                                  parent=self.parent().index()).data(Qt.ItemDataRole.UserRole)
 
         if isinstance(item, PropertyItem) and item.label() == self:
             return item
 
     def data(self, role: int = ...) -> Any:
-        if role == Qt.UserRole:
+        if role == Qt.ItemDataRole.UserRole:
             return self
         return super().data(role)
 
@@ -261,7 +261,8 @@ class PropertyItem(PropertyItemBase):
         if self.__class__.__name__ != other.__class__.__name__:
             return False
 
-        return self.key() == other.key() and self.data(Qt.DisplayRole) == other.data(Qt.DisplayRole)
+        return self.key() == other.key() and self.data(Qt.ItemDataRole.DisplayRole) == other.data(
+            Qt.ItemDataRole.DisplayRole)
 
     def __ne__(self, other):
         return not self.__eq__(other)
@@ -355,8 +356,8 @@ class PropertyItemGroup(PropertyItemBase):
         if not (isinstance(other, PropertyItemGroup) and self.__class__.__name__ == other.__class__.__name__):
             return False
 
-        ud1 = self.data(Qt.DisplayRole)
-        ud2 = other.data(Qt.DisplayRole)
+        ud1 = self.data(Qt.ItemDataRole.DisplayRole)
+        ud2 = other.data(Qt.ItemDataRole.DisplayRole)
 
         b = (self.checkState() == other.checkState()) and (ud1 == ud2)
 
@@ -371,7 +372,7 @@ class PropertyItemGroup(PropertyItemBase):
         return not self.__eq__(other)
 
     def __repr__(self):
-        return super().__repr__() + f' "{self.data(Qt.DisplayRole)}"'
+        return super().__repr__() + f' "{self.data(Qt.ItemDataRole.DisplayRole)}"'
 
     def disconnectGroup(self):
         """
@@ -450,7 +451,7 @@ class PropertyItemGroup(PropertyItemBase):
 
     def data(self, role: int = ...) -> Any:
 
-        if role == Qt.DecorationRole and self.mMissingValues:
+        if role == Qt.ItemDataRole.DecorationRole and self.mMissingValues:
             return QIcon(WARNING_ICON)
 
         return super().data(role)
@@ -458,7 +459,7 @@ class PropertyItemGroup(PropertyItemBase):
     def setData(self, value: Any, role: int = ...) -> None:
         value = super().setData(value, role)
 
-        if role == Qt.CheckStateRole:
+        if role == Qt.ItemDataRole.CheckStateRole:
             # self.mSignals.requestPlotUpdate.emit()
             is_visible = self.isVisible()
             for item in self.plotDataItems():
@@ -1029,7 +1030,7 @@ class SpectralProfileLayerFieldItem(PropertyItem):
 
         missing_layer = self.mLayerID in ['', None]
         missing_field = self.mFieldName in ['', None]
-        if role == Qt.DisplayRole:
+        if role == Qt.ItemDataRole.DisplayRole:
 
             if missing_layer:
                 return '<select layer>'
@@ -1038,7 +1039,7 @@ class SpectralProfileLayerFieldItem(PropertyItem):
             else:
                 return self.mFieldName
 
-        if role == Qt.ToolTipRole:
+        if role == Qt.ItemDataRole.ToolTipRole:
             lyr = self.layer()
             field = self.field()
             if not isinstance(lyr, QgsVectorLayer):
@@ -1047,7 +1048,7 @@ class SpectralProfileLayerFieldItem(PropertyItem):
                 tt = f'Layer: "{lyr.name()}" Field: {field}<br>Layer ID: {lyr.id()}<br>Layer Source: {lyr.source()}'
             return tt
 
-        if role == Qt.ForegroundRole:
+        if role == Qt.ItemDataRole.ForegroundRole:
 
             if missing_field or missing_layer:
                 return QColor('red')
@@ -1063,11 +1064,11 @@ class TextItem(PropertyItem):
         self.setEditable(True)
 
     def text(self):
-        return self.data(Qt.EditRole)
+        return self.data(Qt.ItemDataRole.EditRole)
 
     def setText(self, text: str):
         assert isinstance(text, str)
-        self.setData(text, Qt.EditRole)
+        self.setData(text, Qt.ItemDataRole.EditRole)
 
     def createEditor(self, parent: QWidget) -> QLineEdit:
         return QLineEdit(parent)
@@ -1162,7 +1163,7 @@ class QgsPropertyItem(PropertyItem):
             return None
         p = self.property()
 
-        if role == Qt.DisplayRole:
+        if role == Qt.ItemDataRole.DisplayRole:
             if p.propertyType() == QgsProperty.ExpressionBasedProperty:
                 return p.expressionString()
             elif p.propertyType() == QgsProperty.FieldBasedProperty:
@@ -1174,13 +1175,13 @@ class QgsPropertyItem(PropertyItem):
                         return v.name()
                     else:
                         return v
-        if role == Qt.DecorationRole:
+        if role == Qt.ItemDataRole.DecorationRole:
             if self.isColorProperty():
                 v, success = p.value(QgsExpressionContext())
                 if success and isinstance(v, QColor):
                     return v
 
-        if role == Qt.ToolTipRole:
+        if role == Qt.ItemDataRole.ToolTipRole:
             return self.definition().description()
 
         return super().data(role)
@@ -1315,7 +1316,7 @@ class QgsPropertyItem(PropertyItem):
             property = QgsProperty.fromValue(w.isChecked())
 
         elif isinstance(w, QComboBox):
-            property = QgsProperty.fromValue(w.currentData(Qt.UserRole))
+            property = QgsProperty.fromValue(w.currentData(Qt.ItemDataRole.UserRole))
 
         elif isinstance(w, (QgsSpinBox, QgsDoubleSpinBox)):
             property = QgsProperty.fromValue(w.value())
@@ -1400,8 +1401,8 @@ class RasterRendererGroup(PropertyItemGroup):
         super().__init__(*args, **kwds)
         self.mZValue = 0
         self.setIcon(QIcon(':/images/themes/default/rendererCategorizedSymbol.svg'))
-        self.setData('Renderer', Qt.DisplayRole)
-        self.setData('Raster Layer Renderer', Qt.ToolTipRole)
+        self.setData('Renderer', Qt.ItemDataRole.DisplayRole)
+        self.setData('Raster Layer Renderer', Qt.ItemDataRole.ToolTipRole)
 
         # self.mPropertyNames[LayerRendererVisualization.PIX_TYPE] = 'Renderer'
         # self.mPropertyTooltips[LayerRendererVisualization.PIX_TYPE] = 'raster layer renderer type'
@@ -1684,7 +1685,7 @@ class RasterRendererGroup(PropertyItemGroup):
 
     def setBandPosition(self, band: int, bandBar: InfiniteLine, bandItem: PropertyItem) -> bool:
         bandBar.setToolTip(bandBar.name())
-        bandItem.setData(band, Qt.DisplayRole)
+        bandItem.setData(band, Qt.ItemDataRole.DisplayRole)
         if isinstance(band, int) and band > 0:
             xValue = self.bandToXValue(band)
             if xValue:
@@ -1837,7 +1838,7 @@ class ProfileStatsGroup(PropertyItemGroup):
         self.setEnabled(True)
         self.setEditable(False)
 
-        self.setData('Statistics', role=Qt.DisplayRole)
+        self.setData('Statistics', role=Qt.ItemDataRole.DisplayRole)
 
         self.mMean = PlotStyleItem('Mean', tooltip='Mean')
         self.mStd = PlotStyleItem('StDev', tooltip='Standard deviation')
@@ -2077,10 +2078,10 @@ class ProfileVisualizationGroup(PropertyItemGroup):
             self.emitDataChanged()
 
     def data(self, role: int = ...) -> Any:
-        if role == Qt.DisplayRole:
+        if role == Qt.ItemDataRole.DisplayRole:
             if self.mAutoName:
                 return self.autoName()
-        if role == Qt.ToolTipRole:
+        if role == Qt.ItemDataRole.ToolTipRole:
             return self.mPField.toolTip()
         return super().data(role)
 

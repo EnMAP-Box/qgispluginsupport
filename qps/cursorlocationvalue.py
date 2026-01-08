@@ -316,20 +316,20 @@ class ComboBoxOptionModel(QAbstractListModel):
         assert option in self.mOptions
         return self.mOptions.index(option)
 
-    def data(self, index, role=Qt.DisplayRole):
+    def data(self, index, role=Qt.ItemDataRole.DisplayRole):
         if not index.isValid():
             return None
 
         option = self.index2option(index)
         assert isinstance(option, ComboBoxOption)
         value = None
-        if role == Qt.DisplayRole:
+        if role == Qt.ItemDataRole.DisplayRole:
             value = option.name
-        if role == Qt.ToolTipRole:
+        if role == Qt.ItemDataRole.ToolTipRole:
             value = option.tooltip
-        if role == Qt.DecorationRole:
+        if role == Qt.ItemDataRole.DecorationRole:
             value = option.icon
-        if role == Qt.UserRole:
+        if role == Qt.ItemDataRole.UserRole:
             value = option
         return value
 

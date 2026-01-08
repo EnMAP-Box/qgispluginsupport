@@ -199,7 +199,7 @@ class UnitModel(QAbstractListModel):
             return self.index(self.mUnits.index(w), 0)
         return QModelIndex()
 
-    def unitData(self, unit: Union[str, UnitWrapper], role=Qt.DisplayRole):
+    def unitData(self, unit: Union[str, UnitWrapper], role=Qt.ItemDataRole.DisplayRole):
         """
         Convenience function to access unit metadata
         :param unit:
@@ -211,21 +211,21 @@ class UnitModel(QAbstractListModel):
         """
         return self.data(self.unitIndex(unit), role=role)
 
-    def data(self, index: QModelIndex, role=Qt.DisplayRole):
+    def data(self, index: QModelIndex, role=Qt.ItemDataRole.DisplayRole):
         if not index.isValid():
             return None
 
         w = self.mUnits[index.row()]
 
-        if role == Qt.DisplayRole:
+        if role == Qt.ItemDataRole.DisplayRole:
             return w.description
-        if role == Qt.ToolTipRole:
+        if role == Qt.ItemDataRole.ToolTipRole:
             return w.tooltip
-        if role == Qt.DecorationRole:
+        if role == Qt.ItemDataRole.DecorationRole:
             return w.icon
-        if role == Qt.UserRole:
+        if role == Qt.ItemDataRole.UserRole:
             return w.unit
-        if role == Qt.UserRole + 1:
+        if role == Qt.ItemDataRole.UserRole + 1:
             return w
 
 

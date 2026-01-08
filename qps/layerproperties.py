@@ -117,12 +117,12 @@ class CheckableQgsFieldModel(QgsFieldModel):
     def checkAll(self):
         for r in range(self.rowCount()):
             idx = self.createIndex(r, 0)
-            self.setData(idx, Qt.Checked, Qt.CheckStateRole)
+            self.setData(idx, Qt.Checked, Qt.ItemDataRole.CheckStateRole)
 
     def uncheckAll(self):
         for r in range(self.rowCount()):
             idx = self.createIndex(r, 0)
-            self.setData(idx, Qt.Unchecked, Qt.CheckStateRole)
+            self.setData(idx, Qt.Unchecked, Qt.ItemDataRole.CheckStateRole)
 
     def checkedFields(self) -> QgsFields:
 
@@ -144,7 +144,7 @@ class CheckableQgsFieldModel(QgsFieldModel):
 
     def headerData(self, section: int, orientation: Qt.Orientation, role: int) -> Any:
 
-        if role == Qt.DisplayRole and orientation == Qt.Horizontal:
+        if role == Qt.ItemDataRole.DisplayRole and orientation == Qt.Horizontal:
             if section == 0:
                 return 'Field Name'
         return super(CheckableQgsFieldModel, self).headerData(section, orientation, role)
@@ -156,10 +156,10 @@ class CheckableQgsFieldModel(QgsFieldModel):
         row = index.row()
         field: QgsField = self.fields().at(row)
 
-        if role == Qt.CheckStateRole:
+        if role == Qt.ItemDataRole.CheckStateRole:
             b = self.mChecked.get(row, False)
             return Qt.Checked if b else Qt.Unchecked
-        if role == Qt.DecorationRole:
+        if role == Qt.ItemDataRole.DecorationRole:
             return iconForFieldType(field)
 
         return super().data(index, role)
@@ -172,7 +172,7 @@ class CheckableQgsFieldModel(QgsFieldModel):
 
         changed = None
 
-        if role == Qt.CheckStateRole:
+        if role == Qt.ItemDataRole.CheckStateRole:
             self.mChecked[row] = value == Qt.Checked
             changed = True
 

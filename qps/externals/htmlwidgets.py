@@ -195,7 +195,7 @@ class HTMLComboBox(QtWidgets.QComboBox):
                     doc.setHtml(item.text())
                 else:
                     idx = model.index(rownum, 0)
-                    doc.setHtml(model.data(idx, role=QtCore.Qt.DisplayRole))
+                    doc.setHtml(model.data(idx, role=QtCore.Qt.ItemDataRole.DisplayRole))
                 size = doc.size()
                 if size.width() > max_w:
                     max_w = size.width()

@@ -171,7 +171,7 @@ class SpectralProcessingRasterDestination(QgsAbstractProcessingParameterWidgetWr
             if isinstance(value, str):
                 value2 = self.pathToFieldName(value)
                 for i in range(self.mFieldComboBox.count()):
-                    field: QgsField = self.mFieldComboBox.itemData(i, Qt.UserRole)
+                    field: QgsField = self.mFieldComboBox.itemData(i, Qt.ItemDataRole.UserRole)
                     if field.name() == value or field.name() == value2:
                         self.mFieldComboBox.setCurrentIndex(i)
                         return

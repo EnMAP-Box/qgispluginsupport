@@ -33,13 +33,20 @@ import sys
 from pathlib import Path
 from typing import Any, Generator, List, Optional, Union
 
-from qgis.PyQt.QtCore import QAbstractTableModel, QDirIterator, QFile, QModelIndex, QRegExp, QSortFilterProxyModel, Qt, \
+import qgis.PyQt.QtCore
+from qgis.PyQt.QtCore import QAbstractTableModel, QDirIterator, QFile, QModelIndex, QSortFilterProxyModel, Qt, \
     QTextStream
 from qgis.PyQt.QtGui import QContextMenuEvent, QIcon, QPixmap
-from qgis.PyQt.QtSvg import QGraphicsSvgItem
 from qgis.PyQt.QtWidgets import QAction, QApplication, QGraphicsPixmapItem, QGraphicsScene, QGraphicsView, QLabel, \
     QLineEdit, QMenu, QTableView, QTextBrowser, QToolButton, QWidget
 from qgis.PyQt.QtXml import QDomDocument, QDomElement
+
+if qgis.PyQt.QtCore.QT_VERSION_STR[0] == '5' and False:
+    from qgis.PyQt.QtSvg import QGraphicsSvgItem
+    from qgis.PyQt.QtCore import QRegExp
+else:
+    from PyQt6.QtSvgWidgets import QGraphicsSvgItem
+    from qgis.PyQt.QtCore import QRegularExpression as QRegExp
 
 if __name__ == '__main__' and __package__ is None:
     # fix for "ImportError: attempted relative import with no known parent package"
@@ -428,11 +435,11 @@ class ResourceTableModel(QAbstractTableModel):
         return [self.cnUri, self.cnIcon]
 
     def headerData(self, section: int, orientation: Qt.Orientation, role: int = ...) -> Any:
-        if role == Qt.DisplayRole:
+        if role == Qt.ItemDataRole.DisplayRole:
             if orientation == Qt.Horizontal:
                 return self.columnNames()[section]
 
-        if role == Qt.TextAlignmentRole and orientation == Qt.Vertical:
+        if role == Qt.ItemDataRole.TextAlignmentRole and orientation == Qt.Vertical:
             return Qt.AlignRight
 
         return super().headerData(section, orientation, role)
@@ -444,20 +451,20 @@ class ResourceTableModel(QAbstractTableModel):
         uri = self.RESOURCES[index.row()]
         cn = self.columnNames()[index.column()]
 
-        if role == Qt.DisplayRole:
+        if role == Qt.ItemDataRole.DisplayRole:
             if cn == self.cnUri:
                 return uri
             else:
                 return os.path.basename(uri)
-        if role == Qt.DecorationRole:
+        if role == Qt.ItemDataRole.DecorationRole:
             if cn == self.cnIcon:
                 return QIcon(uri)
 
-        if role == Qt.ToolTipRole:
+        if role == Qt.ItemDataRole.ToolTipRole:
             if cn == self.cnUri:
                 return uri
 
-        if role == Qt.UserRole:
+        if role == Qt.ItemDataRole.UserRole:
             return uri
 
         return None
@@ -471,7 +478,7 @@ class ResourceTableView(QTableView):
     def contextMenuEvent(self, event: QContextMenuEvent) -> None:
         idx = self.indexAt(event.pos())
         if isinstance(idx, QModelIndex) and idx.isValid():
-            uri = idx.data(Qt.UserRole)
+            uri = idx.data(Qt.ItemDataRole.UserRole)
             m = QMenu()
             a = m.addAction('Copy Name')
             a.triggered.connect(lambda *args, n=os.path.basename(uri): QApplication.clipboard().setText(n))
@@ -511,7 +518,7 @@ class ResourceBrowser(QWidget):
         self.resourceModel: ResourceTableModel = ResourceTableModel()
         self.resourceProxyModel = QSortFilterProxyModel()
         self.resourceProxyModel.setFilterKeyColumn(0)
-        self.resourceProxyModel.setFilterRole(Qt.UserRole)
+        self.resourceProxyModel.setFilterRole(Qt.ItemDataRole.UserRole)
         self.resourceProxyModel.setSourceModel(self.resourceModel)
 
         self.tableView.setSortingEnabled(True)
@@ -559,7 +566,7 @@ class ResourceBrowser(QWidget):
             idx1 = selectedIdx[0]
             assert isinstance(idx1, QModelIndex)
 
-            uri = idx1.data(Qt.UserRole)
+            uri = idx1.data(Qt.ItemDataRole.UserRole)
             self.updatePreview(uri)
 
     def updatePreview(self, uri: str):

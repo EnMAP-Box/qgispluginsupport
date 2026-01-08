@@ -184,7 +184,7 @@ def featuresToArrays(speclib: QgsVectorLayer,
 #         if not index.isValid():
 #             return None
 #
-#         if role != Qt.DecorationRole:
+#         if role != Qt.ItemDataRole.DecorationRole:
 #             return super().data(index, role)
 #
 #         isEmpty = index.row() == 0 and self.allowEmptyLayer()

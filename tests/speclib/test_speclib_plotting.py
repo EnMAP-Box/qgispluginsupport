@@ -520,9 +520,9 @@ class TestSpeclibPlotting(TestCase):
 
         g.setLayerField(sl, 'p1')
 
-        self.assertEqual('SL_A:p1', g.data(Qt.DisplayRole), )
+        self.assertEqual('SL_A:p1', g.data(Qt.ItemDataRole.DisplayRole), )
         g.setLayerField(sl, 'p2')
-        self.assertEqual('SL_A:p2', g.data(Qt.DisplayRole))
+        self.assertEqual('SL_A:p2', g.data(Qt.ItemDataRole.DisplayRole))
 
     def test_PlotStyleItem(self):
 

@@ -48,7 +48,7 @@ from qgis.gui import QgsColorButton, QgsSpinBox, QgsDoubleSpinBox
 def currentComboBoxValue(comboBox):
     assert isinstance(comboBox, QComboBox)
     if isinstance(comboBox.model(), OptionListModel):
-        o = comboBox.currentData(Qt.UserRole)
+        o = comboBox.currentData(Qt.ItemDataRole.UserRole)
         assert isinstance(o, Option)
         return o.mValue
     else:
@@ -65,14 +65,14 @@ def setCurrentComboBoxValue(comboBox, value):
     assert isinstance(comboBox, QComboBox)
     model = comboBox.model()
     if not isinstance(model, OptionListModel):
-        i = comboBox.findData(value, role=Qt.DisplayRole)
+        i = comboBox.findData(value, role=Qt.ItemDataRole.DisplayRole)
         if i == -1:
-            i = comboBox.findData(value, role=Qt.UserRole)
+            i = comboBox.findData(value, role=Qt.ItemDataRole.UserRole)
         if i == -1:
             for r in range(model.rowCount(QModelIndex())):
                 idx = model.index(r, 0)
                 displayData = model.data(idx, role=Qt.Unchecked)
-                userData = model.data(idx, role=Qt.UserRole)
+                userData = model.data(idx, role=Qt.ItemDataRole.UserRole)
                 if displayData == value or (userData is not None and userData == value):
                     i = r
                     break
@@ -83,7 +83,7 @@ def setCurrentComboBoxValue(comboBox, value):
         if not isinstance(value, Option):
             value = Option(value)
         for i in range(comboBox.count()):
-            option = comboBox.itemData(i, role=Qt.UserRole)
+            option = comboBox.itemData(i, role=Qt.ItemDataRole.UserRole)
             if option == value:
                 comboBox.setCurrentIndex(i)
                 return True
@@ -273,7 +273,7 @@ class OptionListModel(QAbstractListModel):
     def optionNames(self):
         return [o.mName for o in self.mOptions]
 
-    def data(self, index, role=Qt.DisplayRole):
+    def data(self, index, role=Qt.ItemDataRole.DisplayRole):
         if not index.isValid():
             return None
 
@@ -283,13 +283,13 @@ class OptionListModel(QAbstractListModel):
         if not isinstance(option, Option):
             s = ""
         result = None
-        if role == Qt.DisplayRole:
+        if role == Qt.ItemDataRole.DisplayRole:
             result = '{}'.format(option.mName)
-        elif role == Qt.ToolTipRole:
+        elif role == Qt.ItemDataRole.ToolTipRole:
             result = '{}'.format(option.mName if option.mTooltip is None else option.mTooltip)
-        elif role == Qt.DecorationRole:
+        elif role == Qt.ItemDataRole.DecorationRole:
             result = QIcon(option.mIcon)
-        elif role == Qt.UserRole:
+        elif role == Qt.ItemDataRole.UserRole:
             result = option
         return result
 
@@ -974,7 +974,7 @@ class TreeModel(QAbstractItemModel):
 
     def headerData(self, section, orientation, role):
         assert isinstance(section, int)
-        if orientation == Qt.Horizontal and role == Qt.DisplayRole:
+        if orientation == Qt.Horizontal and role == Qt.ItemDataRole.DisplayRole:
             if section < len(self.mRootNode.values()):
                 return self.mRootNode.values()[section]
             else:
@@ -1063,7 +1063,7 @@ class TreeModel(QAbstractItemModel):
             index = QModelIndex()
         if isinstance(index, TreeNode):
             index = self.node2idx(index)
-        print(f'{prefix} {self.data(index, role=Qt.DisplayRole)}')
+        print(f'{prefix} {self.data(index, role=Qt.ItemDataRole.DisplayRole)}')
         depth = depth - 1
         for r in range(self.rowCount(index)):
             idx = self.index(r, 0, parent=index)
@@ -1230,16 +1230,16 @@ class TreeModel(QAbstractItemModel):
         row = parentNode.mChildren.index(node)
         return self.index(row, 0, parent=parentIndex)
 
-    def data(self, index: QModelIndex, role=Qt.DisplayRole):
+    def data(self, index: QModelIndex, role=Qt.ItemDataRole.DisplayRole):
         """
 
         :param index: QModelIndex
-        :param role: Qt.ItemRole
+        :param role: Qt.ItemDataRole.ItemRole
         :return: object
         """
         assert isinstance(index, QModelIndex)
         if not index.isValid():
-            if role == Qt.UserRole:
+            if role == Qt.ItemDataRole.UserRole:
                 return self.rootNode()
             else:
                 return None
@@ -1247,19 +1247,19 @@ class TreeModel(QAbstractItemModel):
         node = index.internalPointer()
         assert isinstance(node, TreeNode)
 
-        if role == Qt.UserRole:
+        if role == Qt.ItemDataRole.UserRole:
             return node
 
         col = index.column()
 
         if col == 0:
-            if role in [Qt.DisplayRole, Qt.EditRole]:
+            if role in [Qt.ItemDataRole.DisplayRole, Qt.ItemDataRole.EditRole]:
                 return node.name()
-            if role == Qt.DecorationRole:
+            if role == Qt.ItemDataRole.DecorationRole:
                 return node.icon()
-            if role == Qt.ToolTipRole:
+            if role == Qt.ItemDataRole.ToolTipRole:
                 return node.toolTip()
-            if role == Qt.CheckStateRole and node.isCheckable():
+            if role == Qt.ItemDataRole.CheckStateRole and node.isCheckable():
                 return node.checkState()
 
         if col > 0:
@@ -1268,11 +1268,11 @@ class TreeModel(QAbstractItemModel):
 
             if len(node.values()) > i:
 
-                if role == Qt.DisplayRole:
+                if role == Qt.ItemDataRole.DisplayRole:
                     return str(node.values()[i])
-                if role == Qt.EditRole:
+                if role == Qt.ItemDataRole.EditRole:
                     return node.values()[i]
-                if role == Qt.ToolTipRole:
+                if role == Qt.ItemDataRole.ToolTipRole:
                     tt = [f'{v}' for i, v in enumerate(node.values())]
                     tt = re.split('\n', '\n'.join(tt))
                     if len(tt) > 24:
@@ -1366,7 +1366,7 @@ class TreeView(QTreeView):
         if isinstance(model, QAbstractItemModel):
             rows = model.rowCount(index)
             if rows > 0:
-                nodeName = f'{prefix}:{model.data(index, role=Qt.DisplayRole)}'
+                nodeName = f'{prefix}:{model.data(index, role=Qt.ItemDataRole.DisplayRole)}'
                 nodeDepth: int = self.nodeDepth(index)
 
                 if restore:
@@ -1453,7 +1453,7 @@ class TreeView(QTreeView):
 
         for r in range(first, last + 1):
             idx0: QModelIndex = model.index(r, 0, parent)
-            node = idx0.data(Qt.UserRole)
+            node = idx0.data(Qt.ItemDataRole.UserRole)
             if isinstance(node, PyObjectTreeNode):
                 # workaround for EnMAP-Box issue 672 and issue 737
                 # https://bitbucket.org/hu-geomatics/enmap-box/issues/672
@@ -1465,7 +1465,7 @@ class TreeView(QTreeView):
             for c in range(1, cols):
                 idx_right = model.index(r, c, parent)
                 if idx_right.isValid():
-                    txt = idx_right.data(Qt.DisplayRole)
+                    txt = idx_right.data(Qt.ItemDataRole.DisplayRole)
                     if txt not in [None, '']:
                         spanned = False
                         break
@@ -1480,7 +1480,7 @@ class TreeView(QTreeView):
         :return: TreeNode
         """
         for i in self.selectedIndexes():
-            node = self.model().data(i, Qt.UserRole)
+            node = self.model().data(i, Qt.ItemDataRole.UserRole)
             if isinstance(node, TreeNode):
                 return node
 
@@ -1493,7 +1493,7 @@ class TreeView(QTreeView):
         """
         nodes = []
         for i in self.selectedIndexes():
-            node = self.model().data(i, Qt.UserRole)
+            node = self.model().data(i, Qt.ItemDataRole.UserRole)
             if isinstance(node, TreeNode) and node not in nodes:
                 nodes.append(node)
         return nodes
@@ -1534,7 +1534,7 @@ class SettingsModel(TreeModel):
         if not index.isValid():
             return Qt.NoItemFlags
         flags = Qt.ItemIsEnabled | Qt.ItemIsSelectable
-        node = index.data(Qt.UserRole)
+        node = index.data(Qt.ItemDataRole.UserRole)
 
         if isinstance(node, SettingsNode):
             flags = flags | Qt.ItemIsEditable
@@ -1619,7 +1619,7 @@ class SettingsModel(TreeModel):
     def sync(self):
         pass
 
-    def data(self, index: QModelIndex, role=Qt.DisplayRole):
+    def data(self, index: QModelIndex, role=Qt.ItemDataRole.DisplayRole):
 
         if not index.isValid():
             return None
@@ -1638,28 +1638,28 @@ class SettingsModel(TreeModel):
 
             # handle colors
             if isinstance(value, QColor):
-                if role == Qt.DecorationRole:
+                if role == Qt.ItemDataRole.DecorationRole:
                     return value
-                if role == Qt.DisplayRole:
+                if role == Qt.ItemDataRole.DisplayRole:
                     return value.name()
 
-            if role == Qt.DecorationRole:
+            if role == Qt.ItemDataRole.DecorationRole:
                 if isinstance(option, Option):
                     return option.icon()
 
-            if role == Qt.ToolTipRole:
+            if role == Qt.ItemDataRole.ToolTipRole:
                 if isinstance(option, Option):
                     return option.toolTip()
                 else:
                     return f'{value}'
 
-            if role == Qt.EditRole:
+            if role == Qt.ItemDataRole.EditRole:
                 return value
 
-            if role == Qt.UserRole + 1:
+            if role == Qt.ItemDataRole.UserRole + 1:
                 return self.mOPTIONS.get(node.mSettingsKey, None)
 
-            if role == Qt.UserRole + 2:
+            if role == Qt.ItemDataRole.UserRole + 2:
                 return self.mRANGES.get(node.mSettingsKey, None)
 
         return super().data(index, role=role)
@@ -1669,7 +1669,7 @@ class SettingsModel(TreeModel):
         if not index.isValid():
             return False
 
-        node = index.data(Qt.UserRole)
+        node = index.data(Qt.ItemDataRole.UserRole)
 
         if not isinstance(node, SettingsNode):
             return False
@@ -1695,7 +1695,7 @@ class SettingsTreeViewDelegate(QStyledItemDelegate):
         # cName = self.mTableView.model().headerData(index.column(), Qt.Horizontal)
         c = index.column()
 
-        value = index.data(Qt.UserRole)
+        value = index.data(Qt.ItemDataRole.UserRole)
 
         super().paint(painter, option, index)
 
@@ -1710,9 +1710,9 @@ class SettingsTreeViewDelegate(QStyledItemDelegate):
 
         w = None
         if index.isValid() and index.column() == 1:
-            value = index.data(Qt.EditRole)
-            options = index.data(Qt.UserRole + 1)
-            range = index.data(Qt.UserRole + 2)
+            value = index.data(Qt.ItemDataRole.EditRole)
+            options = index.data(Qt.ItemDataRole.UserRole + 1)
+            range = index.data(Qt.ItemDataRole.UserRole + 2)
 
             if isinstance(value, QColor):
                 w = QgsColorButton(parent=parent)
@@ -1737,7 +1737,7 @@ class SettingsTreeViewDelegate(QStyledItemDelegate):
     def setEditorData(self, editor, index: QModelIndex):
 
         if index.isValid():
-            value = index.data(Qt.EditRole)
+            value = index.data(Qt.ItemDataRole.EditRole)
             if isinstance(editor, QgsColorButton):
                 assert isinstance(value, QColor)
                 editor.setColor(value)
@@ -1751,7 +1751,7 @@ class SettingsTreeViewDelegate(QStyledItemDelegate):
     def setModelData(self, w, model, index):
 
         if index.isValid():
-            value_old = index.data(Qt.EditRole)
+            value_old = index.data(Qt.ItemDataRole.EditRole)
             value_new = None
             if isinstance(w, QgsColorButton):
                 model.setData(index, w.color())

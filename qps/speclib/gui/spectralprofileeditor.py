@@ -141,7 +141,7 @@ class SpectralProfileTableModel(QAbstractTableModel):
     def columnCount(self, parent=QModelIndex()) -> int:
         return len(self.mColumnNames)
 
-    def data(self, index, role=Qt.DisplayRole):
+    def data(self, index, role=Qt.ItemDataRole.DisplayRole):
         if role is None or not index.isValid():
             return None
         if index.row() >= len(self.mValues):
@@ -152,7 +152,7 @@ class SpectralProfileTableModel(QAbstractTableModel):
 
         item = self.mValues[i]
 
-        if role in [Qt.DisplayRole, Qt.EditRole]:
+        if role in [Qt.ItemDataRole.DisplayRole, Qt.ItemDataRole.EditRole]:
             if c == 0:
                 return i + 1
 
@@ -195,7 +195,7 @@ class SpectralProfileTableModel(QAbstractTableModel):
         itemOld = copy(item)
         modified = False
 
-        if role == Qt.EditRole:
+        if role == Qt.ItemDataRole.EditRole:
             if c in [1, 2]:
                 # x / y values
                 item[c] = self.stringToType(value)
@@ -225,10 +225,10 @@ class SpectralProfileTableModel(QAbstractTableModel):
 
     def headerData(self, col: int, orientation: Qt.Orientation, role: int):
 
-        if orientation == Qt.Horizontal and role in [Qt.DisplayRole, Qt.ToolTipRole]:
+        if orientation == Qt.Horizontal and role in [Qt.ItemDataRole.DisplayRole, Qt.ItemDataRole.ToolTipRole]:
             return self.mColumnNames.get(col, f'{col + 1}')
         if orientation == Qt.Vertical:
-            if role == Qt.ToolTipRole:
+            if role == Qt.ItemDataRole.ToolTipRole:
                 return f'Band {col + 1}'
         return None
 
@@ -345,7 +345,7 @@ class SpectralProfileTableEditor(QFrame):
             self.tbYUnit.setText(unit)
 
     def xUnit(self) -> str:
-        return self.cbXUnit.currentData(Qt.UserRole)
+        return self.cbXUnit.currentData(Qt.ItemDataRole.UserRole)
 
     def yUnit(self) -> str:
         return self.tbYUnit.text()

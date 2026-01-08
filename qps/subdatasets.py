@@ -205,11 +205,11 @@ class DatasetTableModel(QAbstractTableModel):
 
     def headerData(self, col, orientation, role=None):
         if orientation == Qt.Horizontal:
-            if role == Qt.DisplayRole:
+            if role == Qt.ItemDataRole.DisplayRole:
                 return self.mColumnNames[col]
-            if role == Qt.ToolTipRole:
+            if role == Qt.ItemDataRole.ToolTipRole:
                 return self.mColumnToolTip[col]
-        elif orientation == Qt.Vertical and role == Qt.DisplayRole:
+        elif orientation == Qt.Vertical and role == Qt.ItemDataRole.DisplayRole:
             return col + 1
         return None
 
@@ -249,19 +249,19 @@ class DatasetTableModel(QAbstractTableModel):
 
         col = index.column()
 
-        if role == Qt.DisplayRole:
+        if role == Qt.ItemDataRole.DisplayRole:
             if col == 0:
                 return src
             if col == 1:
                 return len(details)
 
-        if role == Qt.ToolTipRole:
+        if role == Qt.ItemDataRole.ToolTipRole:
             tt = [src]
 
             tt.append('\n  ' + '\n  '.join([d.description() for d in details]))
             return '\n'.join(tt)
 
-        if role == Qt.UserRole:
+        if role == Qt.ItemDataRole.UserRole:
             return info
 
         return None
@@ -324,7 +324,7 @@ class SubDatasetSelectionDialog(QDialog):
         self.gbFiles.setVisible(b)
 
     def onSubsetDataChanged(self, i1, i2, roles):
-        if Qt.CheckStateRole in roles:
+        if Qt.ItemDataRole.CheckStateRole in roles:
             self.validate()
 
     def setFiles(self, files: List[Union[str, Path]]):

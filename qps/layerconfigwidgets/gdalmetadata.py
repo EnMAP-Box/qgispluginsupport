@@ -1078,13 +1078,13 @@ class GDALMetadataModel(QAbstractTableModel):
 
     def headerData(self, section: int, orientation: Qt.Orientation, role: int = ...) -> Any:
         if orientation == Qt.Horizontal:
-            if role == Qt.DisplayRole:
+            if role == Qt.ItemDataRole.DisplayRole:
                 return self.mColumnNames[section]
-            if role == Qt.ToolTipRole:
+            if role == Qt.ItemDataRole.ToolTipRole:
                 return self.mColumnToolTips[section]
 
         elif orientation == Qt.Vertical:
-            if role == Qt.DisplayRole:
+            if role == Qt.ItemDataRole.DisplayRole:
                 return section + 1
 
         return None
@@ -1106,7 +1106,7 @@ class GDALMetadataModel(QAbstractTableModel):
 
         item = self.mFeatures[index.row()]
 
-        if role in [Qt.DisplayRole, Qt.EditRole]:
+        if role in [Qt.ItemDataRole.DisplayRole, Qt.ItemDataRole.EditRole]:
             return item[col]
         return None
 
@@ -1123,7 +1123,7 @@ class GDALMetadataModel(QAbstractTableModel):
         row = index.row()
         item = self.mFeatures[row]
         value = str(value)
-        if role == Qt.EditRole:
+        if role == Qt.ItemDataRole.EditRole:
             if item[col] != value:
                 edited = True
                 self.mFeatures[row][col] = value
@@ -1473,7 +1473,7 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
     def onWavelengthUnitsChanged(self):
         wlu = self.bandMetadataModel.wavelenghtUnit()
 
-        wlu = self.cbWavelengthUnits.currentData(role=Qt.UserRole)
+        wlu = self.cbWavelengthUnits.currentData(role=Qt.ItemDataRole.UserRole)
         self.bandMetadataModel.setWavelengthUnit(wlu)
 
     def onAddItem(self):
@@ -1494,7 +1494,7 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
 
         rows = self.tvGDALMetadata.selectionModel().selectedRows()
 
-        items = [self.tvGDALMetadata.model().data(row, role=Qt.UserRole) for row in rows]
+        items = [self.tvGDALMetadata.model().data(row, role=Qt.ItemDataRole.UserRole) for row in rows]
         for item in items:
             self.metadataModel.removeItem(item)
 

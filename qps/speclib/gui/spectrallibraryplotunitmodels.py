@@ -40,7 +40,7 @@ class SpectralProfilePlotXAxisUnitWidgetAction(QWidgetAction):
     def unit(self) -> UnitWrapper:
         return self.mUnit.unit
 
-    def unitData(self, unit: Union[str, UnitWrapper], role=Qt.DisplayRole) -> str:
+    def unitData(self, unit: Union[str, UnitWrapper], role=Qt.ItemDataRole.DisplayRole) -> str:
         return self.mUnitModel.unitData(unit, role)
 
     def createUnitComboBox(self) -> QComboBox:
@@ -48,7 +48,7 @@ class SpectralProfilePlotXAxisUnitWidgetAction(QWidgetAction):
         unitComboBox.setModel(self.mUnitModel)
         unitComboBox.setCurrentIndex(self.mUnitModel.unitIndex(self.unit()).row())
         unitComboBox.currentIndexChanged.connect(
-            lambda: self.setUnit(unitComboBox.currentData(Qt.UserRole + 1))
+            lambda: self.setUnit(unitComboBox.currentData(Qt.ItemDataRole.UserRole + 1))
         )
 
         self.sigUnitChanged.connect(

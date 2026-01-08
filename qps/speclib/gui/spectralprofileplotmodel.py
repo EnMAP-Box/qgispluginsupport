@@ -664,7 +664,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
             self.mXUnit = unit
 
             #  baseUnit = UnitLookup.baseUnit(unit_)
-            labelName = self.mXUnitModel.unitData(unit, Qt.DisplayRole)
+            labelName = self.mXUnitModel.unitData(unit, Qt.ItemDataRole.DisplayRole)
             self.mPlotWidget.xAxis().setUnit(unit, labelName=labelName)
             # self.mPlotWidget.clearInfoScatterPoints()
             # self.mPlotWidget.xAxis().setLabel(text='x values', unit=unit_)
@@ -1620,8 +1620,8 @@ class SpectralProfilePlotModel(QStandardItemModel):
         else:
             fg = None
             tt = propertyItem.definition().description()
-        propertyItem.setData(tt, Qt.ToolTipRole)
-        propertyItem.setData(fg, Qt.ForegroundRole)
+        propertyItem.setData(tt, Qt.ItemDataRole.ToolTipRole)
+        propertyItem.setData(fg, Qt.ItemDataRole.ForegroundRole)
         propertyItem.emitDataChanged()
 
         if limit_reached:
@@ -2008,9 +2008,9 @@ class SpectralProfilePlotModel(QStandardItemModel):
     def profileFieldNames(self) -> List[str]:
         return profile_field_indices()
 
-    PropertyIndexRole = Qt.UserRole + 1
-    PropertyDefinitionRole = Qt.UserRole + 2
-    PropertyRole = Qt.UserRole + 3
+    PropertyIndexRole = Qt.ItemDataRole.UserRole + 1
+    PropertyDefinitionRole = Qt.ItemDataRole.UserRole + 2
+    PropertyRole = Qt.ItemDataRole.UserRole + 3
 
 
 def copy_items(items: List[SpectralProfilePlotDataItem],

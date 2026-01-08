@@ -64,7 +64,7 @@ class LayerFieldsTableModel(QgsFieldModel):
     def columnCount(self, parent):
         return len(self.mColumnNames)
 
-    def headerData(self, col, orientation, role=Qt.DisplayRole):
+    def headerData(self, col, orientation, role=Qt.ItemDataRole.DisplayRole):
         """
         Returns header data
         :param col: int
@@ -74,9 +74,9 @@ class LayerFieldsTableModel(QgsFieldModel):
         """
         if Qt is None:
             return None
-        if orientation == Qt.Horizontal and role == Qt.DisplayRole:
+        if orientation == Qt.Horizontal and role == Qt.ItemDataRole.DisplayRole:
             return self.mColumnNames[col]
-        elif orientation == Qt.Vertical and role == Qt.DisplayRole:
+        elif orientation == Qt.Vertical and role == Qt.ItemDataRole.DisplayRole:
             return col
         return None
 
@@ -91,7 +91,7 @@ class LayerFieldsTableModel(QgsFieldModel):
         field = self.layer().fields().at(index.row())
         if not isinstance(field, QgsField):
             return None
-        if role == Qt.DisplayRole:
+        if role == Qt.ItemDataRole.DisplayRole:
             if cn == self.cnId:
                 return index.row()
             if cn == self.cnName:
@@ -140,7 +140,7 @@ class LayerFieldsListModel(QgsFieldModel):
         super(LayerFieldsListModel, self).__init__(parent)
         self.mColumnNames = ['Fields']
 
-    def headerData(self, col, orientation, role=Qt.DisplayRole):
+    def headerData(self, col, orientation, role=Qt.ItemDataRole.DisplayRole):
         """
         Returns header data
         :param col: int
@@ -150,13 +150,13 @@ class LayerFieldsListModel(QgsFieldModel):
         """
         if Qt is None:
             return None
-        if orientation == Qt.Horizontal and role == Qt.DisplayRole:
+        if orientation == Qt.Horizontal and role == Qt.ItemDataRole.DisplayRole:
             return self.mColumnNames[col]
-        elif orientation == Qt.Vertical and role == Qt.DisplayRole:
+        elif orientation == Qt.Vertical and role == Qt.ItemDataRole.DisplayRole:
             return col
         return None
 
-    def setHeaderData(self, col, orientation, value, role=Qt.EditRole):
+    def setHeaderData(self, col, orientation, value, role=Qt.ItemDataRole.EditRole):
         """
         Sets the header data.
         :param col: int
@@ -166,7 +166,7 @@ class LayerFieldsListModel(QgsFieldModel):
         """
         result = False
 
-        if role == Qt.EditRole:
+        if role == Qt.ItemDataRole.EditRole:
             if orientation == Qt.Horizontal and col < len(self.mColumnNames) and isinstance(value, str):
                 self.mColumnNames[col] = value
                 result = True
@@ -296,7 +296,7 @@ class LayerAttributeFormConfigEditorWidget(QWidget):
                 if key == refkey:
                     iCurrent = i
                 confItem.setEnabled(score > 0)
-                confItem.setData(self, role=Qt.UserRole)
+                confItem.setData(self, role=Qt.ItemDataRole.UserRole)
                 self.mItemModel.appendRow(confItem)
 
                 i += 1

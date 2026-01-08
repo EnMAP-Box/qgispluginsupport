@@ -149,7 +149,7 @@ class UnitModelTests(TestCase):
         idx = model.unitIndex('')
         cb.setCurrentIndex(idx.row())
 
-        u = cb.currentData(Qt.UserRole)
+        u = cb.currentData(Qt.ItemDataRole.UserRole)
 
         s = ""
         wrappers = model[:]

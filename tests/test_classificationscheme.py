@@ -155,16 +155,16 @@ class TestsClassificationScheme(TestCase):
         cs._updateLabels()
         self.assertEqual(cs[3].label(), 3)
 
-        self.assertEqual(cs.headerData(0, Qt.Horizontal, Qt.DisplayRole), 'Label')
-        self.assertEqual(cs.headerData(1, Qt.Horizontal, Qt.DisplayRole), 'Name')
-        self.assertEqual(cs.headerData(2, Qt.Horizontal, Qt.DisplayRole), 'Color')
+        self.assertEqual(cs.headerData(0, Qt.Horizontal, Qt.ItemDataRole.DisplayRole), 'Label')
+        self.assertEqual(cs.headerData(1, Qt.Horizontal, Qt.ItemDataRole.DisplayRole), 'Name')
+        self.assertEqual(cs.headerData(2, Qt.Horizontal, Qt.ItemDataRole.DisplayRole), 'Color')
 
-        self.assertEqual(cs.data(cs.createIndex(0, 0), Qt.DisplayRole), 0)
-        self.assertEqual(cs.data(cs.createIndex(0, 1), Qt.DisplayRole), cs[0].name())
-        self.assertEqual(cs.data(cs.createIndex(0, 2), Qt.DisplayRole), cs[0].color().name())
-        self.assertEqual(cs.data(cs.createIndex(0, 2), Qt.BackgroundColorRole), cs[0].color())
+        self.assertEqual(cs.data(cs.createIndex(0, 0), Qt.ItemDataRole.DisplayRole), 0)
+        self.assertEqual(cs.data(cs.createIndex(0, 1), Qt.ItemDataRole.DisplayRole), cs[0].name())
+        self.assertEqual(cs.data(cs.createIndex(0, 2), Qt.ItemDataRole.DisplayRole), cs[0].color().name())
+        self.assertEqual(cs.data(cs.createIndex(0, 2), Qt.ItemDataRole.BackgroundColorRole), cs[0].color())
 
-        self.assertIsInstance(cs.data(cs.createIndex(0, 0), role=Qt.UserRole), ClassInfo)
+        self.assertIsInstance(cs.data(cs.createIndex(0, 0), role=Qt.ItemDataRole.UserRole), ClassInfo)
 
         with self.assertRaises(AssertionError):
             cs.insertClass(c)
@@ -334,7 +334,7 @@ class TestsClassificationScheme(TestCase):
         newClasses = [ClassInfo(name='New 1'), ClassInfo(name='New 2')]
         cs.insertClasses(newClasses, index=0)
         self.assertTrue(w.count() == 4)
-        self.assertTrue(w.itemData(0, Qt.UserRole) == newClasses[0])
+        self.assertTrue(w.itemData(0, Qt.ItemDataRole.UserRole) == newClasses[0])
 
         for i, classInfo in enumerate(w.classificationScheme()):
             self.assertTrue(classInfo.label() == i)
@@ -345,10 +345,10 @@ class TestsClassificationScheme(TestCase):
         for i, classInfo in enumerate(w.classificationScheme()):
             self.assertIsInstance(classInfo, ClassInfo)
             self.assertTrue(classInfo.label() == i)
-            text = w.itemData(i, role=Qt.DisplayRole)
+            text = w.itemData(i, role=Qt.ItemDataRole.DisplayRole)
             self.assertTrue(text.startswith('{}'.format(classInfo.label())))
         self.assertTrue(w.count() == 4 + 2)
-        self.assertTrue(w.itemData(3, Qt.UserRole) == newClasses2[0])
+        self.assertTrue(w.itemData(3, Qt.ItemDataRole.UserRole) == newClasses2[0])
 
         w2 = QWidget()
         cs = ClassificationScheme.create(5)

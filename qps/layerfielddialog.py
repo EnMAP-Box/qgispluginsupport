@@ -45,17 +45,17 @@ class FilteredProjectFieldsModel(QAbstractListModel):
 
         lyr = self.mProject.mapLayer(lid)
         if isinstance(lyr, QgsMapLayer):
-            if role == Qt.DisplayRole:
+            if role == Qt.ItemDataRole.DisplayRole:
                 if isinstance(field, QgsField):
                     return f'{lyr.name()}:{field.name()}'
                 else:
                     return f'{lyr.name()}'
-            if role == Qt.ToolTipRole:
+            if role == Qt.ItemDataRole.ToolTipRole:
                 if isinstance(field, QgsField):
                     return f'Layer {lyr.source()}<br>Field {field.name()}'
                 else:
                     return f'Layer {lyr.source()}'
-            if role == Qt.UserRole:
+            if role == Qt.ItemDataRole.UserRole:
                 return lyr, field
         return None
 
@@ -416,7 +416,7 @@ class LayerFieldWidget(QWidget):
 
     def onComboBoxChanged(self, index):
 
-        data = self.mComboBox.currentData(Qt.UserRole)
+        data = self.mComboBox.currentData(Qt.ItemDataRole.UserRole)
         if isinstance(data, tuple):
             lyr, field = data
 
@@ -446,7 +446,7 @@ class LayerFieldWidget(QWidget):
             self.mField = field
 
             for i in range(self.mComboBox.count()):
-                cLyr, cField = self.mComboBox.itemData(i, Qt.UserRole)
+                cLyr, cField = self.mComboBox.itemData(i, Qt.ItemDataRole.UserRole)
                 if isinstance(cField, QgsField):
                     cField = cField.name()
                 if cLyr == layer and cField == field:

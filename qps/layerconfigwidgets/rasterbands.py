@@ -78,7 +78,7 @@ class RasterBandComboBox(QgsRasterBandComboBox):
                     tooltip += ' {}'.format(FWHM[b])
 
             self.setItemText(idx, bandName)
-            self.setItemData(idx, tooltip, Qt.ToolTipRole)
+            self.setItemData(idx, tooltip, Qt.ItemDataRole.ToolTipRole)
 
 
 class BandCombination(object):

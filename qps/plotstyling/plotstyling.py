@@ -194,7 +194,7 @@ class MarkerSymbolComboBox(QComboBox):
         self.setCurrentIndex(1)
 
     def markerSymbol(self) -> MarkerSymbol:
-        return self.currentData(role=Qt.UserRole)
+        return self.currentData(role=Qt.ItemDataRole.UserRole)
 
     def markerSymbolString(self) -> str:
         return self.markerSymbol().value
@@ -202,7 +202,7 @@ class MarkerSymbolComboBox(QComboBox):
     def setMarkerSymbol(self, symbol):
         symbol = MarkerSymbol.decode(symbol)
         for i in range(self.count()):
-            if self.itemData(i, role=Qt.UserRole) == symbol:
+            if self.itemData(i, role=Qt.ItemDataRole.UserRole) == symbol:
                 self.setCurrentIndex(i)
                 return symbol
         s = ""
