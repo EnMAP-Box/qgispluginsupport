@@ -228,10 +228,31 @@ that is hosted at https://github.com/EnMAP-Box/pyqtgraph
 
 docker buildx build -t qpgs/qps:3.38 -f .docker/Dockerfile -
 
+Run QGIS in docker:
+
+docker run \
+  --rm \
+  -e DISPLAY=${DISPLAY} \
+  -e HOME=$HOME \
+  --workdir=$HOME \
+  -v /tmp/.X11-unix:/tmp/.X11-unix \
+  -v $HOME:$HOME \
+  -v /data:/data \
+  -v /mnt:/mnt \
+  -v /export:/export \
+  --user=$(id -u $USER):$(id -g $USER) \
+  --net host \
+  qgis/qgis:latest qgis
+
+xhost +local:docker
+docker run -it --rm \
+  --env="DISPLAY" \
+  --volume="/tmp/.X11-unix:/tmp/.X11-unix:rw" \
+  -v $HOME:$HOME \
+  --workdir="/home/user" \
+  qgis/qgis:latest qgis-qt6
 
 # Testing
-
-Requirements:
 
 
 Run tests from shell:
@@ -241,7 +262,12 @@ $ runtests -n auto
 ````
 
 
+run tests from docker:
 
+https://github.com/qgis/pyqgis4-checker
+
+
+docker run -it --pull missing ghcr.io/qgis/pyqgis4-checker:main-ubuntu /usr/bin/bash
 
 ## License
 
