@@ -24,9 +24,11 @@
     along with this software. If not, see <https://www.gnu.org/licenses/>.
 ***************************************************************************
 """
-
+import argparse
 import os
 import re
+import shutil
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any, Generator, List, Optional, Union
@@ -38,7 +40,18 @@ from qgis.PyQt.QtSvg import QGraphicsSvgItem
 from qgis.PyQt.QtWidgets import QAction, QApplication, QGraphicsPixmapItem, QGraphicsScene, QGraphicsView, QLabel, \
     QLineEdit, QMenu, QTableView, QTextBrowser, QToolButton, QWidget
 from qgis.PyQt.QtXml import QDomDocument, QDomElement
-from .utils import file_search, findUpwardPath
+
+if __name__ == '__main__' and __package__ is None:
+    # fix for "ImportError: attempted relative import with no known parent package"
+    file = Path(__file__).resolve()
+    parent, top = file.parent, file.parents[1]
+    sys.path.append(str(top))
+    try:
+        from qps.utils import file_search, findUpwardPath, loadUi
+    finally:
+        sys.path.remove(str(top))
+else:
+    from .utils import file_search, findUpwardPath, loadUi
 
 REGEX_FILEXTENSION_IMAGE = re.compile(r'\.([^.]+)$')
 REGEX_QGIS_IMAGES_QRC = re.compile(r'.*QGIS[^\/]*[\/]images[\/]images\.qrc$')
@@ -59,7 +72,8 @@ def compileResourceFiles(dirRoot: Union[str, Path],
                          suffix: str = '_rc.py',
                          skip_qgis_images: bool = True,
                          compressLevel=19,
-                         compressThreshold=100
+                         compressThreshold=100,
+                         qt_version: str = None,
                          ):
     """
     Searches for *.ui files and compiles the *.qrc files they use.
@@ -142,7 +156,8 @@ def compileResourceFiles(dirRoot: Union[str, Path],
                             targetDir=targetDir,
                             suffix=s,
                             compressLevel=compressLevel,
-                            compressThreshold=compressThreshold)
+                            compressThreshold=compressThreshold,
+                            qt_version=qt_version)
         targetDirOutputNames.append(outName)
 
     if len(qrc_files_skipped) > 0:
@@ -151,13 +166,32 @@ def compileResourceFiles(dirRoot: Union[str, Path],
             print(qrcFile.as_posix())
 
 
-def compileResourceFile(pathQrc, targetDir=None, suffix: str = '_rc.py', compressLevel=7, compressThreshold=100):
+def compileResourceFile(pathQrc,
+                        targetDir=None,
+                        suffix: str = '_rc.py',
+                        compressLevel=7,
+                        compressThreshold=100,
+                        qt_version: str = None):
     """
     Compiles a *.qrc file
-    :param pathQrc:
+    :param pathQrc: path to *.qrc file
+    :param targetDir:
+    :param suffix: suffix to add to the output file name. defaults to '*._rc.py'
+    :param compressLevel:
+    :param compressThreshold:
+    :param qt_version: set major PyQt version to compile the resource file for. Defaults to the Qt version of the
+                       qgis.PyQt.QtCore module of the running python
     :return:
     """
-    import PyQt5.pyrcc_main
+    if qt_version is None:
+        from qgis.PyQt.QtCore import QT_VERSION_STR
+        qt_version = QT_VERSION_STR[0]
+    else:
+        # qt_version = os.environ.get('QT_VERSION', '5')
+        qt_version = str(qt_version)
+
+    assert qt_version in ['5', '6'], 'Unsupported PyQt version: {}'.format(qt_version)
+
     if not isinstance(pathQrc, Path):
         pathQrc = Path(pathQrc)
 
@@ -180,8 +214,24 @@ def compileResourceFile(pathQrc, targetDir=None, suffix: str = '_rc.py', compres
     os.chdir(cwd)
 
     # print(cmd)
-
     if True:
+        if qt_version == '5':
+            rcc_exe = 'pyrcc5'
+        elif qt_version == '6':
+            rcc_exe = 'pyside6-rcc'
+        else:
+            raise RuntimeError('Unsupported PyQt version: {}'.format(qt_version))
+        assert shutil.which(rcc_exe), f'Unable to find {rcc_exe}'
+        cmd = [rcc_exe, str(pathQrc), '-o', str(pathPy)]
+        cmd.extend(['-compress', str(compressLevel),
+                    '-threshold', str(compressThreshold)])
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode != 0:
+            raise RuntimeError(f"Resource compilation failed: {result.stderr}")
+
+        s = ""
+    elif False:
+        import qgis.PyQt.pyrcc_main
         last_level = PyQt5.pyrcc_main.compressLevel
         last_threshold = PyQt5.pyrcc_main.compressThreshold
 
@@ -440,7 +490,6 @@ class ResourceBrowser(QWidget):
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
 
-        from .utils import loadUi
         pathUi = Path(__file__).parent / 'ui' / 'qpsresourcebrowser.ui'
         loadUi(pathUi, self)
         self.setWindowTitle('QPS Resource Browser')
@@ -567,3 +616,35 @@ def showResources() -> ResourceBrowser:
     if needQApp:
         QApplication.instance().exec_()
     return browser
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='QPS Qt Resources')
+    subparsers = parser.add_subparsers(dest='command', help='sub-command help')
+
+    # compile command
+    parser_compile = subparsers.add_parser('compile', help='compile qrc files')
+    parser_compile.add_argument('path', type=str, help='path to *.qrc file or directory containing *.qrc files')
+    parser_compile.add_argument('--target', type=str, default=None, help='target directory')
+    parser_compile.add_argument('--qt-version', type=str, default=None,
+                                help='Qt version to compile for. Can be 5 or 6. Defaults to the version of '
+                                     'QGIS Python API')
+    # browse command
+    parser_browse = subparsers.add_parser('browse', help='open the ResourceBrowser')
+
+    args = parser.parse_args()
+
+    if args.command == 'compile':
+        path = Path(args.path)
+        if path.is_file():
+            compileResourceFile(path, targetDir=args.target, qt_version=args.qt_version)
+        elif path.is_dir():
+            compileResourceFiles(path, targetDir=args.target, qt_version=args.qt_version)
+        else:
+            print(f"Path not found: {args.path}", file=sys.stderr)
+
+    elif args.command == 'browse':
+        initQtResources()
+        showResources()
+    else:
+        parser.print_help()
