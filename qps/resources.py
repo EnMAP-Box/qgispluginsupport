@@ -41,14 +41,14 @@ from qgis.PyQt.QtWidgets import QAction, QApplication, QGraphicsPixmapItem, QGra
     QLineEdit, QMenu, QTableView, QTextBrowser, QToolButton, QWidget
 from qgis.PyQt.QtXml import QDomDocument, QDomElement
 
-if qgis.PyQt.QtCore.QT_VERSION_STR[0] == '5' and False:
+if qgis.PyQt.QtCore.QT_VERSION_STR[0] == '5':
     from qgis.PyQt.QtSvg import QGraphicsSvgItem
     from qgis.PyQt.QtCore import QRegExp
 else:
     from PyQt6.QtSvgWidgets import QGraphicsSvgItem
     from qgis.PyQt.QtCore import QRegularExpression as QRegExp
 
-if __name__ == '__main__' and __package__ is None:
+if __name__ == '__main__' and __package__ in ['', None]:
     # fix for "ImportError: attempted relative import with no known parent package"
     file = Path(__file__).resolve()
     parent, top = file.parent, file.parents[1]
