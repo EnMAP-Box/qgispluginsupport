@@ -222,20 +222,17 @@ def compileResourceFile(pathQrc,
 
     # print(cmd)
     if True:
-        if qt_version == '5':
-            rcc_exe = 'pyrcc5'
-        elif qt_version == '6':
-            rcc_exe = 'pyside6-rcc'
-        else:
-            raise RuntimeError('Unsupported PyQt version: {}'.format(qt_version))
+        rcc_exe = 'rcc'
         assert shutil.which(rcc_exe), f'Unable to find {rcc_exe}'
-        cmd = [rcc_exe, str(pathQrc), '-o', str(pathPy)]
-        cmd.extend(['-compress', str(compressLevel),
-                    '-threshold', str(compressThreshold)])
+        cmd = [rcc_exe, str(pathQrc), '-o', str(pathPy),
+               '-g', 'python',
+               '-compress', str(compressLevel),
+               '-threshold', str(compressThreshold)]
         result = subprocess.run(cmd, capture_output=True, text=True)
         if result.returncode != 0:
             raise RuntimeError(f"Resource compilation failed: {result.stderr}")
 
+        # 
         s = ""
     elif False:
         import qgis.PyQt.pyrcc_main

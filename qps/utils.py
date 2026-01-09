@@ -1338,9 +1338,9 @@ def loadUi(uifile: Union[str, Path],
     buffer.seek(0)
 
     if not loadUiType:
-        return uic.loadUi(buffer, baseinstance=baseinstance, package=package, resource_suffix=resource_suffix)
+        return uic.loadUi(buffer, baseinstance=baseinstance, package=package)
     else:
-        return uic.loadUiType(buffer, resource_suffix=resource_suffix)
+        return uic.loadUiType(buffer)
 
 
 def loadUIFormClass(pathUi: str, from_imports=False, resourceSuffix: str = '', fixQGISRessourceFileReferences=True,
