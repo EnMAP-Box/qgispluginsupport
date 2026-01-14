@@ -85,13 +85,13 @@ PICKLE_PROTOCOL = pickle.HIGHEST_PROTOCOL
 # CURRENT_SPECTRUM_STYLE = PlotStyle()
 # CURRENT_SPECTRUM_STYLE.markerSymbol = None
 # CURRENT_SPECTRUM_STYLE.linePen.setStyle(Qt.SolidLine)
-# CURRENT_SPECTRUM_STYLE.linePen.setColor(Qt.green)
+# CURRENT_SPECTRUM_STYLE.linePen.setColor(Qt.GlobalColor.green)
 
 
 # DEFAULT_SPECTRUM_STYLE = PlotStyle()
 # DEFAULT_SPECTRUM_STYLE.markerSymbol = None
 # DEFAULT_SPECTRUM_STYLE.linePen.setStyle(Qt.SolidLine)
-# DEFAULT_SPECTRUM_STYLE.linePen.setColor(Qt.white)
+# DEFAULT_SPECTRUM_STYLE.linePen.setColor(Qt.GlobalColor.white)
 
 
 VSI_DIR = r'/vsimem/speclibs/'

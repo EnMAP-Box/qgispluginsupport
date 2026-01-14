@@ -349,7 +349,7 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
                             c.setAlpha(170)
                             brush.setColor(c)
                             painter.setBrush(brush)
-                            painter.setPen(Qt.NoPen)
+                            painter.setPen(Qt.PenStyle.NoPen)
                             fm = QFontMetrics(font)
                             backGroundSize = QSizeF(fm.size(Qt.TextSingleLine, labelText))
                             backGroundSize = QSizeF(backGroundSize.width() + 3, -1 * (backGroundSize.height() + 3))

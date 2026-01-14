@@ -159,7 +159,7 @@ class SliderSpinBox(QWidget):
 
     def __init__(self, *args,
                  spinbox: QAbstractSpinBox = None,
-                 spinbox_position: Qt.Alignment = Qt.AlignLeft,
+                 spinbox_position: Qt.AlignmentFlag = Qt.AlignmentFlag.AlignLeft,
                  **kwds):
 
         if not isinstance(spinbox, QAbstractSpinBox):

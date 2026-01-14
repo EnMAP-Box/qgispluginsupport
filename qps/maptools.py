@@ -1180,7 +1180,7 @@ class QgsMapToolAddFeature(QgsMapToolDigitizeFeature):
 class QgsDistanceWidget(QWidget):
     distanceChanged = pyqtSignal(float)
     distanceEditingCanceled = pyqtSignal()
-    distanceEditingFinished = pyqtSignal(float, Qt.KeyboardModifiers)
+    distanceEditingFinished = pyqtSignal(float, Qt.KeyboardModifier)
     distanceEditingCanceled = pyqtSignal()
 
     def __init__(self, label: str, parent: QWidget = None):
@@ -1459,7 +1459,7 @@ class QgsMapToolSelectionHandler(QObject):
         SelectFreehand = 2
         SelectRadius = 3
 
-    geometryChanged = pyqtSignal(Qt.KeyboardModifiers)
+    geometryChanged = pyqtSignal(Qt.KeyboardModifier)
 
     def __init__(self, canvas: QgsMapCanvas, selectionMode, parent: QObject = None):
         super(QgsMapToolSelectionHandler, self).__init__(parent=parent)

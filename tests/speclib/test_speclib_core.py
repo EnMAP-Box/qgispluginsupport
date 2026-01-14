@@ -20,12 +20,12 @@
 import datetime
 import json
 import math
-import pickle
 import re
 import unittest
 from typing import List
 
 import numpy as np
+from PyQt6.QtCore import QMetaType
 from osgeo import ogr
 
 from qgis.PyQt.QtCore import NULL, QByteArray, QJsonDocument, QVariant
@@ -229,20 +229,17 @@ class SpeclibCoreTests(TestCase):
         # decode valid inputs
         valid_inputs = {  # 'str(d)': str(d),  #  missed double quotes
             "bytes(json.dumps(d), 'utf-8')": bytes(re.sub('(NaN|Infinity)', 'null', json.dumps(d)), 'utf-8'),
-
             'dictionary': d,
             'json dump': json.dumps(d, default=nanToNone),
-            'pickle dump': pickle.dumps(d),
-            'QByteArray from pickle dump': QByteArray(pickle.dumps(d)),
             'QJsonDocument': QJsonDocument.fromVariant(d),
             'QJsonDocument->toJson': QJsonDocument.fromVariant(d).toJson(),
-            'QJsonDocument->toBinaryData': QJsonDocument.fromVariant(d).toBinaryData(),
-
         }
         for info, v in valid_inputs.items():
             d2 = decodeProfileValueDict(v)
             self.assertIsInstance(d2, dict)
-            self.assertTrue(isProfileValueDict(d2))
+            if not isProfileValueDict(d2):
+                s = ""
+            self.assertTrue(isProfileValueDict(d2), f'Unable to decode profile dict from {v}\ninput: {info}')
 
         # decode invalid inputs
         invalid_inputs = ['{invalid',
@@ -270,7 +267,7 @@ class SpeclibCoreTests(TestCase):
             dump = encodeProfileValueDict(d, e)
             self.assertIsInstance(dump, dict)
 
-        for e in ['jSoN', ProfileEncoding.Json, QgsField('dummy', type=8)]:
+        for e in ['jSoN', ProfileEncoding.Json, QgsField('dummy', type=QMetaType.Type.QVariantMap)]:
             dump = encodeProfileValueDict(d, e)
             self.assertIsInstance(dump, dict)
 

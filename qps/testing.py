@@ -166,7 +166,7 @@ class QgisMockup(QgisInterface):
         extent = SpatialExtent.world()
         self.mCanvas.setDestinationCrs(extent.crs())
         self.mCanvas.setExtent(extent)
-        self.mCanvas.setCanvasColor(Qt.black)
+        self.mCanvas.setCanvasColor(Qt.GlobalColor.black)
         self.mLayerTreeView = QgsLayerTreeView()
         self.mLayerTreeView.currentLayerChanged.connect(self.activateDeactivateLayerRelatedActions)
         self.mMapToolHandler: List[QgsAbstractMapToolHandler] = []
