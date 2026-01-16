@@ -51,7 +51,7 @@ else:
     from PyQt6.QtSvgWidgets import QGraphicsSvgItem  # noqa: QGS103
     from qgis.PyQt.QtCore import QRegularExpression as QRegExp
 
-if __name__ == '__main__' and __package__ is None:
+if __name__ == '__main__' and __package__ in ['', None]:
     # fix for "ImportError: attempted relative import with no known parent package"
     file = Path(__file__).resolve()
     parent, top = file.parent, file.parents[1]
