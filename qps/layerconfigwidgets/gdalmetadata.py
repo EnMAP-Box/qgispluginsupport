@@ -33,8 +33,8 @@ from typing import Any, Dict, List, Match, Pattern, Tuple, Union
 
 from osgeo import gdal, ogr
 
-from qgis.PyQt.QtCore import NULL, QAbstractTableModel, QMimeData, QModelIndex, QRegExp, \
-    QSortFilterProxyModel, Qt, QTimer, QUrl
+import qgis.PyQt.QtCore
+from qgis.PyQt.QtCore import NULL, QAbstractTableModel, QMimeData, QModelIndex, QSortFilterProxyModel, Qt, QTimer, QUrl
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction, QApplication, QCheckBox, QComboBox, QDialog, QDialogButtonBox, QGridLayout, \
     QGroupBox, QHBoxLayout, QLabel, QLineEdit, QMenu, QSizePolicy, QTableView, QWidget
@@ -42,6 +42,12 @@ from qgis.core import edit, Qgis, QgsAttributeTableConfig, QgsDefaultValue, QgsE
     QgsFeatureRequest, QgsField, QgsFieldConstraints, QgsMapLayer, QgsRasterDataProvider, QgsRasterLayer, QgsVectorLayer
 from qgis.gui import QgsAttributeEditorContext, QgsAttributeTableModel, QgsDualView, QgsFieldCalculator, QgsGui, \
     QgsMapCanvas, QgsMapLayerConfigWidgetFactory, QgsMessageBar
+
+if qgis.PyQt.QtCore.QT_VERSION_STR[0] == '5':
+    from qgis.PyQt.QtCore import QRegExp as QRegularExpression
+else:
+    from qgis.PyQt.QtCore import QRegularExpression
+
 from .core import QpsMapLayerConfigWidget
 from .. import debugLog
 from ..classification.classificationscheme import ClassificationScheme, ClassificationSchemeWidget
@@ -195,7 +201,7 @@ def value2str(v: Any) -> str:
         return str(v)
 
 
-def filterFeatures(layer: QgsVectorLayer, regex: QRegExp) -> List[int]:
+def filterFeatures(layer: QgsVectorLayer, regex: QRegularExpression) -> List[int]:
     fids = []
     for f in layer.getFeatures():
         f: QgsFeature
@@ -359,12 +365,12 @@ class GDALBandMetadataModel(QgsVectorLayer):
         constraints = QgsFieldConstraints()
         # todo: constraint unique combination of (domain, band number, key)
         # constraints.setConstraint(QgsFieldConstraints.ConstraintUnique)
-        constraints.setConstraint(QgsFieldConstraints.ConstraintNotNull)
-        constraints.setConstraint(QgsFieldConstraints.ConstraintUnique)
-        constraints.setConstraintStrength(QgsFieldConstraints.ConstraintNotNull,
-                                          QgsFieldConstraints.ConstraintStrengthHard)
-        constraints.setConstraintStrength(QgsFieldConstraints.ConstraintUnique,
-                                          QgsFieldConstraints.ConstraintStrengthHard)
+        constraints.setConstraint(QgsFieldConstraints.Constraint.ConstraintNotNull)
+        constraints.setConstraint(QgsFieldConstraints.Constraint.ConstraintUnique)
+        constraints.setConstraintStrength(QgsFieldConstraints.Constraint.ConstraintNotNull,
+                                          QgsFieldConstraints.ConstraintStrength.ConstraintStrengthHard)
+        constraints.setConstraintStrength(QgsFieldConstraints.Constraint.ConstraintUnique,
+                                          QgsFieldConstraints.ConstraintStrength.ConstraintStrengthHard)
 
         BANDNO.setConstraints(constraints)
         BANDNO.setReadOnly(True)
@@ -493,7 +499,7 @@ class GDALBandMetadataModel(QgsVectorLayer):
     def onWillShowBandContextMenu(self, menu: QMenu, index: QModelIndex):
         tv: QTableView = menu.parent()
         if isinstance(tv, QTableView):
-            cName = tv.model().headerData(index.column(), Qt.Horizontal)
+            cName = tv.model().headerData(index.column(), Qt.Orientation.Horizontal)
         else:
             cName = self.fields().names()[index.column()]
 
@@ -1077,23 +1083,23 @@ class GDALMetadataModel(QAbstractTableModel):
         return len(self.mColumnNames)
 
     def headerData(self, section: int, orientation: Qt.Orientation, role: int = ...) -> Any:
-        if orientation == Qt.Horizontal:
+        if orientation == Qt.Orientation.Horizontal:
             if role == Qt.ItemDataRole.DisplayRole:
                 return self.mColumnNames[section]
             if role == Qt.ItemDataRole.ToolTipRole:
                 return self.mColumnToolTips[section]
 
-        elif orientation == Qt.Vertical:
+        elif orientation == Qt.Orientation.Vertical:
             if role == Qt.ItemDataRole.DisplayRole:
                 return section + 1
 
         return None
 
     def flags(self, index: QModelIndex) -> Qt.ItemFlags:
-        flags = Qt.ItemIsEnabled | Qt.ItemIsSelectable
+        flags = Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable
 
         if index.column() == self.CI_Value and self.isEditable():
-            flags = flags | Qt.ItemIsEditable
+            flags = flags | Qt.ItemFlag.ItemIsEditable
 
         return flags
 
@@ -1187,7 +1193,7 @@ class GDALMetadataItemDialog(QDialog):
             errors.append('missing value')
 
         self.infoLabel.setText('\n'.join(errors))
-        self.buttonBox.button(QDialogButtonBox.Ok).setEnabled(len(errors) == 0)
+        self.buttonBox.button(QDialogButtonBox.StandardButton.Ok).setEnabled(len(errors) == 0)
 
     def setKey(self, name: str):
         self.tbKey.setText(str(name))
@@ -1348,8 +1354,8 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
 
         self.btnBandTableView.setDefaultAction(self.actionBandTableView)
         self.btnBandFormView.setDefaultAction(self.actionBandFormView)
-        self.actionBandTableView.triggered.connect(lambda: self.setBandModelView(QgsDualView.AttributeTable))
-        self.actionBandFormView.triggered.connect(lambda: self.setBandModelView(QgsDualView.AttributeEditor))
+        self.actionBandTableView.triggered.connect(lambda: self.setBandModelView(QgsDualView.ViewMode.AttributeTable))
+        self.actionBandFormView.triggered.connect(lambda: self.setBandModelView(QgsDualView.ViewMode.AttributeEditor))
 
         self.metadataModel = GDALMetadataModel()
         self.metadataProxyModel = QSortFilterProxyModel()
@@ -1444,23 +1450,23 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
         masterModel: QgsAttributeTableModel = dualView.masterModel()
         calc: QgsFieldCalculator = BandPropertyCalculator(dualView.masterModel().layer(), self)
 
-        if calc.exec_() == QDialog.Accepted:
+        if calc.exec() == QDialog.DialogCode.Accepted:
             col = masterModel.fieldCol(calc.changedAttributeId())
             if col >= 0:
                 masterModel.reload(masterModel.index(0, col), masterModel.index(masterModel.rowCount() - 1, col))
 
     def onBandFormModeChanged(self, *args):
-        self.actionBandTableView.setChecked(self.bandDualView.view() == QgsDualView.AttributeTable)
-        self.actionBandFormView.setChecked(self.bandDualView.view() == QgsDualView.AttributeEditor)
+        self.actionBandTableView.setChecked(self.bandDualView.view() == QgsDualView.ViewMode.AttributeTable)
+        self.actionBandFormView.setChecked(self.bandDualView.view() == QgsDualView.ViewMode.AttributeEditor)
         s = ""
 
     def onFormModeChanged(self, index: int):
-        self.actionTableView.setChecked(self.dualView.view() == QgsDualView.AttributeTable)
-        self.actionFormView.setChecked(self.dualView.view() == QgsDualView.AttributeEditor)
+        self.actionTableView.setChecked(self.dualView.view() == QgsDualView.ViewMode.AttributeTable)
+        self.actionFormView.setChecked(self.dualView.view() == QgsDualView.ViewMode.AttributeEditor)
 
     def showMessage(self, msg: str, level: Qgis.MessageLevel):
 
-        if level == Qgis.Critical:
+        if level == Qgis.MessageLevel.Critical:
             duration = 200
         else:
             duration = 50
@@ -1484,7 +1490,7 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
                                    domains=domains,
                                    major_objects=major_objects)
 
-        if d.exec_() == QDialog.Accepted:
+        if d.exec() == QDialog.DialogCode.Accepted:
             item = d.metadataItem()
             # set init
             item.initialValue = None
@@ -1554,7 +1560,7 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
                 self.setWindowIcon(QIcon(':/qps/ui/icons/edit_gdal_metadata.svg'))
                 self.supportsGDALClassification = \
                     self.is_gdal and layer.dataProvider().dataType(1) in \
-                    [Qgis.Byte, Qgis.UInt16, Qgis.Int16, Qgis.UInt32, Qgis.Int32, Qgis.Int32]
+                    [Qgis.DataType.Byte, Qgis.DataType.UInt16, Qgis.DataType.Int16, Qgis.DataType.UInt32, Qgis.DataType.Int32, Qgis.DataType.Int32]
 
             elif isinstance(layer, QgsVectorLayer):
                 self.setPanelTitle('OGR Metadata')
@@ -1647,16 +1653,16 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
                      optionRegex: QAction):
 
         if optionMatchCase.isChecked():
-            matchCase = Qt.CaseSensitive
+            matchCase = Qt.CaseSensitivity.CaseSensitive
         else:
-            matchCase = Qt.CaseInsensitive
+            matchCase = Qt.CaseSensitivity.CaseInsensitive
 
         if optionRegex.isChecked():
-            syntax = QRegExp.RegExp
+            syntax = QRegularExpression.RegExp
         else:
-            syntax = QRegExp.Wildcard
+            syntax = QRegularExpression.Wildcard
 
-        rx = QRegExp(text, cs=matchCase, syntax=syntax)
+        rx = QRegularExpression(text, cs=matchCase, syntax=syntax)
         if isinstance(view, QgsDualView):
             metadataModel = view.masterModel().layer()
             if rx.isValid():

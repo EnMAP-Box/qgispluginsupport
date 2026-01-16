@@ -204,12 +204,12 @@ class DatasetTableModel(QAbstractTableModel):
         return [d for d in self.allSublayerDetails() if self.sublayerDetailKey(d) in requested_settings]
 
     def headerData(self, col, orientation, role=None):
-        if orientation == Qt.Horizontal:
+        if orientation == Qt.Orientation.Horizontal:
             if role == Qt.ItemDataRole.DisplayRole:
                 return self.mColumnNames[col]
             if role == Qt.ItemDataRole.ToolTipRole:
                 return self.mColumnToolTip[col]
-        elif orientation == Qt.Vertical and role == Qt.ItemDataRole.DisplayRole:
+        elif orientation == Qt.Orientation.Vertical and role == Qt.ItemDataRole.DisplayRole:
             return col + 1
         return None
 
@@ -372,7 +372,7 @@ class SubDatasetSelectionDialog(QDialog):
         self.subDatasetModel.setSublayerDetails(details)
 
     def startTask(self, qgsTask: QgsTask):
-        self.setCursor(Qt.WaitCursor)
+        self.setCursor(Qt.CursorShape.WaitCursor)
         self.fileWidget.setEnabled(False)
         self.fileWidget.lineEdit().setShowSpinner(True)
         tid = id(qgsTask)
@@ -411,7 +411,7 @@ class SubDatasetSelectionDialog(QDialog):
         self.tbInfo.setText(text)
 
     def onRemoveTask(self, tid):
-        self.setCursor(Qt.ArrowCursor)
+        self.setCursor(Qt.CursorShape.ArrowCursor)
         self.fileWidget.setEnabled(True)
         self.fileWidget.lineEdit().setShowSpinner(False)
         if isinstance(tid, QgsTask):
@@ -423,7 +423,7 @@ class SubDatasetSelectionDialog(QDialog):
 
         rows = self.tvSubDatasets.selectionModel().selectedRows()
 
-        self.buttonBox.button(QDialogButtonBox.Ok).setEnabled(len(rows) > 0)
+        self.buttonBox.button(QDialogButtonBox.StandardButton.Ok).setEnabled(len(rows) > 0)
 
     def selectedSublayerDetails(self) -> List[QgsProviderSublayerDetails]:
         """

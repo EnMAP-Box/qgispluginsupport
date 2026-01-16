@@ -24,13 +24,12 @@
 """
 import sys
 
-from qgis.PyQt.QtCore import QSortFilterProxyModel, QModelIndex, pyqtSignal, QVariant, QAbstractItemModel
+from qgis.PyQt.QtCore import QSortFilterProxyModel, QModelIndex, pyqtSignal, QAbstractItemModel, QMetaType
+from qgis.PyQt.QtCore import Qt
+from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtGui import QResizeEvent, QStandardItemModel, QStandardItem
 from qgis.PyQt.QtWidgets import QMessageBox, QDialog, QTableView, QStackedWidget, QMenu, QComboBox, QVBoxLayout, QLabel, \
     QWidget
-
-from qgis.PyQt.QtCore import Qt
-from qgis.PyQt.QtGui import QIcon
 from qgis.core import QgsMapLayer, QgsVectorLayer, QgsField, QgsFieldModel, QgsEditorWidgetSetup
 from qgis.gui import QgsEditorWidgetFactory, QgsCollapsibleGroupBox, QgsEditorConfigWidget, QgsGui, \
     QgsMapLayerConfigWidgetFactory
@@ -74,9 +73,9 @@ class LayerFieldsTableModel(QgsFieldModel):
         """
         if Qt is None:
             return None
-        if orientation == Qt.Horizontal and role == Qt.ItemDataRole.DisplayRole:
+        if orientation == Qt.Orientation.Horizontal and role == Qt.ItemDataRole.DisplayRole:
             return self.mColumnNames[col]
-        elif orientation == Qt.Vertical and role == Qt.ItemDataRole.DisplayRole:
+        elif orientation == Qt.Orientation.Vertical and role == Qt.ItemDataRole.DisplayRole:
             return col
         return None
 
@@ -99,7 +98,7 @@ class LayerFieldsTableModel(QgsFieldModel):
             if cn == self.cnAlias:
                 return field.alias()
             if cn == self.cnType:
-                return QVariant.typeToName(field.type())
+                return QMetaType.Type.typeToName(field.type())
             if cn == self.cnTypeName:
                 return field.typeName()
             if cn == self.cnLength:
@@ -112,16 +111,16 @@ class LayerFieldsTableModel(QgsFieldModel):
                 return None
             if cn == self.cnWFS:
                 return None
-        if role in [QgsFieldModel.FieldNameRole,
-                    QgsFieldModel.FieldIndexRole,
-                    QgsFieldModel.ExpressionRole,
-                    QgsFieldModel.IsExpressionRole,
-                    QgsFieldModel.ExpressionValidityRole,
-                    QgsFieldModel.FieldTypeRole,
-                    QgsFieldModel.FieldOriginRole,
-                    QgsFieldModel.IsEmptyRole,
-                    QgsFieldModel.EditorWidgetType,
-                    QgsFieldModel.JoinedFieldIsEditable
+        if role in [QgsFieldModel.CustomRole.FieldNameRole,
+                    QgsFieldModel.CustomRole.FieldIndexRole,
+                    QgsFieldModel.CustomRole.ExpressionRole,
+                    QgsFieldModel.CustomRole.IsExpressionRole,
+                    QgsFieldModel.CustomRole.ExpressionValidityRole,
+                    QgsFieldModel.CustomRole.FieldTypeRole,
+                    QgsFieldModel.CustomRole.FieldOriginRole,
+                    QgsFieldModel.CustomRole.IsEmptyRole,
+                    QgsFieldModel.CustomRole.EditorWidgetType,
+                    QgsFieldModel.CustomRole.JoinedFieldIsEditable
                     ]:
             return super().data(index, role)
 
@@ -150,9 +149,9 @@ class LayerFieldsListModel(QgsFieldModel):
         """
         if Qt is None:
             return None
-        if orientation == Qt.Horizontal and role == Qt.ItemDataRole.DisplayRole:
+        if orientation == Qt.Orientation.Horizontal and role == Qt.ItemDataRole.DisplayRole:
             return self.mColumnNames[col]
-        elif orientation == Qt.Vertical and role == Qt.ItemDataRole.DisplayRole:
+        elif orientation == Qt.Orientation.Vertical and role == Qt.ItemDataRole.DisplayRole:
             return col
         return None
 
@@ -167,7 +166,7 @@ class LayerFieldsListModel(QgsFieldModel):
         result = False
 
         if role == Qt.ItemDataRole.EditRole:
-            if orientation == Qt.Horizontal and col < len(self.mColumnNames) and isinstance(value, str):
+            if orientation == Qt.Orientation.Horizontal and col < len(self.mColumnNames) and isinstance(value, str):
                 self.mColumnNames[col] = value
                 result = True
 
@@ -553,8 +552,8 @@ class LayerFieldsConfigWidget(QpsMapLayerConfigWidget):
         lyr = self.mapLayer()
         if isinstance(lyr, QgsVectorLayer) and lyr.isEditable():
             d = AddAttributeDialog(lyr)
-            d.exec_()
-            if d.result() == QDialog.Accepted:
+            d.exec()
+            if d.result() == QDialog.DialogCode.Accepted:
                 field = d.field()
                 lyr.addAttribute(field)
 
@@ -574,8 +573,9 @@ class LayerFieldsConfigWidget(QpsMapLayerConfigWidget):
         else:
             if lyr.isModified():
                 result = QMessageBox.question(self, 'Leaving edit mode', 'Save changes?',
-                                              buttons=QMessageBox.No | QMessageBox.Yes, defaultButton=QMessageBox.Yes)
-                if result == QMessageBox.Yes:
+                                              buttons=QMessageBox.StandardButton.No | QMessageBox.StandardButton.Yes,
+                                              defaultButton=QMessageBox.StandardButton.Yes)
+                if result == QMessageBox.StandardButton.Yes:
                     if not lyr.commitChanges():
                         errors = lyr.commitErrors()
                 else:
@@ -590,7 +590,7 @@ class LayerFieldsConfigWidget(QpsMapLayerConfigWidget):
         lyr = self.mapLayer()
         if not isinstance(lyr, QgsVectorLayer):
             return
-        indices = [self.mProxyModel.mapToSource(idx).data(QgsFieldModel.FieldIndexRole) for idx in
+        indices = [self.mProxyModel.mapToSource(idx).data(QgsFieldModel.CustomRole.FieldIndexRole) for idx in
                    self.tableView.selectionModel().selectedRows()]
 
         if not lyr.deleteAttributes(indices):

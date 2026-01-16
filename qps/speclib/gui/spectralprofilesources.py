@@ -656,14 +656,14 @@ class SpectralProfileSourceModel(QAbstractListModel):
 
     def flags(self, index: QModelIndex):
         if not index.isValid():
-            return Qt.NoItemFlags
-        flags = Qt.ItemIsEnabled | Qt.ItemIsSelectable
+            return Qt.ItemFlag.NoItemFlags
+        flags = Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable
         return flags
 
     def headerData(self, section: int, orientation: Qt.Orientation, role: int = Qt.ItemDataRole.DisplayRole):
 
         if role == Qt.ItemDataRole.DisplayRole:
-            if orientation == Qt.Horizontal:
+            if orientation == Qt.Orientation.Horizontal:
                 return 'Raster Source'
         return super(SpectralProfileSourceModel, self).headerData(section, orientation, role)
 
@@ -697,7 +697,7 @@ class SpectralProfileSourceProxyModel(QSortFilterProxyModel):
     def __init__(self, *args, **kwds):
         super(SpectralProfileSourceProxyModel, self).__init__(*args, **kwds)
         self.setRecursiveFilteringEnabled(True)
-        self.setFilterCaseSensitivity(Qt.CaseInsensitive)
+        self.setFilterCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
 
 
 class SpectralProfileSourceNode(ValidateNode):
@@ -962,7 +962,7 @@ class FieldGeneratorNode(ValidateNode):
         super().__init__(*args, **kwds)
         self.mField: QgsField = None
         self.setCheckable(True)
-        self.setCheckState(Qt.Unchecked)
+        self.setCheckState(Qt.CheckState.Unchecked)
 
     def setField(self, field: QgsField):
         """
@@ -994,7 +994,7 @@ class FieldGeneratorNode(ValidateNode):
         name = self.name()
         if not isinstance(self.field(), QgsField):
             yield f'{name}: Field is undefined.'
-        if self.isCheckable() and self.checkState() == Qt.Checked or not self.isCheckable():
+        if self.isCheckable() and self.checkState() == Qt.CheckState.Checked or not self.isCheckable():
             if self.value() in [None, NULL, '']:
                 yield f'{name}: Value is undefined. Needs a value/expression or uncheck the field.'
 
@@ -1021,7 +1021,7 @@ class SpectralProfileGeneratorNode(FieldGeneratorNode):
     def __init__(self, *args, **kwds):
         super(SpectralProfileGeneratorNode, self).__init__(*args, **kwds)
 
-        self.setCheckState(Qt.Checked)
+        self.setCheckState(Qt.CheckState.Checked)
         self.sigUpdated.connect(self.onChildNodeUpdate)
 
         self.mSourceNode = SpectralProfileSourceNode('Source')
@@ -1216,7 +1216,7 @@ class SpectralFeatureGeneratorNode(ValidateNode):
         self.setIcon(QIcon(r':/qps/ui/icons/speclib.svg'))
         self.mSpeclib: Optional[QgsVectorLayer] = None
         self.setCheckable(True)
-        self.setCheckState(Qt.Checked)
+        self.setCheckState(Qt.CheckState.Checked)
         self.mExpressionContextGenerator = SpectralFeatureGeneratorExpressionContextGenerator()
         self.mExpressionContextGenerator.mNode = self
 
@@ -1614,7 +1614,7 @@ class SpectralProfileBridge(TreeModel):
             idx_parent = self.node2idx(fgnode)
             idx0 = self.index(0, 0, idx_parent)
             idx1 = self.index(self.rowCount(idx_parent) - 1, 0, idx_parent)
-            self.dataChanged.emit(idx0, idx1, [Qt.ItemDataRole.BackgroundColorRole])
+            self.dataChanged.emit(idx0, idx1, [Qt.ItemDataRole.BackgroundRole])
 
         # 3. generate features from feature generators
         #    multiple feature generators can create features for the same speclib
@@ -1831,18 +1831,18 @@ class SpectralProfileBridge(TreeModel):
     def flags(self, index: QModelIndex):
 
         if not index.isValid():
-            return Qt.NoItemFlags
+            return Qt.ItemFlag.NoItemFlags
         col = index.column()
 
-        flags = Qt.ItemIsSelectable | Qt.ItemIsEnabled
+        flags = Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled
         node = index.data(Qt.ItemDataRole.UserRole)
         if not isinstance(node, TreeNode):
             s = ""
         if col == 0:
             if isinstance(node, TreeNode) and node.isCheckable():
-                flags = flags | Qt.ItemIsUserCheckable
+                flags = flags | Qt.ItemFlag.ItemIsUserCheckable
             if isinstance(node, (SpectralFeatureGeneratorNode,)):
-                flags = flags | Qt.ItemIsEditable
+                flags = flags | Qt.ItemFlag.ItemIsEditable
 
         if col == 1:
 
@@ -1850,7 +1850,7 @@ class SpectralProfileBridge(TreeModel):
                                  SpectralProfileGeneratorNode,
                                  SpectralProfileSamplingModeNode, StandardFieldGeneratorNode,
                                  FloatValueNode, ColorNode, OptionTreeNode, PlotStyleNode)):
-                flags = flags | Qt.ItemIsEditable
+                flags = flags | Qt.ItemFlag.ItemIsEditable
 
         return flags
 
@@ -1916,7 +1916,7 @@ class SpectralProfileBridge(TreeModel):
 
                 if c == 1:
                     if role == Qt.ItemDataRole.DisplayRole:
-                        return node.color().name(QColor.HexArgb)
+                        return node.color().name(QColor.NameFormat.HexArgb)
 
                     if role == Qt.ItemDataRole.DecorationRole:
                         return node.color()
@@ -2029,7 +2029,7 @@ class SpectralProfileBridge(TreeModel):
         if role == Qt.ItemDataRole.CheckStateRole \
                 and isinstance(node, TreeNode) \
                 and node.isCheckable() and \
-                value in [Qt.Checked, Qt.Unchecked]:
+                value in [Qt.CheckState.Checked, Qt.CheckState.Unchecked]:
             changed = node.checkState() != value
             if changed:
                 node.setCheckState(value)
@@ -2269,7 +2269,7 @@ class SpectralProfileBridgeViewDelegate(QStyledItemDelegate):
             doc = QTextDocument()
             doc.setHtml(option.text)
             option.text = ""
-            option.widget.style().drawControl(QStyle.CE_ItemViewItem, option, painter)
+            option.widget.style().drawControl(QStyle.ControlElement.CE_ItemViewItem, option, painter)
 
             # shift text right to make icon visible
             iconSize: QSize = option.icon.actualSize(option.rect.size())

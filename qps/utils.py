@@ -53,7 +53,7 @@ from osgeo.ogr import OFSTBoolean, OFSTNone, OFTBinary, OFTDate, OFTDateTime, OF
     OFTStringList, OFTTime
 from osgeo.osr import SpatialReference
 from qgis.PyQt import uic
-from qgis.PyQt.QtCore import NULL, QByteArray, QDirIterator, QMetaType, QObject, QPoint, QPointF, QRect, Qt, QUrl, \
+from qgis.PyQt.QtCore import QByteArray, QDirIterator, QMetaType, QObject, QPoint, QPointF, QRect, Qt, QUrl, \
     QVariant
 from qgis.PyQt.QtGui import QColor, QIcon
 from qgis.PyQt.QtWidgets import QAction, QComboBox, QDialogButtonBox, QGridLayout, QHBoxLayout, QLabel, QMainWindow, \
@@ -67,9 +67,8 @@ from qgis.core import Qgis, QgsApplication, QgsCoordinateReferenceSystem, QgsCoo
     QgsRasterLayer, QgsRasterRenderer, QgsRectangle, QgsTask, QgsVector, QgsVectorDataProvider, QgsVectorFileWriter, \
     QgsVectorLayer, QgsWkbTypes
 from qgis.core import QgsExpressionContextScope, QgsExpressionContext, QgsFeatureRenderer, QgsSingleSymbolRenderer, \
-    QgsMarkerSymbol, QgsExpressionContextUtils, QgsRenderContext, QgsSymbol
+    QgsMarkerSymbol, QgsExpressionContextUtils, QgsRenderContext, QgsSymbol, NULL
 from qgis.gui import QgisInterface, QgsDialog, QgsGui, QgsMapCanvas, QgsMapLayerComboBox, QgsMessageViewer
-
 from .qgisenums import QGIS_LAYERFILTER, QGIS_WKBTYPE, QMETATYPE_BOOL, QMETATYPE_DOUBLE, QMETATYPE_INT, \
     QMETATYPE_QBYTEARRAY, QMETATYPE_QCHAR, QMETATYPE_QDATE, QMETATYPE_QDATETIME, QMETATYPE_QSTRING, \
     QMETATYPE_QSTRINGLIST, \
@@ -86,43 +85,43 @@ REMOVE_setShortcutVisibleInContextMenu = hasattr(QAction, 'setShortcutVisibleInC
 jp = os.path.join
 dn = os.path.dirname
 
-QGIS2NUMPY_DATA_TYPES = {Qgis.Byte: np.uint8,
-                         Qgis.UInt16: np.uint16,
-                         Qgis.Int16: np.int16,
-                         Qgis.UInt32: np.uint32,
-                         Qgis.Int32: np.int32,
-                         Qgis.Float32: np.float32,
-                         Qgis.Float64: np.float64,
-                         Qgis.CFloat32: complex,
-                         Qgis.CFloat64: np.complex64,
-                         Qgis.ARGB32: np.uint32,
-                         Qgis.ARGB32_Premultiplied: np.uint32
+QGIS2NUMPY_DATA_TYPES = {Qgis.DataType.Byte: np.uint8,
+                         Qgis.DataType.UInt16: np.uint16,
+                         Qgis.DataType.Int16: np.int16,
+                         Qgis.DataType.UInt32: np.uint32,
+                         Qgis.DataType.Int32: np.int32,
+                         Qgis.DataType.Float32: np.float32,
+                         Qgis.DataType.Float64: np.float64,
+                         Qgis.DataType.CFloat32: complex,
+                         Qgis.DataType.CFloat64: np.complex64,
+                         Qgis.DataType.ARGB32: np.uint32,
+                         Qgis.DataType.ARGB32_Premultiplied: np.uint32
                          }
 
-NUMPY2QGIS_DATA_TYPES = {np.uint8: Qgis.Byte,
-                         bool: Qgis.Byte,
-                         np.uint16: Qgis.UInt16,
-                         np.uint32: Qgis.UInt32,
-                         np.int16: Qgis.Int16,
-                         np.int32: Qgis.Int32,
-                         np.float32: Qgis.Float32,
-                         np.float64: Qgis.Float64,
-                         complex: Qgis.CFloat32,
-                         np.complex64: Qgis.CFloat64,
+NUMPY2QGIS_DATA_TYPES = {np.uint8: Qgis.DataType.Byte,
+                         bool: Qgis.DataType.Byte,
+                         np.uint16: Qgis.DataType.UInt16,
+                         np.uint32: Qgis.DataType.UInt32,
+                         np.int16: Qgis.DataType.Int16,
+                         np.int32: Qgis.DataType.Int32,
+                         np.float32: Qgis.DataType.Float32,
+                         np.float64: Qgis.DataType.Float64,
+                         complex: Qgis.DataType.CFloat32,
+                         np.complex64: Qgis.DataType.CFloat64,
                          }
 
 QGIS_DATATYPE_NAMES = {
-    Qgis.Byte: 'Byte',
-    Qgis.UInt16: 'UInt16',
-    Qgis.Int16: 'Int16',
-    Qgis.UInt32: 'UInt32',
-    Qgis.Int32: 'Int32',
-    Qgis.Float32: 'Float32',
-    Qgis.Float64: 'Float64',
-    Qgis.CFloat32: 'Complex',
-    Qgis.CFloat64: 'Complex64',
-    Qgis.ARGB32: 'UInt32',
-    Qgis.ARGB32_Premultiplied: 'Int32'}
+    Qgis.DataType.Byte: 'Byte',
+    Qgis.DataType.UInt16: 'UInt16',
+    Qgis.DataType.Int16: 'Int16',
+    Qgis.DataType.UInt32: 'UInt32',
+    Qgis.DataType.Int32: 'Int32',
+    Qgis.DataType.Float32: 'Float32',
+    Qgis.DataType.Float64: 'Float64',
+    Qgis.DataType.CFloat32: 'Complex',
+    Qgis.DataType.CFloat64: 'Complex64',
+    Qgis.DataType.ARGB32: 'UInt32',
+    Qgis.DataType.ARGB32_Premultiplied: 'Int32'}
 
 
 def rm(p):
@@ -144,9 +143,9 @@ def _geometryIsEmpty(g: QgsGeometry) -> bool:
                         Qgis.GeometryType.Unknown]:
             return True
     else:
-        if g.type() in [QgsWkbTypes.NoGeometry,
-                        QgsWkbTypes.NullGeometry,
-                        QgsWkbTypes.UnknownGeometry
+        if g.type() in [QgsWkbTypes.Type.NoGeometry,
+                        QgsWkbTypes.GeometryType.NullGeometry,
+                        QgsWkbTypes.GeometryType.UnknownGeometry
                         ]:
             return True
     return False
@@ -706,7 +705,7 @@ def setQgsFieldValue(feature: QgsFeature, field, value):
     assert isinstance(field, QgsField)
 
     if value is None:
-        value = QVariant.NULL
+        value = QMetaType.Type.NULL
     if field.type() == QMETATYPE_QSTRING:
         value = str(value)
     elif field.type() in [QMETATYPE_INT, QMETATYPE_BOOL]:
@@ -729,7 +728,8 @@ def showMessage(message: str, title: str, level):
     v.setTitle(title)
 
     isHtml = message.startswith('<html>')
-    v.setMessage(message, QgsMessageOutput.MessageHtml if isHtml else QgsMessageOutput.MessageText)
+    v.setMessage(message,
+                 QgsMessageOutput.MessageType.MessageHtml if isHtml else QgsMessageOutput.MessageType.MessageText)
     v.showMessage(True)
 
 
@@ -960,7 +960,8 @@ def qgsVectorLayer(source) -> QgsVectorLayer:
     if isinstance(source, ogr.DataSource):
         return QgsVectorLayer(source.GetDescription())
     if isinstance(source, QUrl):
-        return qgsVectorLayer(Path(source.toString(QUrl.PreferLocalFile | QUrl.RemoveQuery)).resolve())
+        return qgsVectorLayer(Path(
+            source.toString(QUrl.UrlFormattingOption.PreferLocalFile | QUrl.UrlFormattingOption.RemoveQuery)).resolve())
 
     raise Exception('Unable to transform {} into QgsVectorLayer'.format(source))
 
@@ -1028,7 +1029,8 @@ def qgsRasterLayer(source) -> QgsRasterLayer:
     if isinstance(source, gdal.Dataset):
         return QgsRasterLayer(source.GetDescription())
     if isinstance(source, QUrl):
-        return qgsRasterLayer(Path(source.toString(QUrl.PreferLocalFile | QUrl.RemoveQuery)).resolve())
+        return qgsRasterLayer(Path(
+            source.toString(QUrl.UrlFormattingOption.PreferLocalFile | QUrl.UrlFormattingOption.RemoveQuery)).resolve())
 
     raise Exception('Unable to transform {} into QgsRasterLayer'.format(source))
 
@@ -1306,9 +1308,7 @@ def loadUi(uifile: Union[str, Path],
 
             sClass = str(cClass.nodeValue())
             sExtends = str(cHeader.nodeValue())
-            if False:
-                if sClass.startswith('Qgs'):
-                    cHeader.setNodeValue('qgis.gui')
+
             if True:
                 # replace 'qps' package location with local absolute position
                 if sExtends.startswith('qps.'):
@@ -1438,7 +1438,7 @@ def writeAsVectorFormat(layer: QgsVectorLayer,
         QgsProject.instance().transformContext(),
         options,
     )
-    assert err == QgsVectorFileWriter.NoError, errMsg
+    assert err == QgsVectorFileWriter.WriterError.NoError, errMsg
 
     # assert r
     # save styling
@@ -1609,12 +1609,12 @@ def qgsFields2str(qgsFields: QgsFields) -> str:
         # info = [field.name(), field.type(), field.typeName(), field.length(), field.precision(),
         # field.comment(), field.subType()]
         info = dict(name=field.name(),
-                    type=field.type(),
+                    type=int(field.type()),
                     typeName=field.typeName(),
                     length=field.length(),
                     precission=field.precision(),
                     comment=field.comment(),
-                    subType=field.subType(),
+                    subType=int(field.subType()),
                     editorWidget=field.editorWidgetSetup().type())
         infos.append(info)
     return json.dumps(infos)
@@ -1628,12 +1628,12 @@ def str2QgsFields(fieldString: str) -> QgsFields:
     assert isinstance(infos, list)
     for info in infos:
         field = QgsField(name=info['name'],
-                         type=info['type'],
+                         type=QMetaType.Type(info['type']),
                          typeName=info['typeName'],
                          len=info['length'],
                          prec=info['precission'],
                          comment=info['comment'],
-                         subType=info['subType']
+                         subType=QMetaType.Type(info['subType']),
                          )
         field.setEditorWidgetSetup(QgsEditorWidgetSetup(info['editorWidget'], {}))
         fields.append(field)
@@ -1647,11 +1647,12 @@ def as_py_value(value, datatype: Qgis.DataType):
     :param datatype:
     :return:
     """
-    if value in [None, QVariant()]:
+    if value in [None, NULL]:
         return None
-    if datatype in [Qgis.Byte, Qgis.Int16, Qgis.Int32, Qgis.UInt16, Qgis.UInt32]:
+    if datatype in [Qgis.DataType.Byte, Qgis.DataType.Int16, Qgis.DataType.Int32, Qgis.DataType.UInt16,
+                    Qgis.DataType.UInt32]:
         return int(value)
-    elif datatype in [Qgis.Float32, Qgis.Float64, Qgis.CFloat32, Qgis.CFloat64]:
+    elif datatype in [Qgis.DataType.Float32, Qgis.DataType.Float64, Qgis.DataType.CFloat32, Qgis.DataType.CFloat64]:
         return float(value)
     return value
 
@@ -3687,7 +3688,7 @@ def rasterArray(rasterInterface: Union[QgsRasterInterface, str, QgsRasterLayer],
         # single point -> return single profile.
         # Use identify, which is faster for single pixels
         ires: QgsRasterIdentifyResult = dp.identify(boundingBox.center(),
-                                                    QgsRaster.IdentifyFormatValue).results()
+                                                    QgsRaster.IdentifyFormat.IdentifyFormatValue).results()
 
         arr = np.asarray([ires[b] for b in bands]).reshape((len(bands), 1, 1))
 
@@ -3748,7 +3749,7 @@ def setToolButtonDefaultActionMenu(toolButton: QToolButton, actions: list):
                 break
 
     assert isinstance(toolButton, QToolButton)
-    toolButton.setPopupMode(QToolButton.MenuButtonPopup)
+    toolButton.setPopupMode(QToolButton.ToolButtonPopupMode.MenuButtonPopup)
     menu = QMenu(toolButton)
     for i, a in enumerate(actions):
         assert isinstance(a, QAction)
@@ -3764,9 +3765,10 @@ def setToolButtonDefaultActionMenu(toolButton: QToolButton, actions: list):
 class SelectMapLayerDialog(QgsDialog):
 
     def __init__(self, *args, **kwds):
-        super().__init__(*args, buttons=QDialogButtonBox.Cancel | QDialogButtonBox.Ok, **kwds)
+        super().__init__(*args, buttons=QDialogButtonBox.StandardButton.Cancel | QDialogButtonBox.StandardButton.Ok,
+                         **kwds)
         self.setWindowTitle('Select Layer')
-        self.setWindowFlag(Qt.WindowContextHelpButtonHint, False)
+        self.setWindowFlag(Qt.WindowType.WindowContextHelpButtonHint, False)
         self.mBox = QgsMapLayerComboBox(parent=self)
         self.mLabel = QLabel('Layer', parent=self)
         self.hl = QHBoxLayout()
@@ -3796,7 +3798,8 @@ class SelectMapLayersDialog(QgsDialog):
             self.allowEmptyLayer = allowEmptyLayer
 
     def __init__(self, *args, layerDescriptions: list = None, **kwds):
-        super(SelectMapLayersDialog, self).__init__(buttons=QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        super(SelectMapLayersDialog, self).__init__(
+            buttons=QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
         self.setWindowTitle('Select layer(s)')
 
         gl = QGridLayout()
@@ -3809,8 +3812,8 @@ class SelectMapLayersDialog(QgsDialog):
 
         self.mMapLayerBoxes = []
 
-        self.buttonBox().button(QDialogButtonBox.Ok).clicked.connect(self.accept)
-        self.buttonBox().button(QDialogButtonBox.Cancel).clicked.connect(self.reject)
+        self.buttonBox().button(QDialogButtonBox.StandardButton.Ok).clicked.connect(self.accept)
+        self.buttonBox().button(QDialogButtonBox.StandardButton.Cancel).clicked.connect(self.reject)
 
     def selectMapLayer(self, i, layer):
         """
@@ -3831,11 +3834,11 @@ class SelectMapLayersDialog(QgsDialog):
                 box.setCurrentIndex(i)
                 break
 
-    def exec_(self):
+    def exec(self):
 
         if len(self.mMapLayerBoxes) == 0:
-            self.addLayerDescription('Map Layer', QgsMapLayerProxyModel.All)
-        super(SelectMapLayersDialog, self).exec_()
+            self.addLayerDescription('Map Layer', QgsMapLayerProxyModel.Filter.All)
+        super(SelectMapLayersDialog, self).exec()
 
     def addLayerDescription(self, info: str,
                             filters: QGIS_LAYERFILTER,

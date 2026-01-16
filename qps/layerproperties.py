@@ -22,8 +22,8 @@ import sys
 import warnings
 from typing import Any, Dict, List, Optional, Union
 
-from qgis.PyQt.QtCore import QTextStream, QByteArray
-from qgis.PyQt.QtCore import pyqtSignal, QMimeData, QModelIndex, QObject, QTimer, QVariant
+from qgis.PyQt.QtCore import QTextStream, QByteArray, QMetaType
+from qgis.PyQt.QtCore import pyqtSignal, QMimeData, QModelIndex, QObject, QTimer
 from qgis.PyQt.QtGui import QCloseEvent, QIcon
 from qgis.PyQt.QtWidgets import QAction, QButtonGroup, QCheckBox, QComboBox, QDialog, QDialogButtonBox, \
     QGridLayout, QHBoxLayout, QLabel, QLineEdit, QMainWindow, QMenu, QMessageBox, QSizePolicy, QSpacerItem, \
@@ -37,7 +37,6 @@ from qgis.core import Qgis, QgsAction, QgsApplication, QgsCategorizedSymbolRende
     QgsRasterBandStats, QgsRasterDataProvider, QgsRasterLayer, QgsRasterRenderer, QgsReadWriteContext, QgsRectangle, \
     QgsScopedProxyProgressTask, QgsSettings, QgsSingleBandColorDataRenderer, QgsSingleBandGrayRenderer, \
     QgsSingleBandPseudoColorRenderer, QgsSingleSymbolRenderer, QgsVectorDataProvider, QgsVectorLayer, QgsWkbTypes
-
 from .qgisenums import QGIS_RASTERBANDSTATISTIC
 from .speclib import EDITOR_WIDGET_REGISTRY_KEY
 
@@ -117,12 +116,12 @@ class CheckableQgsFieldModel(QgsFieldModel):
     def checkAll(self):
         for r in range(self.rowCount()):
             idx = self.createIndex(r, 0)
-            self.setData(idx, Qt.Checked, Qt.ItemDataRole.CheckStateRole)
+            self.setData(idx, Qt.CheckState.Checked, Qt.ItemDataRole.CheckStateRole)
 
     def uncheckAll(self):
         for r in range(self.rowCount()):
             idx = self.createIndex(r, 0)
-            self.setData(idx, Qt.Unchecked, Qt.ItemDataRole.CheckStateRole)
+            self.setData(idx, Qt.CheckState.Unchecked, Qt.ItemDataRole.CheckStateRole)
 
     def checkedFields(self) -> QgsFields:
 
@@ -136,15 +135,15 @@ class CheckableQgsFieldModel(QgsFieldModel):
 
         # flags = super().flags(index)
         if self.mDisabled.get(index.row(), False):
-            flags = Qt.NoItemFlags
+            flags = Qt.ItemFlag.NoItemFlags
         else:
-            flags = Qt.ItemIsUserCheckable | Qt.ItemIsEnabled
+            flags = Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsEnabled
 
         return flags
 
     def headerData(self, section: int, orientation: Qt.Orientation, role: int) -> Any:
 
-        if role == Qt.ItemDataRole.DisplayRole and orientation == Qt.Horizontal:
+        if role == Qt.ItemDataRole.DisplayRole and orientation == Qt.Orientation.Horizontal:
             if section == 0:
                 return 'Field Name'
         return super(CheckableQgsFieldModel, self).headerData(section, orientation, role)
@@ -158,7 +157,7 @@ class CheckableQgsFieldModel(QgsFieldModel):
 
         if role == Qt.ItemDataRole.CheckStateRole:
             b = self.mChecked.get(row, False)
-            return Qt.Checked if b else Qt.Unchecked
+            return Qt.CheckState.Checked if b else Qt.CheckState.Unchecked
         if role == Qt.ItemDataRole.DecorationRole:
             return iconForFieldType(field)
 
@@ -173,7 +172,7 @@ class CheckableQgsFieldModel(QgsFieldModel):
         changed = None
 
         if role == Qt.ItemDataRole.CheckStateRole:
-            self.mChecked[row] = value == Qt.Checked
+            self.mChecked[row] = value == Qt.CheckState.Checked
             changed = True
 
         if changed is None:
@@ -191,7 +190,7 @@ class CopyAttributesDialog(QDialog):
                         parent=None) -> bool:
 
         d = CopyAttributesDialog(layer, fields)
-        if d.exec_() == QDialog.Accepted:
+        if d.exec() == QDialog.DialogCode.Accepted:
             was_editable = layer.isEditable()
             layer.startEditing()
             layer.beginEditCommand('Add attributes')
@@ -211,7 +210,7 @@ class CopyAttributesDialog(QDialog):
         super().__init__(parent, **kwds)
         self.setWindowTitle('Copy attributes')
         self.setWindowIcon(QIcon(r':/images/themes/default/mActionNewAttribute.svg'))
-        self.setWindowFlag(Qt.WindowContextHelpButtonHint, False)
+        self.setWindowFlag(Qt.WindowType.WindowContextHelpButtonHint, False)
         fields = qgsFields(fields)
         assert isinstance(fields, QgsFields)
 
@@ -240,13 +239,13 @@ class CopyAttributesDialog(QDialog):
         hl.addWidget(self.mLabel)
         hl.addWidget(self.btnCheckAll)
         hl.addWidget(self.btnUncheckAll)
-        hl.addSpacerItem(QSpacerItem(0, 0, hPolicy=QSizePolicy.Expanding))
+        hl.addSpacerItem(QSpacerItem(0, 0, hPolicy=QSizePolicy.Policy.Expanding))
         layout.addLayout(hl)
         layout.addWidget(self.mTableView)
 
-        self.mButtonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        self.mButtonBox.button(QDialogButtonBox.Ok).clicked.connect(self.accept)
-        self.mButtonBox.button(QDialogButtonBox.Cancel).clicked.connect(self.reject)
+        self.mButtonBox = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+        self.mButtonBox.button(QDialogButtonBox.StandardButton.Ok).clicked.connect(self.accept)
+        self.mButtonBox.button(QDialogButtonBox.StandardButton.Cancel).clicked.connect(self.reject)
 
         layout.addWidget(self.mButtonBox)
 
@@ -261,7 +260,7 @@ class CopyAttributesDialog(QDialog):
         fields = self.mFieldModel.checkedFields()
         b = fields.count() > 0
         self.btnUncheckAll.setEnabled(b)
-        self.mButtonBox.button(QDialogButtonBox.Ok).setEnabled(b)
+        self.mButtonBox.button(QDialogButtonBox.StandardButton.Ok).setEnabled(b)
 
 
 class AddAttributeDialog(QDialog):
@@ -275,7 +274,7 @@ class AddAttributeDialog(QDialog):
 
         self.setWindowTitle('Add attribute')
         self.setWindowIcon(QIcon(r':/images/themes/default/mActionNewAttribute.svg'))
-        self.setWindowFlag(Qt.WindowContextHelpButtonHint, False)
+        self.setWindowFlag(Qt.WindowType.WindowContextHelpButtonHint, False)
 
         assert isinstance(layer, QgsVectorLayer)
         self.mLayer = layer
@@ -339,9 +338,9 @@ class AddAttributeDialog(QDialog):
         self.tbValidationInfo.setStyleSheet("QLabel { color : red}")
         layout.addWidget(self.tbValidationInfo, 6, 0, 1, 2)
 
-        self.buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        self.buttons.button(QDialogButtonBox.Ok).clicked.connect(self.accept)
-        self.buttons.button(QDialogButtonBox.Cancel).clicked.connect(self.reject)
+        self.buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+        self.buttons.button(QDialogButtonBox.StandardButton.Ok).clicked.connect(self.accept)
+        self.buttons.button(QDialogButtonBox.StandardButton.Cancel).clicked.connect(self.reject)
         layout.addWidget(self.buttons, 7, 1)
         self.setLayout(layout)
         self.mLayer = layer
@@ -455,7 +454,7 @@ class AddAttributeDialog(QDialog):
         elif name == 'shape':
             errors.append('Field name "{}" already reserved.'.format(name))
         errors = '\n'.join(errors)
-        self.buttons.button(QDialogButtonBox.Ok).setEnabled(len(errors) == 0)
+        self.buttons.button(QDialogButtonBox.StandardButton.Ok).setEnabled(len(errors) == 0)
         self.tbValidationInfo.setText(errors)
 
         return len(errors) == 0, errors
@@ -469,7 +468,7 @@ class RemoveAttributeDialog(QDialog):
         self.mLayer = layer
         self.setWindowTitle('Remove Fields')
         self.setWindowIcon(QIcon(r':/images/themes/default/mActionDeleteAttribute.svg'))
-        self.setWindowFlag(Qt.WindowContextHelpButtonHint, False)
+        self.setWindowFlag(Qt.WindowType.WindowContextHelpButtonHint, False)
         self.fieldModel = CheckableQgsFieldModel()
         self.fieldModel.setLayer(self.mLayer)
         self.fieldModel.setAllowEmptyFieldName(False)
@@ -478,9 +477,10 @@ class RemoveAttributeDialog(QDialog):
         self.tvFieldNames = QTableView()
         self.tvFieldNames.setModel(self.fieldModel)
 
-        self.btnBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, parent=self)
-        self.btnBox.button(QDialogButtonBox.Cancel).clicked.connect(self.reject)
-        self.btnBox.button(QDialogButtonBox.Ok).clicked.connect(self.accept)
+        self.btnBox = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel,
+                                       parent=self)
+        self.btnBox.button(QDialogButtonBox.StandardButton.Cancel).clicked.connect(self.reject)
+        self.btnBox.button(QDialogButtonBox.StandardButton.Ok).clicked.connect(self.accept)
 
         self.label = QLabel('Select Fields to remove')
 
@@ -666,9 +666,10 @@ def defaultRasterRenderer(layer: QgsRasterLayer,
         ce = QgsContrastEnhancement(dt)
 
         assert isinstance(ce, QgsContrastEnhancement)
-        ce.setContrastEnhancementAlgorithm(QgsContrastEnhancement.StretchToMinimumMaximum, True)
+        ce.setContrastEnhancementAlgorithm(QgsContrastEnhancement.ContrastEnhancementAlgorithm.StretchToMinimumMaximum,
+                                           True)
 
-        if dt == Qgis.Byte:
+        if dt == Qgis.DataType.Byte:
             if stats.minimumValue == 0 and stats.maximumValue == 1:
                 # handle mask, stretch over larger range
                 ce.setMinimumValue(stats.minimumValue)
@@ -696,9 +697,10 @@ def defaultRasterRenderer(layer: QgsRasterLayer,
             ce = contrastEnhancements[i]
 
             assert isinstance(ce, QgsContrastEnhancement)
-            ce.setContrastEnhancementAlgorithm(QgsContrastEnhancement.StretchToMinimumMaximum, True)
+            ce.setContrastEnhancementAlgorithm(
+                QgsContrastEnhancement.ContrastEnhancementAlgorithm.StretchToMinimumMaximum, True)
             vmin, vmax = layer.dataProvider().cumulativeCut(b, 0.02, 0.98, sampleSize=sampleSize)
-            if dt == Qgis.Byte:
+            if dt == Qgis.DataType.Byte:
                 # standard RGB photo?
                 if False and layer.bandCount() == 3:
                     ce.setMinimumValue(0)
@@ -882,7 +884,7 @@ def showLayerPropertiesDialog(layer: QgsMapLayer,
     :return: QDialog.DialogCode
     """
     dialog = None
-    result = QDialog.Rejected
+    result = QDialog.DialogCode.Rejected
     from .utils import qgisAppQgisInterface
     iface = qgisAppQgisInterface()
     qgisUsed = False
@@ -907,7 +909,7 @@ def showLayerPropertiesDialog(layer: QgsMapLayer,
                 root.removeChildNode(temporaryGroup)
             iface.setActiveLayer(lastActiveLayer)
 
-            return QDialog.Accepted
+            return QDialog.DialogCode.Accepted
 
         except Exception as ex:
             print(ex, file=sys.stderr)
@@ -948,7 +950,7 @@ def showLayerPropertiesDialog(layer: QgsMapLayer,
         if dialog:
             if modal:
                 dialog.setModal(True)
-                return dialog.exec_()
+                return dialog.exec()
             else:
                 dialog.setModal(False)
                 dialog.show()
@@ -979,7 +981,7 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
     sigWindowIsClosing = pyqtSignal()
 
     def __init__(self, mLayer: QgsVectorLayer, *args,
-                 initialMode: QgsAttributeTableFilterModel.FilterMode = QgsAttributeTableFilterModel.ShowAll,
+                 initialMode: QgsAttributeTableFilterModel.FilterMode = QgsAttributeTableFilterModel.FilterMode.ShowAll,
                  **kwds):
         super().__init__(*args, **kwds)
         loadUi(pathlib.Path(DIR_UI_FILES) / 'attributetablewidget.ui', self)
@@ -1045,18 +1047,18 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
 
         r = QgsFeatureRequest()
         needsGeom = False
-        if mLayer.geometryType() != QgsWkbTypes.NullGeometry and \
-                initialMode == QgsAttributeTableFilterModel.ShowVisible:
+        if mLayer.geometryType() != QgsWkbTypes.GeometryType.NullGeometry and \
+                initialMode == QgsAttributeTableFilterModel.FilterMode.ShowVisible:
             mc = self.mMapCanvas
             extent = QgsRectangle(mc.mapSettings().mapToLayerCoordinates(mLayer, mc.extent()))
             r.setFilterRect(extent)
             needsGeom = True
-        elif initialMode == QgsAttributeTableFilterModel.ShowSelected:
+        elif initialMode == QgsAttributeTableFilterModel.FilterMode.ShowSelected:
 
             r.setFilterFids(mLayer.selectedFeatureIds())
 
         if not needsGeom:
-            r.setFlags(QgsFeatureRequest.NoGeometry)
+            r.setFlags(QgsFeatureRequest.Flag.NoGeometry)
 
         # Initialize dual view
         # self.mMainView.init(mLayer, self.mMapCanvas, r, self.mEditorContext, False)
@@ -1081,7 +1083,7 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
 
         self.mActionFeatureActions = QToolButton()
         self.mActionFeatureActions.setAutoRaise(False)
-        self.mActionFeatureActions.setPopupMode(QToolButton.InstantPopup)
+        self.mActionFeatureActions.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
         self.mActionFeatureActions.setIcon(QgsApplication.getThemeIcon("/mAction.svg"))
         self.mActionFeatureActions.setText(self.tr("Actions"))
         self.mActionFeatureActions.setToolTip(self.tr("Actions"))
@@ -1152,11 +1154,11 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
         self.mActionFeatureActions.setIcon(QgsApplication.getThemeIcon("/mAction.svg"))
 
         # toggle editing
-        canChangeAttributes = mLayer.dataProvider().capabilities() & QgsVectorDataProvider.ChangeAttributeValues
-        canDeleteFeatures = mLayer.dataProvider().capabilities() & QgsVectorDataProvider.DeleteFeatures
-        canAddAttributes = mLayer.dataProvider().capabilities() & QgsVectorDataProvider.AddAttributes
-        canDeleteAttributes = mLayer.dataProvider().capabilities() & QgsVectorDataProvider.DeleteAttributes
-        canAddFeatures = mLayer.dataProvider().capabilities() & QgsVectorDataProvider.AddFeatures
+        canChangeAttributes = mLayer.dataProvider().capabilities() & QgsVectorDataProvider.Capability.ChangeAttributeValues
+        canDeleteFeatures = mLayer.dataProvider().capabilities() & QgsVectorDataProvider.Capability.DeleteFeatures
+        canAddAttributes = mLayer.dataProvider().capabilities() & QgsVectorDataProvider.Capability.AddAttributes
+        canDeleteAttributes = mLayer.dataProvider().capabilities() & QgsVectorDataProvider.Capability.DeleteAttributes
+        canAddFeatures = mLayer.dataProvider().capabilities() & QgsVectorDataProvider.Capability.AddFeatures
 
         self.mActionToggleEditing.blockSignals(True)
         self.mActionToggleEditing.setCheckable(True)
@@ -1178,17 +1180,17 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
             self.mToolbar.removeAction(self.mActionPasteFeatures)
 
         assert isinstance(self.mMainViewButtonGroup, QButtonGroup)
-        self.mMainViewButtonGroup.setId(self.mTableViewButton, QgsDualView.AttributeTable)
-        self.mMainViewButtonGroup.setId(self.mAttributeViewButton, QgsDualView.AttributeEditor)
-        self.mTableViewButton.clicked.connect(lambda: self.setViewMode(QgsDualView.AttributeTable))
-        self.mAttributeViewButton.clicked.connect(lambda: self.setViewMode(QgsDualView.AttributeEditor))
+        self.mMainViewButtonGroup.setId(self.mTableViewButton, QgsDualView.ViewMode.AttributeTable)
+        self.mMainViewButtonGroup.setId(self.mAttributeViewButton, QgsDualView.ViewMode.AttributeEditor)
+        self.mTableViewButton.clicked.connect(lambda: self.setViewMode(QgsDualView.ViewMode.AttributeTable))
+        self.mAttributeViewButton.clicked.connect(lambda: self.setViewMode(QgsDualView.ViewMode.AttributeEditor))
 
         self.setFilterMode(initialMode)
 
         if isinstance(mLayer, QgsVectorLayer) and mLayer.isValid():
 
             # self.mUpdateExpressionText.registerExpressionContextGenerator(self)
-            self.mFieldCombo.setFilters(QgsFieldProxyModel.AllTypes | QgsFieldProxyModel.HideReadOnly)
+            self.mFieldCombo.setFilters(QgsFieldProxyModel.Filter.AllTypes | QgsFieldProxyModel.Filter.HideReadOnly)
             self.mFieldCombo.setLayer(mLayer)
 
             self.mRunFieldCalc.clicked.connect(self.updateFieldFromExpression)
@@ -1199,8 +1201,9 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
 
             initialView = int(settings.value("qgis/attributeTableView", -1))
             if initialView < 0:
-                initialView = int(settings.value("qgis/attributeTableLastView", int(QgsDualView.AttributeTable)))
-            for m in [QgsDualView.AttributeTable, QgsDualView.AttributeEditor]:
+                initialView = int(
+                    settings.value("qgis/attributeTableLastView", int(QgsDualView.ViewMode.AttributeTable)))
+            for m in [QgsDualView.ViewMode.AttributeTable, QgsDualView.ViewMode.AttributeEditor]:
                 if initialView == int(m):
                     self.setViewMode(m)
 
@@ -1208,7 +1211,7 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
             self.mActionSearchForm.toggled.connect(self.mMainView.toggleSearchMode)
             self.updateMultiEditButtonState()
 
-            if mLayer.editFormConfig().layout() == QgsEditFormConfig.UiFileLayout:
+            if mLayer.editFormConfig().layout() == QgsEditFormConfig.EditorLayout.UiFileLayout:
                 # not supported with custom UI
                 self.mActionToggleMultiEdit.setEnabled(False)
                 self.mActionToggleMultiEdit.setToolTip(
@@ -1230,7 +1233,7 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
         :return:
         """
 
-        fid = atIndex.data(QgsAttributeTableModel.FeatureIdRole)
+        fid = atIndex.data(QgsAttributeTableModel.CustomRole.FeatureIdRole)
 
         def findAction(name: str) -> QAction:
             name = self.tr(name)
@@ -1284,13 +1287,13 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
 
     def updateMultiEditButtonState(self):
         if not isinstance(self.mLayer, QgsVectorLayer) or \
-                (self.mLayer.editFormConfig().layout() == QgsEditFormConfig.UiFileLayout):
+                (self.mLayer.editFormConfig().layout() == QgsEditFormConfig.EditorLayout.UiFileLayout):
             return
 
         self.mActionToggleMultiEdit.setEnabled(self.mLayer.isEditable())
 
         if not self.mLayer.isEditable() or \
-                (self.mLayer.isEditable() and self.mMainView.view() != QgsDualView.AttributeEditor):
+                (self.mLayer.isEditable() and self.mMainView.view() != QgsDualView.ViewMode.AttributeEditor):
             self.mActionToggleMultiEdit.setChecked(False)
 
     def openConditionalStyles(self):
@@ -1310,7 +1313,7 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
 
     def updateFieldFromExpression(self):
 
-        filtered = self.mMainView.filterMode() != QgsAttributeTableFilterModel.ShowAll
+        filtered = self.mMainView.filterMode() != QgsAttributeTableFilterModel.FilterMode.ShowAll
         filteredIds = self.mMainView.filteredFeatures() if filtered else []
         self.runFieldCalculation(self.mLayer, self.mFieldCombo.currentField(),
                                  self.mUpdateExpressionText.asExpression(), filteredIds)
@@ -1334,8 +1337,8 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
         myDa.setEllipsoid(QgsProject.instance().ellipsoid())
         dlg.setGeomCalculator(myDa)
 
-        if dlg.exec() == QDialog.Accepted:
-            self.setFilterExpression(dlg.expressionText(), QgsAttributeForm.ReplaceFilter, True)
+        if dlg.exec() == QDialog.DialogCode.Accepted:
+            self.setFilterExpression(dlg.expressionText(), QgsAttributeForm.FilterType.ReplaceFilter, True)
 
     def _filterQueryAccepted(self):
         if self.mFilterQuery.text().strip() == '':
@@ -1344,7 +1347,7 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
             self._filterQueryChanged(self.mFilterQuery.text())
 
     def _filterShowAll(self):
-        self.mMainView.setFilterMode(QgsAttributeTableFilterModel.ShowAll)
+        self.mMainView.setFilterMode(QgsAttributeTableFilterModel.FilterMode.ShowAll)
 
     def _filterQueryChanged(self, query):
         self.setFilterExpression(query)
@@ -1378,7 +1381,7 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
 
         request = QgsFeatureRequest(self.mMainView.masterModel().request())
         useGeometry = useGeometry or not request.filterRect().isNull()
-        request.setFlags(QgsFeatureRequest.NoFlags if useGeometry else QgsFeatureRequest.NoGeometry)
+        request.setFlags(QgsFeatureRequest.Flag.NoFlags if useGeometry else QgsFeatureRequest.Flag.NoGeometry)
 
         rownum = 1
 
@@ -1461,7 +1464,7 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
 
     def setFilterExpression(self,
                             filterString: str,
-                            filterType: QgsAttributeForm.FilterType = QgsAttributeForm.ReplaceFilter,
+                            filterType: QgsAttributeForm.FilterType = QgsAttributeForm.FilterType.ReplaceFilter,
                             alwaysShowFilter: bool = False):
 
         # as long we have no filter widget implementation
@@ -1473,16 +1476,16 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
         assert isinstance(self.mFilterQuery, QgsFilterLineEdit)
         filter = self.mFilterQuery.text()
         if filter != '' and filterString != '':
-            if filterType == QgsAttributeForm.ReplaceFilter:
+            if filterType == QgsAttributeForm.FilterType.ReplaceFilter:
                 filter = filterString
-            elif filterType == QgsAttributeForm.FilterAnd:
+            elif filterType == QgsAttributeForm.FilterType.FilterAnd:
                 filter = f'({filter}) AND ({filterString})'
-            elif filterType == QgsAttributeForm.FilterOr:
+            elif filterType == QgsAttributeForm.FilterType.FilterOr:
                 filter = f'({filter}) OR ({filterString})'
         elif len(filterString) > 0:
             filter = filterString
         else:
-            self.mMainView.setFilterMode(QgsAttributeTableFilterModel.ShowAll)
+            self.mMainView.setFilterMode(QgsAttributeTableFilterModel.FilterMode.ShowAll)
             return
         self.mFilterQuery.setText(filter)
 
@@ -1501,14 +1504,14 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
         if filterExpression.hasParserError():
             if isinstance(messageBar, QgsMessageBar):
                 messageBar.pushMessage('Parsing error', filterExpression.parserErrorString(),
-                                       Qgis.Warning, self.mMessageTimeOut)
+                                       Qgis.MessageLevel.Warning, self.mMessageTimeOut)
             else:
                 print(f'Parsing errors: {filterExpression.parserErrorString()}', file=sys.stderr)
 
         if not filterExpression.prepare(context):
             if isinstance(messageBar, QgsMessageBar):
                 messageBar.pushMessage('Evaluation error', filterExpression.evalErrorString(),
-                                       Qgis.Warning, self.mMessageTimeOut)
+                                       Qgis.MessageLevel.Warning, self.mMessageTimeOut)
             else:
                 print(f'Evaluation error {filterExpression.evalErrorString()}', file=sys.stderr)
             return
@@ -1518,9 +1521,9 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
         request = self.mMainView.masterModel().request()
         request.setSubsetOfAttributes(filterExpression.referencedColumns(), self.mLayer.fields())
         if not fetchGeom:
-            request.setFlags(QgsFeatureRequest.NoGeometry)
+            request.setFlags(QgsFeatureRequest.Flag.NoGeometry)
         else:
-            request.setFlags(request.flags() & QgsFeatureRequest.NoGeometry)
+            request.setFlags(request.flags() & QgsFeatureRequest.Flag.NoGeometry)
 
         for f in self.mLayer.getFeatures(request):
             context.setFeature(f)
@@ -1534,14 +1537,14 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
         if filterExpression.hasEvalError():
             if isinstance(messageBar, QgsMessageBar):
                 messageBar.pushMessage('Error filtering', filterExpression.evalErrorString(),
-                                       Qgis.Warning, self.mMessageTimeOut)
+                                       Qgis.MessageLevel.Warning, self.mMessageTimeOut)
             else:
                 print(f'Error filtering: {filterExpression.evalErrorString()}', file=sys.stderr)
             return
-        self.mMainView.setFilterMode(QgsAttributeTableFilterModel.ShowFilteredList)
+        self.mMainView.setFilterMode(QgsAttributeTableFilterModel.FilterMode.ShowFilteredList)
 
     def viewModeChanged(self, mode: QgsAttributeEditorContext.Mode):
-        if mode != QgsAttributeEditorContext.SearchMode:
+        if mode != QgsAttributeEditorContext.Mode.SearchMode:
             self.mActionSearchForm.setChecked(False)
 
     def scheduleTitleUpdate(self):
@@ -1560,12 +1563,12 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
             self.mLayer.selectedFeatureCount())
         )
 
-        if self.mMainView.filterMode() == QgsAttributeTableFilterModel.ShowAll:
+        if self.mMainView.filterMode() == QgsAttributeTableFilterModel.FilterMode.ShowAll:
             self.mRunFieldCalc.setText(self.tr("Update All"))
         else:
             self.mRunFieldCalc.setText(self.tr("Update Filtered"))
 
-        canDeleteFeatures = self.mLayer.dataProvider().capabilities() & QgsVectorDataProvider.DeleteFeatures
+        canDeleteFeatures = self.mLayer.dataProvider().capabilities() & QgsVectorDataProvider.Capability.DeleteFeatures
         enabled = self.mLayer.selectedFeatureCount() > 0
         self.mRunFieldCalcSelected.setEnabled(enabled)
         self.mActionDeleteSelected.setEnabled(canDeleteFeatures and self.mLayer.isEditable() and enabled)
@@ -1583,11 +1586,11 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
 
         self.mActionToggleEditing.blockSignals(False)
 
-        canChangeAttributes = self.mLayer.dataProvider().capabilities() & QgsVectorDataProvider.ChangeAttributeValues
-        canDeleteFeatures = self.mLayer.dataProvider().capabilities() & QgsVectorDataProvider.DeleteFeatures
-        canAddAttributes = self.mLayer.dataProvider().capabilities() & QgsVectorDataProvider.AddAttributes
-        canDeleteAttributes = self.mLayer.dataProvider().capabilities() & QgsVectorDataProvider.DeleteAttributes
-        canAddFeatures = self.mLayer.dataProvider().capabilities() & QgsVectorDataProvider.AddFeatures
+        canChangeAttributes = self.mLayer.dataProvider().capabilities() & QgsVectorDataProvider.Capability.ChangeAttributeValues
+        canDeleteFeatures = self.mLayer.dataProvider().capabilities() & QgsVectorDataProvider.Capability.DeleteFeatures
+        canAddAttributes = self.mLayer.dataProvider().capabilities() & QgsVectorDataProvider.Capability.AddAttributes
+        canDeleteAttributes = self.mLayer.dataProvider().capabilities() & QgsVectorDataProvider.Capability.DeleteAttributes
+        canAddFeatures = self.mLayer.dataProvider().capabilities() & QgsVectorDataProvider.Capability.AddFeatures
         self.mActionAddAttribute.setEnabled((canChangeAttributes or canAddAttributes) and self.mLayer.isEditable())
         self.mActionRemoveAttribute.setEnabled(canDeleteAttributes and self.mLayer.isEditable())
         self.mActionDeleteSelected.setEnabled(
@@ -1622,7 +1625,7 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
 
                     qAction: QAction = actionMenu.addAction(action.icon(), action.shortTitle())
                     qAction.setToolTip(action.name())
-                    qAction.setData(QVariant.fromValue < QgsAction > (action))
+                    qAction.setData(QMetaType.Type.fromValue < QgsAction > (action))
                     qAction.triggered.connect(self.layerActionTriggered)
 
             self.mActionFeatureActions.setMenu(actionMenu)
@@ -1671,8 +1674,8 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
     def mActionAddAttribute_triggered(self):
         if isinstance(self.mLayer, QgsVectorLayer) and self.mLayer.isEditable():
             d = AddAttributeDialog(self.mLayer)
-            d.exec_()
-            if d.result() == QDialog.Accepted:
+            d.exec()
+            if d.result() == QDialog.DialogCode.Accepted:
                 field = d.field()
                 self.mLayer.addAttribute(field)
                 self.reloadModel()
@@ -1684,7 +1687,7 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
         masterModel: QgsAttributeTableModel = self.mMainView.masterModel()
         if FIELD_CALCULATOR:
             calc: QgsFieldCalculator = QgsFieldCalculator(self.mLayer, self)
-            if calc.exec_() == QDialog.Accepted:
+            if calc.exec() == QDialog.DialogCode.Accepted:
                 col = masterModel.fieldCol(calc.changedAttributeId())
                 if col >= 0:
                     masterModel.reload(masterModel.index(0, col), masterModel.index(masterModel.rowCount() - 1, col))
@@ -1694,7 +1697,7 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
             return
 
         dlg = QgsOrganizeTableColumnsDialog(self.mLayer, self.mLayer.attributeTableConfig(), self)
-        if dlg.exec_() == QDialog.Accepted:
+        if dlg.exec() == QDialog.DialogCode.Accepted:
             config = dlg.config()
             self.mMainView.setAttributeTableConfig(config)
 
@@ -1704,7 +1707,7 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
 
         d = RemoveAttributeDialog(self.mLayer)
 
-        if d.exec_() == QDialog.Accepted:
+        if d.exec() == QDialog.DialogCode.Accepted:
             fieldIndices = d.fieldIndices()
             self.mLayer.beginEditCommand('Delete attributes')
             if self.mLayer.deleteAttributes(fieldIndices):
@@ -1712,12 +1715,12 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
             else:
                 self.mainMessageBar().pushMessage(self.tr("Attribute error"),
                                                   self.tr("The attribute(s) could not be deleted"),
-                                                  Qgis.Warning)
+                                                  Qgis.MessageLevel.Warning)
             self.reloadModel()
 
     def mMainView_currentChanged(self, viewMode: QgsDualView.ViewMode):
         if isinstance(viewMode, int):
-            for m in [QgsDualView.AttributeTable, QgsDualView.AttributeEditor]:
+            for m in [QgsDualView.ViewMode.AttributeTable, QgsDualView.ViewMode.AttributeEditor]:
                 if int(m) == viewMode:
                     viewMode = m
                     break
@@ -1726,7 +1729,7 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
         self.mMainViewButtonGroup.button(viewMode).click()
         self.updateMultiEditButtonState()
 
-        if viewMode == QgsDualView.AttributeTable:
+        if viewMode == QgsDualView.ViewMode.AttributeTable:
             self.mActionSearchForm.setChecked(False)
 
         s = QgsSettings()
@@ -1758,8 +1761,8 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
     def mActionExpressionSelect_triggered(self):
         dlg = QgsExpressionSelectionDialog(self.mLayer)
         dlg.setMessageBar(self.mainMessageBar())
-        dlg.setAttribute(Qt.WA_DeleteOnClose)
-        dlg.exec_()
+        dlg.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
+        dlg.exec()
 
     def mActionToggleEditing_toggled(self, b: bool):
         if not isinstance(self.mLayer, QgsVectorLayer):
@@ -1781,7 +1784,7 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
     def setViewMode(self, mode: QgsDualView.ViewMode):
         assert isinstance(mode, QgsDualView.ViewMode)
         self.mMainView.setView(mode)
-        for m in [QgsDualView.AttributeEditor, QgsDualView.AttributeTable]:
+        for m in [QgsDualView.ViewMode.AttributeEditor, QgsDualView.ViewMode.AttributeTable]:
             self.mMainViewButtonGroup.button(m).setChecked(m == mode)
 
     def setFilterMode(self, mode: QgsAttributeTableFilterModel.FilterMode):
@@ -1789,9 +1792,9 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
         return
         # todo: re-implement QgsFeatureFilterWidget
 
-        if mode == QgsAttributeTableFilterModel.ShowVisible:
+        if mode == QgsAttributeTableFilterModel.FilterMode.ShowVisible:
             self.mFeatureFilterWidget.filterVisible()
-        elif mode == QgsAttributeTableFilterModel.ShowSelected:
+        elif mode == QgsAttributeTableFilterModel.FilterMode.ShowSelected:
             self.mFeatureFilterWidget.filterSelected()
         else:
             self.mFeatureFilterWidget.filterShowAll()

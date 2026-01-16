@@ -350,7 +350,7 @@ class TestsGdalMetadata(TestCase):
 
         calc = BandPropertyCalculator(mdm)
 
-        if calc.exec_() == QDialog.Accepted:
+        if calc.exec() == QDialog.DialogCode.Accepted:
             pass
 
     def test_GDALMetadataModelConfigWidget(self):

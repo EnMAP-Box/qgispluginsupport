@@ -42,9 +42,9 @@ class TestMapTools(TestCase):
     def test_QgsMapTools(self):
 
         lyrR = TestObjects.createRasterLayer()
-        lyrV_Point = TestObjects.createVectorLayer(QgsWkbTypes.PointGeometry)
-        lyrV_Poly = TestObjects.createVectorLayer(QgsWkbTypes.PolygonGeometry)
-        lyrV_Line = TestObjects.createVectorLayer(QgsWkbTypes.LineGeometry)
+        lyrV_Point = TestObjects.createVectorLayer(QgsWkbTypes.GeometryType.PointGeometry)
+        lyrV_Poly = TestObjects.createVectorLayer(QgsWkbTypes.GeometryType.PolygonGeometry)
+        lyrV_Line = TestObjects.createVectorLayer(QgsWkbTypes.GeometryType.LineGeometry)
         layers = [lyrR, lyrV_Point, lyrV_Line, lyrV_Poly]
         QgsProject.instance().addMapLayers(layers)
 
@@ -62,12 +62,12 @@ class TestMapTools(TestCase):
         canvas.setCurrentLayer(lyrV_Point)
 
         lyrV_Point.startEditing()
-        mt1 = QgsMapToolAddFeature(canvas, cadDockWidget, QgsMapToolCapture.CapturePoint)
+        mt1 = QgsMapToolAddFeature(canvas, cadDockWidget, QgsMapToolCapture.CaptureMode.CapturePoint)
         self.assertIsInstance(mt1, QgsMapToolAddFeature)
         canvas.setMapTool(mt1)
         mt1.activate()
-        me1 = QMouseEvent(QEvent.MouseButtonPress, QPointF(0.5 * w, 0.5 * h), Qt.LeftButton, Qt.LeftButton,
-                          Qt.NoModifier)
+        me1 = QMouseEvent(QEvent.Type.MouseButtonPress, QPointF(0.5 * w, 0.5 * h), Qt.MouseButton.LeftButton, Qt.MouseButton.LeftButton,
+                          Qt.KeyboardModifier.NoModifier)
         canvas.mousePressEvent(me1)
         # mt = QgsMapToolCapture(c, d, QgsMapToolCapture.CapturePolygon)
 
@@ -78,9 +78,9 @@ class TestMapTools(TestCase):
 
         # QMouseEvent(QEvent::Type type, const QPointF &localPos, Qt::MouseButton button, Qt::MouseButtons buttons, Qt::KeyboardModifiers modifiers)
 
-        me1 = QMouseEvent(QEvent.MouseButtonPress, QPointF(0, 0), Qt.LeftButton, Qt.LeftButton, Qt.NoModifier)
-        me2 = QMouseEvent(QEvent.MouseButtonPress, QPointF(0, w), Qt.LeftButton, Qt.LeftButton, Qt.NoModifier)
-        me3 = QMouseEvent(QEvent.MouseButtonPress, QPointF(h, w), Qt.LeftButton, Qt.LeftButton, Qt.NoModifier)
+        me1 = QMouseEvent(QEvent.Type.MouseButtonPress, QPointF(0, 0), Qt.MouseButton.LeftButton, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier)
+        me2 = QMouseEvent(QEvent.Type.MouseButtonPress, QPointF(0, w), Qt.MouseButton.LeftButton, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier)
+        me3 = QMouseEvent(QEvent.Type.MouseButtonPress, QPointF(h, w), Qt.MouseButton.LeftButton, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier)
 
         canvas.mousePressEvent(me1)
         canvas.mousePressEvent(me2)
@@ -166,15 +166,15 @@ class TestMapTools(TestCase):
 
         size = canvas.size()
         point = QPointF(0.3 * size.width(), 0.3 * size.height())
-        event = QMouseEvent(QEvent.MouseButtonPress, point, Qt.LeftButton, Qt.LeftButton, Qt.NoModifier)
+        event = QMouseEvent(QEvent.Type.MouseButtonPress, point, Qt.MouseButton.LeftButton, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier)
         canvas.mousePressEvent(event)
 
         point = QPointF(0.4 * size.width(), 0.4 * size.height())
-        event = QMouseEvent(QEvent.MouseMove, point, Qt.LeftButton, Qt.LeftButton, Qt.NoModifier)
+        event = QMouseEvent(QEvent.Type.MouseMove, point, Qt.MouseButton.LeftButton, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier)
         canvas.mouseMoveEvent(event)
 
         point = QPointF(0.6 * size.width(), 0.6 * size.height())
-        event = QMouseEvent(QEvent.MouseButtonRelease, point, Qt.LeftButton, Qt.LeftButton, Qt.NoModifier)
+        event = QMouseEvent(QEvent.Type.MouseButtonRelease, point, Qt.MouseButton.LeftButton, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier)
         canvas.mouseReleaseEvent(event)
 
         self.assertIsInstance(spatialExtent, SpatialExtent)
@@ -195,21 +195,21 @@ class TestMapTools(TestCase):
         size = canvas.size()
 
         mouseEvent = QMouseEvent(
-            QEvent.MouseButtonPress,
+            QEvent.Type.MouseButtonPress,
             QPointF(0.5 * size.width(), 0.5 * size.height()),
-            Qt.LeftButton,
-            Qt.LeftButton,
-            Qt.NoModifier)
+            Qt.MouseButton.LeftButton,
+            Qt.MouseButton.LeftButton,
+            Qt.KeyboardModifier.NoModifier)
 
         qgsMouseEvent = QgsMapMouseEvent(canvas, mouseEvent)
         mt1.canvasPressEvent(qgsMouseEvent)
 
         mouseEvent2 = QMouseEvent(
-            QEvent.MouseButtonPress,
+            QEvent.Type.MouseButtonPress,
             QPointF(0.5 * size.width(), 0.5 * size.height()),
-            Qt.LeftButton,
-            Qt.LeftButton,
-            Qt.NoModifier)
+            Qt.MouseButton.LeftButton,
+            Qt.MouseButton.LeftButton,
+            Qt.KeyboardModifier.NoModifier)
 
         qgsMouseEvent2 = QgsMapMouseEvent(canvas, mouseEvent2)
         mt1.canvasReleaseEvent(qgsMouseEvent2)
@@ -250,7 +250,7 @@ class TestMapTools(TestCase):
                 lyr.startEditing()
                 break
         from qps.maptools import QgsMapToolDigitizeFeature
-        mt = QgsMapToolAddFeature(canvas, cadDockWidget, QgsMapToolDigitizeFeature.CaptureNone)
+        mt = QgsMapToolAddFeature(canvas, cadDockWidget, QgsMapToolDigitizeFeature.CaptureMode.CaptureNone)
         canvas.setMapTool(mt)
         self.showGui(canvas)
         mt.deactivate()
@@ -285,10 +285,10 @@ class TestMapTools(TestCase):
 
             if mte == MapTools.AddFeature:
 
-                for mode in [QgsMapToolCapture.CapturePoint,
-                             QgsMapToolCapture.CaptureLine,
-                             QgsMapToolCapture.CapturePolygon,
-                             QgsMapToolCapture.CaptureNone]:
+                for mode in [QgsMapToolCapture.CaptureMode.CapturePoint,
+                             QgsMapToolCapture.CaptureMode.CaptureLine,
+                             QgsMapToolCapture.CaptureMode.CapturePolygon,
+                             QgsMapToolCapture.CaptureMode.CaptureNone]:
                     mt = MapTools.create(mte, canvas, mode=mode, cadDockWidget=cadDockWidget)
                     self.assertIsInstance(mt, QgsMapTool)
                     tools.append(mt)
@@ -325,21 +325,21 @@ class TestMapTools(TestCase):
             size = canvas.size()
 
             mouseEvent = QMouseEvent(
-                QEvent.MouseButtonPress,
+                QEvent.Type.MouseButtonPress,
                 QPointF(0.5 * size.width(), 0.5 * size.height()),
-                Qt.LeftButton,
-                Qt.LeftButton,
-                Qt.NoModifier)
+                Qt.MouseButton.LeftButton,
+                Qt.MouseButton.LeftButton,
+                Qt.KeyboardModifier.NoModifier)
 
             qgsMouseEvent = QgsMapMouseEvent(canvas, mouseEvent)
             mapTool.canvasPressEvent(qgsMouseEvent)
 
             mouseEvent2 = QMouseEvent(
-                QEvent.MouseButtonPress,
+                QEvent.Type.MouseButtonPress,
                 QPointF(0.5 * size.width(), 0.5 * size.height()),
-                Qt.LeftButton,
-                Qt.LeftButton,
-                Qt.NoModifier)
+                Qt.MouseButton.LeftButton,
+                Qt.MouseButton.LeftButton,
+                Qt.KeyboardModifier.NoModifier)
 
             qgsMouseEvent2 = QgsMapMouseEvent(canvas, mouseEvent2)
             mapTool.canvasReleaseEvent(qgsMouseEvent2)

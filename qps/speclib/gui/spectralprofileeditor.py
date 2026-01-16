@@ -8,13 +8,13 @@ from typing import Any, List, Optional, Tuple
 
 import numpy as np
 
-from qgis.PyQt.QtCore import NULL, pyqtSignal, QAbstractTableModel, QModelIndex, QSortFilterProxyModel, \
+from qgis.PyQt.QtCore import pyqtSignal, QAbstractTableModel, QModelIndex, QSortFilterProxyModel, \
     Qt, QVariant
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QComboBox, QFrame, QGroupBox, QHBoxLayout, QHeaderView, QLabel, QLineEdit, QSizePolicy, \
     QSpacerItem, QTableView, QToolButton, QVBoxLayout, QWidget
 from qgis.core import Qgis, QgsApplication, QgsFeature, QgsField, QgsFieldFormatter, QgsFieldFormatterRegistry, \
-    QgsVectorLayer
+    QgsVectorLayer, NULL
 from qgis.gui import QgsCodeEditorJson, QgsEditorConfigWidget, QgsEditorWidgetFactory, QgsEditorWidgetWrapper, QgsGui
 from .spectrallibraryplotunitmodels import SpectralProfilePlotXAxisUnitModel
 from .spectralprofileplotwidget import SpectralProfilePlotWidget
@@ -217,17 +217,18 @@ class SpectralProfileTableModel(QAbstractTableModel):
     def flags(self, index):
         if index.isValid():
             c = index.column()
-            flags = Qt.ItemIsEnabled | Qt.ItemIsSelectable
+            flags = Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable
             if c in [1, 2, 3] and not self.mIsReadOnly:
-                flags = flags | Qt.ItemIsEditable
+                flags = flags | Qt.ItemFlag.ItemIsEditable
             return flags
         return None
 
     def headerData(self, col: int, orientation: Qt.Orientation, role: int):
 
-        if orientation == Qt.Horizontal and role in [Qt.ItemDataRole.DisplayRole, Qt.ItemDataRole.ToolTipRole]:
+        if orientation == Qt.Orientation.Horizontal and role in [Qt.ItemDataRole.DisplayRole,
+                                                                 Qt.ItemDataRole.ToolTipRole]:
             return self.mColumnNames.get(col, f'{col + 1}')
-        if orientation == Qt.Vertical:
+        if orientation == Qt.Orientation.Vertical:
             if role == Qt.ItemDataRole.ToolTipRole:
                 return f'Band {col + 1}'
         return None
@@ -292,9 +293,9 @@ class SpectralProfileTableEditor(QFrame):
         self.proxyModel.setSourceModel(self.tableModel)
         self.tableView.setModel(self.proxyModel)
         self.tableView.setSortingEnabled(True)
-        self.tableView.sortByColumn(0, Qt.AscendingOrder)
-        self.tableView.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
-        self.tableView.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeToContents)
+        self.tableView.sortByColumn(0, Qt.SortOrder.AscendingOrder)
+        self.tableView.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
+        self.tableView.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
 
         self.mXUnitModel: SpectralProfilePlotXAxisUnitModel = SpectralProfilePlotXAxisUnitModel.instance()
         self.mXUnitModel.setAllowEmptyUnit(True)
@@ -438,7 +439,7 @@ class SpectralProfileEditorWidget(QGroupBox):
         self.controlBar.addWidget(self.btnJson)
         self.controlBar.addWidget(self.btnTable)
         # self.controlBar.addWidget(self.messageBar)
-        self.controlBar.addSpacerItem(QSpacerItem(0, 0, hPolicy=QSizePolicy.Expanding))
+        self.controlBar.addSpacerItem(QSpacerItem(0, 0, hPolicy=QSizePolicy.Policy.Expanding))
         self.controlBar.addWidget(self.btnClear)
         self.controlBar.addWidget(self.btnReset)
 
@@ -546,7 +547,7 @@ class SpectralProfileEditorWidget(QGroupBox):
                 w.addSyntaxWarning(eline, ecol, emsg)
 
             else:
-                QgsApplication.messageLog().logMessage(error, 'SpectralProfileEditorWidget', Qgis.Critical)
+                QgsApplication.messageLog().logMessage(error, 'SpectralProfileEditorWidget', Qgis.MessageLevel.Critical)
                 # self.messageBar.pushMessage('Error', error.splitlines()[0], error, Qgis.Warning)
         else:
             self.profileChanged.emit()
@@ -637,7 +638,7 @@ class SpectralProfileEditorWidgetWrapper(QgsEditorWidgetWrapper):
         super(SpectralProfileEditorWidgetWrapper, self).__init__(vl, fieldIdx, editor, parent)
         self.mWidget: QWidget = None
 
-        self.mLastValue: QVariant = QVariant()
+        self.mLastValue: QVariant = NULL
         s = ""
 
     def createWidget(self, parent: QWidget):

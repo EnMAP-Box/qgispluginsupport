@@ -268,7 +268,7 @@ class SpectralViewBox(pg.ViewBox):
         brush = mkBrush(c)
 
         if mode == 'deselect':
-            pen.setStyle(Qt.DashLine)
+            pen.setStyle(Qt.PenStyle.DashLine)
             # brush.setStyle(Qt.Dense4Pattern)
         self._rect_item.setPen(pen)
         self._rect_item.setBrush(brush)
@@ -292,9 +292,9 @@ class SpectralViewBox(pg.ViewBox):
         # self.updateAutoRange()
 
     def mousePressEvent(self, ev):
-        has_shift = ev.modifiers() & Qt.ShiftModifier
-        has_ctrl = ev.modifiers() & Qt.CTRL
-        if ev.button() == Qt.LeftButton and (has_shift or has_ctrl):
+        has_shift = ev.modifiers() & Qt.KeyboardModifier.ShiftModifier
+        has_ctrl = ev.modifiers() & Qt.Modifier.CTRL
+        if ev.button() == Qt.MouseButton.LeftButton and (has_shift or has_ctrl):
             self._selecting = True
             self._p0 = self.mapSceneToView(ev.scenePos())
             rect = QRectF(self._p0, self._p0)
@@ -305,7 +305,7 @@ class SpectralViewBox(pg.ViewBox):
             elif has_ctrl:
                 self.setSelectionRectangleBrush('deselect')
             self.addItem(self._rect_item, ignoreBounds=True)
-            QApplication.setOverrideCursor(Qt.CrossCursor)
+            QApplication.setOverrideCursor(Qt.CursorShape.CrossCursor)
             ev.accept()
 
         else:
@@ -322,7 +322,7 @@ class SpectralViewBox(pg.ViewBox):
             super().mouseMoveEvent(ev)
 
     def mouseReleaseEvent(self, ev: QGraphicsSceneMouseEvent):
-        if self._selecting and ev.button() == Qt.LeftButton:
+        if self._selecting and ev.button() == Qt.MouseButton.LeftButton:
             rect = self._rect_item.rect()
 
             tl = self.mapViewToScene(rect.topLeft())
@@ -362,7 +362,7 @@ class SpectralProfilePlotDataItem(PlotDataItem):
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
 
-        self.setAcceptedMouseButtons(Qt.LeftButton | Qt.RightButton)
+        self.setAcceptedMouseButtons(Qt.MouseButton.LeftButton | Qt.MouseButton.RightButton)
 
         self.mDefaultStyle: PlotStyle = PlotStyle()
         self.mSelectedStyle = default_selection_style
@@ -411,7 +411,7 @@ class SpectralProfilePlotDataItem(PlotDataItem):
 
     # On right-click, raise a context menu
     def mouseClickEvent(self, ev):
-        if ev.button() == Qt.RightButton:
+        if ev.button() == Qt.MouseButton.RightButton:
             if self.raiseContextMenu(ev):
                 ev.accept()
 
@@ -564,7 +564,7 @@ class SpectralProfilePlotDataItem(PlotDataItem):
 
         alpha = QWidgetAction(self.menu)
         alphaSlider = QSlider()
-        alphaSlider.setOrientation(Qt.Horizontal)
+        alphaSlider.setOrientation(Qt.Orientation.Horizontal)
         alphaSlider.setMaximum(255)
         alphaSlider.setValue(255)
         alphaSlider.valueChanged.connect(self.setAlpha)
@@ -614,7 +614,7 @@ class SpectralProfilePlotWidget(pg.GraphicsLayoutWidget):
 
     def __init__(self, *args, **kwargs):
 
-        super().__init__(*args, *kwargs)
+        super().__init__(*args, **kwargs)
 
         pi1 = SpectralProfilePlotItem()
         pi2 = SpectralProfilePlotItem()

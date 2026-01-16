@@ -49,7 +49,7 @@ class SearchFilesDialog(QDialog):
 
         self.fileWidget: QgsFileWidget
         # self.fileWidget.setReadOnly(True)
-        self.fileWidget.setStorageMode(QgsFileWidget.GetDirectory)
+        self.fileWidget.setStorageMode(QgsFileWidget.StorageMode.GetDirectory)
         self.fileWidget.fileChanged.connect(self.reloadFiles)
 
         s = ""

@@ -2,7 +2,8 @@
 # were removed between different QGIS API version.
 # Do not modify, change create_qgisenums.py instead!
 
-from qgis.PyQt.QtCore import QVariant, QMetaType
+
+from qgis.PyQt.QtCore import QMetaType
 from qgis._3d import (QgsPoint3DSymbol)
 from qgis.analysis import (QgsZonalStatistics)
 from qgis.core import Qgis
@@ -27,22 +28,22 @@ from qgis.gui import (QgsActionMenu, QgsMapLayerAction)
 #  API Switches
 
 # QgsField - since QGIS 3.38, use the method with a QMetaType::Type argument instead
-QMETATYPE_QSTRING = QMetaType.Type.QString if Qgis.versionInt() >= 33800 else QVariant.String
-QMETATYPE_QCHAR = QMetaType.Type.QChar if Qgis.versionInt() >= 33800 else QVariant.Char
-QMETATYPE_QSTRINGLIST = QMetaType.Type.QStringList if Qgis.versionInt() >= 33800 else QVariant.StringList
-QMETATYPE_BOOL = QMetaType.Type.Bool if Qgis.versionInt() >= 33800 else QVariant.Bool
-QMETATYPE_INT = QMetaType.Type.Int if Qgis.versionInt() >= 33800 else QVariant.Int
-QMETATYPE_DOUBLE = QMetaType.Type.Double if Qgis.versionInt() >= 33800 else QVariant.Double
-QMETATYPE_UINT = QMetaType.Type.UInt if Qgis.versionInt() >= 33800 else QVariant.UInt
+QMETATYPE_QSTRING = QMetaType.Type.QString if Qgis.versionInt() >= 33800 else QMetaType.Type.QString
+QMETATYPE_QCHAR = QMetaType.Type.QChar if Qgis.versionInt() >= 33800 else QMetaType.Type.QChar
+QMETATYPE_QSTRINGLIST = QMetaType.Type.QStringList if Qgis.versionInt() >= 33800 else QMetaType.Type.QStringList
+QMETATYPE_BOOL = QMetaType.Type.Bool if Qgis.versionInt() >= 33800 else QMetaType.Type.Bool
+QMETATYPE_INT = QMetaType.Type.Int if Qgis.versionInt() >= 33800 else QMetaType.Type.Int
+QMETATYPE_DOUBLE = QMetaType.Type.Double if Qgis.versionInt() >= 33800 else QMetaType.Type.Double
+QMETATYPE_UINT = QMetaType.Type.UInt if Qgis.versionInt() >= 33800 else QMetaType.Type.UInt
 QMETATYPE_ULONG = QMetaType.Type.ULong
-QMETATYPE_ULONGLONG = QMetaType.Type.ULongLong if Qgis.versionInt() >= 33800 else QVariant.ULongLong
-QMETATYPE_LONGLONG = QMetaType.Type.LongLong if Qgis.versionInt() >= 33800 else QVariant.LongLong
-QMETATYPE_QTIME = QMetaType.Type.QTime if Qgis.versionInt() >= 33800 else QVariant.Time
-QMETATYPE_QDATE = QMetaType.Type.QDate if Qgis.versionInt() >= 33800 else QVariant.Date
-QMETATYPE_QDATETIME = QMetaType.Type.QDateTime if Qgis.versionInt() >= 33800 else QVariant.DateTime
-QMETATYPE_QVARIANTMAP = QMetaType.Type.QVariantMap if Qgis.versionInt() >= 33800 else QVariant.Map
-QMETATYPE_QBYTEARRAY = QMetaType.Type.QByteArray if Qgis.versionInt() >= 33800 else QVariant.ByteArray
-QMETATYPE_QVARIANTLIST = QMetaType.Type.QVariantList if Qgis.versionInt() >= 33800 else QVariant.List
+QMETATYPE_ULONGLONG = QMetaType.Type.ULongLong if Qgis.versionInt() >= 33800 else QMetaType.Type.ULongLong
+QMETATYPE_LONGLONG = QMetaType.Type.LongLong if Qgis.versionInt() >= 33800 else QMetaType.Type.LongLong
+QMETATYPE_QTIME = QMetaType.Type.QTime if Qgis.versionInt() >= 33800 else QMetaType.Type.QTime
+QMETATYPE_QDATE = QMetaType.Type.QDate if Qgis.versionInt() >= 33800 else QMetaType.Type.QDate
+QMETATYPE_QDATETIME = QMetaType.Type.QDateTime if Qgis.versionInt() >= 33800 else QMetaType.Type.QDateTime
+QMETATYPE_QVARIANTMAP = QMetaType.Type.QVariantMap if Qgis.versionInt() >= 33800 else QMetaType.Type.QVariantMap
+QMETATYPE_QBYTEARRAY = QMetaType.Type.QByteArray if Qgis.versionInt() >= 33800 else QMetaType.Type.QByteArray
+QMETATYPE_QVARIANTLIST = QMetaType.Type.QVariantList if Qgis.versionInt() >= 33800 else QMetaType.Type.QVariantList
 
 QGIS_ACTIONTYPE = Qgis.ActionType if Qgis.versionInt() >= 32900 else QgsActionMenu.ActionType
 QGIS_AGGREGATE = Qgis.Aggregate if Qgis.versionInt() >= 33500 else QgsAggregateCalculator.Aggregate
@@ -73,8 +74,8 @@ QGIS_FILEFILTERTYPE = Qgis.FileFilterType if Qgis.versionInt() >= 33100 else Qgs
 QGIS_GEOMETRYTYPE = Qgis.GeometryType if Qgis.versionInt() >= 32900 else QgsWkbTypes
 QGIS_GPSFIXSTATUS = Qgis.GpsFixStatus if Qgis.versionInt() >= 32900 else QgsGpsInformation.FixStatus
 QGIS_GRADIENTCOLORSOURCE = Qgis.GradientColorSource if Qgis.versionInt() >= 32300 else QgsGradientFillSymbolLayer.GradientColorType
-QGIS_GRADIENTSPREAD = Qgis.GradientSpread if Qgis.versionInt() >= 32300 else QgsGradientFillSymbolLayer.GradientSpread
-QGIS_GRADIENTTYPE = Qgis.GradientType if Qgis.versionInt() >= 32300 else QgsGradientFillSymbolLayer.GradientType
+QGIS_GRADIENTSPREAD = Qgis.GradientSpread if Qgis.versionInt() >= 32300 else QgsGradientFillSymbolLayer.Property.GradientSpread
+QGIS_GRADIENTTYPE = Qgis.GradientType if Qgis.versionInt() >= 32300 else QgsGradientFillSymbolLayer.Property.GradientType
 QGIS_GRADUATEDMETHOD = Qgis.GraduatedMethod if Qgis.versionInt() >= 32500 else QgsGraduatedSymbolRenderer.GraduatedMethod
 QGIS_INVALIDGEOMETRYCHECK = Qgis.InvalidGeometryCheck if Qgis.versionInt() >= 33500 else QgsFeatureRequest.InvalidGeometryCheck
 QGIS_LABELLINEPLACEMENTFLAG = Qgis.LabelLinePlacementFlag if Qgis.versionInt() >= 33100 else QgsLabeling.LinePlacementFlag

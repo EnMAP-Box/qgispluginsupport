@@ -23,19 +23,19 @@ class GenericFieldValueConverterTests(TestCase):
 
         # convert to QDateTime
         for v in [str(dtgPy), dtgPy, dtgPy.date(),
-                  dtgQt, dtgQt.toString(Qt.ISODate), dtgQt.date()]:
+                  dtgQt, dtgQt.toString(Qt.DateFormat.ISODate), dtgQt.date()]:
             result = GenericPropertyTransformer.toDateTime(v)
             self.assertIsInstance(result, QDateTime, msg=f'Unable to convert {v} to QDateTime')
 
         # convert to QDate
         for v in [str(dtgPy), dtgPy, dtgPy.date(),
-                  dtgQt, dtgQt.toString(Qt.ISODate), dtgQt.date(), dtgQt.date().toString()]:
+                  dtgQt, dtgQt.toString(Qt.DateFormat.ISODate), dtgQt.date(), dtgQt.date().toString()]:
             result = GenericPropertyTransformer.toDate(v)
             self.assertIsInstance(result, QDate, msg=f'Unable to convert {v} to QDate')
 
         # convert to QTime
         for v in [str(dtgPy), dtgPy, dtgPy.time(), dtgPy.time().isoformat(),
-                  dtgQt, dtgQt.time(), dtgQt.toString(Qt.ISODate), dtgQt.time().toString()]:
+                  dtgQt, dtgQt.time(), dtgQt.toString(Qt.DateFormat.ISODate), dtgQt.time().toString()]:
             result = GenericPropertyTransformer.toTime(v)
             self.assertIsInstance(result, QTime, msg=f'Unable to convert {v} to QTime')
 
@@ -83,7 +83,7 @@ class GenericFieldValueConverterTests(TestCase):
 
         fields = QgsFields()
         fields.append(QgsField('json', type=QMETATYPE_QVARIANTMAP, subType=QMETATYPE_QSTRING, typeName='JSON'))
-        fields.append(QgsField('map', type=QMETATYPE_QVARIANTMAP, subType=0, typeName='map'))
+        fields.append(QgsField('map', type=QMETATYPE_QVARIANTMAP, subType=QMETATYPE_QVARIANTMAP, typeName='map'))
         fields.append(QgsField('text', type=QMETATYPE_QSTRING))
         fields.append(QgsField('datetime', type=QMETATYPE_QDATETIME))
         fields.append(QgsField('date', type=QMETATYPE_QDATE))

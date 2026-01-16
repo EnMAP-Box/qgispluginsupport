@@ -65,9 +65,9 @@ class TestCasesTestObject(TestCase):
         self.assertTrue(lyr.GetFeatureCount() > 0)
         self.assertEqual(lyr.GetGeomType(), ogr.wkbLineString)
 
-        geomTypes = [QgsWkbTypes.PointGeometry, QgsWkbTypes.Point,
-                     QgsWkbTypes.LineGeometry, QgsWkbTypes.LineString,
-                     QgsWkbTypes.PolygonGeometry, QgsWkbTypes.Polygon]
+         geomTypes = [QgsWkbTypes.GeometryType.PointGeometry, QgsWkbTypes.Type.Point,
+                     QgsWkbTypes.GeometryType.LineGeometry, QgsWkbTypes.Type.LineString,
+                     QgsWkbTypes.GeometryType.PolygonGeometry, QgsWkbTypes.Type.Polygon]
         for i, geomType in enumerate(geomTypes):
             lyr = TestObjects.createVectorLayer(geomType)
             self.assertIsInstance(lyr, QgsVectorLayer)

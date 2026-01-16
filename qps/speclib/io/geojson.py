@@ -161,7 +161,7 @@ class GeoJSONSpectralLibraryWriter(SpectralProfileFileWriter):
         featureSink.setExpressionContext(expressionContext)
         featureSink.setTransformContext(transformationContext)
 
-        if writer.hasError() != QgsVectorFileWriter.NoError:
+        if writer.hasError() != QgsVectorFileWriter.WriterError.NoError:
             feedback.reportError(f'Error when creating {path}: {writer.errorMessage()}')
             return []
 

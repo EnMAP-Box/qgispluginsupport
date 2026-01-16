@@ -298,6 +298,19 @@ docker run --rm -it \
   runtests.sh
 ````
 
+## Convert code to QGIS 4 / Qt6
+
+1. Check https://github.com/qgis/QGIS/wiki/Plugin-migration-to-be-compatible-with-Qt5-and-Qt6
+2. Download https://github.com/qgis/QGIS/blob/master/scripts/pyqt5_to_pyqt6/pyqt5_to_pyqt6.py
+3. Disable autoformat to not change accidentially pyqt5_to_pyqt6.py 
+4. Run pyqt5_to_pyqt6.py <folder to convert>
+
+5. Replace:
+
+   QPalette.Foreground with QPalette.ColorRole.WindowText
+   QPalette.Background with QPalette.ColorRole.Window 
+
+
 ## License
 
 QPS is released under the GNU Public License (GPL) Version 3 or above.

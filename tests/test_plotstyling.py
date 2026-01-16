@@ -207,12 +207,12 @@ class PlotStyleTests(TestCase):
         grid = QGridLayout()
         for col, f in enumerate([F.Type, F.Color, F.Size]):
             cb = QCheckBox(f.name)
-            cb.setCheckState(Qt.Checked)
+            cb.setCheckState(Qt.CheckState.Checked)
             cb.clicked.connect(lambda b, flag=f: psw.setVisibilityFlag(flag, b))
             grid.addWidget(cb, 0, col + 1)
         for row, f in enumerate([F.Symbol, F.SymbolPen, F.Line, F.Visibility, F.Preview]):
             cb = QCheckBox(f.name)
-            cb.setCheckState(Qt.Checked)
+            cb.setCheckState(Qt.CheckState.Checked)
             cb.clicked.connect(lambda b, flag=f: psw.setVisibilityFlag(flag, b))
             grid.addWidget(cb, row + 1, 0)
 
@@ -232,11 +232,11 @@ class PlotStyleTests(TestCase):
         # Create a QPen
         pen = QPen(QColor("blue"))
         pen.setWidth(2)
-        pen.setStyle(Qt.DashLine)
+        pen.setStyle(Qt.PenStyle.DashLine)
 
         # Serialize the QPen to a QByteArray
         byte_array = QByteArray()
-        stream = QDataStream(byte_array, QIODevice.WriteOnly)
+        stream = QDataStream(byte_array, QIODevice.OpenModeFlag.WriteOnly)
         stream << pen  # Use the Qt operator<< to serialize
 
         # Convert to a string (e.g., for storage or transmission)
@@ -274,16 +274,16 @@ class PlotStyleTests(TestCase):
         myWidget.setWindowTitle('Layer Action Example')
         myWidget.setLayout(QVBoxLayout())
         dualView = QgsDualView()
-        dualView.setView(QgsDualView.AttributeTable)
+        dualView.setView(QgsDualView.ViewMode.AttributeTable)
 
         checkBox = QCheckBox()
         checkBox.setText('Show Form View')
 
         def onClicked(b: bool):
             if b:
-                dualView.setView(QgsDualView.AttributeEditor)
+                dualView.setView(QgsDualView.ViewMode.AttributeEditor)
             else:
-                dualView.setView(QgsDualView.AttributeTable)
+                dualView.setView(QgsDualView.ViewMode.AttributeTable)
 
         checkBox.clicked.connect(onClicked)
         myWidget.layout().addWidget(dualView)
@@ -296,7 +296,7 @@ class PlotStyleTests(TestCase):
         conf = QgsAttributeTableConfig()
         conf.setColumns(columns)
         conf.setActionWidgetVisible(True)
-        conf.setActionWidgetStyle(QgsAttributeTableConfig.ButtonList)
+        conf.setActionWidgetStyle(QgsAttributeTableConfig.ActionWidgetStyle.ButtonList)
         layer.setAttributeTableConfig(conf)
         canvas.setLayers([layer])
         dualView.init(layer, canvas)
@@ -325,23 +325,23 @@ class PlotStyleTests(TestCase):
         am = vl.actions()
         self.assertIsInstance(am, QgsActionManager)
 
-        uid = am.addAction(QgsAction.Generic, 'sdsd', 'sdsd')
+        uid = am.addAction(QgsAction.ActionType.Generic, 'sdsd', 'sdsd')
 
         c = QgsMapCanvas()
         w = QWidget()
         w.setLayout(QVBoxLayout())
         dv = QgsDualView()
         dv.init(vl, c)
-        dv.setView(QgsDualView.AttributeTable)
+        dv.setView(QgsDualView.ViewMode.AttributeTable)
 
         cb = QCheckBox()
         cb.setText('Show Editor')
 
         def onClicked(b: bool):
             if b:
-                dv.setView(QgsDualView.AttributeEditor)
+                dv.setView(QgsDualView.ViewMode.AttributeEditor)
             else:
-                dv.setView(QgsDualView.AttributeTable)
+                dv.setView(QgsDualView.ViewMode.AttributeTable)
 
         cb.clicked.connect(onClicked)
         w.layout().addWidget(dv)

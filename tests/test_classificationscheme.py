@@ -116,7 +116,7 @@ class TestsClassificationScheme(TestCase):
 
     def test_ClassificationSchemeFromField(self):
 
-        lyr = TestObjects.createVectorLayer(QgsWkbTypes.Point)
+        lyr = TestObjects.createVectorLayer(QgsWkbTypes.Type.Point)
         for name in lyr.fields().names():
             cs = ClassificationScheme.fromUniqueFieldValues(lyr, name)
             values = list(lyr.uniqueValues(lyr.fields().lookupField(name)))
@@ -155,14 +155,14 @@ class TestsClassificationScheme(TestCase):
         cs._updateLabels()
         self.assertEqual(cs[3].label(), 3)
 
-        self.assertEqual(cs.headerData(0, Qt.Horizontal, Qt.ItemDataRole.DisplayRole), 'Label')
-        self.assertEqual(cs.headerData(1, Qt.Horizontal, Qt.ItemDataRole.DisplayRole), 'Name')
-        self.assertEqual(cs.headerData(2, Qt.Horizontal, Qt.ItemDataRole.DisplayRole), 'Color')
+        self.assertEqual(cs.headerData(0, Qt.Orientation.Horizontal, Qt.ItemDataRole.DisplayRole), 'Label')
+        self.assertEqual(cs.headerData(1, Qt.Orientation.Horizontal, Qt.ItemDataRole.DisplayRole), 'Name')
+        self.assertEqual(cs.headerData(2, Qt.Orientation.Horizontal, Qt.ItemDataRole.DisplayRole), 'Color')
 
         self.assertEqual(cs.data(cs.createIndex(0, 0), Qt.ItemDataRole.DisplayRole), 0)
         self.assertEqual(cs.data(cs.createIndex(0, 1), Qt.ItemDataRole.DisplayRole), cs[0].name())
         self.assertEqual(cs.data(cs.createIndex(0, 2), Qt.ItemDataRole.DisplayRole), cs[0].color().name())
-        self.assertEqual(cs.data(cs.createIndex(0, 2), Qt.ItemDataRole.BackgroundColorRole), cs[0].color())
+        self.assertEqual(cs.data(cs.createIndex(0, 2), Qt.ItemDataRole.BackgroundRole), cs[0].color())
 
         self.assertIsInstance(cs.data(cs.createIndex(0, 0), role=Qt.ItemDataRole.UserRole), ClassInfo)
 
@@ -242,7 +242,7 @@ class TestsClassificationScheme(TestCase):
         w.setLayout(QVBoxLayout())
         dv = QgsDualView()
         dv.init(vl, c)
-        dv.setView(QgsDualView.AttributeTable)
+        dv.setView(QgsDualView.ViewMode.AttributeTable)
         dv.setAttributeTableConfig(vl.attributeTableConfig())
 
         cb = QCheckBox()
@@ -250,9 +250,9 @@ class TestsClassificationScheme(TestCase):
 
         def onClicked(b: bool):
             if b:
-                dv.setView(QgsDualView.AttributeEditor)
+                dv.setView(QgsDualView.ViewMode.AttributeEditor)
             else:
-                dv.setView(QgsDualView.AttributeTable)
+                dv.setView(QgsDualView.ViewMode.AttributeTable)
 
         cb.clicked.connect(onClicked)
         w.layout().addWidget(dv)

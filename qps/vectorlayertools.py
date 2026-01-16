@@ -82,7 +82,7 @@ class VectorLayerTools(QgsVectorLayerTools):
 
         if not layer.isEditable() and not layer.readOnly():
 
-            if not (layer.dataProvider().capabilities() & QgsVectorDataProvider.EditingCapabilities):
+            if not (layer.dataProvider().capabilities() & QgsVectorDataProvider.Capability.EditingCapabilities):
                 title = "Start editing failed"
                 msg = "Provider cannot be opened for editing"
                 self.sigMessage.emit(title, msg, Qgis.Information)
@@ -195,7 +195,7 @@ class VectorLayerTools(QgsVectorLayerTools):
             title = 'Error'
             text = 'Problems during rollback'
             result = False
-            self.sigMessage.emit(title, text, Qgis.Critical)
+            self.sigMessage.emit(title, text, Qgis.MessageLevel.Critical)
         else:
             result = True
         self.sigFreezeCanvases.emit(False)
@@ -233,9 +233,9 @@ class VectorLayerTools(QgsVectorLayerTools):
             return False
 
         if layer.isModified():
-            buttons = QMessageBox.Yes | QMessageBox.No
+            buttons = QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
             if allowCancel:
-                buttons = buttons | QMessageBox.Abort
+                buttons = buttons | QMessageBox.StandardButton.Abort
 
             info = 'Do you want to save the changes to layer {}?'.format(layer.name())
             is_mem = False
@@ -252,11 +252,11 @@ class VectorLayerTools(QgsVectorLayerTools):
                                           info,
                                           buttons)
 
-            if button == QMessageBox.Abort:
+            if button == QMessageBox.StandardButton.Abort:
                 return False
-            elif button == QMessageBox.Yes:
+            elif button == QMessageBox.StandardButton.Yes:
                 self.saveEdits(layer, leave_editable=False, trigger_repaint=True)
-            elif button == QMessageBox.No:
+            elif button == QMessageBox.StandardButton.No:
                 self.rollBackEdits(layer, leave_editable=False, trigger_repaint=True)
         else:
             layer.commitChanges()
@@ -273,4 +273,4 @@ class VectorLayerTools(QgsVectorLayerTools):
         info = "Could not commit changes to layer {}".format(layer.name())
         info += "\n\n{}".format('\n '.join(layer.commitErrors()))
 
-        self.sigMessage.emit(title, info, Qgis.Warning)
+        self.sigMessage.emit(title, info, Qgis.MessageLevel.Warning)

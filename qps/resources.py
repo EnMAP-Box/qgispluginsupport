@@ -28,6 +28,8 @@ import argparse
 import os
 import re
 import shutil
+import warnings
+import fileinput
 import subprocess
 import sys
 from pathlib import Path
@@ -41,11 +43,12 @@ from qgis.PyQt.QtWidgets import QAction, QApplication, QGraphicsPixmapItem, QGra
     QLineEdit, QMenu, QTableView, QTextBrowser, QToolButton, QWidget
 from qgis.PyQt.QtXml import QDomDocument, QDomElement
 
-if qgis.PyQt.QtCore.QT_VERSION_STR[0] == '5':
+_QT_FRAMEWORK = f'PyQt{qgis.PyQt.QtCore.QT_VERSION_STR[0]}'
+if _QT_FRAMEWORK == 'PyQt5':
     from qgis.PyQt.QtSvg import QGraphicsSvgItem
     from qgis.PyQt.QtCore import QRegExp
 else:
-    from PyQt6.QtSvgWidgets import QGraphicsSvgItem
+    from PyQt6.QtSvgWidgets import QGraphicsSvgItem  # noqa: QGS103
     from qgis.PyQt.QtCore import QRegularExpression as QRegExp
 
 if __name__ == '__main__' and __package__ in ['', None]:
@@ -78,9 +81,8 @@ def compileResourceFiles(dirRoot: Union[str, Path],
                          targetDir: Optional[Union[str, Path]] = None,
                          suffix: str = '_rc.py',
                          skip_qgis_images: bool = True,
-                         compressLevel=19,
+                         compressLevel=7,
                          compressThreshold=100,
-                         qt_version: str = None,
                          ):
     """
     Searches for *.ui files and compiles the *.qrc files they use.
@@ -163,12 +165,11 @@ def compileResourceFiles(dirRoot: Union[str, Path],
                             targetDir=targetDir,
                             suffix=s,
                             compressLevel=compressLevel,
-                            compressThreshold=compressThreshold,
-                            qt_version=qt_version)
+                            compressThreshold=compressThreshold)
         targetDirOutputNames.append(outName)
 
-    if len(qrc_files_skipped) > 0:
-        print('Skipped *.qrc files (out of root directory):')
+    if n := len(qrc_files_skipped):
+        print(f'Skipped {n} *.qrc files (out of root directory):')
         for qrcFile in qrc_files_skipped:
             print(qrcFile.as_posix())
 
@@ -186,19 +187,8 @@ def compileResourceFile(pathQrc,
     :param suffix: suffix to add to the output file name. defaults to '*._rc.py'
     :param compressLevel:
     :param compressThreshold:
-    :param qt_version: set major PyQt version to compile the resource file for. Defaults to the Qt version of the
-                       qgis.PyQt.QtCore module of the running python
     :return:
     """
-    if qt_version is None:
-        from qgis.PyQt.QtCore import QT_VERSION_STR
-        qt_version = QT_VERSION_STR[0]
-    else:
-        # qt_version = os.environ.get('QT_VERSION', '5')
-        qt_version = str(qt_version)
-
-    assert qt_version in ['5', '6'], 'Unsupported PyQt version: {}'.format(qt_version)
-
     if not isinstance(pathQrc, Path):
         pathQrc = Path(pathQrc)
 
@@ -232,28 +222,15 @@ def compileResourceFile(pathQrc,
         if result.returncode != 0:
             raise RuntimeError(f"Resource compilation failed: {result.stderr}")
 
-        # 
-        s = ""
-    elif False:
-        import qgis.PyQt.pyrcc_main
-        last_level = PyQt5.pyrcc_main.compressLevel
-        last_threshold = PyQt5.pyrcc_main.compressThreshold
-
-        # increase compression level and move to *.qrc's directory
-        PyQt5.pyrcc_main.compressLevel = compressLevel
-        PyQt5.pyrcc_main.compressThreshold = compressThreshold
-
-        assert PyQt5.pyrcc_main.processResourceFile([pathQrc.name], pathPy.as_posix(), False)
-
-        # restore previous settings
-        PyQt5.pyrcc_main.compressLevel = last_level
-        PyQt5.pyrcc_main.compressThreshold = last_threshold
-    else:
-        cmd = 'pyrcc5 -compress {} -o {} {}'.format(compressLevel, pathPy, pathQrc)
-        cmd2 = 'pyrcc5 -no-compress -o {} {}'.format(pathPy.as_posix(), pathQrc.name)
-
-        print(cmd2)
-        os.system(cmd2)
+        with fileinput.input(pathPy, inplace=True) as f:
+            fixed = False
+            for line in f:
+                if not fixed and line.startswith('from PySide'):
+                    print(f'from {_QT_FRAMEWORK} import QtCore # noqa: QGS103')
+                    # print(f'from qgis.PyQt import QtCore')
+                    fixed = True
+                else:
+                    print(line, end="")
 
     os.chdir(last_cwd)
 
@@ -338,6 +315,21 @@ def initResourceFile(path: Union[str, Path]):
     f = path.name
     name = f[:-3]
     add_path = path.parent.as_posix() not in sys.path
+
+    # check for QT version
+    version_test = False
+    with open(path, 'r') as f:
+        line_start = f'from {_QT_FRAMEWORK} import QtCore'
+        while line := f.readline():
+            if line.startswith(line_start):
+                version_test = True
+                break
+            if line.startswith('qt_resource_data ='):
+                break
+    if not version_test:
+        warnings.warn(f'Resource file not generated for {_QT_FRAMEWORK}: {path}')
+        return
+
     if add_path:
         sys.path.append(path.parent.as_posix())
     try:
@@ -433,11 +425,11 @@ class ResourceTableModel(QAbstractTableModel):
 
     def headerData(self, section: int, orientation: Qt.Orientation, role: int = ...) -> Any:
         if role == Qt.ItemDataRole.DisplayRole:
-            if orientation == Qt.Horizontal:
+            if orientation == Qt.Orientation.Horizontal:
                 return self.columnNames()[section]
 
-        if role == Qt.ItemDataRole.TextAlignmentRole and orientation == Qt.Vertical:
-            return Qt.AlignRight
+        if role == Qt.ItemDataRole.TextAlignmentRole and orientation == Qt.Orientation.Vertical:
+            return Qt.AlignmentFlag.AlignRight
 
         return super().headerData(section, orientation, role)
 
@@ -484,7 +476,7 @@ class ResourceTableView(QTableView):
             a = m.addAction('Copy Icon')
             a.triggered.connect(lambda *args, n=uri: QApplication.clipboard().setPixmap(QPixmap(n)))
 
-            m.exec_(event.globalPos())
+            m.exec(event.globalPos())
 
         pass
 
@@ -543,9 +535,9 @@ class ResourceBrowser(QWidget):
             expr.setPatternSyntax(QRegExp.Wildcard)
 
         if self.optionCaseSensitive.isChecked():
-            expr.setCaseSensitivity(Qt.CaseSensitive)
+            expr.setCaseSensitivity(Qt.CaseSensitivity.CaseSensitive)
         else:
-            expr.setCaseSensitivity(Qt.CaseInsensitive)
+            expr.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
 
         if expr.isValid():
             self.resourceProxyModel.setFilterRegExp(expr)
@@ -587,11 +579,11 @@ class ResourceBrowser(QWidget):
             if item:
                 hasImage = True
                 self.graphicsScene.addItem(item)
-                self.graphicsView.fitInView(item, Qt.KeepAspectRatio)
+                self.graphicsView.fitInView(item, Qt.AspectRatioMode.KeepAspectRatio)
 
             if re.search(r'\.(svg|html|xml|txt)$', uri, re.I) is not None:
                 file = QFile(uri)
-                if file.open(QFile.ReadOnly | QFile.Text):
+                if file.open(QFile.OpenModeFlag.ReadOnly | QFile.OpenModeFlag.Text):
                     stream = QTextStream(file)
                     stream.setAutoDetectUnicode(True)
                     txt = stream.readAll()
@@ -618,7 +610,7 @@ def showResources() -> ResourceBrowser:
     browser = ResourceBrowser()
     browser.show()
     if needQApp:
-        QApplication.instance().exec_()
+        QApplication.instance().exec()
     return browser
 
 
@@ -630,9 +622,7 @@ if __name__ == "__main__":
     parser_compile = subparsers.add_parser('compile', help='compile qrc files')
     parser_compile.add_argument('path', type=str, help='path to *.qrc file or directory containing *.qrc files')
     parser_compile.add_argument('--target', type=str, default=None, help='target directory')
-    parser_compile.add_argument('--qt-version', type=str, default=None,
-                                help='Qt version to compile for. Can be 5 or 6. Defaults to the version of '
-                                     'QGIS Python API')
+
     # browse command
     parser_browse = subparsers.add_parser('browse', help='open the ResourceBrowser')
 
@@ -641,9 +631,9 @@ if __name__ == "__main__":
     if args.command == 'compile':
         path = Path(args.path)
         if path.is_file():
-            compileResourceFile(path, targetDir=args.target, qt_version=args.qt_version)
+            compileResourceFile(path, targetDir=args.target)
         elif path.is_dir():
-            compileResourceFiles(path, targetDir=args.target, qt_version=args.qt_version)
+            compileResourceFiles(path, targetDir=args.target)
         else:
             print(f"Path not found: {args.path}", file=sys.stderr)
 

@@ -227,7 +227,7 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
                   'For example, "%d.%m.%Y %H:%M:%S" to read "27.05.2025 09:39:32". '
                   '<br>See <a href="https://docs.python.org/3/library/datetime.html#format-codes">'
                   'https://docs.python.org/3/library/datetime.html#format-codes</a> for details.')
-        p.setFlags(p.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
+        p.setFlags(p.flags() | QgsProcessingParameterDefinition.Flag.FlagAdvanced)
         self.addParameter(p)
 
         p = QgsProcessingParameterFeatureSink(

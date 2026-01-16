@@ -3,7 +3,6 @@ from typing import Union, List, Tuple
 
 from qgis.PyQt.QtCore import QMetaType
 from qgis.core import QgsFields, QgsField, QgsFeature
-
 from ..core.spectralprofile import SpectralProfileFileReader, encodeProfileValueDict, ProfileEncoding
 
 

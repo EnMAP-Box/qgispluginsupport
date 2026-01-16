@@ -84,7 +84,7 @@ class SpectralProcessingAlgorithmModel(QgsProcessingToolboxProxyModel):
                  recentLog: QgsProcessingRecentAlgorithmLog = None):
         super().__init__(parent, registry, recentLog)
         self.setRecursiveFilteringEnabled(True)
-        self.setFilterCaseSensitivity(Qt.CaseInsensitive)
+        self.setFilterCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
 
     def filterAcceptsRow(self, sourceRow: int, sourceParent: QModelIndex):
 
@@ -105,7 +105,7 @@ class SpectralProcessingRasterDestination(QgsAbstractProcessingParameterWidgetWr
 
     def __init__(self,
                  parameter,
-                 dialogType: QgsProcessingGui.WidgetType = QgsProcessingGui.Standard,
+                 dialogType: QgsProcessingGui.WidgetType = QgsProcessingGui.WidgetType.Standard,
                  parent: QObject = None):
         self.mLabel: QLabel = None
         self.mFieldComboBox: SpectralProfileFieldComboBox = None
@@ -150,7 +150,7 @@ class SpectralProcessingRasterDestination(QgsAbstractProcessingParameterWidgetWr
         cb.setEditable(True)
         for f in self.mFields:
             cb.addItem(iconForFieldType(f), f.name(), f)
-        is_optional = self.parameterDefinition().flags() & QgsProcessingParameterDefinition.FlagOptional
+        is_optional = self.parameterDefinition().flags() & QgsProcessingParameterDefinition.Flag.FlagOptional
         if is_optional:
             pass
         cb.currentTextChanged.connect(self.setValue)
@@ -200,7 +200,7 @@ class SpectralProcessingRasterLayerWidgetWrapper(QgsAbstractProcessingParameterW
 
     def __init__(self,
                  parameter: QgsProcessingParameterDefinition = None,
-                 dialogType: QgsProcessingGui.WidgetType = QgsProcessingGui.Standard,
+                 dialogType: QgsProcessingGui.WidgetType = QgsProcessingGui.WidgetType.Standard,
                  parent: QObject = None
                  ):
 
@@ -219,7 +219,7 @@ class SpectralProcessingRasterLayerWidgetWrapper(QgsAbstractProcessingParameterW
         self.mMapLayerModel = model
 
         param = self.parameterDefinition()
-        is_optional = param.flags() & QgsProcessingParameterDefinition.FlagOptional
+        is_optional = param.flags() & QgsProcessingParameterDefinition.Flag.FlagOptional
         if is_optional:
             model.setAllowEmptyLayer(True)
 
@@ -236,7 +236,7 @@ class SpectralProcessingRasterLayerWidgetWrapper(QgsAbstractProcessingParameterW
         return mapLayerWidget
 
     def onIndexChanged(self, idx, model):
-        layer = model.data(model.index(idx, 0), QgsMapLayerModel.LayerRole)
+        layer = model.data(model.index(idx, 0), QgsMapLayerModel.CustomRole.LayerRole)
         self.setValue(layer)
 
     def createWrappedWidget(self, context: QgsProcessingContext) -> QWidget:
@@ -283,7 +283,7 @@ class SpectralProcessingRasterLayerWidgetWrapper(QgsAbstractProcessingParameterW
     def widgetValue(self):
         if isinstance(self.mMapLayerWidget, QWidget):
             if isinstance(self.mMapLayerWidget, QComboBox):
-                return self.mMapLayerWidget.currentData(QgsMapLayerModel.LayerRole)
+                return self.mMapLayerWidget.currentData(QgsMapLayerModel.CustomRole.LayerRole)
             else:
                 raise NotImplementedError()
 
@@ -335,9 +335,9 @@ class SpectralProcessingRasterLayerWidgetWrapper(QgsAbstractProcessingParameterW
 
         return self.mProfileField
 
-        if self.mDialogType == QgsProcessingGui.Modeler:
+        if self.mDialogType == QgsProcessingGui.WidgetType.Modeler:
             return self.widget.windowTitle() + '+Modeler'
-        elif self.mDialogType == QgsProcessingGui.Batch:
+        elif self.mDialogType == QgsProcessingGui.WidgetType.Batch:
             return self.widget.windowTitle() + '+Batch'
         else:
             return self.widget.windowTitle() + '+Std'
@@ -431,7 +431,7 @@ class SpectralProcessingModelCreatorAlgorithmWrapper(QgsProcessingParametersWidg
         for param in self.algorithm().parameterDefinitions():
             if self.parameterWidget(param.name()):
                 s = ""
-            if param.flags() & QgsProcessingParameterDefinition.FlagHidden:
+            if param.flags() & QgsProcessingParameterDefinition.Flag.FlagHidden:
                 continue
             # if isinstance(param, (SpectralProcessingProfiles, SpectralProcessingProfilesSink)):
             #    continue
@@ -440,7 +440,7 @@ class SpectralProcessingModelCreatorAlgorithmWrapper(QgsProcessingParametersWidg
 
             if isinstance(param, QgsProcessingParameterRasterLayer):
                 # workaround https://github.com/qgis/QGIS/issues/46673
-                wrapper = SpectralProcessingRasterLayerWidgetWrapper(param, QgsProcessingGui.Standard)
+                wrapper = SpectralProcessingRasterLayerWidgetWrapper(param, QgsProcessingGui.WidgetType.Standard)
             else:
                 wrapper = WidgetWrapperFactory.create_wrapper(param, self.parent(), row=0, col=0)
 
@@ -475,16 +475,17 @@ class SpectralProcessingModelCreatorAlgorithmWrapper(QgsProcessingParametersWidg
                 self.addParameterWidget(param, widget, stretch)
 
         for output in self.algorithm().destinationParameterDefinitions():
-            if output.flags() & QgsProcessingParameterDefinition.FlagHidden:
+            if output.flags() & QgsProcessingParameterDefinition.Flag.FlagHidden:
                 continue
 
             if isinstance(output, QgsProcessingParameterRasterDestination):
                 # raster outputs will be written to new or existing spectral profile columns
-                wrapper = SpectralProcessingRasterDestination(output, QgsProcessingGui.Standard)
+                wrapper = SpectralProcessingRasterDestination(output, QgsProcessingGui.WidgetType.Standard)
                 wrapper.setFields(self.mSpeclib.fields())
 
             else:
-                wrapper = QgsGui.processingGuiRegistry().createParameterWidgetWrapper(output, QgsProcessingGui.Standard)
+                wrapper = QgsGui.processingGuiRegistry().createParameterWidgetWrapper(output,
+                                                                                      QgsProcessingGui.WidgetType.Standard)
 
             wrapper.setWidgetContext(widget_context)
             wrapper.registerProcessingContextGenerator(self.mContextGenerator)
@@ -516,7 +517,7 @@ class SpectralProcessingModelCreatorAlgorithmWrapper(QgsProcessingParametersWidg
             parameters[p] = v
 
         for param in self.algorithm().parameterDefinitions():
-            if param.flags() & QgsProcessingParameterDefinition.FlagHidden:
+            if param.flags() & QgsProcessingParameterDefinition.Flag.FlagHidden:
                 continue
             if not param.isDestination():
                 try:
@@ -595,7 +596,7 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
                  parent: Optional[QWidget] = None,
                  **kwds):
         super().__init__(parent=parent)
-        self.setWindowFlag(Qt.WindowContextHelpButtonHint, False)
+        self.setWindowFlag(Qt.WindowType.WindowContextHelpButtonHint, False)
         # QgsProcessingContextGenerator.__init__(self)
         self.mDialogName = 'Spectral Processing Dialog'
         self.setWindowTitle(self.mDialogName)
@@ -609,7 +610,7 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
         self.tbAlgorithmName.setPlaceholderText('Select a raster processing algorithm / model')
         self.tbAlgorithmName.setReadOnly(True)
         self.tbAlgorithmName.setAutoFillBackground(True)
-        self.tbAlgorithmName.setSizePolicy(QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred))
+        self.tbAlgorithmName.setSizePolicy(QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred))
 
         self.cbSelectedFeaturesOnly = QCheckBox('Only process selected features')
 
@@ -711,7 +712,7 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
         d = ProcessingAlgorithmDialog(self)
         d.setAlgorithmModel(self.mProcessingAlgorithmModel)
 
-        if d.exec_() == QDialog.Accepted:
+        if d.exec() == QDialog.DialogCode.Accepted:
             alg = d.algorithm()
             if isinstance(alg, QgsProcessingAlgorithm):
                 self.setAlgorithm(alg)

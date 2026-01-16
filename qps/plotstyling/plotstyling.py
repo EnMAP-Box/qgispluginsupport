@@ -157,10 +157,10 @@ class MarkerSymbol(enum.Enum):
         symbol = MarkerSymbol.decode(symbol)
         assert isinstance(symbol, MarkerSymbol)
         # print('render {}'.format(symbol.value))
-        pen = QPen(Qt.SolidLine)
+        pen = QPen(Qt.PenStyle.SolidLine)
         pen.setColor(QColor('black'))
         pen.setWidth(0)
-        image = renderSymbol(symbol.value, 10, pen, Qt.NoBrush)
+        image = renderSymbol(symbol.value, 10, pen, Qt.BrushStyle.NoBrush)
         return QIcon(QPixmap.fromImage(image))
 
     @staticmethod
@@ -321,7 +321,7 @@ layerId = '[% @layer_id %]'
 runPlotStyleActionRoutine(layerId, '{styleField}' , [% $id %])
 """.format(modulePath=MODULE_IMPORT_PATH, styleField=field.name())
 
-    return QgsAction(QgsAction.GenericPython, 'Set PlotStyle', pythonCode, iconPath, True,
+    return QgsAction(QgsAction.ActionType.GenericPython, 'Set PlotStyle', pythonCode, iconPath, True,
                      notificationMessage='msgSetPlotStyle',
                      actionScopes={'Feature'})
 
@@ -361,20 +361,20 @@ class PlotStyle(QObject):
         self.markerSymbol: str = MarkerSymbol.Circle.value
         self.markerSize: int = 5
         self.markerBrush: QBrush = QBrush()
-        self.markerBrush.setColor(Qt.green)
-        self.markerBrush.setStyle(Qt.SolidPattern)
+        self.markerBrush.setColor(Qt.GlobalColor.green)
+        self.markerBrush.setStyle(Qt.BrushStyle.SolidPattern)
 
-        self.backgroundColor: QColor = QColor(Qt.black)
+        self.backgroundColor: QColor = QColor(Qt.GlobalColor.black)
 
         self.markerPen: QPen = QPen()
         self.markerPen.setCosmetic(True)
-        self.markerPen.setStyle(Qt.NoPen)
-        self.markerPen.setColor(Qt.white)
+        self.markerPen.setStyle(Qt.PenStyle.NoPen)
+        self.markerPen.setColor(Qt.GlobalColor.white)
         self.markerPen.setWidthF(0)
 
         self.linePen: QPen = QPen()
         self.linePen.setCosmetic(True)
-        self.linePen.setStyle(Qt.NoPen)
+        self.linePen.setStyle(Qt.PenStyle.NoPen)
         self.linePen.setWidthF(0)
         self.linePen.setColor(QColor(74, 75, 75))
 
@@ -763,8 +763,8 @@ class PlotStyle(QObject):
 
             p = QPainter(pm)
             if antialias:
-                p.setRenderHint(QPainter.Antialiasing, True)
-                p.setRenderHint(QPainter.SmoothPixmapTransform, True)
+                p.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+                p.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, True)
             # draw the line
 
             p.setPen(self.linePen)
@@ -811,7 +811,7 @@ class PlotStyle(QObject):
         result = self.__dict__.copy()
 
         ba = QByteArray()
-        s = QDataStream(ba, QIODevice.WriteOnly)
+        s = QDataStream(ba, QIODevice.OpenModeFlag.WriteOnly)
         s.writeQVariant(self.linePen)
         s.writeQVariant(self.markerPen)
         s.writeQVariant(self.markerBrush)
@@ -978,8 +978,8 @@ class PlotStyleWidget(QWidget):
         """
         cb: QComboBox = self.cbSymbol
         has_symbol = self.cbSymbol.currentData() != MarkerSymbol.No_Symbol
-        has_symbol_pen = self.cbSymbolPen.currentData() != Qt.NoPen
-        has_line = self.cbLinePen.currentData() != Qt.NoPen
+        has_symbol_pen = self.cbSymbolPen.currentData() != Qt.PenStyle.NoPen
+        has_line = self.cbLinePen.currentData() != Qt.PenStyle.NoPen
 
         for w in [self.btnSymbolColor, self.sbSymbolSize,
                   self.labelSymbolPen, self.cbSymbolPen]:
@@ -1084,7 +1084,7 @@ class PlotStyleWidget(QWidget):
                 if F.Size in visFlags:
                     style.markerPen.setWidth(self.sbSymbolPenWidth.value())
             else:
-                style.markerPen.setStyle(Qt.NoPen)
+                style.markerPen.setStyle(Qt.PenStyle.NoPen)
 
         else:
             style.setMarkerSymbol(MarkerSymbol.No_Symbol)
@@ -1099,7 +1099,7 @@ class PlotStyleWidget(QWidget):
                 style.linePen.setWidth(self.sbLinePenWidth.value())
 
         else:
-            style.linePen.setStyle(Qt.NoPen)
+            style.linePen.setStyle(Qt.PenStyle.NoPen)
 
         # style.markerSize = self.sbSymbolSize.value()
         # style.setMarkerSymbol(self.cbSymbol.markerSymbol())
@@ -1148,7 +1148,7 @@ class PlotStyleButton(QToolButton):
         self.mMenu.addAction(self.mWA)
         self.mMenu.aboutToShow.connect(self.onAboutToShowMenu)
         self.setMenu(self.mMenu)
-        self.setPopupMode(QToolButton.MenuButtonPopup)
+        self.setPopupMode(QToolButton.ToolButtonPopupMode.MenuButtonPopup)
 
         self.clicked.connect(lambda: self.activateWindow())
         self.toggled.connect(self.onToggled)
@@ -1249,7 +1249,7 @@ class PlotStyleDialog(QgsDialog):
         """
         d = PlotStyleDialog(*args, **kwds)
 
-        if d.exec_() == QDialog.Accepted:
+        if d.exec() == QDialog.DialogCode.Accepted:
             return d.plotStyle()
         else:
             return None
@@ -1262,7 +1262,7 @@ class PlotStyleDialog(QgsDialog):
                  title: str = 'Specify Plot Style',
                  **kwds):
         super(PlotStyleDialog, self).__init__(parent=parent,
-                                              buttons=QDialogButtonBox.Ok | QDialogButtonBox.Cancel,
+                                              buttons=QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel,
                                               **kwds)
         self.w: PlotStyleWidget = PlotStyleWidget(parent=self, plotStyle=plotStyle)
         self.w.sigPlotStyleChanged.connect(self.onPlotStyleChanged)

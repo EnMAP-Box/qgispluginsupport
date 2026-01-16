@@ -71,7 +71,7 @@ def setCurrentComboBoxValue(comboBox, value):
         if i == -1:
             for r in range(model.rowCount(QModelIndex())):
                 idx = model.index(r, 0)
-                displayData = model.data(idx, role=Qt.Unchecked)
+                displayData = model.data(idx, role=Qt.CheckState.Unchecked)
                 userData = model.data(idx, role=Qt.ItemDataRole.UserRole)
                 if displayData == value or (userData is not None and userData == value):
                     i = r
@@ -318,7 +318,7 @@ class TreeNode(QObject):
         self.mValues: list = []
         self.mIcon: QIcon = None
         self.mToolTip: str = None
-        self.mCheckState: Qt.CheckState = Qt.Unchecked
+        self.mCheckState: Qt.CheckState = Qt.CheckState.Unchecked
         self.mCheckable: bool = False
         self.mStatusTip: str = ''
 
@@ -417,7 +417,7 @@ class TreeNode(QObject):
         return self.mCheckState
 
     def checked(self) -> bool:
-        return self.isCheckable() and self.mCheckState == Qt.Checked
+        return self.isCheckable() and self.mCheckState == Qt.CheckState.Checked
 
     def isCheckable(self) -> bool:
         return self.mCheckable is True
@@ -974,7 +974,7 @@ class TreeModel(QAbstractItemModel):
 
     def headerData(self, section, orientation, role):
         assert isinstance(section, int)
-        if orientation == Qt.Horizontal and role == Qt.ItemDataRole.DisplayRole:
+        if orientation == Qt.Orientation.Horizontal and role == Qt.ItemDataRole.DisplayRole:
             if section < len(self.mRootNode.values()):
                 return self.mRootNode.values()[section]
             else:
@@ -1284,8 +1284,8 @@ class TreeModel(QAbstractItemModel):
     def flags(self, index):
         assert isinstance(index, QModelIndex)
         if not index.isValid():
-            return Qt.NoItemFlags
-        return Qt.ItemIsEnabled | Qt.ItemIsSelectable
+            return Qt.ItemFlag.NoItemFlags
+        return Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable
 
 
 class TreeView(QTreeView):
@@ -1322,7 +1322,7 @@ class TreeView(QTreeView):
         self.populateContextMenu.emit(menu)
 
         if not menu.isEmpty():
-            menu.exec_(self.viewport().mapToGlobal(event.pos()))
+            menu.exec(self.viewport().mapToGlobal(event.pos()))
 
     def setAutoExpansionDepth(self, depth: int):
         """
@@ -1532,14 +1532,14 @@ class SettingsModel(TreeModel):
 
     def flags(self, index: QModelIndex):
         if not index.isValid():
-            return Qt.NoItemFlags
-        flags = Qt.ItemIsEnabled | Qt.ItemIsSelectable
+            return Qt.ItemFlag.NoItemFlags
+        flags = Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable
         node = index.data(Qt.ItemDataRole.UserRole)
 
         if isinstance(node, SettingsNode):
-            flags = flags | Qt.ItemIsEditable
+            flags = flags | Qt.ItemFlag.ItemIsEditable
             if isinstance(node.value(), bool):
-                flags = flags | Qt.ItemIsUserCheckable
+                flags = flags | Qt.ItemFlag.ItemIsUserCheckable
         return flags
 
     def keys(self) -> List[str]:

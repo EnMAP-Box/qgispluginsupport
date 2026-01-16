@@ -134,7 +134,7 @@ class TestSpeclibWidgets(TestCase):
 
         md.setUrls([QUrl.fromLocalFile(envi_sli)])
 
-        event = QDropEvent(QPoint(0, 0), Qt.CopyAction, md, Qt.LeftButton, Qt.NoModifier)
+        event = QDropEvent(QPoint(0, 0), Qt.DropAction.CopyAction, md, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier)
         print('Drop {}'.format(envi_sli), flush=True)
         slw.dropEvent(event)
         self.assertEqual(len(slw.speclib()), len(sl))
@@ -150,7 +150,7 @@ class TestSpeclibWidgets(TestCase):
             md = QMimeData()
             md.setUrls([QUrl.fromLocalFile(file.as_posix())])
             print('# Drop {}'.format(file.name), flush=True)
-            event = QDropEvent(QPoint(0, 0), Qt.CopyAction, md, Qt.LeftButton, Qt.NoModifier)
+            event = QDropEvent(QPoint(0, 0), Qt.DropAction.CopyAction, md, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier)
             slw.dropEvent(event)
             QApplication.processEvents()
             # delete dropped spectra

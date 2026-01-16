@@ -2,7 +2,6 @@ import datetime
 import enum
 import json
 import math
-import pickle
 import re
 import warnings
 from json import JSONDecodeError
@@ -210,8 +209,7 @@ def noneToNan(v):
 
 
 def encodeProfileValueDict(d: dict,
-                           encoding: Union[str, QgsField, ProfileEncoding],
-                           jsonFormat: QJsonDocument.JsonFormat = QJsonDocument.Compact) -> Any:
+                           encoding: Union[str, QgsField, ProfileEncoding]) -> Any:
     """
     Serializes a SpectralProfile dictionary into JSON string or JSON string compressed as QByteArray
     extracted with `decodeProfileValueDict`.
@@ -239,7 +237,7 @@ def encodeProfileValueDict(d: dict,
         if isinstance(xValues[0], datetime.datetime):
             d2['x'] = [x.isoformat() for x in xValues]
         elif isinstance(xValues[0], QDateTime):
-            d2['x'] = [x.toString(Qt.ISODate) for x in xValues]
+            d2['x'] = [x.toString(Qt.DateFormat.ISODate) for x in xValues]
 
     if encoding == ProfileEncoding.Dict:
         # convert None to NaN
@@ -255,15 +253,13 @@ def encodeProfileValueDict(d: dict,
         if k in d2:
             d2[k] = [nanToNone(v) for v in d2[k]]
 
+    dump = json.dumps(d2, ensure_ascii=False, allow_nan=False)
     if encoding in [ProfileEncoding.Bytes, ProfileEncoding.Binary]:
-        jsonDoc = QJsonDocument.fromVariant(d2)
-        return jsonDoc.toBinaryData()
-    else:
-        # encoding = TEXT
-        return json.dumps(d2, ensure_ascii=False, allow_nan=False)
+        dump = QByteArray(bytearray(dump, 'utf-8'))
+    return dump
 
 
-def decodeProfileValueDict(dump: Union[QByteArray, str, dict], numpy_arrays: bool = False) -> dict:
+def decodeProfileValueDict(dump: Union[QByteArray, bytes, str, dict], numpy_arrays: bool = False) -> dict:
     """
     Converts a text / json / pickle / bytes representation of a SpectralProfile into a dictionary.
 
@@ -279,21 +275,14 @@ def decodeProfileValueDict(dump: Union[QByteArray, str, dict], numpy_arrays: boo
     d: Optional[dict] = None
     jsonDoc = None
 
-    if isinstance(dump, bytes):
-        dump = QByteArray(dump)
     if isinstance(dump, QByteArray):
-        if dump.count() > 0 and dump.at(0) == b'{':
-            jsonDoc = QJsonDocument.fromJson(dump)
-        else:
-            jsonDoc = QJsonDocument.fromBinaryData(dump)
-        if jsonDoc.isNull():
-            try:
-                dump = pickle.loads(dump)
+        dump = dump.data().decode('utf-8')
 
-            except EOFError as ex:
-                pass
-            except pickle.UnpicklingError as ex:
-                pass
+    if isinstance(dump, bytes):
+        dump = dump.decode()
+
+    if isinstance(dump, bytearray):
+        dump = dump.decode('utf-8')
 
     if isinstance(dump, str):
         try:
