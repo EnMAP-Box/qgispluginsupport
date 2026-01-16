@@ -87,7 +87,7 @@ class LayerFieldDialogTests(TestCase):
 
         else:
 
-            if d.exec_() == d.Accepted:
+            if d.exec() == d.Accepted:
                 print(f'Accepted: {d.layer()} {d.field()}')
             else:
                 print(f'Canceled: {d.layer()} {d.field()}')

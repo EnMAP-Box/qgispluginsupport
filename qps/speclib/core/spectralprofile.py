@@ -237,7 +237,7 @@ def encodeProfileValueDict(d: dict,
         if isinstance(xValues[0], datetime.datetime):
             d2['x'] = [x.isoformat() for x in xValues]
         elif isinstance(xValues[0], QDateTime):
-            d2['x'] = [x.toString(Qt.ISODate) for x in xValues]
+            d2['x'] = [x.toString(Qt.DateFormat.ISODate) for x in xValues]
 
     if encoding == ProfileEncoding.Dict:
         # convert None to NaN

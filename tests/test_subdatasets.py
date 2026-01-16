@@ -87,7 +87,7 @@ class TestSubDataSets(TestCase):
         self.assertEqual(len(sublayers), 1)
 
         if not TestCase.runsInCI():
-            if d.exec() == QDialog.Accepted:
+            if d.exec() == QDialog.DialogCode.Accepted:
                 sublayers = d.selectedSublayerDetails()
                 print(f'Sub layers: {sublayers}')
 

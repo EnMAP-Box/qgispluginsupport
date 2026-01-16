@@ -659,7 +659,7 @@ class QgsFunctionTests(TestCase):
         QgsProject.instance().addMapLayers([lyr])
 
         gui = QgsFieldCalculator(lyr, None)
-        gui.exec_()
+        gui.exec()
 
         QgsProject.instance().removeAllMapLayers()
 
@@ -799,7 +799,7 @@ class QgsFunctionTests(TestCase):
             # create new field: agr with type map
             # entry expression: mean_profile("profile", "class")
 
-            gui.exec_()
+            gui.exec()
 
         for f in sl.getFeatures():
             f: QgsFeature

@@ -157,10 +157,10 @@ class MarkerSymbol(enum.Enum):
         symbol = MarkerSymbol.decode(symbol)
         assert isinstance(symbol, MarkerSymbol)
         # print('render {}'.format(symbol.value))
-        pen = QPen(Qt.SolidLine)
+        pen = QPen(Qt.PenStyle.SolidLine)
         pen.setColor(QColor('black'))
         pen.setWidth(0)
-        image = renderSymbol(symbol.value, 10, pen, Qt.NoBrush)
+        image = renderSymbol(symbol.value, 10, pen, Qt.BrushStyle.NoBrush)
         return QIcon(QPixmap.fromImage(image))
 
     @staticmethod
@@ -321,7 +321,7 @@ layerId = '[% @layer_id %]'
 runPlotStyleActionRoutine(layerId, '{styleField}' , [% $id %])
 """.format(modulePath=MODULE_IMPORT_PATH, styleField=field.name())
 
-    return QgsAction(QgsAction.GenericPython, 'Set PlotStyle', pythonCode, iconPath, True,
+    return QgsAction(QgsAction.ActionType.GenericPython, 'Set PlotStyle', pythonCode, iconPath, True,
                      notificationMessage='msgSetPlotStyle',
                      actionScopes={'Feature'})
 
@@ -763,8 +763,8 @@ class PlotStyle(QObject):
 
             p = QPainter(pm)
             if antialias:
-                p.setRenderHint(QPainter.Antialiasing, True)
-                p.setRenderHint(QPainter.SmoothPixmapTransform, True)
+                p.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+                p.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, True)
             # draw the line
 
             p.setPen(self.linePen)
@@ -811,7 +811,7 @@ class PlotStyle(QObject):
         result = self.__dict__.copy()
 
         ba = QByteArray()
-        s = QDataStream(ba, QIODevice.WriteOnly)
+        s = QDataStream(ba, QIODevice.OpenModeFlag.WriteOnly)
         s.writeQVariant(self.linePen)
         s.writeQVariant(self.markerPen)
         s.writeQVariant(self.markerBrush)
@@ -1148,7 +1148,7 @@ class PlotStyleButton(QToolButton):
         self.mMenu.addAction(self.mWA)
         self.mMenu.aboutToShow.connect(self.onAboutToShowMenu)
         self.setMenu(self.mMenu)
-        self.setPopupMode(QToolButton.MenuButtonPopup)
+        self.setPopupMode(QToolButton.ToolButtonPopupMode.MenuButtonPopup)
 
         self.clicked.connect(lambda: self.activateWindow())
         self.toggled.connect(self.onToggled)
@@ -1249,7 +1249,7 @@ class PlotStyleDialog(QgsDialog):
         """
         d = PlotStyleDialog(*args, **kwds)
 
-        if d.exec_() == QDialog.Accepted:
+        if d.exec() == QDialog.DialogCode.Accepted:
             return d.plotStyle()
         else:
             return None
@@ -1262,7 +1262,7 @@ class PlotStyleDialog(QgsDialog):
                  title: str = 'Specify Plot Style',
                  **kwds):
         super(PlotStyleDialog, self).__init__(parent=parent,
-                                              buttons=QDialogButtonBox.Ok | QDialogButtonBox.Cancel,
+                                              buttons=QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel,
                                               **kwds)
         self.w: PlotStyleWidget = PlotStyleWidget(parent=self, plotStyle=plotStyle)
         self.w.sigPlotStyleChanged.connect(self.onPlotStyleChanged)

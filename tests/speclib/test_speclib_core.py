@@ -25,10 +25,10 @@ import unittest
 from typing import List
 
 import numpy as np
-from PyQt6.QtCore import QMetaType
 from osgeo import ogr
 
 from qgis.PyQt.QtCore import NULL, QByteArray, QJsonDocument, QVariant
+from qgis.PyQt.QtCore import QMetaType
 from qgis.core import edit, QgsCoordinateReferenceSystem, QgsFeature, QgsField, QgsFields, QgsRasterLayer, \
     QgsVectorLayer, QgsWkbTypes
 from qps import initAll
@@ -585,7 +585,7 @@ class SpeclibCoreTests(TestCase):
 
     def test_save_gpkg_crs(self):
         crs = QgsCoordinateReferenceSystem('EPSG:32632')
-        lyr = TestObjects.createVectorLayer(QgsWkbTypes.Point, crs=crs)
+        lyr = TestObjects.createVectorLayer(QgsWkbTypes.Type.Point, crs=crs)
         self.assertEqual(lyr.crs(), crs)
         TESTDIR = self.createTestOutputDirectory()
         filenameCopy = TESTDIR / 'copy.gpkg'

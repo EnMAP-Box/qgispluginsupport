@@ -105,7 +105,7 @@ class SpectralProfileFieldActivatorModel(QgsFieldModel):
 
     def headerData(self, section: int, orientation: Qt.Orientation, role: int = Qt.ItemDataRole.DisplayRole):
 
-        if orientation == Qt.Horizontal:
+        if orientation == Qt.Orientation.Horizontal:
             if role == Qt.ItemDataRole.DisplayRole:
                 return self.mColNames[section]
             if role == Qt.ItemDataRole.ToolTipRole:
@@ -127,11 +127,11 @@ class SpectralProfileFieldActivatorModel(QgsFieldModel):
     def flags(self, index: QModelIndex) -> Qt.ItemFlags:
 
         # flags = super().flags(index)
-        flags = Qt.NoItemFlags
+        flags = Qt.ItemFlag.NoItemFlags
         if can_store_spectral_profiles(self.field(index)):
-            flags = flags | Qt.ItemIsEnabled
+            flags = flags | Qt.ItemFlag.ItemIsEnabled
             if index.column() == 0:
-                flags = flags | Qt.ItemIsUserCheckable
+                flags = flags | Qt.ItemFlag.ItemIsUserCheckable
         else:
             s = ""
 
@@ -151,10 +151,10 @@ class SpectralProfileFieldActivatorModel(QgsFieldModel):
             i = index.row()
             layer = self.layer()
 
-            if value == Qt.Checked:
+            if value == Qt.CheckState.Checked:
                 changed = SpectralLibraryUtils.makeToProfileField(layer, field)
 
-            elif value == Qt.Unchecked:
+            elif value == Qt.CheckState.Unchecked:
                 last: QgsEditorWidgetSetup = self.mDefaultEditorWidgets[field.name()]
                 if last.type() == EDITOR_WIDGET_REGISTRY_KEY:
                     last = QgsEditorWidgetSetup()
@@ -208,11 +208,11 @@ class SpectralProfileFieldActivatorModel(QgsFieldModel):
                 return None
 
         if role == Qt.ItemDataRole.CheckStateRole and col == 0:
-            if self.flags(index) & Qt.ItemIsUserCheckable != 0:
+            if self.flags(index) & Qt.ItemFlag.ItemIsUserCheckable != 0:
                 if is_profile_field(field):
-                    return Qt.Checked
+                    return Qt.CheckState.Checked
                 else:
-                    return Qt.Unchecked
+                    return Qt.CheckState.Unchecked
 
         return None
 
@@ -224,7 +224,7 @@ class SpectralProfileFieldActivatorDialog(QDialog):
 
         loadUi(speclibUiPath(self), self)
         self.mTitleBase = self.windowTitle()
-        self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
+        self.setWindowFlags(self.windowFlags() & ~Qt.WindowType.WindowContextHelpButtonHint)
         self.mModel = SpectralProfileFieldActivatorModel()
         self.tableView().setModel(self.mModel)
 

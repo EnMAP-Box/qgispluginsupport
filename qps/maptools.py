@@ -82,8 +82,8 @@ def createQgsMapCanvasUserInputWidget(canvas: QgsMapCanvas) -> QgsUserInputWidge
         mUserInputWidget = QgsUserInputWidget(canvas)
         mUserInputWidget.setObjectName('UserInputDockWidget')
         mUserInputWidget.setAnchorWidget(canvas)
-        mUserInputWidget.setAnchorWidgetPoint(QgsFloatingWidget.TopRight)
-        mUserInputWidget.setAnchorPoint(QgsFloatingWidget.TopRight)
+        mUserInputWidget.setAnchorWidgetPoint(QgsFloatingWidget.AnchorPoint.TopRight)
+        mUserInputWidget.setAnchorPoint(QgsFloatingWidget.AnchorPoint.TopRight)
     return mUserInputWidget
 
 
@@ -216,22 +216,22 @@ class CursorLocationMapTool(QgsMapToolEmitPoint):
 
         QgsMapToolEmitPoint.__init__(self, canvas)
         self.marker = QgsVertexMarker(self.canvas())
-        self.rubberband = QgsRubberBand(self.canvas(), QgsWkbTypes.PolygonGeometry)
+        self.rubberband = QgsRubberBand(self.canvas(), QgsWkbTypes.GeometryType.PolygonGeometry)
 
         color = QColor('red')
-        self.mButtons = [Qt.LeftButton]
-        self.rubberband.setLineStyle(Qt.SolidLine)
+        self.mButtons = [Qt.MouseButton.LeftButton]
+        self.rubberband.setLineStyle(Qt.PenStyle.SolidLine)
         self.rubberband.setColor(color)
         self.rubberband.setWidth(2)
 
         self.marker.setColor(color)
         self.marker.setPenWidth(3)
         self.marker.setIconSize(5)
-        self.marker.setIconType(QgsVertexMarker.ICON_CROSS)  # or ICON_CROSS, ICON_X
+        self.marker.setIconType(QgsVertexMarker.IconType.ICON_CROSS)  # or ICON_CROSS, ICON_X
         self.hideRubberband()
 
     def flags(self) -> QgsMapTool.Flags:
-        return QgsMapTool.ShowContextMenu
+        return QgsMapTool.Flag.ShowContextMenu
 
     def setMouseButtons(self, listOfButtons):
         assert isinstance(listOfButtons)
@@ -283,8 +283,8 @@ class CursorLocationMapTool(QgsMapToolEmitPoint):
                     geom.addPartV2(lineH, Qgis.WkbType.LineString)
                     geom.addPartV2(lineV, Qgis.WkbType.LineString)
                 else:
-                    geom.addPart(lineH, QgsWkbTypes.LineGeometry)
-                    geom.addPart(lineV, QgsWkbTypes.LineGeometry)
+                    geom.addPart(lineH, QgsWkbTypes.GeometryType.LineGeometry)
+                    geom.addPart(lineV, QgsWkbTypes.GeometryType.LineGeometry)
                 self.rubberband.addGeometry(geom, None)
                 self.rubberband.show()
 
@@ -316,7 +316,7 @@ class MapToolCenter(CursorLocationMapTool):
             connect(lambda crs, pt: self.setMapCenter(SpatialPoint(crs, pt)))
 
     def flags(self) -> QgsMapTool.Flags:
-        return QgsMapTool.ShowContextMenu
+        return QgsMapTool.Flag.ShowContextMenu
 
     def setMapCenter(self, point: SpatialPoint):
         """
@@ -346,7 +346,7 @@ class PixelScaleExtentMapTool(QgsMapTool):
         """
         :return:
         """
-        return QgsMapTool.Transient | QgsMapTool.ShowContextMenu
+        return QgsMapTool.Flag.Transient | QgsMapTool.Flag.ShowContextMenu
 
     def canvasReleaseEvent(self, mouseEvent: QgsMapMouseEvent):
         """
@@ -408,19 +408,19 @@ class FullExtentMapTool(QgsMapTool):
         self.canvas().zoomToFullExtent()
 
     def flags(self):
-        return QgsMapTool.Transient | QgsMapTool.ShowContextMenu
+        return QgsMapTool.Flag.Transient | QgsMapTool.Flag.ShowContextMenu
 
 
 class PointLayersMapTool(CursorLocationMapTool):
 
     def __init__(self, canvas):
         super(PointLayersMapTool, self).__init__(self, canvas)
-        self.layerType = QgsMapToolIdentify.AllLayers
-        self.identifyMode = QgsMapToolIdentify.LayerSelection
+        self.layerType = QgsMapToolIdentify.Type.AllLayers
+        self.identifyMode = QgsMapToolIdentify.IdentifyMode.LayerSelection
         QgsMapToolIdentify.__init__(self, canvas)
 
     def flags(self) -> QgsMapTool.Flags:
-        return QgsMapTool.ShowContextMenu
+        return QgsMapTool.Flag.ShowContextMenu
 
 
 class SpatialExtentMapTool(QgsMapToolEmitPoint):
@@ -432,12 +432,12 @@ class SpatialExtentMapTool(QgsMapToolEmitPoint):
     def __init__(self, canvas: QgsMapCanvas):
         super(SpatialExtentMapTool, self).__init__(canvas)
         self.isEmittingPoint = False
-        self.rubberBand = QgsRubberBand(self.canvas(), QgsWkbTypes.PolygonGeometry)
-        self.setStyle(Qt.red, 1)
+        self.rubberBand = QgsRubberBand(self.canvas(), QgsWkbTypes.GeometryType.PolygonGeometry)
+        self.setStyle(Qt.GlobalColor.red, 1)
         self.reset()
 
     def flags(self) -> QgsMapTool.Flags:
-        return QgsMapTool.ShowContextMenu
+        return QgsMapTool.Flag.ShowContextMenu
 
     def setStyle(self, color: QColor, width: int):
         """
@@ -454,7 +454,7 @@ class SpatialExtentMapTool(QgsMapToolEmitPoint):
         """
         self.startPoint = self.endPoint = None
         self.isEmittingPoint = False
-        self.rubberBand.reset(QgsWkbTypes.PolygonGeometry)
+        self.rubberBand.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
 
     def canvasPressEvent(self, e):
         self.startPoint = self.toMapCoordinates(e.pos())
@@ -481,7 +481,7 @@ class SpatialExtentMapTool(QgsMapToolEmitPoint):
         self.showRect(self.startPoint, self.endPoint)
 
     def showRect(self, startPoint, endPoint):
-        self.rubberBand.reset(QgsWkbTypes.PolygonGeometry)
+        self.rubberBand.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
         if startPoint.x() == endPoint.x() or startPoint.y() == endPoint.y():
             return
 
@@ -510,18 +510,18 @@ class RectangleMapTool(QgsMapToolEmitPoint):
     def __init__(self, canvas):
 
         QgsMapToolEmitPoint.__init__(self, canvas)
-        self.rubberBand = QgsRubberBand(self.canvas(), QgsWkbTypes.PolygonGeometry)
-        self.rubberBand.setColor(Qt.red)
+        self.rubberBand = QgsRubberBand(self.canvas(), QgsWkbTypes.GeometryType.PolygonGeometry)
+        self.rubberBand.setColor(Qt.GlobalColor.red)
         self.rubberBand.setWidth(1)
         self.reset()
 
     def flags(self) -> QgsMapTool:
-        return QgsMapTool.ShowContextMenu
+        return QgsMapTool.Flag.ShowContextMenu
 
     def reset(self):
         self.startPoint = self.endPoint = None
         self.isEmittingPoint = False
-        self.rubberBand.reset(QgsWkbTypes.PolygonGeometry)
+        self.rubberBand.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
 
     def canvasPressEvent(self, e):
         self.startPoint = self.toMapCoordinates(e.pos())
@@ -548,7 +548,7 @@ class RectangleMapTool(QgsMapToolEmitPoint):
         self.showRect(self.startPoint, self.endPoint)
 
     def showRect(self, startPoint, endPoint):
-        self.rubberBand.reset(QgsWkbTypes.PolygonGeometry)
+        self.rubberBand.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
         if startPoint.x() == endPoint.x() or startPoint.y() == endPoint.y():
             return
 
@@ -632,15 +632,15 @@ class QgsFeatureAction(QAction):
         context.setDistanceArea(myDa)
         context.setVectorLayerTools(self.mVectorLayerTools)
         # context.setMapCanvas()
-        context.setFormMode(QgsAttributeEditorContext.StandaloneDialog)
+        context.setFormMode(QgsAttributeEditorContext.FormMode.StandaloneDialog)
 
         dialog = QgsAttributeDialog(self.mLayer, f, cloneFeatures, self.parentWidget(), True, context)
-        dialog.setWindowFlags(dialog.windowFlags() | Qt.Tool)
+        dialog.setWindowFlags(dialog.windowFlags() | Qt.WindowType.Tool)
         dialog.setObjectName('featureaction {} {}'.format(self.mLayer.id(), f.id()))
 
         actions = self.mLayer.actions().actions("Feature")
         if len(actions) == 0:
-            dialog.setContextMenuPolicy(Qt.ActionsContextMenu)
+            dialog.setContextMenuPolicy(Qt.ContextMenuPolicy.ActionsContextMenu)
 
         a = QAction(tr("Run Actions"), dialog)
         a.setEnabled(False)
@@ -675,7 +675,7 @@ class QgsFeatureAction(QAction):
         dialog = self.newDialog(True)
         dialog.setHighlight(h)
         # // delete the dialog when it is closed
-        dialog.setAttribute(Qt.WA_DeleteOnClose)
+        dialog.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
         dialog.show()
 
         return True
@@ -690,7 +690,7 @@ class QgsFeatureAction(QAction):
             dialog = self.newDialog(False)
 
             if not self.mFeature.isValid():
-                dialog.setMode(QgsAttributeEditorContext.AddFeatureMode)
+                dialog.setMode(QgsAttributeEditorContext.Mode.AddFeatureMode)
 
             rv = dialog.exec()
             self.mFeature.setAttributes(dialog.feature().attributes())
@@ -710,10 +710,10 @@ class QgsFeatureAction(QAction):
             dialog = self.newDialog(False)
 
             if not self.mFeature.isValid():
-                dialog.setMode(QgsAttributeEditorContext.AddFeatureMode)
+                dialog.setMode(QgsAttributeEditorContext.Mode.AddFeatureMode)
 
             # // delete the dialog when it is closed
-            dialog.setAttribute(Qt.WA_DeleteOnClose)
+            dialog.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
             dialog.show()
 
         return True
@@ -773,9 +773,9 @@ class QgsFeatureAction(QAction):
             isDisabledAttributesValueDlg = True
 
         opt = self.mLayer.editFormConfig().suppress()
-        if opt == QgsEditFormConfig.SuppressOn:
+        if opt == QgsEditFormConfig.FeatureFormSuppress.SuppressOn:
             isDisabledAttributesValueDlg = True
-        elif opt == QgsEditFormConfig.SuppressOff:
+        elif opt == QgsEditFormConfig.FeatureFormSuppress.SuppressOff:
             isDisabledAttributesValueDlg = False
 
         if self.mForceSuppressFormPopup:
@@ -792,8 +792,8 @@ class QgsFeatureAction(QAction):
         else:
 
             dialog = self.newDialog(False)
-            dialog.setAttribute(Qt.WA_DeleteOnClose)
-            dialog.setMode(QgsAttributeEditorContext.AddFeatureMode)
+            dialog.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
+            dialog.setMode(QgsAttributeEditorContext.Mode.AddFeatureMode)
             dialog.setEditCommandMessage(self.text())
 
             dialog.attributeForm().featureSaved.connect(
@@ -806,7 +806,7 @@ class QgsFeatureAction(QAction):
                 self.mFeature = None
                 return True
 
-            dialog.exec_()
+            dialog.exec()
 
         return self.mFeatureSaved
 
@@ -871,7 +871,7 @@ class QgsMapToolDigitizeFeature(QgsMapToolCapture):
         if not isinstance(self.mLayer, QgsVectorLayer):
             vlayer = self.currentVectorLayer()
 
-        if isinstance(vlayer, QgsVectorLayer) and vlayer.geometryType() == QgsWkbTypes.NullGeometry:
+        if isinstance(vlayer, QgsVectorLayer) and vlayer.geometryType() == QgsWkbTypes.GeometryType.NullGeometry:
             f = QgsFeature()
             self.digitized(f)
             return
@@ -914,9 +914,9 @@ class QgsMapToolDigitizeFeature(QgsMapToolCapture):
         layerWKBType = vlayer.wkbType()
         provider = vlayer.dataProvider()
 
-        if not (provider.capabilities() & QgsVectorDataProvider.AddFeatures):
+        if not (provider.capabilities() & QgsVectorDataProvider.Capability.AddFeatures):
             self.messageEmitted.emit("The data provider for this layer does not support the addition of features.",
-                                     Qgis.Warning)
+                                     Qgis.MessageLevel.Warning)
 
             return
 
@@ -927,13 +927,13 @@ class QgsMapToolDigitizeFeature(QgsMapToolCapture):
         # // POINT CAPTURING
         if self.mode() == self.CapturePoint:
 
-            if e.button() != Qt.LeftButton:
+            if e.button() != Qt.MouseButton.LeftButton:
                 return
 
             # //check we only use this tool for point/multipoint layers
-            if vlayer.geometryType() != QgsWkbTypes.PointGeometry and self.mCheckGeometryType:
+            if vlayer.geometryType() != QgsWkbTypes.GeometryType.PointGeometry and self.mCheckGeometryType:
                 self.messageEmitted.emit(
-                    "Wrong editing tool, cannot apply the 'capture point' tool on this vector layer", Qgis.Warning)
+                    "Wrong editing tool, cannot apply the 'capture point' tool on this vector layer", Qgis.MessageLevel.Warning)
                 return
 
             savePoint = None  # ; //point in layer coordinates
@@ -956,22 +956,22 @@ class QgsMapToolDigitizeFeature(QgsMapToolCapture):
 
                     layerPoint = self.toLayerCoordinates(vlayer, e.mapPoint())
                     if isMatchPointZ:
-                        savePoint = QgsPoint(QgsWkbTypes.PointZ, layerPoint.x(), layerPoint.y(), fetchPoint.z())
+                        savePoint = QgsPoint(QgsWkbTypes.Type.PointZ, layerPoint.x(), layerPoint.y(), fetchPoint.z())
                     else:
                         savePoint = QgsPoint(layerPoint.x(), layerPoint.y())
             except QgsCsException as cse:
-                self.messageEmitted.emit("Cannot transform the point to the layers coordinate system", Qgis.Warning)
+                self.messageEmitted.emit("Cannot transform the point to the layers coordinate system", Qgis.MessageLevel.Warning)
                 return
 
             # //only do the rest for provider with feature addition support
             # //note that for the grass provider, this will return false since
             # //grass provider has its own mechanism of feature addition
-            if provider.capabilities() & QgsVectorDataProvider.AddFeatures:
+            if provider.capabilities() & QgsVectorDataProvider.Capability.AddFeatures:
 
                 f = QgsFeature(vlayer.fields(), 0)
 
                 g = None
-                if layerWKBType == QgsWkbTypes.Point:
+                if layerWKBType == QgsWkbTypes.Type.Point:
                     g = QgsGeometry(savePoint)
                 elif QgsWkbTypes.isMultiType(layerWKBType) and not QgsWkbTypes.hasZ(layerWKBType):
                     # g = QgsGeometry::fromMultiPointXY( QgsMultiPointXY() << savePoint );
@@ -989,7 +989,7 @@ class QgsMapToolDigitizeFeature(QgsMapToolCapture):
                 elif QgsWkbTypes.isMultiType(layerWKBType) and QgsWkbTypes.hasZ(layerWKBType):
 
                     mp = QgsMultiPoint()
-                    mp.addGeometry(QgsPoint(QgsWkbTypes.PointZ, savePoint.x(), savePoint.y(),
+                    mp.addGeometry(QgsPoint(QgsWkbTypes.Type.PointZ, savePoint.x(), savePoint.y(),
                                             savePoint.z() if isMatchPointZ else self.defaultZValue()))
                     g = QgsGeometry()
                     g.set(mp)
@@ -1013,21 +1013,21 @@ class QgsMapToolDigitizeFeature(QgsMapToolCapture):
 
             # //check we only use the line tool for line/multiline layers
             if self.mode() == self.CaptureLine \
-                    and vlayer.geometryType() != QgsWkbTypes.LineGeometry and self.mCheckGeometryType:
+                    and vlayer.geometryType() != QgsWkbTypes.GeometryType.LineGeometry and self.mCheckGeometryType:
                 self.messageEmitted.emit(
-                    tr("Wrong editing tool, cannot apply the 'capture line' tool on this vector layer"), Qgis.Warning)
+                    tr("Wrong editing tool, cannot apply the 'capture line' tool on this vector layer"), Qgis.MessageLevel.Warning)
                 return
 
             # //check we only use the polygon tool for polygon/multipolygon layers
             if self.mode() == self.CapturePolygon \
-                    and vlayer.geometryType() != QgsWkbTypes.PolygonGeometry and self.mCheckGeometryType:
+                    and vlayer.geometryType() != QgsWkbTypes.GeometryType.PolygonGeometry and self.mCheckGeometryType:
                 self.messageEmitted.emit(
                     tr("Wrong editing tool, cannot apply the 'capture polygon' tool on this vector layer"),
-                    Qgis.Warning)
+                    Qgis.MessageLevel.Warning)
                 return
 
             # //add point to list and to rubber band
-            if e.button() == Qt.LeftButton:
+            if e.button() == Qt.MouseButton.LeftButton:
 
                 error = self.addVertex(e.mapPoint(), e.mapPointMatch())
                 if error == 1:
@@ -1038,12 +1038,12 @@ class QgsMapToolDigitizeFeature(QgsMapToolCapture):
 
                     # //problem with coordinate transformation
                     self.messageEmitted.emit(tr("Cannot transform the point to the layers coordinate system"),
-                                             Qgis.Warning)
+                                             Qgis.MessageLevel.Warning)
                     return
 
                 self.startCapturing()
 
-            elif e.button() == Qt.RightButton:
+            elif e.button() == Qt.MouseButton.RightButton:
 
                 # // End of string
                 self.deleteTempRubberBand()
@@ -1068,7 +1068,7 @@ class QgsMapToolDigitizeFeature(QgsMapToolCapture):
                 # //does provider support circular strings?
                 hasCurvedSegments = self.captureCurve().hasCurvedSegments()
                 providerSupportsCurvedSegments = \
-                    vlayer.dataProvider().capabilities() & QgsVectorDataProvider.CircularGeometries
+                    vlayer.dataProvider().capabilities() & QgsVectorDataProvider.Capability.CircularGeometries
 
                 snappingMatchesList = []
                 curveToAdd = None
@@ -1109,7 +1109,7 @@ class QgsMapToolDigitizeFeature(QgsMapToolCapture):
                         self.messageEmitted.emit(tr(
                             "The feature cannot be added because it's geometry "
                             "collapsed due to intersection avoidance"),
-                            Qgis.Critical)
+                            Qgis.MessageLevel.Critical)
                         self.stopCapturing()
                         return
 
@@ -1141,7 +1141,7 @@ class QgsMapToolAddFeature(QgsMapToolDigitizeFeature):
         context.setVectorLayerTools(self.mVectorLayerTools)
         context.setMapCanvas(self.canvas())
         context.setCadDockWidget(self.cadDockWidget())
-        context.setFormMode(QgsAttributeEditorContext.StandaloneDialog)
+        context.setFormMode(QgsAttributeEditorContext.FormMode.StandaloneDialog)
         scope = QgsExpressionContextUtils.mapToolCaptureScope(self.snappingMatches())
         action = QgsFeatureAction("add feature", f, vlayer, '', -1, self)
         action.setAttributeEditorContext(context)
@@ -1169,7 +1169,7 @@ class QgsMapToolAddFeature(QgsMapToolDigitizeFeature):
                 for vl in intersectionLayers:
 
                     # //can only add topological points if background layer is editable...
-                    if vl.geometryType() == QgsWkbTypes.PolygonGeometry and vl.isEditable():
+                    if vl.geometryType() == QgsWkbTypes.GeometryType.PolygonGeometry and vl.isEditable():
                         vl.addTopologicalPoints(f.geometry())
 
             elif topologicalEditing:
@@ -1189,12 +1189,12 @@ class QgsDistanceWidget(QWidget):
 
         self.mLayout = QHBoxLayout(self)
         self.mLayout.setContentsMargins(0, 0, 0, 0)
-        self.mLayout.setAlignment(Qt.AlignLeft)
+        self.mLayout.setAlignment(Qt.AlignmentFlag.AlignLeft)
         self.setLayout(self.mLayout)
 
         if label:
             lbl = QLabel(label, self)
-            lbl.setAlignment(Qt.AlignRight | Qt.AlignCenter)
+            lbl.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignCenter)
             self.mLayout.addWidget(lbl)
 
         self.mDistanceSpinBox = QgsDoubleSpinBox(self)
@@ -1204,7 +1204,7 @@ class QgsDistanceWidget(QWidget):
         self.mDistanceSpinBox.setMaximum(1000000000)
         self.mDistanceSpinBox.setDecimals(6)
         self.mDistanceSpinBox.setShowClearButton(False)
-        self.mDistanceSpinBox.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.Preferred)
+        self.mDistanceSpinBox.setSizePolicy(QSizePolicy.Policy.MinimumExpanding, QSizePolicy.Policy.Preferred)
         self.mLayout.addWidget(self.mDistanceSpinBox)
 
         # connect signals
@@ -1224,14 +1224,14 @@ class QgsDistanceWidget(QWidget):
 
     def eventFilter(self, obj: QObject, ev: QEvent) -> bool:
 
-        if obj == self.mDistanceSpinBox and ev.type() == QEvent.KeyPress:
+        if obj == self.mDistanceSpinBox and ev.type() == QEvent.Type.KeyPress:
 
             event = QKeyEvent(ev)
-            if event.key() == Qt.Key_Escape:
+            if event.key() == Qt.Key.Key_Escape:
                 self.distanceEditingCanceled.emit()
                 return False
 
-            if event.key() == Qt.Key_Enter or event.key() == Qt.Key_Return:
+            if event.key() == Qt.Key.Key_Enter or event.key() == Qt.Key.Key_Return:
                 self.distanceEditingFinished.emit(self.distance(), event.modifiers())
                 return True
 
@@ -1262,7 +1262,7 @@ class QgsMapToolSelectUtils(object):
         ur = transform.toMapCoordinates(selectRect.right(), selectRect.top())
 
         if isinstance(rubberBand, QgsRubberBand):
-            rubberBand.reset(QgsWkbTypes.PolygonGeometry)
+            rubberBand.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
             rubberBand.addPoint(ll, False)
             rubberBand.addPoint(lr, False)
             rubberBand.addPoint(ur, False)
@@ -1272,7 +1272,7 @@ class QgsMapToolSelectUtils(object):
     def expandSelectRectangle(mapPoint: QgsPointXY, canvas: QgsMapCanvas, vlayer: QgsVectorLayer):
 
         boxSize = 0
-        if (not vlayer or vlayer.geometryType() != QgsWkbTypes.PolygonGeometry):
+        if (not vlayer or vlayer.geometryType() != QgsWkbTypes.GeometryType.PolygonGeometry):
 
             # if point or line use an artificial bounding box of 10x10 pixels
             # to aid the user to click on a feature accurately
@@ -1291,15 +1291,15 @@ class QgsMapToolSelectUtils(object):
     @staticmethod
     def selectMultipleFeatures(canvas: QgsMapCanvas, selectGeometry: QgsGeometry, modifiers: Qt.KeyboardModifiers):
 
-        behavior = QgsVectorLayer.SetSelection
-        if modifiers & Qt.ShiftModifier and modifiers & Qt.ControlModifier:
-            behavior = QgsVectorLayer.IntersectSelection
-        elif modifiers & Qt.ShiftModifier:
-            behavior = QgsVectorLayer.AddToSelection
-        elif modifiers & Qt.ControlModifier:
-            behavior = QgsVectorLayer.RemoveFromSelection
+        behavior = QgsVectorLayer.SelectBehavior.SetSelection
+        if modifiers & Qt.KeyboardModifier.ShiftModifier and modifiers & Qt.KeyboardModifier.ControlModifier:
+            behavior = QgsVectorLayer.SelectBehavior.IntersectSelection
+        elif modifiers & Qt.KeyboardModifier.ShiftModifier:
+            behavior = QgsVectorLayer.SelectBehavior.AddToSelection
+        elif modifiers & Qt.KeyboardModifier.ControlModifier:
+            behavior = QgsVectorLayer.SelectBehavior.RemoveFromSelection
 
-        doContains = modifiers & Qt.AltModifier
+        doContains = modifiers & Qt.KeyboardModifier.AltModifier
         QgsMapToolSelectUtils.setSelectedFeatures(canvas, selectGeometry, behavior, doContains)
 
     @staticmethod
@@ -1309,12 +1309,12 @@ class QgsMapToolSelectUtils(object):
         if not isinstance(vlayer, QgsVectorLayer):
             return
 
-        QApplication.setOverrideCursor(Qt.WaitCursor)
+        QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
 
         selectedFeatures = QgsMapToolSelectUtils.getMatchingFeatures(canvas, selectGeometry, False, True)
         if len(selectedFeatures) == 0:
 
-            if not (modifiers & Qt.ShiftModifier or modifiers & Qt.ControlModifier):
+            if not (modifiers & Qt.KeyboardModifier.ShiftModifier or modifiers & Qt.KeyboardModifier.ControlModifier):
                 # if no modifiers then clicking outside features clears the selection
                 # but if there's a shift or ctrl modifier, then it's likely the user was trying
                 # to modify an existing selection by adding or subtracting features and just
@@ -1324,17 +1324,17 @@ class QgsMapToolSelectUtils(object):
             QApplication.restoreOverrideCursor()
             return
 
-        behavior = QgsVectorLayer.SetSelection
+        behavior = QgsVectorLayer.SelectBehavior.SetSelection
 
         # either shift or control modifier switches to "toggle" selection mode
-        if (modifiers & Qt.ShiftModifier or modifiers & Qt.ControlModifier) and not Qt.AltModifier:
+        if (modifiers & Qt.KeyboardModifier.ShiftModifier or modifiers & Qt.KeyboardModifier.ControlModifier) and not Qt.KeyboardModifier.AltModifier:
 
             selectId = selectedFeatures[0]
             layerSelectedFeatures = vlayer.selectedFeatureIds()
             if selectId in layerSelectedFeatures:
-                behavior = QgsVectorLayer.RemoveFromSelection
+                behavior = QgsVectorLayer.SelectBehavior.RemoveFromSelection
             else:
-                behavior = QgsVectorLayer.AddToSelection
+                behavior = QgsVectorLayer.SelectBehavior.AddToSelection
 
         vlayer.selectByIds(selectedFeatures, behavior)
 
@@ -1350,7 +1350,7 @@ class QgsMapToolSelectUtils(object):
         if not isinstance(vlayer, QgsVectorLayer):
             return
 
-        QApplication.setOverrideCursor(Qt.WaitCursor)
+        QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
 
         selectedFeatures = QgsMapToolSelectUtils.getMatchingFeatures(canvas, selectGeometry, doContains, singleSelect)
         vlayer.selectByIds(selectedFeatures, selectBehavior)
@@ -1363,7 +1363,7 @@ class QgsMapToolSelectUtils(object):
 
         newSelectedFeatures = []
 
-        if selectGeometry.type() != QgsWkbTypes.PolygonGeometry:
+        if selectGeometry.type() != QgsWkbTypes.GeometryType.PolygonGeometry:
             return newSelectedFeatures
 
         vlayer = QgsMapToolSelectUtils.getCurrentVectorLayer(canvas)
@@ -1399,7 +1399,7 @@ class QgsMapToolSelectUtils(object):
 
         request = QgsFeatureRequest()
         request.setFilterRect(selectGeomTrans.boundingBox())
-        request.setFlags(QgsFeatureRequest.ExactIntersect)
+        request.setFlags(QgsFeatureRequest.Flag.ExactIntersect)
         if r:
             request.setSubsetOfAttributes(r.usedAttributes(context), vlayer.fields())
         else:
@@ -1517,7 +1517,7 @@ class QgsMapToolSelectionHandler(QObject):
             pass
 
     def keyReleaseEvent(self, e: QKeyEvent) -> bool:
-        if self.mSelectionActive and e.key() == Qt.Key_Escape:
+        if self.mSelectionActive and e.key() == Qt.Key.Key_Escape:
             self.cancel()
             return True
         else:
@@ -1533,7 +1533,7 @@ class QgsMapToolSelectionHandler(QObject):
 
     def selectFeaturesMoveEvent(self, e: QgsMapMouseEvent):
 
-        if e.buttons() != Qt.LeftButton:
+        if e.buttons() != Qt.MouseButton.LeftButton:
             return
 
         if not self.mSelectionActive:
@@ -1572,7 +1572,7 @@ class QgsMapToolSelectionHandler(QObject):
     def selectPolygonPressEvent(self, e: QgsMapMouseEvent):
 
         # // Handle immediate right-click on feature to show context menu
-        if not self.mSelectionRubberBand and e.button() == Qt.RightButton:
+        if not self.mSelectionRubberBand and e.button() == Qt.MouseButton.RightButton:
 
             # QList<QgsMapToolIdentify::IdentifyResult> results;
             # QMap< QString, QString > derivedAttributes;
@@ -1590,12 +1590,12 @@ class QgsMapToolSelectionHandler(QObject):
 
             for vectorLayer in layers:
                 if isinstance(vectorLayer, QgsVectorLayer):
-                    if vectorLayer.geometryType() == QgsWkbTypes.PolygonGeometry:
+                    if vectorLayer.geometryType() == QgsWkbTypes.GeometryType.PolygonGeometry:
                         fit = vectorLayer.getFeatures(QgsFeatureRequest()
                                                       .setDestinationCrs(self.mCanvas.mapSettings().destinationCrs(),
                                                                          self.mCanvas.mapSettings().transformContext())
                                                       .setFilterRect(QgsRectangle(x - sr, y - sr, x + sr, y + sr))
-                                                      .setFlags(QgsFeatureRequest.ExactIntersect))
+                                                      .setFlags(QgsFeatureRequest.Flag.ExactIntersect))
                         f = None
                         while fit.nextFeature(f):
                             results.append(QgsMapToolIdentify.IdentifyResult(vectorLayer, f, derivedAttributes))
@@ -1610,7 +1610,7 @@ class QgsMapToolSelectionHandler(QObject):
         if not self.mSelectionRubberBand:
             self.initRubberBand()
 
-        if e.button() == Qt.LeftButton:
+        if e.button() == Qt.MouseButton.LeftButton:
             self.mSelectionRubberBand.addPoint(self.toMapCoordinates(e.pos()))
             self.mSelectionActive = True
         else:
@@ -1630,7 +1630,7 @@ class QgsMapToolSelectionHandler(QObject):
     def selectFreehandReleaseEvent(self, e: QgsMapMouseEvent):
 
         if self.mSelectionActive:
-            if e.button() != Qt.LeftButton:
+            if e.button() != Qt.MouseButton.LeftButton:
                 return
 
             if not self.mSelectionRubberBand:
@@ -1640,7 +1640,7 @@ class QgsMapToolSelectionHandler(QObject):
             self.mSelectionActive = True
 
         else:
-            if e.button() == Qt.LeftButton:
+            if e.button() == Qt.MouseButton.LeftButton:
                 if self.mSelectionRubberBand and self.mSelectionRubberBand.numberOfVertices() > 2:
                     self.setSelectedGeometry(self.mSelectionRubberBand.asGeometry(), e.modifiers())
 
@@ -1664,11 +1664,11 @@ class QgsMapToolSelectionHandler(QObject):
 
     def selectRadiusReleaseEvent(self, e: QgsMapMouseEvent):
 
-        if e.button() == Qt.RightButton:
+        if e.button() == Qt.MouseButton.RightButton:
             self.cancel()
             return
 
-        if e.button() != Qt.LeftButton:
+        if e.button() != Qt.MouseButton.LeftButton:
             return
 
         if not self.mSelectionActive:
@@ -1684,7 +1684,7 @@ class QgsMapToolSelectionHandler(QObject):
 
     def initRubberBand(self):
 
-        self.mSelectionRubberBand = QgsRubberBand(self.mCanvas, QgsWkbTypes.PolygonGeometry)
+        self.mSelectionRubberBand = QgsRubberBand(self.mCanvas, QgsWkbTypes.GeometryType.PolygonGeometry)
         self.mSelectionRubberBand.setFillColor(self.mFillColor)
         self.mSelectionRubberBand.setStrokeColor(self.mStrokeColor)
 
@@ -1700,7 +1700,7 @@ class QgsMapToolSelectionHandler(QObject):
         # by adding the distance widget to the MapTool's QgsMapCanvas directly
         self.mUserInputWidget.addUserInputWidget(self.mDistanceWidget)
 
-        self.mDistanceWidget.setFocus(Qt.TabFocusReason)
+        self.mDistanceWidget.setFocus(Qt.FocusReason.TabFocusReason)
         self.mDistanceWidget.distanceChanged.connect(self.updateRadiusRubberband)
         self.mDistanceWidget.distanceEditingFinished.connect(self.radiusValueEntered)
         self.mDistanceWidget.distanceEditingCanceled.connect(self.cancel)
@@ -1736,7 +1736,7 @@ class QgsMapToolSelectionHandler(QObject):
             self.initRubberBand()
 
         RADIUS_SEGMENTS = 80
-        self.mSelectionRubberBand.reset(QgsWkbTypes.PolygonGeometry)
+        self.mSelectionRubberBand.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
         for i in range(RADIUS_SEGMENTS):
             theta = i * (2.0 * math.pi / RADIUS_SEGMENTS)
             radiusPoint = QgsPointXY(self.mRadiusCenter.x() + radius * math.cos(theta),
@@ -1749,7 +1749,7 @@ class QgsMapToolSelectionHandler(QObject):
         radius = math.sqrt(self.mRadiusCenter.sqrDist(radiusEdge))
         if self.mDistanceWidget:
             self.mDistanceWidget.setDistance(radius)
-            self.mDistanceWidget.setFocus(Qt.TabFocusReason)
+            self.mDistanceWidget.setFocus(Qt.FocusReason.TabFocusReason)
 
         else:
             self.updateRadiusRubberband(radius)
@@ -1783,14 +1783,14 @@ class QgsMapToolSelect(QgsMapTool):
         self.setSelectionMode(QgsMapToolSelectionHandler.SelectionMode.SelectSimple)
 
     def flags(self) -> QgsMapTool.Flags:
-        return QgsMapTool.ShowContextMenu
+        return QgsMapTool.Flag.ShowContextMenu
 
     def setSelectionMode(self, selectionMode: QgsMapToolSelectionHandler.SelectionMode):
         self.mSelectionHandler.setSelectionMode(selectionMode)
         if selectionMode == QgsMapToolSelectionHandler.SelectionMode.SelectSimple:
-            self.setCursor(QgsApplication.getThemeCursor(QgsApplication.Select))
+            self.setCursor(QgsApplication.getThemeCursor(QgsApplication.Cursor.Select))
         else:
-            self.setCursor(Qt.ArrowCursor)
+            self.setCursor(Qt.CursorShape.ArrowCursor)
 
     def canvasPressEvent(self, e: QgsMapMouseEvent):
         self.mSelectionHandler.canvasPressEvent(e)
@@ -1814,7 +1814,7 @@ class QgsMapToolSelect(QgsMapTool):
     def selectFeatures(self, modifiers: Qt.KeyboardModifiers):
 
         if self.mSelectionHandler.selectionMode() == QgsMapToolSelectionHandler.SelectionMode.SelectSimple \
-                and self.mSelectionHandler.selectedGeometry().type() == QgsWkbTypes.PointGeometry:
+                and self.mSelectionHandler.selectedGeometry().type() == QgsWkbTypes.GeometryType.PointGeometry:
 
             vlayer = QgsMapToolSelectUtils.getCurrentVectorLayer(self.canvas())
             if isinstance(vlayer, QgsVectorLayer):

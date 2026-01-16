@@ -19,8 +19,8 @@ class SimpleWidgetTests(TestCase):
         path_logo = DIR_REPO / 'qps/pyqtgraph/tests/images/roi/polylineroi/closed_drag_new_handle.png'
         label = ResizableImageLabel()
         label.setPixmap(QPixmap(path_logo.as_posix()))
-        label.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
-        label.setAlignment(Qt.AlignTop)
+        label.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
+        label.setAlignment(Qt.AlignmentFlag.AlignTop)
         label.setMinimumSize(50, 50)
 
         self.showGui(label)
@@ -45,7 +45,7 @@ class SimpleWidgetTests(TestCase):
         sbl = DoubleSliderSpinBox()
 
         gridLayout = QGridLayout()
-        for row, a in enumerate([Qt.AlignLeft, Qt.AlignRight, Qt.AlignTop, Qt.AlignBottom]):
+        for row, a in enumerate([Qt.AlignmentFlag.AlignLeft, Qt.AlignmentFlag.AlignRight, Qt.AlignmentFlag.AlignTop, Qt.AlignmentFlag.AlignBottom]):
             for col, sb in enumerate([SliderSpinBox(spinbox=QgsSpinBox(), spinbox_position=a),
                                       SliderSpinBox(spinbox_position=a),
                                       DoubleSliderSpinBox(spinbox_position=a)]):

@@ -30,9 +30,9 @@ rx_moc_suffix = re.compile(r'_moc$')
 
 def toQDateTime(value) -> QDateTime:
     if isinstance(value, str):
-        return QDateTime.fromString(value, Qt.ISODate)
+        return QDateTime.fromString(value, Qt.DateFormat.ISODate)
     elif isinstance(value, datetime.datetime):
-        return QDateTime.fromString(value.isoformat(), Qt.ISODate)
+        return QDateTime.fromString(value.isoformat(), Qt.DateFormat.ISODate)
     raise NotImplementedError()
 
 

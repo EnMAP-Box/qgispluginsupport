@@ -20,7 +20,7 @@ with edit(lyr):
     w = QgsFieldCalculator(lyr, None)
     # try to create a new field, e.g. int "value2",
     # and calculate its values, e.g. using an expression like "value" * 2
-    w.exec_()
+    w.exec()
 
 for f in lyr.getFeatures():
     f: QgsFeature

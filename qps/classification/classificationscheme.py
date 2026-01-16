@@ -39,17 +39,17 @@ from typing import Any, List, Optional, Union
 import numpy as np
 from osgeo import gdal
 
+from qgis.PyQt.QtCore import NULL, pyqtSignal, QAbstractListModel, QAbstractTableModel, QByteArray, QItemSelectionModel, \
+    QMimeData, QModelIndex, QObject, QSize, Qt
+from qgis.PyQt.QtGui import QBrush, QClipboard, QColor, QIcon, QPixmap
+from qgis.PyQt.QtWidgets import QAction, QApplication, QColorDialog, QComboBox, QDialog, QDialogButtonBox, QFileDialog, \
+    QHBoxLayout, QInputDialog, QMenu, QMessageBox, QPushButton, QTableView, QToolButton, QVBoxLayout, QWidget
+from qgis.PyQt.QtXml import QDomDocument, QDomImplementation
 from qgis.core import Qgis, QgsCategorizedSymbolRenderer, QgsField, QgsFillSymbol, QgsLineSymbol, QgsMapLayer, \
     QgsMarkerSymbol, QgsPalettedRasterRenderer, QgsProject, QgsProviderRegistry, QgsRasterLayer, QgsRasterRenderer, \
     QgsReadWriteContext, QgsRendererCategory, QgsVectorLayer
 from qgis.gui import QgsDialog, QgsEditorConfigWidget, QgsEditorWidgetFactory, QgsEditorWidgetWrapper, QgsGui, \
     QgsMapLayerComboBox
-from qgis.PyQt.QtCore import NULL, pyqtSignal, QAbstractListModel, QAbstractTableModel, QByteArray, QItemSelectionModel, \
-    QMimeData, QModelIndex, QObject, QSize, Qt, QVariant
-from qgis.PyQt.QtGui import QBrush, QClipboard, QColor, QIcon, QPixmap
-from qgis.PyQt.QtWidgets import QAction, QApplication, QColorDialog, QComboBox, QDialog, QDialogButtonBox, QFileDialog, \
-    QHBoxLayout, QInputDialog, QMenu, QMessageBox, QPushButton, QTableView, QToolButton, QVBoxLayout, QWidget
-from qgis.PyQt.QtXml import QDomDocument, QDomImplementation
 from ..qgisenums import QMETATYPE_DOUBLE, QMETATYPE_INT, QMETATYPE_QSTRING
 from ..utils import gdalDataset, loadUi, nextColor, registeredMapLayers
 
@@ -319,7 +319,7 @@ class ClassificationScheme(QAbstractTableModel):
                      parent: QModelIndex, **kwargs):
         if row == -1:
             row = parent.row()
-        if action == Qt.MoveAction:
+        if action == Qt.DropAction.MoveAction:
             if MIMEDATA_INTERNAL_IDs in mimeData.formats():
                 ba = bytes(mimeData.data(MIMEDATA_INTERNAL_IDs))
                 ids = pickle.loads(ba)
@@ -336,7 +336,7 @@ class ClassificationScheme(QAbstractTableModel):
                 self.endResetModel()
                 self._updateLabels()
                 return True
-        elif action == Qt.CopyAction:
+        elif action == Qt.DropAction.CopyAction:
             if MIMEDATA_KEY in mimeData.formats():
                 cs = ClassificationScheme.fromQByteArray(mimeData.data(MIMEDATA_KEY))
                 self.insertClasses(cs[:], row)
@@ -453,7 +453,7 @@ class ClassificationScheme(QAbstractTableModel):
             if col == self.cColor:
                 return QBrush(getTextColorWithContrast(classInfo.color()))
 
-        if role == Qt.ItemDataRole.BackgroundColorRole:
+        if role == Qt.ItemDataRole.BackgroundRole:
             if col == self.cColor:
                 return QBrush(classInfo.color())
 
@@ -487,10 +487,10 @@ class ClassificationScheme(QAbstractTableModel):
         return None
 
     def supportedDragActions(self):
-        return Qt.MoveAction
+        return Qt.DropAction.MoveAction
 
     def supportedDropActions(self):
-        return Qt.MoveAction | Qt.CopyAction
+        return Qt.DropAction.MoveAction | Qt.DropAction.CopyAction
 
     def setData(self, index: QModelIndex, value, role: int):
         if not index.isValid():
@@ -516,23 +516,23 @@ class ClassificationScheme(QAbstractTableModel):
 
     def flags(self, index: QModelIndex):
         if not index.isValid():
-            return Qt.NoItemFlags
+            return Qt.ItemFlag.NoItemFlags
         col = index.column()
 
-        flags = Qt.ItemIsSelectable | Qt.ItemIsEnabled
+        flags = Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled
         if self.mIsEditable:
-            flags |= Qt.ItemIsDragEnabled | Qt.ItemIsDropEnabled
+            flags |= Qt.ItemFlag.ItemIsDragEnabled | Qt.ItemFlag.ItemIsDropEnabled
             if self.isEditable():
                 if col == self.cLabel and not self.mZeroBased:
-                    flags |= Qt.ItemIsEditable
+                    flags |= Qt.ItemFlag.ItemIsEditable
                 elif col == self.cName:
-                    flags |= Qt.ItemIsEditable
+                    flags |= Qt.ItemFlag.ItemIsEditable
         return flags
 
     def headerData(self, section: int, orientation: Qt.Orientation, role: int = Qt.ItemDataRole.DisplayRole):
 
         if role == Qt.ItemDataRole.DisplayRole:
-            if orientation == Qt.Horizontal:
+            if orientation == Qt.Orientation.Horizontal:
                 return self.mColNames[section]
 
         return super(ClassificationScheme, self).headerData(section, orientation, role)
@@ -1212,7 +1212,6 @@ class ClassificationScheme(QAbstractTableModel):
         classes = []
         for i, catName in enumerate(cat):
             classInfo: ClassInfo = ClassInfo(name=catName, label=i)
-            NULL = QVariant()
             if ct is not None:
                 gdal_color = ct.GetColorEntry(i)
                 if gdal_color in [None, NULL]:
@@ -1457,7 +1456,7 @@ class ClassificationSchemeComboBoxModel(QAbstractListModel):
     def flags(self, index: QModelIndex):
         if not index.isValid():
             return None
-        return Qt.ItemIsEnabled | Qt.ItemIsSelectable
+        return Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable
 
 
 class ClassificationMapLayerComboBox(QgsMapLayerComboBox):
@@ -1697,8 +1696,8 @@ class ClassificationSchemeWidget(QWidget):
                 dialog.setWindowTitle('Load classes from layer')
                 dialog.setTextValue('Select map layer')
                 dialog.setComboBoxItems(choices)
-                dialog.setOption(QInputDialog.UseListViewForComboBoxItems)
-                if dialog.exec_() == QDialog.Accepted:
+                dialog.setOption(QInputDialog.InputDialogOption.UseListViewForComboBoxItems)
+                if dialog.exec() == QDialog.DialogCode.Accepted:
                     selection = dialog.textValue()
                     i = choices.index(selection)
                     layer = possibleLayers[i]
@@ -1867,16 +1866,16 @@ class ClassificationSchemeDialog(QgsDialog):
         :return: None | ClassificationScheme
         """
         d = cls(*args, **kwds)
-        d.exec_()
+        d.exec()
 
-        if d.result() == QDialog.Accepted:
+        if d.result() == QDialog.DialogCode.Accepted:
             return d.classificationScheme()
         else:
             return None
 
     def __init__(self, parent=None, classificationScheme=None, title='Specify Classification Scheme'):
         super(ClassificationSchemeDialog, self).__init__(parent=parent,
-                                                         buttons=QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+                                                         buttons=QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
         self.w = ClassificationSchemeWidget(parent=self, classificationScheme=classificationScheme)
         self.setWindowTitle(title)
         self.btOk = QPushButton('Ok')

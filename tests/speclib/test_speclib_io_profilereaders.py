@@ -119,7 +119,7 @@ class TestSpeclibIO_SpectralProfileReaders(TestCase):
 
         f = QgsFeature(vl.fields())
         dt = datetime.now()
-        qdt = QDateTime.fromString(dt.isoformat(), Qt.ISODate)
+        qdt = QDateTime.fromString(dt.isoformat(), Qt.DateFormat.ISODate)
         f.setAttribute('datetime', qdt)
         f.setAttribute('date', qdt.date())
         # f.setAttribute('time', QDateTime.fromString(dt.isoformat(), Qt.ISODate).time())

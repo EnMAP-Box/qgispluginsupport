@@ -35,11 +35,11 @@ from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union
 
 import numpy as np
 
-from qgis.PyQt.QtCore import NULL, QByteArray, QCoreApplication, QVariant
+from qgis.PyQt.QtCore import QByteArray, QCoreApplication
 from qgis.core import Qgis, QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsExpression, QgsExpressionContext, \
     QgsExpressionContextScope, QgsExpressionFunction, QgsExpressionNode, QgsExpressionNodeFunction, QgsFeature, \
     QgsFeatureRequest, QgsField, QgsGeometry, QgsMapLayer, QgsMapToPixel, QgsMessageLog, QgsPointXY, QgsProject, \
-    QgsRasterDataProvider, QgsRasterLayer
+    QgsRasterDataProvider, QgsRasterLayer, NULL
 from .qgisenums import QGIS_WKBTYPE
 from .qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from .speclib.core import is_profile_field
@@ -135,7 +135,7 @@ class HelpStringMaker(object):
                     defaultValue = P.defaultValue()
                     if isinstance(defaultValue, str):
                         defaultValue = f"'{defaultValue}'"
-                    if defaultValue not in [None, QVariant()]:
+                    if defaultValue not in [None, NULL]:
                         syntax += f'={defaultValue}'
 
                     syntax += '</span>'
@@ -450,7 +450,7 @@ class StaticExpressionFunction(QgsExpressionFunction):
             # print(f'#R: {type(r)} :{r}')
             return r
         else:
-            return QVariant()
+            return NULL
 
 
 class ExpressionFunctionUtils(object):
@@ -998,10 +998,10 @@ class SpectralMath(QgsExpressionFunction):
 
         if len(values) < 1:
             parent.setEvalErrorString(f'{self.name()}: requires at least 1 argument')
-            return QVariant()
+            return NULL
         if not isinstance(values[-1], str):
             parent.setEvalErrorString(f'{self.name()}: last argument needs to be a string')
-            return QVariant()
+            return NULL
 
         encoding = None
 
@@ -1015,7 +1015,7 @@ class SpectralMath(QgsExpressionFunction):
         if not isinstance(pyExpression, str):
             parent.setEvalErrorString(
                 f'{self.name()}: Argument {iPy + 1} needs to be a string with python code')
-            return QVariant()
+            return NULL
 
         try:
             profilesData = values[0:-1]
@@ -1057,7 +1057,7 @@ class SpectralMath(QgsExpressionFunction):
             return encodeProfileValueDict(d, encoding)
         except Exception as ex:
             parent.setEvalErrorString(f'{ex}')
-            return QVariant()
+            return NULL
 
     def usesGeometry(self, node) -> bool:
         return True
@@ -1084,17 +1084,18 @@ def registerQgsExpressionFunctions():
         if QgsExpression.isFunctionName(func.name()):
             msg = QCoreApplication.translate("UserExpressions",
                                              "User expression {0} already exists").format(func.name())
-            QgsMessageLog.logMessage(msg + "\n", level=Qgis.Info)
+            QgsMessageLog.logMessage(msg + "\n", level=Qgis.MessageLevel.Info)
         else:
             if func.name() in QGIS_FUNCTION_INSTANCES.keys():
-                QgsMessageLog.logMessage(f'{func.name()} not registered, but python instance exists', level=Qgis.Info)
+                QgsMessageLog.logMessage(f'{func.name()} not registered, but python instance exists',
+                                         level=Qgis.MessageLevel.Info)
                 func = QGIS_FUNCTION_INSTANCES[func.name()]
 
             if QgsExpression.registerFunction(func):
-                QgsMessageLog.logMessage(f'Registered {func.name()}', level=Qgis.Info)
+                QgsMessageLog.logMessage(f'Registered {func.name()}', level=Qgis.MessageLevel.Info)
                 QGIS_FUNCTION_INSTANCES[func.name()] = func
             else:
-                QgsMessageLog.logMessage(f'Failed to register {func.name()}', level=Qgis.Warning)
+                QgsMessageLog.logMessage(f'Failed to register {func.name()}', level=Qgis.MessageLevel.Warning)
 
 
 def unregisterQgsExpressionFunctions():
@@ -1102,6 +1103,6 @@ def unregisterQgsExpressionFunctions():
         assert name == func.name()
         if QgsExpression.isFunctionName(name):
             if QgsExpression.unregisterFunction(name):
-                QgsMessageLog.logMessage(f'Unregistered {name}', level=Qgis.Info)
+                QgsMessageLog.logMessage(f'Unregistered {name}', level=Qgis.MessageLevel.Info)
             else:
-                QgsMessageLog.logMessage(f'Unable to unregister {name}', level=Qgis.Warning)
+                QgsMessageLog.logMessage(f'Unable to unregister {name}', level=Qgis.MessageLevel.Warning)

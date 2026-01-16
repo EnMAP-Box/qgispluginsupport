@@ -6,6 +6,7 @@ from typing import Dict, Generator, List, Optional, Tuple
 from qgis.PyQt.QtCore import pyqtSignal, Qt
 from qgis.PyQt.QtGui import QCloseEvent
 from qgis.PyQt.QtGui import QDragEnterEvent, QDropEvent
+from qgis.PyQt.QtGui import QKeySequence
 from qgis.PyQt.QtWidgets import QMenu, QWidget
 from qgis.PyQt.QtWidgets import QToolButton
 from qgis.PyQt.QtXml import QDomElement
@@ -90,8 +91,8 @@ class SpectralLibraryWidget(QWidget):
         self.actionSelectProfilesFromMap.setVisible(False)
         self.actionSelectProfilesFromMap.triggered.connect(self.sigLoadFromMapRequest.emit)
 
-        self.actionAddCurrentProfiles.setShortcut(Qt.CTRL + Qt.Key_A)
-        self.actionAddCurrentProfiles.setShortcutContext(Qt.WidgetWithChildrenShortcut)
+        self.actionAddCurrentProfiles.setShortcut(QKeySequence(Qt.Modifier.CTRL | Qt.Key.Key_A))
+        self.actionAddCurrentProfiles.setShortcutContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
         self.actionAddCurrentProfiles.triggered.connect(self.addCurrentProfilesToSpeclib)
 
         self.optionAddCurrentProfilesAutomatically.setCheckable(True)
@@ -99,8 +100,8 @@ class SpectralLibraryWidget(QWidget):
         self.optionAddCurrentProfilesAutomatically.toggled.connect(
             self.plotModel().setAddProfileCandidatesAutomatically)
 
-        self.actionRejectCurrentProfiles.setShortcut(Qt.CTRL + Qt.Key_Z)
-        self.actionRejectCurrentProfiles.setShortcutContext(Qt.WidgetWithChildrenShortcut)
+        self.actionRejectCurrentProfiles.setShortcut(QKeySequence(Qt.Modifier.CTRL | Qt.Key.Key_Z))
+        self.actionRejectCurrentProfiles.setShortcutContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
         self.actionRejectCurrentProfiles.triggered.connect(self.rejectCurrentProfiles)
 
         m = QMenu()
@@ -237,7 +238,7 @@ class SpectralLibraryWidget(QWidget):
         if lyr := self._layerInstance(layer_id=layer_id):
             d = SpectralProfileFieldActivatorDialog()
             d.setLayer(lyr)
-            d.exec_()
+            d.exec()
 
     def libraryPlotWidget(self) -> SpectralLibraryPlotWidget:
         return self.mSpeclibPlotWidget
@@ -355,7 +356,7 @@ class SpectralLibraryWidget(QWidget):
                 parameters=parameters)
             # dialog.setMainMessageBar(self.mainMessageBar())
             # dialog.sigOutputsCreated.connect(self.onSpectralProcessingOutputsCreated)
-            dialog.exec_()
+            dialog.exec()
 
             dialog.close()
 
@@ -446,7 +447,8 @@ class SpectralLibraryWidget(QWidget):
 
     def dragEnterEvent(self, event: QDragEnterEvent):
 
-        if event.proposedAction() == Qt.CopyAction and SpectralLibraryUtils.canReadFromMimeData(event.mimeData()):
+        if event.proposedAction() == Qt.DropAction.CopyAction and SpectralLibraryUtils.canReadFromMimeData(
+                event.mimeData()):
             event.acceptProposedAction()
 
     def onExtractProfiles(self):
@@ -470,7 +472,7 @@ class SpectralLibraryWidget(QWidget):
         alg.initAlgorithm({})
         d = AlgorithmDialog(alg, context=context)
         d.algorithmFinished.connect(onFinished)
-        d.exec_()
+        d.exec()
 
         lyr = results.get(ExtractSpectralProfiles.P_OUTPUT, None)
         if isinstance(lyr, (QgsVectorLayer, str)):
@@ -499,7 +501,7 @@ class SpectralLibraryWidget(QWidget):
         alg.initAlgorithm({})
         d = AlgorithmDialog(alg, context=context)
         d.algorithmFinished.connect(onFinished)
-        d.exec_()
+        d.exec()
 
         lyr = results.get(ImportSpectralProfiles.P_OUTPUT, None)
         if isinstance(lyr, (QgsVectorLayer, str)):
@@ -570,7 +572,7 @@ class SpectralLibraryWidget(QWidget):
             alg.initAlgorithm(conf)
             d = AlgorithmDialog(alg, context=context)
             d.algorithmFinished.connect(onFinished)
-            d.exec_()
+            d.exec()
 
             files = results.get(ExportSpectralProfiles.P_OUTPUT, [])
             if len(files) > 0:

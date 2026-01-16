@@ -95,7 +95,7 @@ class ExportSpectralProfiles(QgsProcessingAlgorithm):
     def initAlgorithm(self, configuration: Dict[str, Any]) -> None:
         p = QgsProcessingParameterVectorLayer(
             self.P_INPUT,
-            types=[QgsProcessing.TypeVector],
+            types=[QgsProcessing.SourceType.TypeVector],
             description='Spectral library',
             defaultValue=configuration.get(self.P_INPUT),
             optional=False)
@@ -132,7 +132,7 @@ class ExportSpectralProfiles(QgsProcessingAlgorithm):
                                          optional=True)
         p.setHelp(
             'Additional writer options. Can be defined as JSON dictionary, e.g. <code>{ "key1": "value", "key2", 42}</code>')
-        p.setFlags(p.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
+        p.setFlags(p.flags() | QgsProcessingParameterDefinition.Flag.FlagAdvanced)
 
         filters = []
         for k, w in WRITERS.items():

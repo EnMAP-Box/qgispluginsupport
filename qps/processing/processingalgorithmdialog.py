@@ -16,15 +16,15 @@ class ProcessingAlgorithmDialog(QDialog):
         path_ui = pathlib.Path(__file__).parent / 'processingalgorithmdialog.ui'
         loadUi(path_ui, self)
 
-        self.setWindowFlag(Qt.WindowContextHelpButtonHint, False)
+        self.setWindowFlag(Qt.WindowType.WindowContextHelpButtonHint, False)
 
         self.mTreeViewAlgorithms: QgsProcessingToolboxTreeView
         self.mAlgorithmModel: QgsProcessingToolboxProxyModel = QgsProcessingToolboxProxyModel()
         self.mAlgorithmModel.setRecursiveFilteringEnabled(True)
-        self.mAlgorithmModel.setFilterCaseSensitivity(Qt.CaseInsensitive)
+        self.mAlgorithmModel.setFilterCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
 
         self.mTreeViewAlgorithms.header().setVisible(False)
-        self.mTreeViewAlgorithms.setDragDropMode(QTreeView.DragOnly)
+        self.mTreeViewAlgorithms.setDragDropMode(QTreeView.DragDropMode.DragOnly)
         self.mTreeViewAlgorithms.setDropIndicatorShown(False)
         self.mTreeViewAlgorithms.setToolboxProxyModel(self.mAlgorithmModel)
         self.mTreeViewAlgorithms.selectionModel().selectionChanged.connect(self.onAlgorithmTreeSelectionChanged)
@@ -59,12 +59,12 @@ class ProcessingAlgorithmDialog(QDialog):
         alg = self.mTreeViewAlgorithms.algorithmForIndex(index)
         if isinstance(alg, QgsProcessingAlgorithm):
             self.mSelectedAlgorithm = alg
-            self.setResult(QDialog.Accepted)
-            self.buttonBox.button(QDialogButtonBox.Ok).click()
+            self.setResult(QDialog.DialogCode.Accepted)
+            self.buttonBox.button(QDialogButtonBox.StandardButton.Ok).click()
 
     def onAlgorithmTreeSelectionChanged(self, selected, deselected):
         self.mSelectedAlgorithm = self.mTreeViewAlgorithms.selectedAlgorithm()
         b = isinstance(self.mSelectedAlgorithm, QgsProcessingAlgorithm)
 
-        btnOk = self.buttonBox.button(QDialogButtonBox.Ok)
+        btnOk = self.buttonBox.button(QDialogButtonBox.StandardButton.Ok)
         btnOk.setEnabled(b)

@@ -286,13 +286,13 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
 
                     extent = self.mCanvas.extent()
 
-                    orientation = Qt.AlignLeft
+                    orientation = Qt.AlignmentFlag.AlignLeft
                     if centerGeo.x() - extent.xMinimum() > 0.2 * extent.width():
-                        orientation = Qt.AlignLeft
+                        orientation = Qt.AlignmentFlag.AlignLeft
                         x0_thickmark = QgsPointXY(centerGeo.x() - 0.5 * (centerGeo.x() - extent.xMinimum()),
                                                   centerGeo.y())
                     else:
-                        orientation = Qt.AlignRight
+                        orientation = Qt.AlignmentFlag.AlignRight
                         x0_thickmark = QgsPointXY(centerGeo.x() + 0.5 * (extent.xMaximum() - centerGeo.x()),
                                                   centerGeo.y())
 
@@ -309,7 +309,7 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
                     # print(f'{rad}\n{bearing}')
                     x0 = None
                     if crs.isValid() \
-                            and distanceArea.lengthUnits() == QgsUnitTypes.DistanceMeters \
+                            and distanceArea.lengthUnits() == QgsUnitTypes.DistanceUnit.DistanceMeters \
                             and math.isfinite(bearing):
                         transE = QgsCoordinateTransform(crs, crsLL, transformContext)
                         try:
@@ -340,7 +340,7 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
                             ptLabel = QPointF(pt.x(), pt.y() + (ml + font.pointSize() + 3))
 
                             labelText = QgsDistanceArea.formatDistance(nice_distance, 0, distanceArea.lengthUnits())
-                            pen = QPen(Qt.SolidLine)
+                            pen = QPen(Qt.PenStyle.SolidLine)
                             pen.setWidth(self.mCrosshairStyle.mThickness)
                             pen.setColor(self.mCrosshairStyle.mColor)
 
@@ -351,7 +351,7 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
                             painter.setBrush(brush)
                             painter.setPen(Qt.PenStyle.NoPen)
                             fm = QFontMetrics(font)
-                            backGroundSize = QSizeF(fm.size(Qt.TextSingleLine, labelText))
+                            backGroundSize = QSizeF(fm.size(Qt.TextFlag.TextSingleLine, labelText))
                             backGroundSize = QSizeF(backGroundSize.width() + 3, -1 * (backGroundSize.height() + 3))
                             backGroundPos = QPointF(ptLabel.x() + 1, ptLabel.y() + 3)
                             ptText = QPointF(ptLabel.x() + 3, ptLabel.y())
@@ -418,11 +418,11 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
                         pixelBorder.append(ul)
                         polygons.append(pixelBorder)
 
-            pen = QPen(Qt.SolidLine)
+            pen = QPen(Qt.PenStyle.SolidLine)
             pen.setWidth(self.mCrosshairStyle.mThickness)
             pen.setColor(self.mCrosshairStyle.mColor)
             pen.setBrush(self.mCrosshairStyle.mColor)
-            brush = QBrush(Qt.NoBrush)
+            brush = QBrush(Qt.BrushStyle.NoBrush)
             brush.setColor(QColor(self.mCrosshairStyle.mColor))
             brush.color().setAlpha(0)
             painter.setBrush(brush)
@@ -565,7 +565,7 @@ class CrosshairDialog(QgsDialog):
         """
         d = CrosshairDialog(*args, **kwds)
         d.exec()
-        if d.result() == QDialog.Accepted:
+        if d.result() == QDialog.DialogCode.Accepted:
             return d.crosshairStyle()
         else:
 
@@ -573,7 +573,7 @@ class CrosshairDialog(QgsDialog):
 
     def __init__(self, parent=None, crosshairStyle=None, mapCanvas=None, title='Specify Crosshair'):
         super(CrosshairDialog, self).__init__(parent=parent,
-                                              buttons=QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+                                              buttons=QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
         self.w = CrosshairWidget(parent=self)
         self.setWindowTitle(title)
         self.btOk = QPushButton('Ok')

@@ -129,8 +129,8 @@ class FilteredFieldProxyModel(QgsFieldProxyModel):
         fields = self.sourceFieldModel().fields()
         field: QgsField = fields[fname]
         if not self.mFilterFunc(field):
-            f &= ~Qt.ItemIsSelectable
-            f &= ~Qt.ItemIsEnabled
+            f &= ~Qt.ItemFlag.ItemIsSelectable
+            f &= ~Qt.ItemFlag.ItemIsEnabled
         return f
 
 
@@ -183,8 +183,8 @@ class FilteredMapLayerProxyModel(QgsMapLayerProxyModel):
         lyr = self.data(index, QgsMapLayerModel.CustomRole.Layer)
 
         if not self.mFilterFunc(lyr):
-            f &= ~Qt.ItemIsSelectable
-            f &= ~Qt.ItemIsEnabled
+            f &= ~Qt.ItemFlag.ItemIsSelectable
+            f &= ~Qt.ItemFlag.ItemIsEnabled
         return f
 
     def setFilterFunc(self, func: Callable):
@@ -208,14 +208,14 @@ class LayerFieldDialog(QDialog):
         super().__init__(*args, **kwds)
 
         self.setWindowTitle("Select Layer Field")
-        self.setWindowFlag(Qt.WindowContextHelpButtonHint, False)
+        self.setWindowFlag(Qt.WindowType.WindowContextHelpButtonHint, False)
         self.mLayerModel = FilteredMapLayerProxyModel()
         self.mFieldModel = FilteredFieldProxyModel()
 
         self.mLastFields: Dict[str, str] = dict()
 
         self.mLayerComboBox = QComboBox()
-        self.mLayerComboBox.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.mLayerComboBox.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
 
         self.mLayerComboBox.setModel(self.mLayerModel)
         self.mLayerComboBox.currentIndexChanged.connect(self.onLayerChanged)
@@ -231,12 +231,12 @@ class LayerFieldDialog(QDialog):
         self.mCbShowAll.setChecked(True)
         self.mCbShowAll.toggled.connect(self.setShowAll)
 
-        self.mButtonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        self.mButtonBox = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
 
-        btOk = self.mButtonBox.button(QDialogButtonBox.Ok)
+        btOk = self.mButtonBox.button(QDialogButtonBox.StandardButton.Ok)
         btOk.clicked.connect(self.accept)
 
-        btCancel = self.mButtonBox.button(QDialogButtonBox.Cancel)
+        btCancel = self.mButtonBox.button(QDialogButtonBox.StandardButton.Cancel)
         btCancel.clicked.connect(self.reject)
 
         layout = QGridLayout()
@@ -349,7 +349,7 @@ class LayerFieldDialog(QDialog):
         has_fields = isinstance(lyr, QgsVectorLayer) and lyr.isValid()
         if self.mShowFieldFilter:
             b &= has_fields and self.field() in lyr.fields().names()
-        self.mButtonBox.button(QDialogButtonBox.Ok).setEnabled(b)
+        self.mButtonBox.button(QDialogButtonBox.StandardButton.Ok).setEnabled(b)
 
         self.mFieldComboBox.setEnabled(has_fields)
         self.mLabelField.setEnabled(has_fields)
@@ -377,7 +377,7 @@ class LayerFieldWidget(QWidget):
         self.mProject: QgsProject = QgsProject.instance()
         layout = QHBoxLayout()
 
-        p = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+        p = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
         p.setHorizontalStretch(2)
         self.mComboBox = QComboBox(parent=self)
         self.mComboBox.setSizePolicy(p)
@@ -403,7 +403,7 @@ class LayerFieldWidget(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
 
         self.setLayout(layout)
-        self.sizePolicy().setHorizontalPolicy(QSizePolicy.Preferred)
+        self.sizePolicy().setHorizontalPolicy(QSizePolicy.Policy.Preferred)
         self.mBtn.clicked.connect(self.onClicked)
 
     def setLayerFilter(self, func: Optional[Callable]):
@@ -432,7 +432,7 @@ class LayerFieldWidget(QWidget):
         d.setLayer(self.mLayer)
         d.setField(self.mField)
 
-        if d.exec_() == d.Accepted:
+        if d.exec() == d.Accepted:
             self.setLayerField(d.layer(), d.field())
 
     def setLayerField(self, layer: QgsMapLayer, field: Union[None, str, QgsField] = None):

@@ -22,7 +22,7 @@ class TestSpeclibIO_Raster(TestCase):
         alg.initAlgorithm({})
 
         rl = TestObjects.createRasterLayer(nb=25)
-        vl = TestObjects.createVectorLayer(wkbType=QgsWkbTypes.Point, )
+        vl = TestObjects.createVectorLayer(wkbType=QgsWkbTypes.Type.Point, )
         context, feedback = self.createProcessingContextFeedback()
 
         p = QgsProject()

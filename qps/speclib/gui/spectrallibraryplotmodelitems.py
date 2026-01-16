@@ -106,7 +106,7 @@ class SpectralProfileColorPropertyWidget(QWidget):
         self.mColorButton = QgsColorButton()
         self.mColorButton.colorChanged.connect(self.onButtonColorChanged)
 
-        self.mColorButton.setSizePolicy(QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed))
+        self.mColorButton.setSizePolicy(QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed))
         self.mPropertyOverrideButton = QgsPropertyOverrideButton()
         self.mPropertyOverrideButton.registerLinkedWidget(self.mColorButton)
         self.mPropertyOverrideButton.registerExpressionContextGenerator(self.mContextGenerator)
@@ -116,7 +116,7 @@ class SpectralProfileColorPropertyWidget(QWidget):
         hl.addWidget(self.mPropertyOverrideButton)
         hl.setSpacing(2)
         hl.setContentsMargins(0, 0, 0, 0)
-        self.sizePolicy().setHorizontalPolicy(QSizePolicy.Preferred)
+        self.sizePolicy().setHorizontalPolicy(QSizePolicy.Policy.Preferred)
         self.setLayout(hl)
 
         self.mPropertyDefinition = QgsPropertyDefinition()
@@ -136,7 +136,7 @@ class SpectralProfileColorPropertyWidget(QWidget):
     def setToProperty(self, property: QgsProperty):
         assert isinstance(property, QgsProperty)
 
-        if property.propertyType() == QgsProperty.StaticProperty:
+        if property.propertyType() == QgsProperty.Type.StaticProperty:
             self.mColorButton.setColor(
                 property.valueAsColor(self.mContextGenerator.createExpressionContext(), self.mDefaultColor)[0])
             self.mPropertyOverrideButton.setActive(False)
@@ -275,7 +275,7 @@ class PropertyItem(PropertyItemBase):
     def itemIsChecked(self) -> bool:
 
         if self.label().isCheckable():
-            return self.label().checkState() == Qt.Checked
+            return self.label().checkState() == Qt.CheckState.Checked
         return None
 
     def setItemCheckable(self, b: bool):
@@ -283,7 +283,7 @@ class PropertyItem(PropertyItemBase):
         self.label().setEditable(b)
 
     def setItemChecked(self, b: bool):
-        self.label().setCheckState(Qt.Checked if b is True else Qt.Unchecked)
+        self.label().setCheckState(Qt.CheckState.Checked if b is True else Qt.CheckState.Unchecked)
 
     # def signals(self):
     #    return self.mSignals
@@ -416,7 +416,7 @@ class PropertyItemGroup(PropertyItemBase):
     def initBasicSettings(self):
         self.setUserTristate(False)
         self.setCheckable(True)
-        self.setCheckState(Qt.Checked)
+        self.setCheckState(Qt.CheckState.Checked)
         self.setDropEnabled(False)
         self.setDragEnabled(False)
 
@@ -438,16 +438,16 @@ class PropertyItemGroup(PropertyItemBase):
             self.child(r, 0).setForeground(c)
 
     def setVisible(self, visible: bool):
-        if visible in [Qt.Checked, visible is True]:
-            self.setCheckState(Qt.Checked)
+        if visible in [Qt.CheckState.Checked, visible is True]:
+            self.setCheckState(Qt.CheckState.Checked)
         else:
-            self.setCheckState(Qt.Unchecked)
+            self.setCheckState(Qt.CheckState.Unchecked)
 
     def isVisible(self) -> bool:
         """
         Returns True if plot items related to this control item should be visible in the plot
         """
-        return self.checkState() == Qt.Checked
+        return self.checkState() == Qt.CheckState.Checked
 
     def data(self, role: int = ...) -> Any:
 
@@ -541,7 +541,7 @@ class LegendSettingsGroup(PropertyItemGroup):
 
         self.setUserTristate(False)
         self.setCheckable(True)
-        self.setCheckState(Qt.Unchecked)
+        self.setCheckState(Qt.CheckState.Unchecked)
         self.setDropEnabled(False)
         self.setDragEnabled(False)
 
@@ -571,7 +571,7 @@ class LegendSettingsGroup(PropertyItemGroup):
 
     def asMap(self) -> dict:
         d = {
-            'show': self.checkState() == Qt.Checked,
+            'show': self.checkState() == Qt.CheckState.Checked,
             'text_size': self.m_textsize.text(),
             # 'max_items': self.mP_MaxProfiles.value(),
             'columns': max(1, self.m_columns.value()),
@@ -734,7 +734,7 @@ class GeneralSettingsGroup(PropertyItemGroup):
         return self.mP_MaxProfiles.value()
 
     def setShowLegend(self, value: bool):
-        state = Qt.Checked if value else Qt.Unchecked
+        state = Qt.CheckState.Checked if value else Qt.CheckState.Unchecked
         self.mLegendGroup.setCheckState(state)
 
     def setMaximumProfiles(self, n: int):
@@ -1127,11 +1127,11 @@ class QgsPropertyItem(PropertyItem):
         p = self.property()
         if isinstance(value, QgsProperty):
             self.setProperty(value)
-        elif p.propertyType() == QgsProperty.StaticProperty:
+        elif p.propertyType() == QgsProperty.Type.StaticProperty:
             self.setProperty(QgsProperty.fromValue(value))
-        elif p.propertyType() == QgsProperty.FieldBasedProperty:
+        elif p.propertyType() == QgsProperty.Type.FieldBasedProperty:
             self.setProperty(QgsProperty.fromField(value))
-        elif p.propertyType() == QgsProperty.ExpressionBasedProperty:
+        elif p.propertyType() == QgsProperty.Type.ExpressionBasedProperty:
             self.setProperty(QgsProperty.fromExpression(str(value)))
 
     def property(self) -> QgsProperty:
@@ -1164,9 +1164,9 @@ class QgsPropertyItem(PropertyItem):
         p = self.property()
 
         if role == Qt.ItemDataRole.DisplayRole:
-            if p.propertyType() == QgsProperty.ExpressionBasedProperty:
+            if p.propertyType() == QgsProperty.Type.ExpressionBasedProperty:
                 return p.expressionString()
-            elif p.propertyType() == QgsProperty.FieldBasedProperty:
+            elif p.propertyType() == QgsProperty.Type.FieldBasedProperty:
                 return p.field()
             else:
                 v, success = p.value(QgsExpressionContext())
@@ -1187,8 +1187,8 @@ class QgsPropertyItem(PropertyItem):
         return super().data(role)
 
     def isColorProperty(self) -> bool:
-        return self.definition().standardTemplate() in [QgsPropertyDefinition.ColorWithAlpha,
-                                                        QgsPropertyDefinition.ColorNoAlpha]
+        return self.definition().standardTemplate() in [QgsPropertyDefinition.StandardPropertyTemplate.ColorWithAlpha,
+                                                        QgsPropertyDefinition.StandardPropertyTemplate.ColorNoAlpha]
 
     def createEditor(self, parent):
         # speclib: Optional[QgsVectorLayer] = self.speclib()
@@ -1291,7 +1291,7 @@ class QgsPropertyItem(PropertyItem):
 
         elif isinstance(editor, QCheckBox):
             b = self.property().valueAsBool(self.expressionContext())[0]
-            editor.setCheckState(Qt.Checked if b else Qt.Unchecked)
+            editor.setCheckState(Qt.CheckState.Checked if b else Qt.CheckState.Unchecked)
 
         elif isinstance(editor, QComboBox):
             value, success = self.property().value(self.expressionContext())
@@ -1438,7 +1438,7 @@ class RasterRendererGroup(PropertyItemGroup):
 
         self.setUserTristate(False)
         self.setCheckable(True)
-        self.setCheckState(Qt.Checked)
+        self.setCheckState(Qt.CheckState.Checked)
         self.setDropEnabled(False)
         self.setDragEnabled(False)
 
@@ -1808,7 +1808,7 @@ class GeneralSettingsProfileStats(PropertyItemGroup):
         super().__init__(*args, **kwds)
 
         self.setCheckable(True)
-        self.setCheckState(Qt.Checked)
+        self.setCheckState(Qt.CheckState.Checked)
         self.setText('Statistics')
 
         self.mNormalized = QgsPropertyItemBool('Normalized',
@@ -1822,7 +1822,7 @@ class GeneralSettingsProfileStats(PropertyItemGroup):
 
     def asMap(self) -> dict:
 
-        d = {'show': self.checkState() == Qt.Checked}
+        d = {'show': self.checkState() == Qt.CheckState.Checked}
         for item in self._items:
             d[item.key()] = item.value()
 
@@ -1858,7 +1858,7 @@ class ProfileStatsGroup(PropertyItemGroup):
         default_style = PlotStyle()
         default_style.setMarkerSymbol(None)
         default_style.setLineColor('green')
-        default_style.setLineStyle(Qt.SolidLine)
+        default_style.setLineStyle(Qt.PenStyle.SolidLine)
         default_style.setLineWidth(3)
 
         visFlags = f.Line | f.Color | f.Size | f.Type
@@ -1939,7 +1939,7 @@ class ProfileVisualizationGroup(PropertyItemGroup):
         default_candidate_style.setMarkerColor('green')
         default_candidate_style.setLineColor('green')
         default_candidate_style.setLineWidth(2)
-        default_candidate_style.setLineStyle(Qt.SolidLine)
+        default_candidate_style.setLineStyle(Qt.PenStyle.SolidLine)
 
         self.mProfileCandidates.setPlotStyle(default_candidate_style)
         self.mProfileCandidates.setItemCheckable(True)
@@ -1973,7 +1973,7 @@ class ProfileVisualizationGroup(PropertyItemGroup):
 
         self.setUserTristate(False)
         self.setCheckable(True)
-        self.setCheckState(Qt.Checked)
+        self.setCheckState(Qt.CheckState.Checked)
         self.setDropEnabled(False)
         self.setDragEnabled(False)
 
@@ -2231,8 +2231,10 @@ class ProfileVisualizationGroup(PropertyItemGroup):
             fc = QColor(self.mPlotWidgetStyle.foregroundColor)
             al = False
 
-        color = QColor(expr.evaluate(context))
-        if not color.isValid():
+        color = expr.evaluate(context)
+        if color:
+            color = QColor(color)
+        if not (isinstance(color, QColor) and color.isValid()):
             color = fc
         style.setBackgroundColor(bc)
         style.setLineColor(color)

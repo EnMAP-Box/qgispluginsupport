@@ -5,6 +5,7 @@ import unittest
 
 import numpy as np
 from osgeo import gdal
+
 from qgis.PyQt.QtCore import QEvent, QMetaType, QPointF, Qt
 from qgis.PyQt.QtGui import QColor, QMouseEvent, QPen
 from qgis.PyQt.QtWidgets import QHBoxLayout, QVBoxLayout, QWidget
@@ -14,7 +15,6 @@ from qgis.core import edit, QgsApplication, QgsCategorizedSymbolRenderer, QgsCla
     QgsMultiBandColorRenderer, QgsNullSymbolRenderer, QgsProject, QgsProperty, QgsReadWriteContext, QgsRenderContext, \
     QgsRendererCategory, QgsRendererRange, QgsSingleBandGrayRenderer, QgsSingleSymbolRenderer, QgsVectorLayer
 from qgis.gui import QgsMapCanvas
-
 from qps import DIR_REPO, initAll
 from qps.plotstyling.plotstyling import MarkerSymbol, PlotStyle
 from qps.pyqtgraph.pyqtgraph import InfiniteLine
@@ -349,11 +349,11 @@ class TestSpeclibPlotting(TestCase):
         pw.show()
         w, h = pw.width(), pw.height()
         # event = QDropEvent(QPoint(0, 0), Qt.CopyAction, md, Qt.LeftButton, Qt.NoModifier)
-        event = QMouseEvent(QEvent.MouseMove, QPointF(0.5 * w, 0.5 * h), Qt.NoButton, Qt.NoButton, Qt.NoModifier)
+        event = QMouseEvent(QEvent.Type.MouseMove, QPointF(0.5 * w, 0.5 * h), Qt.MouseButton.NoButton, Qt.MouseButton.NoButton, Qt.KeyboardModifier.NoModifier)
         pw.mouseMoveEvent(event)
 
-        event = QMouseEvent(QEvent.MouseButtonPress, QPointF(0.5 * w, 0.5 * h), Qt.RightButton, Qt.RightButton,
-                            Qt.NoModifier)
+        event = QMouseEvent(QEvent.Type.MouseButtonPress, QPointF(0.5 * w, 0.5 * h), Qt.MouseButton.RightButton, Qt.MouseButton.RightButton,
+                            Qt.KeyboardModifier.NoModifier)
         pw.mouseReleaseEvent(event)
 
         self.showGui(pw)

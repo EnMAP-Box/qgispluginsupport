@@ -65,7 +65,7 @@ def create_vsimemfile(extension: str, path: Optional[Union[str, Path]] = None) -
     if not writer.flushBuffer():
         raise Exception(writer.errorMessage())
     # Check if the writer was created successfully
-    if writer.hasError() != QgsVectorFileWriter.NoError:
+    if writer.hasError() != QgsVectorFileWriter.WriterError.NoError:
         raise Exception(f"Error when creating vector file: {writer.errorMessage()}")
 
     if hasattr(writer, 'finalize'):
@@ -164,7 +164,7 @@ class GenericPropertyTransformer(QgsPropertyTransformer):
         if value is None:
             return None
         if isinstance(value, (QDateTime, QDate, QTime)):
-            return value.toString(Qt.ISODate)
+            return value.toString(Qt.DateFormat.ISODate)
         elif isinstance(value, (dict, list)):
             return str(value)
         return str(value)
@@ -174,18 +174,18 @@ class GenericPropertyTransformer(QgsPropertyTransformer):
         if isinstance(v, QDateTime):
             return v
         elif isinstance(v, datetime.datetime):
-            return QDateTime.fromString(v.isoformat(), Qt.ISODateWithMs)
+            return QDateTime.fromString(v.isoformat(), Qt.DateFormat.ISODateWithMs)
         elif isinstance(v, datetime.date):
-            return QDateTime(QDate.fromString(v.isoformat(), Qt.ISODate), QTime())
+            return QDateTime(QDate.fromString(v.isoformat(), Qt.DateFormat.ISODate), QTime())
         elif isinstance(v, QDate):
             return QDateTime(v, QTime())
         elif isinstance(v, str):
             # try to parse datetime from string
-            for fmt in [Qt.ISODate, Qt.ISODateWithMs, Qt.TextDate, Qt.RFC2822Date]:
+            for fmt in [Qt.DateFormat.ISODate, Qt.DateFormat.ISODateWithMs, Qt.DateFormat.TextDate, Qt.DateFormat.RFC2822Date]:
                 if (r := QDateTime.fromString(v, fmt)).isValid():
                     return r
             locale = QLocale()
-            for fmt in [QLocale.LongFormat, QLocale.ShortFormat, QLocale.NarrowFormat]:
+            for fmt in [QLocale.FormatType.LongFormat, QLocale.FormatType.ShortFormat, QLocale.FormatType.NarrowFormat]:
                 if (r := locale.toDateTime(v, fmt)).isValid():
                     return r
         return None
@@ -208,13 +208,13 @@ class GenericPropertyTransformer(QgsPropertyTransformer):
         elif isinstance(v, (datetime.datetime, QDateTime)):
             return GenericPropertyTransformer.toDateTime(v).date()
         elif isinstance(v, datetime.date):
-            return QDate.fromString(v.isoformat(), Qt.ISODate)
+            return QDate.fromString(v.isoformat(), Qt.DateFormat.ISODate)
         elif isinstance(v, str):
-            for fmt in [Qt.ISODate, Qt.ISODateWithMs, Qt.RFC2822Date]:
+            for fmt in [Qt.DateFormat.ISODate, Qt.DateFormat.ISODateWithMs, Qt.DateFormat.RFC2822Date]:
                 if (r := QDate.fromString(v, fmt)).isValid():
                     return r
             locale = QLocale()
-            for fmt in [QLocale.LongFormat, QLocale.ShortFormat, QLocale.NarrowFormat]:
+            for fmt in [QLocale.FormatType.LongFormat, QLocale.FormatType.ShortFormat, QLocale.FormatType.NarrowFormat]:
                 if (r := locale.toDate(v, fmt)).isValid():
                     return r
 
@@ -228,15 +228,15 @@ class GenericPropertyTransformer(QgsPropertyTransformer):
         if isinstance(v, QTime):
             return v
         elif isinstance(v, datetime.time):
-            return QTime.fromString(v.isoformat(), Qt.ISODateWithMs)
+            return QTime.fromString(v.isoformat(), Qt.DateFormat.ISODateWithMs)
         elif isinstance(v, (QDateTime, datetime.datetime)):
             return GenericPropertyTransformer.toDateTime(v).time()
         elif isinstance(v, str):
-            for fmt in [Qt.ISODate, Qt.ISODateWithMs, Qt.RFC2822Date]:
+            for fmt in [Qt.DateFormat.ISODate, Qt.DateFormat.ISODateWithMs, Qt.DateFormat.RFC2822Date]:
                 if (r := QTime.fromString(v, fmt)).isValid():
                     return r
             locale = QLocale()
-            for fmt in [QLocale.LongFormat, QLocale.ShortFormat, QLocale.NarrowFormat]:
+            for fmt in [QLocale.FormatType.LongFormat, QLocale.FormatType.ShortFormat, QLocale.FormatType.NarrowFormat]:
                 if (r := locale.toTime(v, fmt)).isValid():
                     return r
 

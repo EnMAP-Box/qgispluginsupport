@@ -24,20 +24,21 @@
     along with this software. If not, see <https://www.gnu.org/licenses/>.
 ***************************************************************************
 """
-import os
 import collections
+import io
+import os
 import re
 import sys
-import io
 
-from qgis.core import QgsVectorLayer, QgsFeature
-from qgis.core import QgsProcessingFeedback
 import numpy as np
+
 from qgis.PyQt.QtWidgets import QMenu, QFileDialog
+from qgis.core import QgsProcessingFeedback
+from qgis.core import QgsVectorLayer, QgsFeature
+from .. import FIELD_VALUES, FIELD_NAME, FIELD_FID, createStandardFields
 from ..core import is_spectral_library
 from ..core.spectrallibrary import SpectralSetting, SpectralLibraryUtils
 from ..core.spectrallibraryio import SpectralLibraryIO
-from .. import FIELD_VALUES, FIELD_NAME, FIELD_FID, createStandardFields
 from ...utils import findTypeFromString, createQgsField
 
 

@@ -1,7 +1,8 @@
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
-from qgis.PyQt.QtCore import NULL, QByteArray, QMetaType, QVariant
+
+from qgis.PyQt.QtCore import QByteArray, QMetaType, QVariant
 from qgis.core import edit, QgsAggregateCalculator, QgsCoordinateReferenceSystem, QgsCoordinateTransformContext, \
     QgsDistanceArea, QgsEditorWidgetSetup, QgsExpression, QgsExpressionContext, QgsExpressionContextScope, \
     QgsExpressionContextUtils, QgsExpressionFunction, QgsExpressionNode, QgsExpressionNodeColumnRef, \
@@ -9,8 +10,7 @@ from qgis.core import edit, QgsAggregateCalculator, QgsCoordinateReferenceSystem
     QgsGeometry, QgsMapLayer, QgsProcessing, QgsProcessingAlgorithm, QgsProcessingContext, QgsProcessingException, \
     QgsProcessingFeatureSource, QgsProcessingFeedback, QgsProcessingParameterAggregate, \
     QgsProcessingParameterExpression, QgsProcessingParameterFeatureSink, QgsProcessingParameterFeatureSource, \
-    QgsProcessingUtils, QgsVectorLayer, QgsWkbTypes
-
+    QgsProcessingUtils, QgsVectorLayer, QgsWkbTypes, NULL
 from .. import EDITOR_WIDGET_REGISTRY_KEY
 from ..core import is_profile_field
 from ..core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict, prepareProfileValueDict, \
@@ -47,7 +47,7 @@ class AggregateProfilesCalculator(QgsAggregateCalculator):
                   feedback: Optional[QgsFeedback] = ...) -> Optional[dict]:
 
         if not isinstance(self.layer(), QgsVectorLayer):
-            return QVariant()
+            return NULL
         error = ''
         context = context if isinstance(context, QgsExpressionContext) else self.layer().createExpressionContext()
         if not isinstance(feedback, QgsFeedback):
@@ -60,7 +60,7 @@ class AggregateProfilesCalculator(QgsAggregateCalculator):
             expression = QgsExpression(fieldOrExpression)
             if expression.hasParserError() or not expression.prepare(context):
                 error = expression.parserErrorString() if expression.hasParserError() else expression.evalErrorString()
-                return QVariant()
+                return NULL
 
         if not expression:
             lst = set(self.layer().fields().at(attrNum).name())
@@ -71,7 +71,7 @@ class AggregateProfilesCalculator(QgsAggregateCalculator):
 
         request = QgsFeatureRequest()
         request.setFlags(
-            QgsFeatureRequest.NoFlags if expression and expression.needsGeometry() else QgsFeatureRequest.NoGeometry)
+            QgsFeatureRequest.Flag.NoFlags if expression and expression.needsGeometry() else QgsFeatureRequest.Flag.NoGeometry)
         request.setSubsetOfAttributes(lst, self.layer().fields())
         if self.mFIDs:
             request.setFilterFids(self.mFIDs[:])
@@ -110,7 +110,7 @@ class AggregateProfilesCalculator(QgsAggregateCalculator):
                     yUnit = d.get('yUnit')
 
         if len(profileDictionaries) == 0:
-            return QVariant()
+            return NULL
         y = None
         x = profileDictionaries[0].get('x', None)
 
@@ -182,7 +182,7 @@ class AggregateMemoryLayer(QgsVectorLayer):
             if crs.authid() != '':
                 parts.append(f'crs={crs.authid()}')
             else:
-                parts.append(f'crs=wkt:{crs.toWkt(QgsCoordinateReferenceSystem.WKT_PREFERRED)}')
+                parts.append(f'crs=wkt:{crs.toWkt(QgsCoordinateReferenceSystem.WktVariant.WKT_PREFERRED)}')
         for field in fields:
             field: QgsField
             lengthPrecission = f'({field.length()},{field.precision()})'
@@ -271,7 +271,7 @@ Please not that not each aggregate function might be available for each field ty
         self.addParameter(
             QgsProcessingParameterFeatureSource(self.P_INPUT,
                                                 'Input spectral library',
-                                                [QgsProcessing.TypeVector],
+                                                [QgsProcessing.SourceType.TypeVector],
                                                 defaultValue=configuration.get(self.P_INPUT)))
         self.addParameter(
             QgsProcessingParameterExpression(self.P_GROUP_BY,
@@ -406,7 +406,7 @@ Please not that not each aggregate function might be available for each field ty
                 keys.append(key)
 
             group: Group = groups[key]
-            if not group.sink.addFeature(feature, flags=QgsFeatureSink.FastInsert):
+            if not group.sink.addFeature(feature, flags=QgsFeatureSink.Flag.FastInsert):
                 raise QgsProcessingException(self.writeFeatureError(sink, parameters, ''))
             group.lastFeature = feature
             feedback.setProgress(current * progressStep)
@@ -468,7 +468,7 @@ Please not that not each aggregate function might be available for each field ty
             outFeat = QgsFeature(self.mFields)
             outFeat.setGeometry(geometry)
             outFeat.setAttributes(attributes)
-            if not sink.addFeature(outFeat, QgsFeatureSink.FastInsert):
+            if not sink.addFeature(outFeat, QgsFeatureSink.Flag.FastInsert):
                 raise QgsProcessingException(self.writeFeatureError(sink, parameters, self.P_OUTPUT))
 
             feedback.setProgress(50.0 + current * progressStep)
@@ -561,10 +561,10 @@ class SpectralAggregation(QgsExpressionFunction):
 
         if len(values) < 1:
             parent.setEvalErrorString(f'{self.name()}: requires at least 1 argument')
-            return QVariant()
+            return NULL
         if not isinstance(values[-1], str):
             parent.setEvalErrorString(f'{self.name()}: last argument needs to be a string')
-            return QVariant()
+            return NULL
 
         encoding = None
 
@@ -578,7 +578,7 @@ class SpectralAggregation(QgsExpressionFunction):
         if not isinstance(pyExpression, str):
             parent.setEvalErrorString(
                 f'{self.name()}: Argument {iPy + 1} needs to be a string with python code')
-            return QVariant()
+            return NULL
 
         try:
             profilesData = values[0:-1]
@@ -620,7 +620,7 @@ class SpectralAggregation(QgsExpressionFunction):
             return encodeProfileValueDict(d, encoding)
         except Exception as ex:
             parent.setEvalErrorString(f'{ex}')
-            return QVariant()
+            return NULL
 
     def usesGeometry(self, node) -> bool:
         return True
@@ -642,13 +642,13 @@ def spfcnAggregateGeneric(
 ):
     if not isinstance(context, QgsExpressionContext):
         parent.setEvalErrorString('Cannot use aggregate function in this context')
-        return QVariant()
+        return NULL
 
     # find current layer:
     vl: QgsVectorLayer = context.variable('layer')
     if not isinstance(vl, QgsVectorLayer):
         parent.setEvalErrorString('Cannot use aggregate function in this context')
-        return QVariant()
+        return NULL
 
     nodeProfile: QgsExpressionNode = values[0]
     nodeGroupBy: QgsExpressionNode = values[1]
@@ -743,14 +743,14 @@ def spfcnAggregateGeneric(
     subContext.appendScope(subScope)
 
     field_index = QgsExpression.expressionToLayerFieldIndex(subExpression, vl)
-    result = QVariant()
+    result = NULL
     if field_index != -1:
         field = vl.fields().at(field_index)
         fids = []
         if parameters.filter != '':
             request = QgsFeatureRequest()
             request.setFilterExpression(parameters.filter)
-            request.setFlags(QgsFeatureRequest.NoGeometry)
+            request.setFlags(QgsFeatureRequest.Flag.NoGeometry)
             request.setSubsetOfAttributes([])
             fids = [f.id() for f in vl.getFeatures(request)]
 
@@ -767,7 +767,7 @@ def spfcnAggregateGeneric(
             result = AGG.calculate(aggregate, subExpression, context, context.feedback())
         except Exception as ex:
             parent.setEvalErrorString(f'Unable to aggregate:<br>{ex}')
-            return QVariant()
+            return NULL
 
     if isinstance(result, dict):
         if encoding is not None:
@@ -775,7 +775,7 @@ def spfcnAggregateGeneric(
         context.setCachedValue(cacheKey, result)
         return result
     # print(f'# Result: {result}')
-    return QVariant()
+    return NULL
     # return
 
 
