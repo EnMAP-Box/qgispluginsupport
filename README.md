@@ -229,7 +229,7 @@ that is hosted at https://github.com/EnMAP-Box/pyqtgraph
 docker buildx build -t qpgs/qps:3.38 -f .docker/Dockerfile -
 
 Run QGIS in docker:
-
+````bash
 docker run \
   --rm \
   -e DISPLAY=${DISPLAY} \
@@ -243,16 +243,26 @@ docker run \
   --user=$(id -u $USER):$(id -g $USER) \
   --net host \
   qgis/qgis:latest qgis
+````
 
+Run QGIS preview with Qt6:
+
+````bash
 xhost +local:docker
-docker run -it --rm \
-  --env="DISPLAY" \
-  --volume="/tmp/.X11-unix:/tmp/.X11-unix:rw" \
+docker run --rm -it \
+  --env="DISPLAY=${DISPLAY}" \
+  --env="LANG=C.UTF-8" \
+  --env="LC_ALL=C.UTF-8" \
+  --net=host \
+  -v /tmp/.X11-unix:/tmp/.X11-unix:rw \
   -v $HOME:$HOME \
-  --workdir="/home/user" \
-  qgis/qgis:latest qgis-qt6
-
+  --workdir=$HOME \
+  --user=$(id -u $USER):$(id -g $USER) \
+  registry.gitlab.com/oslandia/qgis/pyqgis-4-checker/pyqgis-qt-checker:latest \
+  qgis
+````
 # Testing
+
 
 
 Run tests from shell:
@@ -262,12 +272,31 @@ $ runtests -n auto
 ````
 
 
-run tests from docker:
+Eun tests from docker:
 
 https://github.com/qgis/pyqgis4-checker
 
 
 docker run -it --pull missing ghcr.io/qgis/pyqgis4-checker:main-ubuntu /usr/bin/bash
+
+
+Test on QGIS preview with Qt6:
+
+````bash
+xhost +local:docker
+docker run --rm -it \
+  --env="DISPLAY=${DISPLAY}" \
+  --env="LANG=C.UTF-8" \
+  --env="LC_ALL=C.UTF-8" \
+  --net=host \
+  -v /tmp/.X11-unix:/tmp/.X11-unix:rw \
+  -v $HOME:$HOME \
+  -v $PWD:$PWD \
+  --workdir=$PWD \
+  --user=$(id -u $USER):$(id -g $USER) \
+  registry.gitlab.com/oslandia/qgis/pyqgis-4-checker/pyqgis-qt-checker:latest \
+  runtests.sh
+````
 
 ## License
 
