@@ -198,7 +198,7 @@ class QgisMockup(QgisInterface):
 
         self.mSelectionToolBar = QToolBar()
         self.mMessageBar = QgsMessageBar()
-        mainFrame = QFrame()
+        mainFrame = QFrame(parent=self.ui)
         self.ui.setCentralWidget(mainFrame)
         self.ui.setWindowTitle('QGIS Mockup')
         hl = QHBoxLayout()
@@ -541,14 +541,17 @@ class TestCase(QgisTestCase):
 
         app = QApplication.instance()
         if isinstance(app, QApplication) and keepOpen:
-            app.exec_()
+            try:
+                app.exec()
+            except Exception:
+                app.exec_()
 
         return True
 
     @staticmethod
-    def runsInCI() -> True:
+    def runsInCI() -> bool:
         """
-        Returns True if this the environment is supposed to run in a CI environment
+        Returns True if the environment is supposed to run in a CI environment
         and should not open blocking dialogs
         """
         r = str(os.environ.get('CI', '')).lower() not in ['', 'none', 'false', '0']
@@ -714,7 +717,7 @@ class TestCase(QgisTestCase):
         :return: Path
         """
         warnings.warn(DeprecationWarning('Use createTestOutputDirectory() instead.'))
-        return self.createTestOutputDirectory(subdir, cleanup)
+        return self.createTestOutputDirectory(subdir, cleanup=cleanup)
 
     def assertLengthEqual(self, list1, list2):
         self.assertEqual(len(list1), len(list2))
