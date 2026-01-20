@@ -85,13 +85,13 @@ PICKLE_PROTOCOL = pickle.HIGHEST_PROTOCOL
 # CURRENT_SPECTRUM_STYLE = PlotStyle()
 # CURRENT_SPECTRUM_STYLE.markerSymbol = None
 # CURRENT_SPECTRUM_STYLE.linePen.setStyle(Qt.SolidLine)
-# CURRENT_SPECTRUM_STYLE.linePen.setColor(Qt.green)
+# CURRENT_SPECTRUM_STYLE.linePen.setColor(Qt.GlobalColor.green)
 
 
 # DEFAULT_SPECTRUM_STYLE = PlotStyle()
 # DEFAULT_SPECTRUM_STYLE.markerSymbol = None
 # DEFAULT_SPECTRUM_STYLE.linePen.setStyle(Qt.SolidLine)
-# DEFAULT_SPECTRUM_STYLE.linePen.setColor(Qt.white)
+# DEFAULT_SPECTRUM_STYLE.linePen.setColor(Qt.GlobalColor.white)
 
 
 VSI_DIR = r'/vsimem/speclibs/'
@@ -207,7 +207,7 @@ layerId = '[% @layer_id %]'
 runRemoveFeatureActionRoutine(layerId, [% $id %])
 """.format(modulePath=MODULE_IMPORT_PATH)
 
-    return QgsAction(QgsAction.GenericPython, 'Remove Spectrum', pythonCode, iconPath, True,
+    return QgsAction(QgsAction.ActionType.GenericPython, 'Remove Spectrum', pythonCode, iconPath, True,
                      notificationMessage='msgRemoveSpectra',
                      actionScopes={'Feature'})
 
@@ -230,7 +230,7 @@ def defaultCurvePlotStyle() -> PlotStyle:
     ps = PlotStyle()
     ps.setLineColor('white')
     ps.markerSymbol = None
-    ps.linePen.setStyle(Qt.SolidLine)
+    ps.linePen.setStyle(Qt.PenStyle.SolidLine)
     return ps
 
 
@@ -339,7 +339,7 @@ class SpectralLibraryUtils:
         fields = profile_field_list(profiles[0])
 
         if isinstance(uri, QUrl):
-            uri = uri.toString(QUrl.PreferLocalFile | QUrl.RemoveQuery)
+            uri = uri.toString(QUrl.UrlFormattingOption.PreferLocalFile | QUrl.UrlFormattingOption.RemoveQuery)
 
         writer_options = kwargs.copy()
         if isinstance(feedback, QgsProcessingFeedback):
@@ -491,14 +491,14 @@ class SpectralLibraryUtils:
                     v = encodeProfileValueDict(v, f)
                 elif f.type() == QMETATYPE_QDATETIME:
                     if isinstance(v, datetime.datetime):
-                        v = QDateTime.fromString(v.isoformat(), Qt.ISODate)
+                        v = QDateTime.fromString(v.isoformat(), Qt.DateFormat.ISODate)
                     elif isinstance(v, datetime.date):
-                        v = QDateTime.fromString(v.isoformat(), Qt.ISODate)
+                        v = QDateTime.fromString(v.isoformat(), Qt.DateFormat.ISODate)
                 elif f.type() == QMETATYPE_QDATE:
                     if isinstance(v, datetime.datetime):
-                        v = QDateTime.fromString(v.isoformat(), Qt.ISODate)
+                        v = QDateTime.fromString(v.isoformat(), Qt.DateFormat.ISODate)
                     elif isinstance(v, datetime.date):
-                        v = QDateTime.fromString(v.isoformat(), Qt.ISODate)
+                        v = QDateTime.fromString(v.isoformat(), Qt.DateFormat.ISODate)
                 feature.setAttribute(n, v)
 
     @staticmethod
@@ -519,7 +519,7 @@ class SpectralLibraryUtils:
         if mimeData.hasUrls():
             speclibs = []
             for url in mimeData.urls():
-                path = url.toString(QUrl.PreferLocalFile)
+                path = url.toString(QUrl.UrlFormattingOption.PreferLocalFile)
                 if RX_SUPPORTED_DROP_FORMATS.search(path):
                     sl = SpectralLibraryUtils.readFromSource(path)
                     if isinstance(sl, QgsVectorLayer) and sl.isValid() and sl.featureCount() > 0:
@@ -618,7 +618,7 @@ class SpectralLibraryUtils:
         conf = QgsAttributeTableConfig()
         conf.setColumns(columns)
         conf.setActionWidgetVisible(False)
-        conf.setActionWidgetStyle(QgsAttributeTableConfig.ButtonList)
+        conf.setActionWidgetStyle(QgsAttributeTableConfig.ActionWidgetStyle.ButtonList)
 
         speclib.setAttributeTableConfig(conf)
 
@@ -662,7 +662,7 @@ class SpectralLibraryUtils:
             if format in mimeData.formats():
                 if format == MIMEDATA_URL:
                     for url in mimeData.urls():
-                        if RX_SUPPORTED_DROP_FORMATS.search(url.toString(QUrl.PreferLocalFile)):
+                        if RX_SUPPORTED_DROP_FORMATS.search(url.toString(QUrl.UrlFormattingOption.PreferLocalFile)):
                             return True
                 else:
                     return True

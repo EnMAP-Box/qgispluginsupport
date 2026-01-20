@@ -27,18 +27,18 @@ from typing import List, Union
 
 import numpy as np
 
-from qgis.core import Qgis, QgsMapLayer, QgsMultiBandColorRenderer, QgsPalettedRasterRenderer, QgsRasterLayer, \
-    QgsRasterRenderer, QgsSingleBandColorDataRenderer, QgsSingleBandGrayRenderer, QgsSingleBandPseudoColorRenderer
 from qgis.PyQt.QtCore import Qt, QTimer
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QLabel, QPushButton, QSlider, QStackedWidget, QWidget
+from qgis.core import Qgis, QgsMapLayer, QgsMultiBandColorRenderer, QgsPalettedRasterRenderer, QgsRasterLayer, \
+    QgsRasterRenderer, QgsSingleBandColorDataRenderer, QgsSingleBandGrayRenderer, QgsSingleBandPseudoColorRenderer
 from qgis.gui import QgsMapCanvas, QgsMapLayerConfigWidget, QgsMapLayerConfigWidgetFactory, QgsRasterBandComboBox
 from ..layerconfigwidgets.core import QpsMapLayerConfigWidget
 from ..qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from ..simplewidgets import FlowLayout
+from ..unitmodel import UnitLookup
 from ..utils import loadUi, LUT_WAVELENGTH, parseWavelength, printCaller, rendererXML, SignalBlocker, \
     WAVELENGTH_DESCRIPTION
-from ..unitmodel import UnitLookup
 
 
 class RasterBandComboBox(QgsRasterBandComboBox):
@@ -78,7 +78,7 @@ class RasterBandComboBox(QgsRasterBandComboBox):
                     tooltip += ' {}'.format(FWHM[b])
 
             self.setItemText(idx, bandName)
-            self.setItemData(idx, tooltip, Qt.ToolTipRole)
+            self.setItemData(idx, tooltip, Qt.ItemDataRole.ToolTipRole)
 
 
 class BandCombination(object):

@@ -184,7 +184,7 @@ def featuresToArrays(speclib: QgsVectorLayer,
 #         if not index.isValid():
 #             return None
 #
-#         if role != Qt.DecorationRole:
+#         if role != Qt.ItemDataRole.DecorationRole:
 #             return super().data(index, role)
 #
 #         isEmpty = index.row() == 0 and self.allowEmptyLayer()
@@ -208,7 +208,7 @@ class FieldToRasterValueConverter(QObject):
         QMETATYPE_BOOL: Qgis.DataType.Byte,
         QMETATYPE_INT: Qgis.DataType.Int32,
         QMETATYPE_UINT: Qgis.DataType.UInt32,
-        QMetaType.LongLong: Qgis.DataType.Int32,
+        QMetaType.Type.LongLong: Qgis.DataType.Int32,
         QMETATYPE_ULONGLONG: Qgis.DataType.UInt32,
         QMETATYPE_DOUBLE: Qgis.DataType.Float32,
         QMETATYPE_QSTRING: Qgis.DataType.Int32,
@@ -256,7 +256,7 @@ class FieldToRasterValueConverter(QObject):
         if Qgis.versionInt() >= 32900:
             return Qgis.RasterColorInterpretation.Undefined
         else:
-            return QgsRaster.UndefinedColorInterpretation
+            return QgsRaster.ColorInterpretation.UndefinedColorInterpretation
 
     def htmlMetadata(self) -> str:
         return f'Field: {self.field().name()} Type: {self.field().typeName()}'
@@ -274,9 +274,9 @@ class FieldToRasterValueConverter(QObject):
                 return Qgis.RasterColorInterpretation.GrayIndex
         else:
             if self.isClassification():
-                return QgsRaster.PalettedColor
+                return QgsRaster.DrawingStyle.PalettedColor
             else:
-                return QgsRaster.GrayIndex
+                return QgsRaster.ColorInterpretation.GrayIndex
 
     def colorTable(self, bandNo: int) -> List[QgsColorRampShader.ColorRampItem]:
         return self.mColorTable[:]
@@ -412,7 +412,7 @@ class SpectralProfileValueConverter(FieldToRasterValueConverter):
         if Qgis.versionInt() >= 32900:
             return Qgis.RasterColorInterpretation.GrayIndex
         else:
-            return QgsRaster.MultiBandColor
+            return QgsRaster.DrawingStyle.MultiBandColor
 
     def _profileToSpectralSetting(self, profile: dict) -> dict:
         """
@@ -863,7 +863,7 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
             if Qgis.versionInt() >= 32900:
                 return Qgis.RasterColorInterpretation.GrayIndex
             else:
-                return QgsRaster.GrayIndex
+                return QgsRaster.ColorInterpretation.GrayIndex
 
     def colorTable(self, bandNo: int) -> List[QgsColorRampShader.ColorRampItem]:
         return self.fieldConverter().colorTable(bandNo)
@@ -895,12 +895,12 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
         array = self.fieldConverter().rasterDataArray()
 
         r = None
-        if format == QgsRaster.IdentifyFormatValue:
+        if format == QgsRaster.IdentifyFormat.IdentifyFormatValue:
 
             if 0 <= x < array.shape[-1]:
                 for b in range(self.bandCount()):
                     results[b + 1] = float(array[b, 0, x])
-        elif format in [QgsRaster.IdentifyFormatHtml, QgsRaster.IdentifyFormatText]:
+        elif format in [QgsRaster.IdentifyFormat.IdentifyFormatHtml, QgsRaster.IdentifyFormat.IdentifyFormatText]:
             results[0] = 'Dummy HTML / Text'
 
         # info = f'# identify results ({len(results)}):'
