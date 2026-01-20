@@ -24,7 +24,7 @@
 """
 import sys
 
-from qgis.PyQt.QtCore import QSortFilterProxyModel, QModelIndex, pyqtSignal, QAbstractItemModel, QMetaType
+from qgis.PyQt.QtCore import QSortFilterProxyModel, QModelIndex, pyqtSignal, QAbstractItemModel
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtGui import QResizeEvent, QStandardItemModel, QStandardItem
@@ -98,7 +98,7 @@ class LayerFieldsTableModel(QgsFieldModel):
             if cn == self.cnAlias:
                 return field.alias()
             if cn == self.cnType:
-                return QMetaType.Type.typeToName(field.type())
+                return field.type()
             if cn == self.cnTypeName:
                 return field.typeName()
             if cn == self.cnLength:
