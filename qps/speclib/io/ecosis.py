@@ -158,11 +158,14 @@ class EcoSISSpectralLibraryReader(SpectralProfileFileReader):
 
         wl = []
 
-        for i, field in enumerate(csvLyr.fields()):
+        csvFields = csvLyr.fields()
+        csvWLIndices = []
+        for i, field in enumerate(csvFields):
             field: QgsField
             if field.isNumeric() and rxIsNum.match(field.name()):
                 wl.append(float(field.name()))
                 wlFields.append(field)
+                csvWLIndices.append(i)
             else:
                 mdFields.append(field)
                 dstFields.append(field)
@@ -170,13 +173,16 @@ class EcoSISSpectralLibraryReader(SpectralProfileFileReader):
         profiles: List[QgsFeature] = []
 
         for i, f in enumerate(csvLyr.getFeatures()):
+
             f: QgsFeature
             f2 = QgsFeature(dstFields)
 
-            y = [f.attribute(field.name()) for field in wlFields]
+            # y = [f.attribute(field.name()) for field in wlFields]
+            y = [f.attribute(j) for j in csvWLIndices]
+
             xUnit = 'nm'
             d = prepareProfileValueDict(x=wl, y=y, xUnit=xUnit)
-            dump = encodeProfileValueDict(d, profileField)
+            dump = encodeProfileValueDict(d, encoding=ProfileEncoding.Json)
             f2.setAttribute(profileField.name(), dump)
 
             if f.hasGeometry():
@@ -186,6 +192,7 @@ class EcoSISSpectralLibraryReader(SpectralProfileFileReader):
             # for field in mdFields:
             #    f2.setAttribute(field.name(), f.attribute(field.name()))
             profiles.append(f2)
+
         del csvLyr
         return profiles
         s = ""
