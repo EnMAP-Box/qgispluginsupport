@@ -18,8 +18,19 @@ start_app()
 
 class TestSpeclibIO_EcoSIS(TestCase):
 
+    def test_reading_speed(self):
+        path = DIR_ECOSIS / 'fresh-leaf-spectra-to-estimate-leaf-traits-for-california-ecosystems.csv'
+
+        if not path.is_file():
+            return
+
+        reader = EcoSISSpectralLibraryReader(path)
+        features = reader.asFeatures()
+
+        s = ""
+
     def test_EcoSIS_Reader(self):
-        ecosysFiles = file_search(DIR_ECOSIS, '*.csv', recursive=True)
+        ecosysFiles = list(file_search(DIR_ECOSIS, '*.csv', recursive=True))
 
         for file in ecosysFiles:
 
@@ -32,6 +43,7 @@ class TestSpeclibIO_EcoSIS(TestCase):
             assert len(features) == n_lines - 1
             for f in features:
                 assert is_spectral_feature(f)
+            s = ""
 
     def test_read_EcoSIS_processing_alg(self):
 
