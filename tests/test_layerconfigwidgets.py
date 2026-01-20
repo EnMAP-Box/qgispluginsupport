@@ -76,15 +76,6 @@ class LayerConfigWidgetsTests(TestCase):
         w.setLayout(vbLayout)
         self.showGui(w)
 
-    def test_histogram(self):
-        pass
-
-    def test_rendering(self):
-        pass
-
-    def test_pyramids(self):
-        pass
-
     def test_fields_and_forms(self):
         from qps.layerconfigwidgets.vectorlayerfields import \
             LayerFieldsConfigWidgetFactory, LayerAttributeFormConfigWidgetFactory, \

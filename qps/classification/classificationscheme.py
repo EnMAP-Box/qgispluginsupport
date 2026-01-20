@@ -39,17 +39,17 @@ from typing import Any, List, Optional, Union
 import numpy as np
 from osgeo import gdal
 
-from qgis.core import Qgis, QgsCategorizedSymbolRenderer, QgsField, QgsFillSymbol, QgsLineSymbol, QgsMapLayer, \
-    QgsMarkerSymbol, QgsPalettedRasterRenderer, QgsProject, QgsProviderRegistry, QgsRasterLayer, QgsRasterRenderer, \
-    QgsReadWriteContext, QgsRendererCategory, QgsVectorLayer
-from qgis.gui import QgsDialog, QgsEditorConfigWidget, QgsEditorWidgetFactory, QgsEditorWidgetWrapper, QgsGui, \
-    QgsMapLayerComboBox
 from qgis.PyQt.QtCore import NULL, pyqtSignal, QAbstractListModel, QAbstractTableModel, QByteArray, QItemSelectionModel, \
     QMimeData, QModelIndex, QObject, QSize, Qt, QVariant
 from qgis.PyQt.QtGui import QBrush, QClipboard, QColor, QIcon, QPixmap
 from qgis.PyQt.QtWidgets import QAction, QApplication, QColorDialog, QComboBox, QDialog, QDialogButtonBox, QFileDialog, \
     QHBoxLayout, QInputDialog, QMenu, QMessageBox, QPushButton, QTableView, QToolButton, QVBoxLayout, QWidget
 from qgis.PyQt.QtXml import QDomDocument, QDomImplementation
+from qgis.core import Qgis, QgsCategorizedSymbolRenderer, QgsField, QgsFillSymbol, QgsLineSymbol, QgsMapLayer, \
+    QgsMarkerSymbol, QgsPalettedRasterRenderer, QgsProject, QgsProviderRegistry, QgsRasterLayer, QgsRasterRenderer, \
+    QgsReadWriteContext, QgsRendererCategory, QgsVectorLayer
+from qgis.gui import QgsDialog, QgsEditorConfigWidget, QgsEditorWidgetFactory, QgsEditorWidgetWrapper, QgsGui, \
+    QgsMapLayerComboBox
 from ..qgisenums import QMETATYPE_DOUBLE, QMETATYPE_INT, QMETATYPE_QSTRING
 from ..utils import gdalDataset, loadUi, nextColor, registeredMapLayers
 
@@ -1869,14 +1869,14 @@ class ClassificationSchemeDialog(QgsDialog):
         d = cls(*args, **kwds)
         d.exec_()
 
-        if d.result() == QDialog.Accepted:
+        if d.result() == QDialog.DialogCode.Accepted:
             return d.classificationScheme()
         else:
             return None
 
     def __init__(self, parent=None, classificationScheme=None, title='Specify Classification Scheme'):
         super(ClassificationSchemeDialog, self).__init__(parent=parent,
-                                                         buttons=QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+                                                         buttons=QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
         self.w = ClassificationSchemeWidget(parent=self, classificationScheme=classificationScheme)
         self.setWindowTitle(title)
         self.btOk = QPushButton('Ok')
