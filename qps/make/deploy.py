@@ -42,7 +42,8 @@ def userProfileManager() -> QgsUserProfileManager:
         globalsettingsfile: str = getenv("QGIS_GLOBAL_SETTINGS_FILE")
 
     if globalsettingsfile is None:
-        startupPaths = QStandardPaths.locateAll(QStandardPaths.AppDataLocation, "qgis_global_settings.ini")
+        startupPaths = QStandardPaths.locateAll(QStandardPaths.StandardLocation.AppDataLocation,
+                                                "qgis_global_settings.ini")
         if startupPaths:
             globalsettingsfile = startupPaths[0]
 
@@ -53,7 +54,7 @@ def userProfileManager() -> QgsUserProfileManager:
 
     if configLocalStorageLocation is None:
         if globalsettingsfile is not None:
-            globalSettings = QSettings(globalsettingsfile, QSettings.IniFormat)
+            globalSettings = QSettings(globalsettingsfile, QSettings.Format.IniFormat)
             if globalSettings.contains("core/profilesPath"):
                 configLocalStorageLocation = globalSettings.value("core/profilesPath", "")
 

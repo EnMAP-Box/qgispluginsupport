@@ -312,6 +312,15 @@ class AlgorithmDialog(QgsProcessingAlgorithmDialogBase):
 
         self._iface = iface
         self._context = context
+        self._context_layers = list()
+        if isinstance(context, QgsProcessingContext) and context.project() != QgsProject.instance():
+            p1 = QgsProject.instance()
+            if isinstance(p1, QgsProject):
+                existing = [lid for lid in p1.mapLayers().keys()]
+                to_add = [l.clone() for lid, l in context.project().mapLayers().items() if lid not in existing]
+                if len(to_add) > 0:
+                    p1.addMapLayers(to_add, addToLegend=False)
+                    self._context_layers.extend(to_add)
 
         self.feedback_dialog = None
         self.in_place = in_place
@@ -705,6 +714,15 @@ class AlgorithmDialog(QgsProcessingAlgorithmDialogBase):
             self.flag_invalid_parameter_value(e.parameter.description(), e.widget)
         except AlgorithmDialogBase.InvalidOutputExtension as e:
             self.flag_invalid_output_extension(e.message, e.widget)
+
+    def closeEvent(self, e):
+        p1 = QgsProject.instance()
+        for lyr in self._context_layers:
+            if lyr.id() in p1.mapLayers().keys():
+                p1.takeMapLayer(lyr)
+        self._context_layers.clear()
+        super().closeEvent(e)
+        s = ""
 
     def finish(self, successful, result, context, feedback, in_place=False):
         keepOpen = not successful or ProcessingConfig.getSetting(
