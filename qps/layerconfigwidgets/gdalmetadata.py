@@ -54,6 +54,7 @@ from ..classification.classificationscheme import ClassificationScheme, Classifi
 from ..qgisenums import QMETATYPE_DOUBLE, QMETATYPE_INT, QMETATYPE_QSTRING
 from ..qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from ..utils import gdalDataset, loadUi, ogrDataSource
+from .. import DIR_ICONS
 
 HAS_PYSTAC = importlib.util.find_spec('pystac') is not None
 
@@ -67,6 +68,9 @@ PROTECTED = [
 MAJOR_OBJECTS = [gdal.Dataset.__name__, gdal.Band.__name__, ogr.DataSource.__name__, ogr.Layer.__name__]
 
 MDF_GDAL_BANDMETADATA = 'qgs/gdal_band_metadata'
+
+_ICON_OGR_METADATA = DIR_ICONS / 'edit_ogr_metadata.svg'
+_ICON_GDAL_METADATA = DIR_ICONS / 'edit_gdal_metadata.svg'
 
 
 class MetadataUtils(object):
@@ -640,7 +644,8 @@ class GDALBandMetadataModel(QgsVectorLayer):
                 tableConfig.setColumns(columnConfigs)
                 self.setAttributeTableConfig(tableConfig)
 
-                for b in range(ds.RasterCount):
+                gdal_cnt = ds.RasterCount
+                for b in range(gdal_cnt):
                     band: gdal.Band = ds.GetRasterBand(b + 1)
                     gdalBandNames.append(band.GetDescription())
                     gdalNoData.append(band.GetNoDataValue())
@@ -672,7 +677,7 @@ class GDALBandMetadataModel(QgsVectorLayer):
 
                 domain = ''
 
-                for i in range(lyr.bandCount()):
+                for i in range(gdal_cnt):
                     b = i + 1
                     f = QgsFeature(self.fields())
                     for field in self.fields():
@@ -1557,7 +1562,7 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
             if isinstance(layer, QgsRasterLayer):
                 self.setPanelTitle('GDAL Metadata')
                 self.setToolTip('Layer metadata according to the GDAL Metadata model')
-                self.setWindowIcon(QIcon(':/qps/ui/icons/edit_gdal_metadata.svg'))
+                self.setWindowIcon(QIcon(str(_ICON_GDAL_METADATA)))
                 self.supportsGDALClassification = \
                     self.is_gdal and layer.dataProvider().dataType(1) in \
                     [Qgis.DataType.Byte, Qgis.DataType.UInt16, Qgis.DataType.Int16, Qgis.DataType.UInt32,
@@ -1566,7 +1571,7 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
             elif isinstance(layer, QgsVectorLayer):
                 self.setPanelTitle('OGR Metadata')
                 self.setToolTip('Layer metadata according to the OGR Metadata model')
-                self.setWindowIcon(QIcon(':/qps/ui/icons/edit_ogr_metadata.svg'))
+                self.setWindowIcon(QIcon(str(_ICON_OGR_METADATA)))
 
         self.syncToLayer(layer)
 
@@ -1682,12 +1687,12 @@ class GDALMetadataConfigWidgetFactory(QgsMapLayerConfigWidgetFactory):
 
     def __init__(self):
         super(GDALMetadataConfigWidgetFactory, self).__init__('GDAL/OGR Metadata',
-                                                              QIcon(':/qps/ui/icons/edit_gdal_metadata.svg'))
+                                                              QIcon(str(_ICON_GDAL_METADATA)))
         self.mIsGDAL = False
         self.mIsOGR = False
 
-        self.mIconGDAL = QIcon(':/qps/ui/icons/edit_gdal_metadata.svg')
-        self.mIconOGR = QIcon(':/qps/ui/icons/edit_ogr_metadata.svg')
+        self.mIconGDAL = QIcon(str(_ICON_GDAL_METADATA))
+        self.mIconOGR = QIcon(str(_ICON_OGR_METADATA))
 
     def supportsLayer(self, layer):
         self.mIsGDAL = isinstance(layer, QgsRasterLayer) and layer.dataProvider().name() == 'gdal'

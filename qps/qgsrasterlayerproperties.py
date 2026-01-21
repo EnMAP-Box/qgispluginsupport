@@ -263,11 +263,11 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
     def setBandValues(self, bands: Union[None, str, List[int]], itemKey: str, values, origin: str = None):
         """
         Sets the n values to the corresponding n bands
-        if bands = None|'all'|'*'|':', it is expected values contains either a single value or n = bandCount() values.
+        if bands = None|'all'|'*'|':', the n values will be mapped to band 1 ... band n, with 0 < n <= bandCount().
         """
         assert isinstance(itemKey, str)
         if bands in [None, 'all', '*', ':']:
-            bands = list(range(1, self.bandCount() + 1))
+            bands = list(range(1, min(len(values), self.bandCount()) + 1))
         for b in bands:
             assert isinstance(b, int) and 0 < b <= self.bandCount()
         if isinstance(values, (str, int, float)):
@@ -695,6 +695,8 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
 
         if not any(band_wlu):
             band_wlu = valueList(ds, SpectralPropertyKeys.WavelengthUnit)
+            if band_wlu is not None and len(band_wlu) == 1 and ds.RasterCount > 1:
+                band_wlu = band_wlu * ds.RasterCount
             o_wlu = SpectralPropertyOrigin.GDALDataset
 
         if not any(band_bbl):

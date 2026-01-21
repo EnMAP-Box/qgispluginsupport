@@ -45,25 +45,19 @@ class ControlWidget(QWidget):
         self.btnReload = QPushButton('Reload')
         self.btnReload.clicked.connect(self.w.syncToLayer)
 
-        cb = QgsRasterBandComboBox()
-        cb.setLayer(self.w.mapLayer())
-
-        def onLayerChanged(layer):
-            if isinstance(layer, QgsRasterLayer):
-                cb.setLayer(layer)
-            else:
-                cb.setLayer(None)
-            self.w.setLayer(layer)
+        self.cbBands = QgsRasterBandComboBox()
+        self.cbBands.setLayer(self.w.mapLayer())
 
         self.cbChangeLayer = QgsMapLayerComboBox()
-        self.cbChangeLayer.layerChanged.connect(onLayerChanged)
+        self.cbChangeLayer.layerChanged.connect(self.onLayerChanged)
 
         hl1 = QHBoxLayout()
         for widget in [self.btnEdit,
                        self.btnApply,
                        self.btnReload,
                        self.btnZoom,
-                       self.cbChangeLayer, cb]:
+                       self.cbChangeLayer,
+                       self.cbBands]:
             hl1.addWidget(widget)
         hl2 = QHBoxLayout()
         hl2.addWidget(self.w)
@@ -72,6 +66,13 @@ class ControlWidget(QWidget):
         vl.addLayout(hl1)
         vl.addLayout(hl2)
         self.setLayout(vl)
+
+    def onLayerChanged(self, layer):
+        if isinstance(layer, QgsRasterLayer):
+            self.cbBands.setLayer(layer)
+        else:
+            self.cbBands.setLayer(None)
+        self.w.setLayer(layer)
 
 
 class TestsGdalMetadata(TestCase):
@@ -352,6 +353,35 @@ class TestsGdalMetadata(TestCase):
 
         if calc.exec_() == QDialog.Accepted:
             pass
+
+    def test_alpha_band(self):
+        # relates to issue #159
+        path = self.createTestOutputDirectory() / 'test.tif'
+        ds = TestObjects.createRasterDataset(10, 10, 3, path=path)
+        ds.CreateMaskBand(gdal.GMF_PER_DATASET)
+        for b in range(ds.RasterCount):
+            band: gdal.Band = ds.GetRasterBand(b + 1)
+            band.Fill(b + 1)
+
+        # Get the mask band
+        # mask_band = ds.GetRasterBand(1).GetMaskBand()
+        ds.FlushCache()
+        lyr = QgsRasterLayer(path.as_posix(), 'test')
+        assert lyr.bandCount() == ds.RasterCount + 1
+        box = QgsRasterBandComboBox()
+        box.setLayer(lyr)
+
+        props = QgsRasterLayerSpectralProperties.fromRasterLayer(lyr)
+        s = ""
+
+        self.assertTrue(lyr.bandCount() == ds.RasterCount + 1)
+
+        QgsProject.instance().addMapLayers([lyr])
+
+        W = ControlWidget()
+        W.onLayerChanged(lyr)
+        self.showGui(W)
+        QgsProject.instance().removeAllMapLayers()
 
     def test_GDALMetadataModelConfigWidget(self):
 
