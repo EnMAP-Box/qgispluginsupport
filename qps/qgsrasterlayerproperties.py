@@ -29,6 +29,39 @@ rx_is_int = re.compile(r'^\s*\d+\s*$')
 
 EXCLUDED_GDAL_DOMAINS = ['IMAGE_STRUCTURE', 'DERIVED_SUBDATASETS']
 
+# GDAL ColorInterpretation and related wavelength range + wavelength units
+# see https://gdal.org/en/stable/api/raster_c_api.html#_CPPv415GDALColorInterp
+
+GCI_WL_WLU = {
+    "GCI_RedBand": (0.62, 0.69, 'um'),
+    "GCI_GreenBand": (0.51, 0.60, 'um'),
+    "GCI_BlueBand": (0.45, 0.53, 'um'),
+    "GCI_YellowBand": (0.58, 0.62, 'um'),
+    "GCI_PanBand": (0.40, 1.00, 'um'),
+    "GCI_CoastalBand": (0.40, 0.45, 'um'),
+    "GCI_RedEdgeBand": (0.69, 0.79, 'um'),
+    "GCI_NIRBand": (0.75, 1.40, 'um'),
+    "GCI_SWIRBand": (1.40, 3.00, 'um'),
+    "GCI_MWIRBand": (3.00, 8.00, 'um'),
+    "GCI_LWIRBand": (8.00, 15.00, 'um'),
+    "GCI_TIRBand": (3.00, 15.00, 'um'),
+    "GCI_OtherIRBand": (0.75, 1000.00, 'um'),
+    "GCI_SAR_Ka_Band": (0.8, 1.1, 'cm'),  # [0.8 - 1.1 cm / 27 - 40 GHz]
+    "GCI_SAR_K_Band": (1.1, 1.7, 'cm'),  # [1.1 - 1.7 cm / 18 - 27 GHz]
+    "GCI_SAR_Ku_Band": (1.7, 2.4, 'cm'),  # [1.7 - 2.4 cm / 12 - 18 GHz]
+    "GCI_SAR_X_Band": (2.4, 3.8, 'cm'),  # [2.4 - 3.8 cm / 8 - 12 GHz]
+    "GCI_SAR_C_Band": (3.8, 7.5, 'cm'),  # [3.8 - 7.5 cm / 4 - 8 GHz]
+    "GCI_SAR_S_Band": (7.5, 15.0, 'cm'),  # [7.5 - 15 cm / 2 - 4 GHz]
+    "GCI_SAR_L_Band": (15.0, 30.0, 'cm'),  # [15 - 30 cm / 1 - 2 GHz]
+    "GCI_SAR_P_Band": (30.0, 100.0, 'cm'),  # [30 - 100 cm / 0.3 - 1 GHz]
+}
+
+for k, spec in list(GCI_WL_WLU.items()):
+    c = getattr(gdal, k, None)
+    if c is not None:
+        GCI_WL_WLU[c] = spec
+    GCI_WL_WLU.pop(k)
+
 
 def stringsToInts(values: List[str]) -> Union[List[Optional[int]]]:
     results = []
@@ -90,6 +123,7 @@ class SpectralPropertyOrigin(object):
     ProviderHtml = 'provider_html'
     GDALBand = 'gdal_band'
     GDALDataset = 'gdal_dataset'
+    GDALColorInterpretation = 'gdal_color_interpretation'
     Deduced = 'deduced'  # deduced from other data values
     LayerProperties = 'layer_property'
 
@@ -110,6 +144,17 @@ class SpectralPropertyKeys(str, enum.Enum):
     AcquisitionDateTime = 'acquisition_datetime'
     StartTime = 'start_time'
     EndTime = 'end_time'
+
+
+def anyValue(values: Optional[list]) -> bool:
+    """
+    Returns True if the input is a list with at least one non-None value.
+    :param values:
+    :return:
+    """
+    if values is None:
+        return False
+    return any([v is not None for v in values])
 
 
 class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
@@ -263,11 +308,11 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
     def setBandValues(self, bands: Union[None, str, List[int]], itemKey: str, values, origin: str = None):
         """
         Sets the n values to the corresponding n bands
-        if bands = None|'all'|'*'|':', it is expected values contains either a single value or n = bandCount() values.
+        if bands = None|'all'|'*'|':', the n values will be mapped to band 1 ... band n, with 0 < n <= bandCount().
         """
         assert isinstance(itemKey, str)
         if bands in [None, 'all', '*', ':']:
-            bands = list(range(1, self.bandCount() + 1))
+            bands = list(range(1, min(len(values), self.bandCount()) + 1))
         for b in bands:
             assert isinstance(b, int) and 0 < b <= self.bandCount()
         if isinstance(values, (str, int, float)):
@@ -695,7 +740,29 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
 
         if not any(band_wlu):
             band_wlu = valueList(ds, SpectralPropertyKeys.WavelengthUnit)
+            if band_wlu is not None and len(band_wlu) == 1 and ds.RasterCount > 1:
+                band_wlu = band_wlu * ds.RasterCount
             o_wlu = SpectralPropertyOrigin.GDALDataset
+
+        if band_wlu is None and band_wl is None:
+            # try to use GDAL ColorInterpretation Flags
+            _wlu = []
+            _wl = []
+            for b in range(ds.RasterCount):
+                band: Band = ds.GetRasterBand(b + 1)
+                ci = band.GetColorInterpretation()
+                if ci in GCI_WL_WLU:
+                    wl1, wl2, wlu = GCI_WL_WLU[ci]
+                    _wlu.append(wlu)
+                    _wl.append(0.5 * (wl1 + wl2))
+                else:
+                    _wlu.append(None)
+                    _wl.append(None)
+            if any(_wl):
+                o_wl = SpectralPropertyOrigin.GDALColorInterpretation
+                o_wlu = SpectralPropertyOrigin.GDALColorInterpretation
+                band_wl = _wl
+                band_wlu = _wlu
 
         if not any(band_bbl):
             band_bbl = valueList(ds, SpectralPropertyKeys.BadBand)
@@ -704,11 +771,6 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
         if not any(band_fwhm):
             band_fwhm = valueList(ds, SpectralPropertyKeys.FWHM)
             o_fwhm = SpectralPropertyOrigin.GDALDataset
-
-        def anyValue(values: Optional[list]) -> bool:
-            if values is None:
-                return False
-            return any([v is not None for v in values])
 
         def canWrite(values, key) -> bool:
 
