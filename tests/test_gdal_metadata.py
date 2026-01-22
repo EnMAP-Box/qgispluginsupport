@@ -366,15 +366,16 @@ class TestsGdalMetadata(TestCase):
         # Get the mask band
         # mask_band = ds.GetRasterBand(1).GetMaskBand()
         ds.FlushCache()
+        nb = ds.RasterCount
+        del ds
+
         lyr = QgsRasterLayer(path.as_posix(), 'test')
-        assert lyr.bandCount() == ds.RasterCount + 1
+        assert lyr.bandCount() == nb + 1
+
         box = QgsRasterBandComboBox()
         box.setLayer(lyr)
 
-        props = QgsRasterLayerSpectralProperties.fromRasterLayer(lyr)
-        s = ""
-
-        self.assertTrue(lyr.bandCount() == ds.RasterCount + 1)
+        self.assertTrue(lyr.bandCount() == nb + 1)
 
         QgsProject.instance().addMapLayers([lyr])
 
