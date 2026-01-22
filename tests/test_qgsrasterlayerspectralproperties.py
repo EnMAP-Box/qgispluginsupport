@@ -12,7 +12,7 @@ from osgeo import gdal
 from qgis.core import QgsMapLayer, QgsRasterLayer
 from qps import DIR_REPO
 from qps.qgsrasterlayerproperties import QgsRasterLayerSpectralProperties, QgsRasterLayerSpectralPropertiesTable, \
-    QgsRasterLayerSpectralPropertiesTableWidget, SpectralPropertyKeys, SpectralPropertyOrigin, stringToType
+    QgsRasterLayerSpectralPropertiesTableWidget, SpectralPropertyKeys, SpectralPropertyOrigin, stringToType, GCI_WL_WLU
 from qps.testing import start_app, TestCase, TestObjects
 from qps.utils import bandClosestToWavelength, file_search
 from qpstestdata import DIR_WAVELENGTH, envi_bsq
@@ -267,6 +267,30 @@ class TestQgsRasterLayerProperties(TestCase):
             bandsRGB = [bandClosestToWavelength(lyr, s) for s in 'R,G,B'.split(',')]
             self.assertEqual(bandsRGB, [2, 1, 0])
             del lyr
+
+    def test_color_interpretation(self):
+
+        tmpDir = self.createTestOutputDirectory()
+        path = tmpDir / 'test_color_interpretation.tif'
+        n = len(GCI_WL_WLU)
+        ds = TestObjects.createRasterDataset(10, 10, nb=n, path=path, add_wl=False)
+
+        for i, (gci_value, (wl1, wl2, wlu)) in enumerate(GCI_WL_WLU.items()):
+            band: gdal.Band = ds.GetRasterBand(i + 1)
+            band.SetColorInterpretation(gci_value)
+        ds.FlushCache()
+
+        lyr = QgsRasterLayer(path.as_posix())
+        prop = QgsRasterLayerSpectralProperties.fromRasterLayer(lyr)
+        wl = prop.wavelengths()
+        wlu = prop.wavelengthUnits()
+
+        self.assertEqual(len(wl), n)
+
+        for i, (gci_value, (wl1, wl2, wlu_expected)) in enumerate(GCI_WL_WLU.items()):
+            wl_expected = 0.5 * (wl1 + wl2)
+            self.assertEqual(wl[i], wl_expected)
+            self.assertEqual(wlu[i], wlu_expected)
 
     def test_QgsRasterLayerSpectralProperties(self):
 
