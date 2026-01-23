@@ -305,23 +305,30 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
     # def setBandValue(self, bandNo: Union[int, str], itemKey: str, value):
     #    self.setBandValues([bandNo], itemKey, [value])
 
-    def setBandValues(self, bands: Union[None, str, List[int]], itemKey: str, values, origin: str = None):
+    def setBandValues(self,
+                      bands: Union[None, str, List[int]],
+                      itemKey: str,
+                      values,
+                      origin: str = None):
         """
         Sets the n values to the corresponding n bands
         if bands = None|'all'|'*'|':', the n values will be mapped to band 1 ... band n, with 0 < n <= bandCount().
         """
         assert isinstance(itemKey, str)
+
         if bands in [None, 'all', '*', ':']:
-            bands = list(range(1, min(len(values), self.bandCount()) + 1))
-        for b in bands:
-            assert isinstance(b, int) and 0 < b <= self.bandCount()
-        if isinstance(values, (str, int, float)):
-            values = [values for _ in bands]
-        elif isinstance(values, list) and len(values) == 1 and len(bands) > 1:
-            values = [values[0] for _ in bands]
+            n = self.bandCount()
+            n = min(len(values), n) if isinstance(values, list) else n
+            bands = list(range(1, n + 1))
+        else:
+            assert isinstance(bands, list)
+
+        if not isinstance(values, list):
+            values = len(bands) * [values]
 
         assert len(values) == len(bands)
-        assert 0 < len(bands) <= self.bandCount()
+        assert 0 < min(bands) <= self.bandCount()
+        assert 0 < max(bands) <= self.bandCount()
 
         itemKey = self.itemKey(itemKey)
 

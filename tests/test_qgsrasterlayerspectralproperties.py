@@ -8,8 +8,8 @@ from pathlib import Path
 
 import numpy as np
 from osgeo import gdal
-
 from qgis.core import QgsMapLayer, QgsRasterLayer
+
 from qps import DIR_REPO
 from qps.qgsrasterlayerproperties import QgsRasterLayerSpectralProperties, QgsRasterLayerSpectralPropertiesTable, \
     QgsRasterLayerSpectralPropertiesTableWidget, SpectralPropertyKeys, SpectralPropertyOrigin, stringToType, GCI_WL_WLU
@@ -390,6 +390,17 @@ class TestQgsRasterLayerProperties(TestCase):
         self.assertEqual(prop4.wavelengthUnits(), ['nm', 'nm'])
         self.assertEqual(prop4.wavelengths(), [222, 333])
         self.assertEqual(prop4.fwhm(), [0.22, 0.44])
+
+        prop4 = QgsRasterLayerSpectralProperties.fromRasterLayer(lyr)
+        self.assertEqual(prop4.wavelengthUnits(), ['nm', 'nm'])
+        prop4.setBandValues([2], SpectralPropertyKeys.WavelengthUnit, 'cm')
+        self.assertEqual(prop4.wavelengthUnits(), ['nm', 'cm'])
+        prop4.setBandValues([1], SpectralPropertyKeys.WavelengthUnit, ['cm'])
+        self.assertEqual(prop4.wavelengthUnits(), ['cm', 'cm'])
+        prop4.setWavelengthUnits('um')
+        self.assertEqual(prop4.wavelengthUnits(), ['um', 'um'])
+
+        s = ""
 
     def test_QgsRasterLayerSpectralPropertiesTable(self):
         rasterLayer = TestObjects.createRasterLayer()
