@@ -1415,6 +1415,8 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
             field_name = vis['field_name']
             field_index = layer.fields().lookupField(field_name)
+            if field_index < 0:
+                continue
 
             vis_context = QgsExpressionContext()
             vis_context.appendScope(QgsExpressionContextUtils.globalScope())
