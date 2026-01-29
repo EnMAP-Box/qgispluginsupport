@@ -1687,7 +1687,7 @@ class SpectralProfileBridge(TreeModel):
         fgnode: SpectralFeatureGeneratorNode
 
         speclib: QgsVectorLayer = fgnode.speclib()
-
+        speclib_fields = speclib.fields().names()
         if not isinstance(speclib, QgsVectorLayer) and speclib.isValid():
             return []
 
@@ -1696,9 +1696,12 @@ class SpectralProfileBridge(TreeModel):
         # PLOT_STYLES: Dict[str, PlotStyle] = dict()
         for pgnode in fgnode.spectralProfileGeneratorNodes(checked=True):
             pgnode: SpectralProfileGeneratorNode
+            field_name = pgnode.field().name()
+            if field_name not in speclib_fields:
+                continue
             results = pgnode.profiles(point, canvas=canvas, snap=self.mSnapToPixelCenter)
             if len(results) > 0:
-                PROFILE_DATA[pgnode.field().name()] = results
+                PROFILE_DATA[field_name] = results
                 # PLOT_STYLES[pgnode.field().name()] = pgnode.plotStyle().clone()
 
         while len(PROFILE_DATA) > 0:
