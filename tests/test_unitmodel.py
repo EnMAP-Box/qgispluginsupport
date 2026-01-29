@@ -2,12 +2,12 @@ import calendar
 import datetime
 
 import numpy as np
-
-from qgis.PyQt.QtCore import QDate, QDateTime, Qt
-from qgis.PyQt.QtWidgets import QComboBox
 from qps.testing import TestCase, start_app
 from qps.unitmodel import UnitConverterFunctionModel, UnitLookup, UnitModel, UnitWrapper, XUnitModel, datetime64, \
     days_per_year
+
+from qgis.PyQt.QtCore import QDate, QDateTime, Qt
+from qgis.PyQt.QtWidgets import QComboBox
 
 start_app()
 
@@ -21,6 +21,7 @@ class UnitModelTests(TestCase):
             ('m', 'meters'),
             ('nm', 'nanometer'),
             ('μm', 'MiCroMetErS'),
+            ('μm', 'um'),
             ('km²', 'km²'),
             ('km²', 'km2'),
             ('km²', 'square kilometer'),
@@ -85,6 +86,7 @@ class UnitModelTests(TestCase):
             (1000, 'm', 'km', 1),
             (100, 'cm', 'm', 1),
             (1000, 'mm', 'm', 1),
+            (100, 'um', 'μm', 100),
         ]
 
         for (v1, u1, u2, v2) in TEST_VALUES:

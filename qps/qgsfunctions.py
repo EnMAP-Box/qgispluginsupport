@@ -896,7 +896,12 @@ class RasterProfile(QgsExpressionFunction):
             wl = spectral_properties['wl']
             wlu = spectral_properties['wlu']
             if isinstance(wlu, list):
-                wlu = wlu[0]
+                for _wlu in wlu:
+                    if _wlu is not None:
+                        wlu = _wlu
+                        break
+            if isinstance(wlu, list):
+                wlu = None
             bbl = spectral_properties['bbl']
 
             if not has_multiple_profiles:
