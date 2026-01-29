@@ -587,7 +587,7 @@ class SpectralProfileSourceModel(QAbstractListModel):
             if isinstance(source, str):
                 source = QgsRasterLayer(source)
 
-            if isinstance(source, QgsRasterLayer):
+            if isinstance(source, QgsRasterLayer) and source.isValid():
                 source = StandardLayerProfileSource(source)
 
             if source is None:

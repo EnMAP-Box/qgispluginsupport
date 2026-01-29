@@ -442,8 +442,7 @@ class LayerFieldWidget(QWidget):
         changed = self.mLayer != layer or self.mField != field
 
         if changed:
-            self.mLayer = layer
-            self.mField = field
+            newLayer = newField = None
 
             for i in range(self.mComboBox.count()):
                 cLyr, cField = self.mComboBox.itemData(i, Qt.UserRole)
@@ -451,7 +450,18 @@ class LayerFieldWidget(QWidget):
                     cField = cField.name()
                 if cLyr == layer and cField == field:
                     self.mComboBox.setCurrentIndex(i)
+                    newLayer = layer
+                    newField = field
                     break
+
+            if newLayer is None:
+                for i in range(self.mComboBox.count()):
+                    newLayer, newField = self.mComboBox.itemData(i, Qt.UserRole)
+                    break
+
+            self.mLayer = newLayer
+            self.mField = newField
+
             self.layerFieldChanged.emit(layer, field)
 
     def layerField(self) -> (Optional[QgsMapLayer], Optional[str]):

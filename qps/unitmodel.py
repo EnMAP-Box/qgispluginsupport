@@ -7,6 +7,7 @@ from math import log10
 from typing import Iterator, List, Union, Optional
 
 import numpy as np
+
 from qgis.PyQt.QtCore import NULL, QAbstractListModel, QDate, QDateTime, QModelIndex, Qt
 from qgis.PyQt.QtGui import QIcon
 
@@ -101,7 +102,7 @@ class UnitModel(QAbstractListModel):
     def findUnitWrapper(self, value: Union[str, UnitWrapper]) -> UnitWrapper:
         """
         Returns a matching unit wrapper. Tries to convert unit description strings,
-        e.g. searching for 'Nanometers' return the UnitWrapper mit unit 'nm'
+        e.g., searching for 'Nanometers' return the UnitWrapper mit unit 'nm'
         """
         if isinstance(value, UnitWrapper) and value in self.mUnits:
             return value
@@ -123,7 +124,7 @@ class UnitModel(QAbstractListModel):
                             return w
         return None
 
-    def findUnit(self, value: Union[str, UnitWrapper]) -> str:
+    def findUnit(self, value: Union[str, UnitWrapper]) -> Optional[str]:
         """
         Returns a matching unit string, e.g. `nm` for `Nanometers`
         :param value:
