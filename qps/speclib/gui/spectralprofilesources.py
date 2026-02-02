@@ -2374,7 +2374,7 @@ class SpectralProfileBridgeViewDelegate(QStyledItemDelegate):
                 for i in range(model.rowCount()):
                     idx = model.index(i, 0)
                     if sl == model.data(idx, QgsMapLayerModel.CustomRole.Layer):
-                        editor.setCurrentIndex(idx)
+                        editor.setCurrentIndex(i)
                         break
 
         if isinstance(node, (SpectralProfileGeneratorNode, SpectralProfileSourceNode)) and index.column() == 1:
