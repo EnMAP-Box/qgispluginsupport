@@ -43,7 +43,7 @@ from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
 from qps.testing import start_app, TestCase, TestObjects
 from qps.unitmodel import BAND_NUMBER, UnitLookup
 from qps.utils import setToolButtonDefaultActionMenu
-from qpstestdata import hymap, speclib_geojson
+from qpstestdata import speclib_geojson, enmap
 
 start_app()
 
@@ -269,12 +269,16 @@ class TestSpeclibWidgets(TestCase):
 
         # speclib = self.createSpeclib()
 
-        lyr = QgsRasterLayer(hymap.as_posix())
+        lyr = QgsRasterLayer(enmap.as_posix())
+        lyr.setName('ExampleLayer')
+        lyr.renderer().setGreenBand(10)
         h, w = lyr.height(), lyr.width()
         speclib = TestObjects.createSpectralLibrary()
-        slw = SpectralLibraryWidget(speclib=speclib)
 
-        QgsProject.instance().addMapLayers([lyr, speclib])
+        project = QgsProject()
+        project.addMapLayers([lyr, speclib])
+
+        slw = SpectralLibraryWidget(speclib=speclib, project=project)
 
         canvas = QgsMapCanvas()
 
