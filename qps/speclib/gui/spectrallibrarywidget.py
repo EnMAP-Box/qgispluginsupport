@@ -8,9 +8,7 @@ from qgis.PyQt.QtGui import QCloseEvent
 from qgis.PyQt.QtGui import QDragEnterEvent, QDropEvent
 from qgis.PyQt.QtWidgets import QMenu, QWidget
 from qgis.PyQt.QtWidgets import QToolButton
-from qgis.PyQt.QtXml import QDomElement
-from qgis.core import (QgsFeature, QgsProcessingOutputFile, QgsProject, QgsReadWriteContext,
-                       QgsVectorLayer)
+from qgis.core import (QgsFeature, QgsProcessingOutputFile, QgsProject, QgsVectorLayer, QgsMapLayer)
 from qgis.core import QgsProcessingContext, QgsProcessingFeedback
 from qgis.gui import QgsAttributeTableView, QgsMapCanvas
 from qgis.gui import QgsMessageBar
@@ -191,32 +189,33 @@ class SpectralLibraryWidget(QWidget):
     def tableView(self) -> QgsAttributeTableView:
         return self.mMainView.tableView()
 
-    def _layerInstance(self, layer_id: Optional[str] = None) -> Optional[QgsVectorLayer]:
+    def _layerInstance(self, layer_id: Optional[str] = None) -> Optional[QgsMapLayer]:
         if isinstance(layer_id, str):
             lyr = self.project().mapLayer(layer_id)
         elif isinstance(layer_id, QgsVectorLayer) and layer_id.isValid():
             lyr = layer_id
         else:
-            lyr = self.currentSpeclib()
+            lyr = self.currentLayer()
             if lyr is None:
-                logging.debug('no currentSpeclib()')
+                logging.debug('no currentLayer() available.')
 
-        if isinstance(lyr, QgsVectorLayer) and lyr.isValid():
+        if isinstance(lyr, QgsMapLayer) and lyr.isValid():
             return lyr
         return None
 
     def openAttributeTable(self, layer_id: Optional[str] = None):
         """
-        Opens an AttributeTableWidged for the given or current layer.
+        Opens an AttributeTableWidget for the given or current layer.
         :param layer_id:
         :return:
         """
         if lyr := self._layerInstance(layer_id=layer_id):
-            if self.mDelegateOpenRequests:
-                self.sigOpenAttributeTableRequest.emit(lyr.id())
-            else:
-                w = AttributeTableWidget(lyr, parent=self)
-                w.show()
+            if isinstance(lyr, QgsVectorLayer):
+                if self.mDelegateOpenRequests:
+                    self.sigOpenAttributeTableRequest.emit(lyr.id())
+                else:
+                    w = AttributeTableWidget(lyr, parent=self)
+                    w.show()
 
     def openLayerProperties(self, layer_id: Optional[str] = None):
         """"
@@ -235,9 +234,10 @@ class SpectralLibraryWidget(QWidget):
         :return:
         """
         if lyr := self._layerInstance(layer_id=layer_id):
-            d = SpectralProfileFieldActivatorDialog()
-            d.setLayer(lyr)
-            d.exec_()
+            if isinstance(lyr, QgsVectorLayer):
+                d = SpectralProfileFieldActivatorDialog()
+                d.setLayer(lyr)
+                d.exec_()
 
     def libraryPlotWidget(self) -> SpectralLibraryPlotWidget:
         return self.mSpeclibPlotWidget
@@ -261,27 +261,6 @@ class SpectralLibraryWidget(QWidget):
         """
         return self.profilePlotWidget().plotItem1
 
-    def readXml(self, parent: QDomElement, context: QgsReadWriteContext) -> bool:
-        """
-        Reads the visualization settings and tries to restore them on the given spectral library instance.
-        This method cannot restore the QgsVectorLayer instance that has been associated with this widget.
-        Use SpectralLibraryWidget.fromXml(...) instead
-        """
-        if not parent.tagName() == 'SpectralLibraryWidget':
-            parent = parent.firstChildElement('SpectralLibraryWidget').toElement()
-
-        if parent.isNull():
-            return False
-        nSLW: QDomElement = parent
-        nS: QDomElement = nSLW.firstChildElement('source')
-        nSL: QDomElement = nSLW.firstChildElement('maplayer')
-        nVIS: QDomElement = nSLW.firstChildElement('Visualizations')
-
-        if not nVIS.isNull():
-            self.plotModel().readXml(nVIS, context)
-        return True
-        s = ""
-
     def updateActions(self):
         """
         Updates action appearance according to internal states
@@ -297,12 +276,14 @@ class SpectralLibraryWidget(QWidget):
 
         b = self.mSpeclibPlotWidget.panelVisualization.isVisible()
         self.actionShowProfileViewSettings.setChecked(b)
-        speclib = self.currentSpeclib()
-        b = isinstance(speclib, QgsVectorLayer)
-        self.actionShowAttributeTable.setEnabled(b)
-        self.actionShowSpectralProcessingDialog.setEnabled(b)
-        self.actionExportSpeclib.setEnabled(b)
-        self.actionGrpLayerProperties.setEnabled(b)
+
+        has_layer = isinstance(self.currentLayer(), QgsMapLayer)
+        has_speclib = isinstance(self.currentSpeclib(), QgsVectorLayer)
+
+        self.actionShowAttributeTable.setEnabled(has_speclib)
+        self.actionShowSpectralProcessingDialog.setEnabled(has_speclib)
+        self.actionExportSpeclib.setEnabled(has_speclib)
+        self.actionGrpLayerProperties.setEnabled(has_layer)
         # self.actionShowProfileFields.setEnabled(b)
         # self.actionShowProperties.setEnabled(b)
 
@@ -311,6 +292,9 @@ class SpectralLibraryWidget(QWidget):
         Calls an update of the plot
         """
         self.plotModel().updatePlot()
+
+    def currentLayer(self) -> Optional[QgsMapLayer]:
+        return self.mSpeclibPlotWidget.currentLayer()
 
     def currentSpeclib(self) -> Optional[QgsVectorLayer]:
         """
@@ -345,19 +329,20 @@ class SpectralLibraryWidget(QWidget):
         # if not isinstance(self.mSpectralProcessingWidget, SpectralProcessingDialog):
 
         if lyr := self._layerInstance(layer_id=layer_id):
-            if not lyr.isEditable():
-                lyr.startEditing()
+            if isinstance(lyr, QgsVectorLayer):
+                if not lyr.isEditable():
+                    lyr.startEditing()
 
-            profile_fields_before = profile_field_names(lyr)
-            dialog = SpectralProcessingDialog(
-                speclib=lyr,
-                algorithmId=algorithmId,
-                parameters=parameters)
-            # dialog.setMainMessageBar(self.mainMessageBar())
-            # dialog.sigOutputsCreated.connect(self.onSpectralProcessingOutputsCreated)
-            dialog.exec_()
+                profile_fields_before = profile_field_names(lyr)
+                dialog = SpectralProcessingDialog(
+                    speclib=lyr,
+                    algorithmId=algorithmId,
+                    parameters=parameters)
+                # dialog.setMainMessageBar(self.mainMessageBar())
+                # dialog.sigOutputsCreated.connect(self.onSpectralProcessingOutputsCreated)
+                dialog.exec_()
 
-            dialog.close()
+                dialog.close()
 
     def onSpectralProcessingOutputsCreated(self, outputs: Dict):
 

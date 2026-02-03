@@ -11,7 +11,7 @@ from qgis.PyQt.QtWidgets import QAbstractItemView, QAction, QApplication, QCombo
     QWidget
 from qgis.PyQt.QtWidgets import QLineEdit
 from qgis.core import QgsApplication, QgsField, QgsMapLayerProxyModel, QgsProject, QgsRasterLayer, \
-    QgsSettings, QgsVectorLayer
+    QgsSettings, QgsVectorLayer, QgsMapLayer
 from qgis.gui import QgsFilterLineEdit
 from .spectrallibraryplotitems import SpectralProfilePlotWidget
 from .spectrallibraryplotmodelitems import PlotStyleItem, ProfileVisualizationGroup, PropertyItem, \
@@ -215,72 +215,80 @@ class SpectralProfilePlotViewDelegate(QStyledItemDelegate):
                     painter.drawPixmap(rect, pixmap)
 
             elif isinstance(item, ProfileVisualizationGroup):
-                # super().paint(painter, option, index)
-                to_paint = []
+                # Draw selection background and checkbox manually to avoid double text rendering
+                # Draw background
+                if option.state & QStyle.State_Selected:
+                    painter.fillRect(option.rect, option.palette.highlight())
+
+                # Draw checkbox
                 if index.flags() & Qt.ItemIsUserCheckable:
-                    to_paint.append(item.checkState())
+                    opt = QStyleOptionViewItem(option)
+                    self.initStyleOption(opt, index)
 
+                    check_option = QStyleOptionButton()
+                    check_rect = style.subElementRect(QStyle.SE_ItemViewItemCheckIndicator, opt, self.mTreeView)
+                    check_option.rect = check_rect
+                    check_option.state = {Qt.Unchecked: QStyle.State_Off,
+                                          Qt.Checked: QStyle.State_On,
+                                          Qt.PartiallyChecked: QStyle.State_NoChange}[item.checkState()]
+                    check_option.state = check_option.state | QStyle.State_Enabled
+                    style.drawPrimitive(QStyle.PE_IndicatorItemViewItemCheck, check_option, painter, self.mTreeView)
+
+                    # Start custom content after checkbox
+                    x0 = check_rect.right() + margin
+                else:
+                    # No checkbox, start from left with proper indentation
+                    opt = QStyleOptionViewItem(option)
+                    self.initStyleOption(opt, index)
+                    x0 = opt.rect.x()
+
+                # Now paint custom content after the checkbox
                 h = option.rect.height()
-                plot_style: PlotStyle = item.plotStyle(add_symbol_scope=True)
+                y0 = option.rect.y()
 
-                # add pixmap
+                # Build list of elements to paint
+                to_paint = []
+
+                plot_style: PlotStyle = item.plotStyle(add_symbol_scope=True)
                 pm = plot_style.createPixmap(size=QSize(2 * h, h), hline=True, bc=bc)
                 to_paint.append(pm)
+
                 if not item.isComplete():
                     to_paint.append(QIcon(r':/images/themes/default/mIconWarning.svg'))
+
                 to_paint.append(item.data(Qt.DisplayRole))
 
-                x0 = option.rect.x()  # + 1
-                y0 = option.rect.y()
-                # print(to_paint)
-
+                # Paint custom elements
                 for p in to_paint:
-                    o: QStyleOptionViewItem = QStyleOptionViewItem(option)
-                    self.initStyleOption(o, index)
-                    o.styleObject = option.styleObject
-                    o.palette = QPalette(option.palette)
-
-                    if isinstance(p, Qt.CheckState):
-                        # size = style.sizeFromContents(QStyle.CE_CheckBox, o, QSize(), None)
-                        o = QStyleOptionButton()
-
-                        o.rect = QRect(x0, y0, h, h)
-                        # print(o.rect)
-                        o.state = {Qt.Unchecked: QStyle.State_Off,
-                                   Qt.Checked: QStyle.State_On,
-                                   Qt.PartiallyChecked: QStyle.State_NoChange}[p]
-                        o.state = o.state | QStyle.State_Enabled | QStyleOptionButton.Flat | QStyleOptionButton.AutoDefaultButton
-
-                        check_option = QStyleOptionButton()
-                        check_option.state = o.state  # Checkbox is enabled
-
-                        # Set the geometry of the checkbox within the item
-                        check_option.rect = option.rect
-                        QApplication.style().drawControl(QStyle.CE_CheckBox, check_option, painter)
-
-                    elif isinstance(p, QPixmap):
-                        o.rect = QRect(x0, y0, h * 2, h)
-                        painter.drawPixmap(o.rect, p)
+                    if isinstance(p, QPixmap):
+                        rect = QRect(x0, y0, h * 2, h)
+                        painter.drawPixmap(rect, p)
+                        x0 = rect.x() + rect.width() + margin
 
                     elif isinstance(p, QIcon):
-                        o.rect = QRect(x0, y0, h, h)
-                        p.paint(painter, o.rect)
+                        rect = QRect(x0, y0, h, h)
+                        p.paint(painter, rect)
+                        x0 = rect.x() + rect.width() + margin
+
                     elif isinstance(p, str):
                         font_metrics = QFontMetrics(self.mTreeView.font())
                         w = font_metrics.horizontalAdvance(p)
-                        o.rect = QRect(x0 + margin, y0, x0 + margin + w, h)
-                        # palette =
-                        # palette = style.standardPalette()
+                        rect = QRect(x0, y0, w, h)
 
                         enabled = item.checkState() == Qt.Checked
+                        palette = QPalette(option.palette)
                         if not enabled:
-                            o.palette.setCurrentColorGroup(QPalette.Disabled)
-                        style.drawItemText(painter, o.rect, Qt.AlignLeft | Qt.AlignVCenter, o.palette, enabled, p,
-                                           textRole=QPalette.Foreground)
+                            palette.setCurrentColorGroup(QPalette.Disabled)
+
+                        # Use highlighted text color if item is selected
+                        text_role = QPalette.HighlightedText if (
+                                option.state & QStyle.State_Selected) else QPalette.Foreground
+                        style.drawItemText(painter, rect, Qt.AlignLeft | Qt.AlignVCenter, palette, enabled, p,
+                                           textRole=text_role)
+                        x0 = rect.x() + rect.width() + margin
 
                     else:
                         raise NotImplementedError(f'Does not support painting of "{p}"')
-                    x0 = o.rect.x() + margin + o.rect.width()
 
             elif isinstance(item, PlotStyleItem):
                 # self.initStyleOption(option, index)
@@ -572,9 +580,9 @@ class SpectralLibraryPlotWidget(QWidget):
 
         existing_layers = [v.layerId() for v in self.mPlotModel.layerRendererVisualizations()]
         if isinstance(layer, QgsRasterLayer) and layer.isValid() and layer.id() not in existing_layers:
-            lvis = RasterRendererGroup(layer=layer)
+            lvis = RasterRendererGroup(layer=layer, project=self.project())
             self.mPlotModel.insertPropertyGroup(0, lvis)
-            lvis.updateBarVisiblity()
+            # lvis.updateBarVisiblity()
 
     def createProfileVisualization(self, *args,
                                    name: str = None,
@@ -726,6 +734,25 @@ class SpectralLibraryPlotWidget(QWidget):
             if isinstance(node, ProfileVisualizationGroup):
                 return node
 
+        return None
+
+    def currentLayer(self) -> Optional[QgsMapLayer]:
+        """
+        Returns the currently selected layer, or
+        None if no item is selected which implements or has a parent node
+        implementing '.layer()->QgsMapLayer'
+        """
+        for idx in self.treeView.selectionModel().selectedRows():
+            node = idx.data(Qt.UserRole)
+
+            if isinstance(node, PropertyLabel):
+                node = node.propertyItem()
+            if isinstance(node, PropertyItem):
+                node = node.parent()
+            if isinstance(node, PropertyItemGroup) and hasattr(node, 'layer'):
+                layer = node.layer()
+                if isinstance(layer, QgsMapLayer) and layer.isValid():
+                    return layer
         return None
 
     def currentSpeclib(self) -> Optional[QgsVectorLayer]:

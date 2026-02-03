@@ -39,7 +39,7 @@ from qgis.core import Qgis, QgsExpression, QgsExpressionContext, QgsExpressionCo
     QgsHillshadeRenderer, QgsMapLayer, QgsMultiBandColorRenderer, QgsPalettedRasterRenderer, QgsProject, QgsProperty, \
     QgsPropertyDefinition, QgsRasterContourRenderer, QgsRasterLayer, QgsRasterRenderer, QgsReadWriteContext, \
     QgsRenderContext, QgsSingleBandColorDataRenderer, QgsSingleBandGrayRenderer, QgsSingleBandPseudoColorRenderer, \
-    QgsTextFormat, QgsVectorLayer, QgsWkbTypes, QgsXmlUtils
+    QgsTextFormat, QgsVectorLayer, QgsXmlUtils
 from qgis.gui import QgsColorButton, QgsDoubleSpinBox, QgsFieldExpressionWidget, QgsMapLayerComboBox, \
     QgsPropertyOverrideButton, QgsSpinBox
 from ..core import is_profile_field, is_spectral_library, profile_field_names
@@ -307,6 +307,9 @@ class PropertyItem(PropertyItemBase):
     def clone(self):
         raise NotImplementedError()
 
+    def connectPlotModel(self, model: QStandardItemModel):
+        pass
+
     def setEditorData(self, editor: QWidget, index: QModelIndex):
         pass
 
@@ -334,14 +337,16 @@ class PropertyItemGroup(PropertyItemBase):
     Represents a group of properties.
     """
 
-    def __init__(self, *args, **kwds):
+    def __init__(self, *args, project: Optional[QgsProject] = None, **kwds):
         super().__init__(*args, **kwds)
         self.mMissingValues: bool = False
         self.mZValue = 0
         # self.mSignals = PropertyItemGroup.Signals()
         self.mFirstColumnSpanned = True
 
-        self.mProject: QgsProject = QgsProject.instance()
+        if project is None:
+            project = QgsProject.instance()
+        self.mProject: QgsProject = project
 
     def setProject(self, project: QgsProject):
         assert isinstance(project, QgsProject)
@@ -1476,32 +1481,26 @@ class RasterRendererGroup(PropertyItemGroup):
             if isinstance(new_layer, QgsMapLayer) and new_layer.id() != self.mLayerID:
                 self.setLayer(new_layer)
 
-    def updateBarVisiblity(self):
-        model = self.model()
-        from .spectralprofileplotmodel import SpectralProfilePlotModel
-        if isinstance(model, SpectralProfilePlotModel):
-            plotItem = model.mPlotWidget.plotItem
-            for bar in self.bandPlotItems():
+    # def updateBarVisiblity(self):
+    #     model = self.model()
+    #     from .spectralprofileplotmodel import SpectralProfilePlotModel
+    #     if isinstance(model, SpectralProfilePlotModel):
+    #         plotItem = model.plotWidget().getPlotItem()
+    #         for bar in self.bandPlotItems():
+    #             pass
 
-                if True:
-                    if bar.isVisible() and bar not in plotItem.items:
-                        plotItem.addItem(bar)
-                    elif not bar.isVisible() and bar in plotItem.items:
-                        plotItem.removeItem(bar)
-                else:
-                    if bar not in plotItem.items:
-                        plotItem.addItem(bar)
-                    bar.setEnabled(bar.isVisible())
+    def connectPlotModel(self, model):
 
-            s = ""
-
-    def initWithPlotModel(self, model):
         from .spectralprofileplotmodel import SpectralProfilePlotModel
         assert isinstance(model, SpectralProfilePlotModel)
+
+        model.sigXUnitChanged.connect(self.setXUnit)
         self.setXUnit(model.xUnit().unit)
         # self.updateBarVisiblity()
+        # # self.updateBarVisiblity()
         for bar in self.bandPlotItems():
-            model.mPlotWidget.plotItem.addItem(bar)
+            model.plotWidget().getPlotItem().addItem(bar)
+        # model.sigXUnitChanged.connect(self.updateBarVisiblity)
 
     def clone(self) -> QStandardItem:
         item = RasterRendererGroup()
@@ -1539,6 +1538,10 @@ class RasterRendererGroup(PropertyItemGroup):
         if lid == self.mLayerID:
             # layer already linked
             return
+
+        if layer.project() and layer.project() != self.project():
+            self.setProject(layer.project())
+
         self.onLayerRemoved()
         self.mSpectralProperties = QgsRasterLayerSpectralProperties.fromRasterLayer(layer)
         self.mLayerID = layer.id()
@@ -1571,9 +1574,10 @@ class RasterRendererGroup(PropertyItemGroup):
     def disconnectGroup(self):
         pw = self.plotWidget()
         if pw:
+            pitem = pw.getPlotItem()
             for bar in self.bandPlotItems():
-                if bar in pw.items():
-                    pw.removeItem(bar)
+                if bar in pitem.items:
+                    pitem.removeItem(bar)
 
     def updateToRenderer(self):
 
@@ -1599,19 +1603,8 @@ class RasterRendererGroup(PropertyItemGroup):
             if bandB:
                 renderer.setBlueBand(bandB)
 
-        elif isinstance(renderer, (QgsHillshadeRenderer, QgsSingleBandPseudoColorRenderer)):
-            if bandR:
-                renderer.setBand(bandR)
-        elif isinstance(renderer, QgsPalettedRasterRenderer):
-            pass
-        elif isinstance(renderer, QgsRasterContourRenderer):
-            if bandR:
-                renderer.setInputBand(bandR)
-        elif isinstance(renderer, QgsSingleBandColorDataRenderer):
-            pass
-        elif isinstance(renderer, QgsSingleBandGrayRenderer):
-            if bandR:
-                renderer.setGrayBand(bandR)
+        elif bandR and getattr(renderer, 'setInputBand'):
+            renderer.setInputBand(bandR)
 
         layer.setRenderer(renderer)
         layer.triggerRepaint()
@@ -1693,8 +1686,9 @@ class RasterRendererGroup(PropertyItemGroup):
         return False
 
     def updateLayerName(self):
-        if isinstance(self.layer(), QgsRasterLayer):
-            self.setText(self.layer().name())
+        lyr = self.layer()
+        if isinstance(lyr, QgsRasterLayer):
+            self.setText(lyr.name())
         else:
             self.setText('<layer not set>')
 
@@ -1741,25 +1735,13 @@ class RasterRendererGroup(PropertyItemGroup):
                         ):
 
             self.mBarR.setPen(color='grey')
-
-            if isinstance(renderer, QgsHillshadeRenderer):
-                bandR = renderer.band()
-            elif isinstance(renderer, QgsPalettedRasterRenderer):
-                bandR = renderer.band()
-                # rendererName = 'Paletted Raster Renderer'
-            elif isinstance(renderer, QgsRasterContourRenderer):
+            if hasattr(renderer, 'inputBand'):
                 bandR = renderer.inputBand()
-                # rendererName = 'Raster Contour'
-            elif isinstance(renderer, QgsSingleBandColorDataRenderer):
-                bandR = None
-            elif isinstance(renderer, QgsSingleBandPseudoColorRenderer):
+            elif hasattr(renderer, 'band'):
                 bandR = renderer.band()
-            elif isinstance(renderer, QgsSingleBandGrayRenderer):
-                if Qgis.versionInt() >= 33800:
-                    bandR = renderer.inputBand()
-                else:
-                    bandR = renderer.grayBand()
-                # rendererName = 'Single Band Gray'
+            elif hasattr(renderer, 'grayBand'):
+                bandR = renderer.grayBand()
+
         emptyPen = QPen()
 
         self.mItemRenderer.setText(rendererName)
@@ -2039,9 +2021,6 @@ class ProfileVisualizationGroup(PropertyItemGroup):
         """
         return self.mPColor.colorExpression()
 
-    def initWithPlotModel(self, model):
-        self.setSpeclib(model.speclib())
-
     def propertyRow(self) -> List[QStandardItem]:
         return [self]
 
@@ -2099,15 +2078,6 @@ class ProfileVisualizationGroup(PropertyItemGroup):
         if isinstance(lyr, QgsVectorLayer):
             return f'{lyr.name()}:{fn}'
         return 'Missing layer'
-
-    def setSpeclib(self, speclib: QgsVectorLayer):
-        assert isinstance(speclib, QgsVectorLayer)
-        if speclib.geometryType() in [QgsWkbTypes.GeometryType.PointGeometry,
-                                      QgsWkbTypes.GeometryType.LineGeometry,
-                                      QgsWkbTypes.GeometryType.PolygonGeometry]:
-            self.mPColor.setToSymbolColor()
-        self.mSpeclib = speclib
-        self.update()
 
     def update(self):
         is_complete = self.isComplete()
