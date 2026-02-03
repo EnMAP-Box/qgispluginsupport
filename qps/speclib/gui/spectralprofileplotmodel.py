@@ -14,10 +14,9 @@ from qgis.PyQt.QtCore import pyqtSignal, QMimeData, QModelIndex, QSortFilterProx
 from qgis.PyQt.QtGui import QColor, QStandardItem, QStandardItemModel
 from qgis.PyQt.QtWidgets import QApplication
 from qgis.PyQt.QtWidgets import QGraphicsSceneMouseEvent
-from qgis.PyQt.QtXml import QDomDocument, QDomElement
 from qgis.core import QgsExpression, QgsExpressionContext, QgsExpressionContextScope, QgsExpressionContextUtils, \
     QgsFeature, QgsFeatureRenderer, QgsFeatureRequest, QgsField, QgsMarkerSymbol, QgsProject, QgsProperty, \
-    QgsReadWriteContext, QgsRenderContext, QgsSingleSymbolRenderer, QgsSymbol, QgsVectorLayer, QgsVectorLayerCache
+    QgsRenderContext, QgsSingleSymbolRenderer, QgsSymbol, QgsVectorLayer, QgsVectorLayerCache
 from .spectrallibraryplotitems import SpectralProfilePlotItem, SpectralViewBox
 from .spectralprofilecandidates import CUSTOM_PROPERTY_CANDIDATE_FIDs, SpectralProfileCandidates
 from ..core import profile_field_indices, profile_field_list, profile_fields, is_profile_field
@@ -115,6 +114,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
     sigOpenLayerPropertiesRequest = pyqtSignal(str)
     sigOpenSpectralProcessingRequest = pyqtSignal(str)
     sigProfileCandidatesChanged = pyqtSignal()
+    sigXUnitChanged = pyqtSignal(str)
     sigLayersChanged = pyqtSignal()
 
     NOT_INITIALIZED = -1
@@ -655,8 +655,6 @@ class SpectralProfilePlotModel(QStandardItemModel):
     def showSelectedFeaturesOnly(self) -> bool:
         return self.mShowSelectedFeaturesOnly
 
-    sigXUnitChanged = pyqtSignal(UnitWrapper)
-
     def setXUnit(self, unit: Union[str, UnitWrapper]):
         unit = self.mXUnitModel.findUnitWrapper(unit)
         if self.mXUnit != unit:
@@ -671,43 +669,10 @@ class SpectralProfilePlotModel(QStandardItemModel):
             for bv in self.layerRendererVisualizations():
                 bv.setXUnit(self.mXUnit.unit)
             self.updatePlotIfChanged()
-            self.sigXUnitChanged.emit(self.mXUnit)
+            self.sigXUnitChanged.emit(self.mXUnit.unit)
 
     def xUnit(self) -> UnitWrapper:
         return self.mXUnit
-
-    def writeXml(self, parent: QDomElement, context: QgsReadWriteContext) -> QDomElement:
-        doc: QDomDocument = parent.ownerDocument()
-
-        if not parent.tagName() == 'Visualizations':
-            parent = doc.createElement('Visualizations')
-            doc.appendChild(parent)
-
-        for v in self.visualizations():
-            nV: QDomElement = doc.createElement('Visualization')
-            parent.appendChild(nV)
-            v.writeXml(nV, context)
-
-        return parent
-
-    def readXml(self, parent: QDomElement, context: QgsReadWriteContext):
-        if not parent.tagName() == 'Visualizations':
-            parent = parent.firstChildElement('Visualizations')
-
-        if parent.isNull():
-            return False
-
-        nV = parent.firstChildElement('Visualization').toElement()
-
-        # clean old visualizations
-        self.removePropertyItemGroups(self.visualizations())
-
-        while not nV.isNull():
-            vis = ProfileVisualizationGroup()
-            vis.initWithPlotModel(self)
-            vis.readXml(nV, context)
-            self.insertPropertyGroup(-1, vis)
-            nV = nV.nextSibling().toElement()
 
     def setPlotWidget(self, plotWidget: SpectralProfilePlotWidget):
         self.mPlotWidget = plotWidget
@@ -833,6 +798,9 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
             self.mModelItems.add(item)
             self.insertRow(new_group_order.index(item), item)
+
+            if hasattr(item, 'connectPlotModel'):
+                item.connectPlotModel(self)
 
         if layers_changed:
             self.updateSpeclibConnections()
