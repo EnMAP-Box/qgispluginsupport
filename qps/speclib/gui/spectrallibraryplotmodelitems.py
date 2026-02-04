@@ -1422,6 +1422,9 @@ class RasterRendererGroup(PropertyItemGroup):
         self.mBarG: InfiniteLine = InfiniteLine(pos=3, angle=90, movable=True)
         self.mBarA: InfiniteLine = InfiniteLine(pos=3, angle=90, movable=True)
 
+        for bar in self.bandPlotItems():
+            bar.setCursor(Qt.CursorShape.SizeHorCursor)
+            
         self.mXUnit: str = BAND_NUMBER
         self.mBarR.sigPositionChangeFinished.connect(self.updateToRenderer)
         self.mBarG.sigPositionChangeFinished.connect(self.updateToRenderer)
