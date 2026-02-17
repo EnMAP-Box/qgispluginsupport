@@ -75,6 +75,10 @@ class TestSpeclibIO_EcoSIS(TestCase):
                 for k in ['x', 'y', 'xUnit']:
                     assert k in data
 
+                for a in f.attributes():
+                    self.assertTrue(a is not None)
+                s = ""
+
     def test_read_EcoSIS(self):
 
         ecosysFiles = file_search(DIR_ECOSIS, '*.csv', recursive=True)

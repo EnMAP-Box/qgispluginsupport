@@ -172,6 +172,8 @@ class EcoSISSpectralLibraryReader(SpectralProfileFileReader):
 
         profiles: List[QgsFeature] = []
 
+        csv2dst = {mdFields.lookupField(f.name()): dstFields.lookupField(f.name()) for f in mdFields}
+
         for i, f in enumerate(csvLyr.getFeatures()):
 
             f: QgsFeature
@@ -189,8 +191,8 @@ class EcoSISSpectralLibraryReader(SpectralProfileFileReader):
                 g = f.geometry()
                 f2.setGeometry(QgsGeometry(g))
 
-            # for field in mdFields:
-            #    f2.setAttribute(field.name(), f.attribute(field.name()))
+            for iSrc, iDst in csv2dst.items():
+                f2.setAttribute(iDst, f.attribute(iSrc))
             profiles.append(f2)
 
         del csvLyr

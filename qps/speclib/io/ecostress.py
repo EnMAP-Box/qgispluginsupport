@@ -3,14 +3,18 @@ from typing import Union, List, Tuple
 
 from qgis.PyQt.QtCore import QMetaType
 from qgis.core import QgsFields, QgsField, QgsFeature
+from ..core import create_profile_field
 from ..core.spectralprofile import SpectralProfileFileReader, encodeProfileValueDict, ProfileEncoding
 
 
 class ECOSTRESSSpectralProfileReader(SpectralProfileFileReader):
-    _fields = SpectralProfileFileReader.standardFields()
-    for k in [SpectralProfileFileReader.KEY_Reference,
-              SpectralProfileFileReader.KEY_ReferenceTime]:
-        _fields.remove(_fields.lookupField(k))
+    _fields = QgsFields()
+    for f in [
+        create_profile_field(SpectralProfileFileReader.KEY_Target, encoding=ProfileEncoding.Dict),
+        QgsField(SpectralProfileFileReader.KEY_Name, QMetaType.QString),
+        QgsField(SpectralProfileFileReader.KEY_Path, QMetaType.QString)
+    ]:
+        _fields.append(f)
 
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
