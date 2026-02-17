@@ -201,7 +201,7 @@ def variant_type_to_ogr_field_type(variant_type):
     return ogr_type, ogr_sub_type
 
 
-class GlobalLayerContext(object):
+class TemporaryGlobalLayerContext(object):
     """
     Context manager to temporarily add layers from a local project to QgsProject.instance()
     If the given project is different from QgsProject.instance(), all layers from the project
@@ -223,7 +223,7 @@ class GlobalLayerContext(object):
             # Add them to the global instance
             instance.addMapLayers(layers, False)
             # Store the layers for removal on exit
-            self.added_ids = [l.id() for l in layers]
+            self.added_ids = [lyr.id() for lyr in layers]
         return self
         pass
 
@@ -233,7 +233,7 @@ class GlobalLayerContext(object):
             for lid in self.added_ids:
                 lyr = self.project.mapLayer(lid)
                 if isinstance(lyr, QgsMapLayer):
-                    instance.takeMapLayer(self.lyr)
+                    instance.takeMapLayer(lyr)
         pass
 
 

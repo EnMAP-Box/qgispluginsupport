@@ -72,7 +72,7 @@ from .classification.classificationscheme import ClassificationScheme
 from .models import OptionListModel, Option
 from .speclib.core import can_store_spectral_profiles
 from .utils import loadUi, defaultBands, iconForFieldType, qgsFields, copyEditorWidgetSetup, \
-    GlobalLayerContext
+    TemporaryGlobalLayerContext
 from .vectorlayertools import VectorLayerTools
 
 RENDER_CLASSES = {}
@@ -1692,7 +1692,7 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
 
         masterModel: QgsAttributeTableModel = self.mMainView.masterModel()
         if FIELD_CALCULATOR:
-            with GlobalLayerContext(self.mProject) as c:
+            with TemporaryGlobalLayerContext(self.mProject) as c:
                 calc: QgsFieldCalculator = QgsFieldCalculator(self.mLayer, self)
                 if calc.exec_() == QDialog.Accepted:
                     col = masterModel.fieldCol(calc.changedAttributeId())
