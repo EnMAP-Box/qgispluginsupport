@@ -1076,9 +1076,13 @@ class BatchAlgorithmDialog(QgsProcessingBatchAlgorithmDialogBase):
     def processingContext(self):
         if self.context is None:
             self.feedback = self.createFeedback()
-            self.context = createContext(self.feedback,
-                                         iface=self._iface,
-                                         project=self._project)
+            self.context = createContext(feedback=self.feedback,
+                                         project=self._context.project() if self._context else None,
+                                         iface=self._iface)
+
+            # self.context = createContext(self.feedback,
+            #                             iface=self._iface,
+            #                             project=self._project)
             self.context.setLogLevel(self.logLevel())
         return self.context
 
@@ -1773,8 +1777,13 @@ def executeAlgorithm(alg_id, parent, in_place=False, as_batch=False,
             return
 
         if as_batch:
-            dlg = BatchAlgorithmDialog(alg, iface.mainWindow())
+            dlg = BatchAlgorithmDialog(alg, iface.mainWindow(), context=context)
             dlg.show()
+
+            def onFinished(*args, **kwds):
+                s = ""
+
+            dlg.algorithmFinished.connect(onFinished)
             dlg.exec()
         else:
             in_place_input_parameter_name = "INPUT"

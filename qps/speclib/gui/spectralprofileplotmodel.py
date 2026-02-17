@@ -1361,7 +1361,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
             filter_expression = QgsExpression(vis['filter_expression'])
             if filter_expression.expression() == '':
-                filter_expression.setExpression('$id')
+                filter_expression = None
             elif filter_expression.hasParserError():
                 continue
             else:

@@ -29,15 +29,22 @@ from qgis.PyQt.QtWidgets import QAction, QButtonGroup, QCheckBox, QComboBox, QDi
     QGridLayout, QHBoxLayout, QLabel, QLineEdit, QMainWindow, QMenu, QMessageBox, QSizePolicy, QSpacerItem, \
     QSpinBox, QTableView, QToolButton, QVBoxLayout, QWidget
 from qgis.PyQt.QtXml import QDomDocument
-from qgis.core import Qgis, QgsAction, QgsApplication, QgsCategorizedSymbolRenderer, QgsContrastEnhancement, \
-    QgsDataProvider, QgsDistanceArea, QgsEditFormConfig, QgsEditorWidgetSetup, QgsExpression, QgsExpressionContext, \
-    QgsExpressionContextGenerator, QgsExpressionContextScope, QgsExpressionContextUtils, QgsFeature, QgsFeatureRenderer, \
-    QgsFeatureRequest, QgsField, QgsFieldModel, QgsFieldProxyModel, QgsFields, QgsHillshadeRenderer, QgsLayerTreeGroup, \
-    QgsLayerTreeLayer, QgsMapLayer, QgsMapLayerStyle, QgsMultiBandColorRenderer, QgsPalettedRasterRenderer, QgsProject, \
-    QgsRasterBandStats, QgsRasterDataProvider, QgsRasterLayer, QgsRasterRenderer, QgsReadWriteContext, QgsRectangle, \
-    QgsScopedProxyProgressTask, QgsSettings, QgsSingleBandColorDataRenderer, QgsSingleBandGrayRenderer, \
-    QgsSingleBandPseudoColorRenderer, QgsSingleSymbolRenderer, QgsVectorDataProvider, QgsVectorLayer, QgsWkbTypes
-
+from qgis.core import (Qgis, QgsAction, QgsApplication, QgsCategorizedSymbolRenderer, QgsContrastEnhancement,
+                       QgsDataProvider, QgsDistanceArea, QgsEditFormConfig, QgsEditorWidgetSetup, QgsExpression,
+                       QgsExpressionContext,
+                       QgsExpressionContextGenerator, QgsExpressionContextScope, QgsExpressionContextUtils, QgsFeature,
+                       QgsFeatureRenderer,
+                       QgsFeatureRequest, QgsField, QgsFieldModel, QgsFieldProxyModel, QgsFields, QgsHillshadeRenderer,
+                       QgsLayerTreeGroup,
+                       QgsLayerTreeLayer, QgsMapLayer, QgsMapLayerStyle, QgsMultiBandColorRenderer,
+                       QgsPalettedRasterRenderer, QgsProject,
+                       QgsRasterBandStats, QgsRasterDataProvider, QgsRasterLayer, QgsRasterRenderer,
+                       QgsReadWriteContext, QgsRectangle,
+                       QgsScopedProxyProgressTask, QgsSettings, QgsSingleBandColorDataRenderer,
+                       QgsSingleBandGrayRenderer,
+                       QgsSingleBandPseudoColorRenderer, QgsSingleSymbolRenderer, QgsVectorDataProvider, QgsVectorLayer,
+                       QgsWkbTypes,
+                       QgsCoordinateTransformContext)
 from .qgisenums import QGIS_RASTERBANDSTATISTIC
 from .speclib import EDITOR_WIDGET_REGISTRY_KEY
 
@@ -72,7 +79,8 @@ from . import DIR_UI_FILES
 from .classification.classificationscheme import ClassificationScheme
 from .models import OptionListModel, Option
 from .speclib.core import can_store_spectral_profiles
-from .utils import loadUi, defaultBands, iconForFieldType, qgsFields, copyEditorWidgetSetup
+from .utils import loadUi, defaultBands, iconForFieldType, qgsFields, copyEditorWidgetSetup, \
+    TemporaryGlobalLayerContext
 from .vectorlayertools import VectorLayerTools
 
 RENDER_CLASSES = {}
@@ -1028,7 +1036,8 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
         self.mLayer.nameChanged.connect(self.updateTitle)
 
         # self.mMapCanvas = QgsMapCanvas()
-        self.mMapCanvas = AttributeTableMapCanvas()
+        self.mMapCanvas = AttributeTableMapCanvas(self)
+        self.mMapCanvas.hide()
         self.mMapCanvas.setLayers([self.mLayer])
 
         # Initialize the window geometry
@@ -1036,8 +1045,9 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
         # self.restoreGeometry(geom)
 
         da = QgsDistanceArea()
-        da.setSourceCrs(mLayer.crs(), QgsProject.instance().transformContext())
-        da.setEllipsoid(QgsProject.instance().ellipsoid())
+        project = mLayer.project() if mLayer.project() is not None else QgsProject.instance()
+        da.setSourceCrs(mLayer.crs(), QgsCoordinateTransformContext(project.transformContext()))
+        da.setEllipsoid(project.ellipsoid())
 
         self.mEditorContext.setDistanceArea(da)
         self.mVectorLayerTools: VectorLayerTools = None
@@ -1277,7 +1287,14 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
         self.mEditorContext.setMapCanvas(canvas)
 
     def createExpressionContext(self) -> QgsExpressionContext:
-        return QgsExpressionContext()
+
+        context = QgsExpressionContext()
+        context.appendScope(QgsExpressionContextUtils.globalScope())
+        if isinstance(self.mLayer, QgsVectorLayer):
+            if p := self.mLayer.project():
+                context.appendScope(QgsExpressionContextUtils.projectScope(p))
+            context.appendScope(QgsExpressionContextUtils.layerScope(self.mLayer))
+        return context
 
     def updateButtonStatus(self, fieldName: str, isValid: bool):
         self.mRunFieldCalc.setEnabled(isValid)
@@ -1312,14 +1329,17 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
 
         filtered = self.mMainView.filterMode() != QgsAttributeTableFilterModel.ShowAll
         filteredIds = self.mMainView.filteredFeatures() if filtered else []
-        self.runFieldCalculation(self.mLayer, self.mFieldCombo.currentField(),
-                                 self.mUpdateExpressionText.asExpression(), filteredIds)
+
+        with TemporaryGlobalLayerContext(self.mLayer.project()) as c:
+            self.runFieldCalculation(self.mLayer, self.mFieldCombo.currentField(),
+                                     self.mUpdateExpressionText.asExpression(), filteredIds)
 
     def updateFieldFromExpressionSelected(self):
 
         filteredIds = self.mLayer.selectedFeatureIds()
-        self.runFieldCalculation(self.mLayer, self.mFieldCombo.currentField(),
-                                 self.mUpdateExpressionText.asExpression(), filteredIds)
+        with TemporaryGlobalLayerContext(self.mLayer.project()) as c:
+            self.runFieldCalculation(self.mLayer, self.mFieldCombo.currentField(),
+                                     self.mUpdateExpressionText.asExpression(), filteredIds)
 
     def _filterExpressionBuilder(self):
         context = QgsExpressionContext(QgsExpressionContextUtils.globalProjectLayerScopes(self.mLayer))
@@ -1330,8 +1350,9 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
                                          'generic', context)
         dlg.setWindowTitle('Expression Based Filter')
         myDa = QgsDistanceArea()
-        myDa.setSourceCrs(self.mLayer.crs(), QgsProject.instance().transformContext())
-        myDa.setEllipsoid(QgsProject.instance().ellipsoid())
+        project = self.mLayer.project() if self.mLayer and self.mLayer.project() is not None else QgsProject.instance()
+        myDa.setSourceCrs(self.mLayer.crs(), project.transformContext())
+        myDa.setEllipsoid(project.ellipsoid())
         dlg.setGeomCalculator(myDa)
 
         if dlg.exec() == QDialog.Accepted:
@@ -1369,11 +1390,12 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
 
         exp = QgsExpression(expression)
         da = QgsDistanceArea()
-        da.setSourceCrs(self.mLayer.crs(), QgsProject.instance().transformContext())
-        da.setEllipsoid(QgsProject.instance().ellipsoid())
+        project = self.mLayer.project() if self.mLayer and self.mLayer.project() is not None else QgsProject.instance()
+        da.setSourceCrs(self.mLayer.crs(), QgsCoordinateTransformContext(project.transformContext()))
+        da.setEllipsoid(project.ellipsoid())
         exp.setGeomCalculator(da)
-        exp.setDistanceUnits(QgsProject.instance().distanceUnits())
-        exp.setAreaUnits(QgsProject.instance().areaUnits())
+        exp.setDistanceUnits(project.distanceUnits())
+        exp.setAreaUnits(project.areaUnits())
         useGeometry: bool = exp.needsGeometry()
 
         request = QgsFeatureRequest(self.mMainView.masterModel().request())
@@ -1492,11 +1514,12 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
         fetchGeom: bool = filterExpression.needsGeometry()
 
         myDa = QgsDistanceArea()
-        myDa.setSourceCrs(self.mLayer.crs(), QgsProject.instance().transformContext())
-        myDa.setEllipsoid(QgsProject.instance().ellipsoid())
+        project = self.mLayer.project() if self.mLayer and self.mLayer.project() is not None else QgsProject.instance()
+        myDa.setSourceCrs(self.mLayer.crs(), QgsCoordinateTransformContext(project.transformContext()))
+        myDa.setEllipsoid(project.ellipsoid())
         filterExpression.setGeomCalculator(myDa)
-        filterExpression.setDistanceUnits(QgsProject.instance().distanceUnits())
-        filterExpression.setAreaUnits(QgsProject.instance().areaUnits())
+        filterExpression.setDistanceUnits(project.distanceUnits())
+        filterExpression.setAreaUnits(project.areaUnits())
 
         if filterExpression.hasParserError():
             if isinstance(messageBar, QgsMessageBar):
@@ -1683,11 +1706,13 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
 
         masterModel: QgsAttributeTableModel = self.mMainView.masterModel()
         if FIELD_CALCULATOR:
-            calc: QgsFieldCalculator = QgsFieldCalculator(self.mLayer, self)
-            if calc.exec_() == QDialog.Accepted:
-                col = masterModel.fieldCol(calc.changedAttributeId())
-                if col >= 0:
-                    masterModel.reload(masterModel.index(0, col), masterModel.index(masterModel.rowCount() - 1, col))
+            with TemporaryGlobalLayerContext(self.mLayer.project()) as c:
+                calc: QgsFieldCalculator = QgsFieldCalculator(self.mLayer, self)
+                if calc.exec_() == QDialog.Accepted:
+                    col = masterModel.fieldCol(calc.changedAttributeId())
+                    if col >= 0:
+                        masterModel.reload(masterModel.index(0, col),
+                                           masterModel.index(masterModel.rowCount() - 1, col))
 
     def mActionOrganizeColumns_triggered(self):
         if not isinstance(self.mLayer, QgsVectorLayer):

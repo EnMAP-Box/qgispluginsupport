@@ -36,6 +36,7 @@ from qgis.core import QgsCoordinateReferenceSystem, QgsFeature, QgsFeatureReques
     QgsVectorLayer
 from qgis.core import QgsWkbTypes, QgsExpressionContextUtils
 from qgis.gui import QgsDockWidget
+from qgis.gui import QgsFieldCalculator
 from qps.speclib.core import is_spectral_library
 from qps.speclib.core.spectralprofile import decodeProfileValueDict
 from qps.testing import start_app, TestCase, TestObjects
@@ -46,13 +47,54 @@ from qps.utils import aggregateArray, appendItemsToMenu, createQgsField, default
     osrSpatialReference, parseFWHM, parseWavelength, px2geo, px2geocoordinates, px2spatialPoint, qgsField, \
     qgsFieldAttributes2List, qgsRasterLayer, qgsRasterLayers, rasterArray, rasterBlockArray, rasterizeFeatures, \
     relativePath, SelectMapLayerDialog, SelectMapLayersDialog, snapGeoCoordinates, SpatialExtent, SpatialPoint, \
-    spatialPoint2px, value2str, writeAsVectorFormat, create_picture_viewer_config, xy_pair_matrix, featureSymbolScope
+    spatialPoint2px, value2str, writeAsVectorFormat, create_picture_viewer_config, xy_pair_matrix, featureSymbolScope, \
+    TemporaryGlobalLayerContext
 from qpstestdata import enmap, enmap_multipoint, enmap_multipolygon, enmap_pixel, hymap, landcover
 
 start_app()
 
 
 class TestUtils(TestCase):
+
+    def test_temp_project_layers(self):
+        p1 = QgsProject.instance()
+        self.assertTrue(len(p1.mapLayers().keys()) == 0)
+
+        p2 = QgsProject()
+
+        lyr = TestObjects.createRasterLayer()
+        lyr.setName('A')
+        lid = lyr.id()
+        p2.addMapLayer(lyr)
+
+        self.assertFalse(lid in p1.mapLayers().keys())
+        self.assertTrue(lid in p2.mapLayers().keys())
+
+        with TemporaryGlobalLayerContext(p2):
+            self.assertTrue(lid in p1.mapLayers().keys())
+            self.assertTrue(lid in p2.mapLayers().keys())
+
+        self.assertFalse(lid in p1.mapLayers().keys())
+        self.assertTrue(lid in p2.mapLayers().keys())
+
+        p1.removeAllMapLayers()
+
+    @unittest.skipIf(TestCase.runsInCI(), 'Blocking dialog.')
+    def test_temp_project_layers_fieldcalculator(self):
+        p1 = QgsProject.instance()
+        self.assertTrue(len(p1.mapLayers().keys()) == 0)
+        from qpstestdata import enmap_polygon, enmap_pixel
+        lyrA = QgsVectorLayer(enmap_polygon.as_posix(), 'A', 'ogr')
+        p1.addMapLayer(lyrA)
+
+        p2 = QgsProject()
+
+        lyrB = QgsVectorLayer(enmap_pixel.as_posix(), 'B', 'ogr')
+        p2.addMapLayer(lyrB)
+
+        with TemporaryGlobalLayerContext(p2):
+            gui = QgsFieldCalculator(lyrB, None)
+            gui.exec_()
 
     def test_loadUi(self):
 
