@@ -29,21 +29,21 @@ from qgis.PyQt.QtWidgets import QAction, QButtonGroup, QCheckBox, QComboBox, QDi
     QGridLayout, QHBoxLayout, QLabel, QLineEdit, QMainWindow, QMenu, QMessageBox, QSizePolicy, QSpacerItem, \
     QSpinBox, QTableView, QToolButton, QVBoxLayout, QWidget
 from qgis.PyQt.QtXml import QDomDocument
-from qgis.core import (Qgis, QgsAction, QgsApplication, QgsCategorizedSymbolRenderer, QgsContrastEnhancement, \
+from qgis.core import (Qgis, QgsAction, QgsApplication, QgsCategorizedSymbolRenderer, QgsContrastEnhancement,
                        QgsDataProvider, QgsDistanceArea, QgsEditFormConfig, QgsEditorWidgetSetup, QgsExpression,
-                       QgsExpressionContext, \
+                       QgsExpressionContext,
                        QgsExpressionContextGenerator, QgsExpressionContextScope, QgsExpressionContextUtils, QgsFeature,
-                       QgsFeatureRenderer, \
+                       QgsFeatureRenderer,
                        QgsFeatureRequest, QgsField, QgsFieldModel, QgsFieldProxyModel, QgsFields, QgsHillshadeRenderer,
-                       QgsLayerTreeGroup, \
+                       QgsLayerTreeGroup,
                        QgsLayerTreeLayer, QgsMapLayer, QgsMapLayerStyle, QgsMultiBandColorRenderer,
-                       QgsPalettedRasterRenderer, QgsProject, \
+                       QgsPalettedRasterRenderer, QgsProject,
                        QgsRasterBandStats, QgsRasterDataProvider, QgsRasterLayer, QgsRasterRenderer,
-                       QgsReadWriteContext, QgsRectangle, \
+                       QgsReadWriteContext, QgsRectangle,
                        QgsScopedProxyProgressTask, QgsSettings, QgsSingleBandColorDataRenderer,
-                       QgsSingleBandGrayRenderer, \
+                       QgsSingleBandGrayRenderer,
                        QgsSingleBandPseudoColorRenderer, QgsSingleSymbolRenderer, QgsVectorDataProvider, QgsVectorLayer,
-                       QgsWkbTypes, \
+                       QgsWkbTypes,
                        QgsCoordinateTransformContext)
 from .qgisenums import QGIS_RASTERBANDSTATISTIC
 from .speclib import EDITOR_WIDGET_REGISTRY_KEY
