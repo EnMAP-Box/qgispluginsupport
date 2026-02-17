@@ -15,6 +15,7 @@ enmap_multipoint = _QPS / 'testvectordata_multipoint.geojson'
 
 # speclibs
 speclib_geojson = DIR_TESTDATA / 'geojson' / 'speclib.geojson'
+speclib_geojson_no_geometry = DIR_TESTDATA / 'geojson' / 'speclib_no_geometry.geojson'
 
 # from qpstestdata
 hymap = DIR_TESTDATA / 'hymap.tif'

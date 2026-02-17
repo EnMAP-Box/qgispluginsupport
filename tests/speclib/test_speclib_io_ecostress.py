@@ -25,6 +25,8 @@ class ECOSTRESSSpectralProfileReaderTests(TestCase):
             self.assertEqual(1, len(profiles))
             for p in profiles:
                 self.assertTrue(is_spectral_feature(p))
+                for a in p.attributes():
+                    self.assertTrue(a is not None)
 
     def test_import_algorithm_ecostress(self):
 
@@ -53,4 +55,8 @@ class ECOSTRESSSpectralProfileReaderTests(TestCase):
 
         self.assertTrue(is_spectral_library(layer))
         self.assertTrue(layer.featureCount() > 0)
+
+        for f in layer.getFeatures():
+            s = ""
+            break
         s = ""

@@ -1,0 +1,20 @@
+{
+    "type": "FeatureCollection",
+    "name": "library",
+    "description": "SpectralLibrary #1",
+    "features":
+        [
+            {
+                "type": "Feature",
+                "properties":
+                    {
+                        "name": "1",
+                        "profiles":
+                            {
+                                "y": [ 1, 2, 3],
+                                "x": [ 10, 30, 20]
+							}
+                    }
+            }
+        ]
+}

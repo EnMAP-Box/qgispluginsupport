@@ -32,6 +32,7 @@ from qps.speclib.gui.spectralprofileplotmodel import copy_items, SpectralProfile
 from qps.testing import start_app, TestCase, TestObjects
 from qps.unitmodel import BAND_INDEX, BAND_NUMBER
 from qps.utils import file_search, nextColor, parseWavelength, writeAsVectorFormat
+from qpstestdata import speclib_geojson_no_geometry
 
 start_app()
 initAll()
@@ -67,6 +68,20 @@ class TestSpeclibPlotting(TestCase):
         slw.project().removeAllMapLayers()
         self.showGui(slw)
 
+    @unittest.skipIf(TestCase.runsInCI(), 'GUI Testing only')
+    def test_SpectralLibraryWidget_no_geometry(self):
+
+        speclib: QgsVectorLayer = QgsVectorLayer(str(speclib_geojson_no_geometry), 'Example')
+        self.assertTrue(speclib.isValid())
+        SpectralLibraryUtils.makeToProfileField(speclib, 'profiles')
+        self.assertTrue(SpectralLibraryUtils.isSpectralLibrary(speclib))
+
+        p = QgsProject()
+        p.addMapLayer(speclib)
+        slw = SpectralLibraryWidget(speclib=speclib, project=p)
+        self.showGui(slw)
+        p.removeAllMapLayers()
+
     def test_SpectralLibraryWidget_stats(self):
 
         logging.basicConfig(level=logging.DEBUG,
@@ -76,20 +91,7 @@ class TestSpeclibPlotting(TestCase):
                                 logging.StreamHandler()  # Log to console
                             ])
 
-        if True:
-            speclib = TestObjects.createSpectralLibrary(2, n_bands=[100, ], profile_field_names=['p1'])
-        else:
-            l_dir = DIR_REPO / 'tmp/largespeclib'
-            p_large = None
-            if l_dir.is_dir():
-                for f in file_search(l_dir, '*.gpkg'):
-                    p_large = f
-                    break
-            if not (p_large and os.path.isfile(p_large)):
-                return
-
-            speclib = QgsVectorLayer(p_large)
-            speclib.setSubsetString('"fid" <= 200')
+        speclib = TestObjects.createSpectralLibrary(2, n_bands=[100, ], profile_field_names=['p1'])
 
         slw = SpectralLibraryWidget(speclib=speclib)
         model = slw.plotModel()
