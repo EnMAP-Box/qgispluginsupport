@@ -209,21 +209,28 @@ class TemporaryGlobalLayerContext(object):
     Signal blocker for arbitrary number of QObjects
     """
 
-    def __init__(self, project: QgsProject):
+    LAYER_PROPERTY_KEY = 'added_by_temporarygloballayercontext'
+
+    def __init__(self, project: Optional[QgsProject] = None):
+        if not isinstance(project, QgsProject):
+            project = QgsProject.instance()
         self.project = project
         self.added_ids: List[str] = []
 
-        pass
-
     def __enter__(self):
         instance = QgsProject.instance()
+        self.added_ids.clear()
+
         if self.project != instance:
             # Get all layers from the local project
             layers = list(self.project.mapLayers().values())
             # Add them to the global instance
             instance.addMapLayers(layers, False)
             # Store the layers for removal on exit
-            self.added_ids = [lyr.id() for lyr in layers]
+            for lyr in layers:
+                lyr: QgsMapLayer
+                lyr.setCustomProperty(self.LAYER_PROPERTY_KEY, True)
+                self.added_ids.append(lyr.id())
         return self
         pass
 
@@ -234,6 +241,9 @@ class TemporaryGlobalLayerContext(object):
                 lyr = self.project.mapLayer(lid)
                 if isinstance(lyr, QgsMapLayer):
                     instance.takeMapLayer(lyr)
+                    lyr.removeCustomProperty(self.LAYER_PROPERTY_KEY)
+
+        s = ""
         pass
 
 
