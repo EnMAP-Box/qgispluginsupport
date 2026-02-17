@@ -37,7 +37,6 @@ from qgis.core import Qgis, QgsAction, QgsApplication, QgsCategorizedSymbolRende
     QgsRasterBandStats, QgsRasterDataProvider, QgsRasterLayer, QgsRasterRenderer, QgsReadWriteContext, QgsRectangle, \
     QgsScopedProxyProgressTask, QgsSettings, QgsSingleBandColorDataRenderer, QgsSingleBandGrayRenderer, \
     QgsSingleBandPseudoColorRenderer, QgsSingleSymbolRenderer, QgsVectorDataProvider, QgsVectorLayer, QgsWkbTypes
-
 from .qgisenums import QGIS_RASTERBANDSTATISTIC
 from .speclib import EDITOR_WIDGET_REGISTRY_KEY
 
@@ -72,7 +71,8 @@ from . import DIR_UI_FILES
 from .classification.classificationscheme import ClassificationScheme
 from .models import OptionListModel, Option
 from .speclib.core import can_store_spectral_profiles
-from .utils import loadUi, defaultBands, iconForFieldType, qgsFields, copyEditorWidgetSetup
+from .utils import loadUi, defaultBands, iconForFieldType, qgsFields, copyEditorWidgetSetup, \
+    GlobalLayerContext
 from .vectorlayertools import VectorLayerTools
 
 RENDER_CLASSES = {}
@@ -987,6 +987,8 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
         self.widgetLeft.setVisible(False)
         self.widgetRight.setVisible(False)
 
+        self.mProject = QgsProject.instance()
+
         settings = QgsSettings()
         self.mMainView: QgsDualView
         self.mActionCutSelectedRows.triggered.connect(self.mActionCutSelectedRows_triggered)
@@ -1273,11 +1275,18 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
         return self.mVectorLayerTools
         # return self.mEditorContext.vectorLayerTools()
 
+    def setProject(self, project: QgsProject):
+        self.mProject = project
+
     def setMapCanvas(self, canvas: QgsMapCanvas):
         self.mEditorContext.setMapCanvas(canvas)
 
     def createExpressionContext(self) -> QgsExpressionContext:
-        return QgsExpressionContext()
+        context = QgsExpressionContext()
+        context.appendScope(QgsExpressionContextUtils.globalScope())
+        context.appendScope(QgsExpressionContextUtils.projectScope(self.mProject))
+        context.appendScope(QgsExpressionContextUtils.layerScope(self.mLayer))
+        return context
 
     def updateButtonStatus(self, fieldName: str, isValid: bool):
         self.mRunFieldCalc.setEnabled(isValid)
@@ -1683,11 +1692,13 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
 
         masterModel: QgsAttributeTableModel = self.mMainView.masterModel()
         if FIELD_CALCULATOR:
-            calc: QgsFieldCalculator = QgsFieldCalculator(self.mLayer, self)
-            if calc.exec_() == QDialog.Accepted:
-                col = masterModel.fieldCol(calc.changedAttributeId())
-                if col >= 0:
-                    masterModel.reload(masterModel.index(0, col), masterModel.index(masterModel.rowCount() - 1, col))
+            with GlobalLayerContext(self.mProject) as c:
+                calc: QgsFieldCalculator = QgsFieldCalculator(self.mLayer, self)
+                if calc.exec_() == QDialog.Accepted:
+                    col = masterModel.fieldCol(calc.changedAttributeId())
+                    if col >= 0:
+                        masterModel.reload(masterModel.index(0, col),
+                                           masterModel.index(masterModel.rowCount() - 1, col))
 
     def mActionOrganizeColumns_triggered(self):
         if not isinstance(self.mLayer, QgsVectorLayer):
