@@ -31,7 +31,7 @@ from ...pyqtgraph.pyqtgraph import (LegendItem, mkBrush, mkPen, PlotCurveItem, P
                                     SpotItem, FillBetweenItem, SignalProxy)
 from ...pyqtgraph.pyqtgraph.GraphicsScene.mouseEvents import HoverEvent, MouseClickEvent
 from ...signalproxy import SignalProxyUndecorated
-from ...unitmodel import BAND_INDEX, BAND_NUMBER, datetime64, UnitConverterFunctionModel, UnitWrapper
+from ...unitmodel import BAND_INDEX, BAND_NUMBER, datetime64, UnitConverterFunctionModel, UnitWrapper, UNKNOWN_UNIT
 from ...utils import convertDateUnit, xy_pair_matrix
 
 logger = logging.getLogger(__name__)
@@ -1511,7 +1511,10 @@ class SpectralProfilePlotModel(QStandardItemModel):
             rawData = self.rawData(pdi.mLayerID, pdi.mFieldIndex, pdi.mFeatureID)
 
             if rawData:
-                xunit2 = self.mXUnitModel.findUnit(rawData.get('xUnit', None))
+                xunit2 = rawData.get('xUnit', None)
+                if xunit2 is None and isinstance(rawData.get('x'), list):
+                    xunit2 = UNKNOWN_UNIT
+                xunit2 = self.mXUnitModel.findUnit(xunit2)
                 if isinstance(xunit2, str) and xunit2 != xunit:
                     self.mXUnitInitialized = True
                     self.setXUnit(xunit2)

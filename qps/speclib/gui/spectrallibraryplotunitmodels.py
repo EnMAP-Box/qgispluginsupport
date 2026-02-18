@@ -2,7 +2,6 @@ from typing import Union
 
 from qgis.PyQt.QtCore import pyqtSignal, Qt
 from qgis.PyQt.QtWidgets import QWidgetAction, QComboBox, QWidget, QFrame, QGridLayout, QLabel
-
 from ...unitmodel import UnitModel, BAND_INDEX, XUnitModel, UnitWrapper
 
 
