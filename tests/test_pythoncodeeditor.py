@@ -1,6 +1,6 @@
 import unittest
 
-from qps.editors.pythoncodeeditor import FieldPythonExpressionWidget, PythonExpressionDialog
+from qps.editors.pythoncodeeditor import PythonExpressionWidget, PythonExpressionDialog
 from qps.testing import TestCase, start_app, TestObjects
 
 start_app()
@@ -15,6 +15,7 @@ class PythonCodeEditorTestCases(TestCase):
 
         w.codeEditor().setText('# b(1)')
 
+        s = ""
         # w.setCode('b(1)')
         # w.setHelpText('<h1>This is a help text</h1>')
         txt = '<b><span style="color:red">code changed:</span></b>'
@@ -26,12 +27,13 @@ class PythonCodeEditorTestCases(TestCase):
 
         w.validationRequest.connect(onCodeChanged)
         w.setLayer(lyr)
+        fpw: QgsFeaturePickerWidget = w.featurePickerWidget()
 
         # epw.setExpressionText('b(1)')
         self.showGui(w)
 
     def test_FieldPythonExpressionWidget(self):
-        w = FieldPythonExpressionWidget()
+        w = PythonExpressionWidget()
         w.expressionChanged.connect(lambda expr: print(f"Expression changed: {expr}"))
 
         self.showGui(w)
@@ -52,7 +54,7 @@ class PythonCodeEditorTestCases(TestCase):
             if expr not in is_ok:
                 data['error'] = errMsg
 
-        w = FieldPythonExpressionWidget()
+        w = PythonExpressionWidget()
         w.validationRequest.connect(onValidateRequest)
         w.setExpression('1+3')
         b, err = w.isValidExpression()

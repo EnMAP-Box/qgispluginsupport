@@ -10,18 +10,30 @@ from qgis.gui import QgsCodeEditorPython, QgsFeaturePickerWidget
 from ..utils import loadUi
 
 
-def create_pythoncode_validation_request(expression: str) -> dict:
+def validation_request_dictionary(expression: str) -> dict:
     d = {'expression': expression,
          'error': None,
          'is_valid': None,
          'preview_text': '',
          'preview_tooltip': '',
          }
-
     return d
 
 
 class PythonExpressionDialog(QDialog):
+    """
+    A dialog to modify python expressions. Changing the python code triggers
+    the validationRequest(result:dict) signal.
+    The signals' dictionary can be used to validate the python code externally
+    and return informations to be shown in the dialog (see validation_request_dictionary)
+
+    input: expression - the python expression to validate
+    return values:
+    error: str - an error message
+    preview_text: str - the text to be shown in the preview text field
+    preview_tooltip: str - a tooltip
+    """
+
     validationRequest = pyqtSignal(dict)
 
     def __init__(self, parent=None):
@@ -45,7 +57,11 @@ class PythonExpressionDialog(QDialog):
         return self.mFeaturePickerWidget
 
     def updatePreview(self):
-        d = create_pythoncode_validation_request(self.expression())
+        """
+
+        :return:
+        """
+        d = validation_request_dictionary(self.expression())
         d['feature'] = self.featurePickerWidget().feature()
         d['preview_text'] = None
         d['preview_tooltip'] = None
@@ -88,7 +104,11 @@ class PythonExpressionDialog(QDialog):
         return self.mButtonBox
 
 
-class FieldPythonExpressionWidget(QWidget):
+class PythonExpressionWidget(QWidget):
+    """
+    A widget that shows a python expression.
+    Shows a button to open a PythonExpressionDialog to modify the expression.
+    """
     expressionChanged = pyqtSignal(str)
     validationRequest = pyqtSignal(dict)
 
@@ -137,7 +157,7 @@ class FieldPythonExpressionWidget(QWidget):
 
     def doValidationRequest(self, data: dict = None):
         if data is None:
-            data = create_pythoncode_validation_request(self.expression())
+            data = validation_request_dictionary(self.expression())
         self.validationRequest.emit(data)
 
         error = data.get('error', None)
@@ -176,7 +196,7 @@ class FieldPythonExpressionWidget(QWidget):
 
     def isValidExpression(self) -> Tuple[bool, Optional[str]]:
 
-        d = create_pythoncode_validation_request(self.expression())
+        d = validation_request_dictionary(self.expression())
         self.validationRequest.emit(d)
 
         error = d.get('error', None)
