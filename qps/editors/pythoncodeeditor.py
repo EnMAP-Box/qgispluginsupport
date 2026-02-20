@@ -1,26 +1,15 @@
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Optional
 
 from qgis.PyQt.QtCore import pyqtSignal, Qt
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QDialog, QDialogButtonBox, QHBoxLayout, QLineEdit, QTextBrowser, QToolButton, QWidget
 from qgis.core import QgsVectorLayer
 from qgis.gui import QgsCodeEditorPython, QgsFeaturePickerWidget
-
 from ..utils import loadUi
 
 
-def validation_request_dictionary(expression: str) -> dict:
-    d = {'expression': expression,
-         'error': None,
-         'is_valid': None,
-         'preview_text': '',
-         'preview_tooltip': '',
-         }
-    return d
-
-
-class PythonExpressionDialog(QDialog):
+class PythonCodeDialog(QDialog):
     """
     A dialog to modify python expressions. Changing the python code triggers
     the validationRequest(result:dict) signal.
@@ -33,6 +22,12 @@ class PythonExpressionDialog(QDialog):
     preview_text: str - the text to be shown in the preview text field
     preview_tooltip: str - a tooltip
     """
+
+    VALKEY_CODE = 'expression'
+    VALKEY_FEATURE = 'feature'
+    VALKEY_ERROR = 'error'
+    VALKEY_PREVIEW_TEXT = 'preview_text'
+    VALKEY_PREVIEW_TOOLTIP = 'preview_tooltip'
 
     validationRequest = pyqtSignal(dict)
 
@@ -58,17 +53,20 @@ class PythonExpressionDialog(QDialog):
 
     def updatePreview(self):
         """
-
-        :return:
+        Collects the code text and the feature instance.
+        Emits the validationRequest to validate the expression.
         """
-        d = validation_request_dictionary(self.expression())
-        d['feature'] = self.featurePickerWidget().feature()
-        d['preview_text'] = None
-        d['preview_tooltip'] = None
+        d = {
+            self.VALKEY_FEATURE: self.featurePickerWidget().feature(),
+            self.VALKEY_CODE: self.code(),
+            self.VALKEY_PREVIEW_TEXT: None,
+            self.VALKEY_PREVIEW_TOOLTIP: None
+        }
+
         self.validationRequest.emit(d)
 
-        text = d.get('preview_text', '')
-        tt = d.get('preview_tooltip', '')
+        text = d.get(self.VALKEY_PREVIEW_TEXT, '')
+        tt = d.get(self.VALKEY_PREVIEW_TOOLTIP, '')
 
         if isinstance(text, str):
             self.tbPreview.setText(text)
@@ -88,13 +86,19 @@ class PythonExpressionDialog(QDialog):
     def helpTextBrowser(self) -> QTextBrowser:
         return self.mHelpTextBrowser
 
-    def setHelpText(self, text: str):
-        self.helpTextBrowser().setText(text)
+    def setHelpText(self, text: Optional[str]):
+        """
+        Sets the HTML text shown in the help text browser.
+        If None or empty, the help text browser is hidden.
+        :param text: str or None
+        """
+        self.helpTextBrowser().setHtml(text)
+        self.mHelpTextBrowser.setVisible(text not in [None, ''])
 
-    def setExpression(self, code: str):
+    def setCode(self, code: str):
         self.codeEditor().setText(code)
 
-    def expression(self) -> str:
+    def code(self) -> str:
         return self.codeEditor().text()
 
     def codeEditor(self) -> QgsCodeEditorPython:
@@ -104,22 +108,23 @@ class PythonExpressionDialog(QDialog):
         return self.mButtonBox
 
 
-class PythonExpressionWidget(QWidget):
+class PythonCodeWidget(QWidget):
     """
     A widget that shows a python expression.
     Shows a button to open a PythonExpressionDialog to modify the expression.
     """
-    expressionChanged = pyqtSignal(str)
+    codeChanged = pyqtSignal(str)
     validationRequest = pyqtSignal(dict)
 
     def __init__(self, parent=None):
         super().__init__(parent)
-
+        self.setWindowTitle('Python Expression')
         # Create main components
         self.lineEdit = QLineEdit(self)
         self.editButton = QToolButton(self)
         self.editButton.setIcon(QIcon(":/images/themes/default/mIconPythonFile.svg"))
 
+        self.mDialogHelpText = 'Enter Python code.'
         # Layout for the main widget
         layout = QHBoxLayout(self)
         layout.addWidget(self.lineEdit)
@@ -129,22 +134,25 @@ class PythonExpressionWidget(QWidget):
         self.setLayout(layout)
 
         # Connect button click to open the dialog
-        self.editButton.clicked.connect(self.openExpressionDialog)
+        self.editButton.clicked.connect(self.openCodeDialog)
 
         # Signal to track changes in the QLineEdit
-        self.lineEdit.textChanged.connect(self.onExpressionChanged)
+        self.lineEdit.textChanged.connect(self.onCodeChanged)
         self.lineEdit.textEdited.connect(lambda: self.doValidationRequest())
 
         self.mLayer: Optional[QgsVectorLayer] = None
+        self.mValidationError: Optional[str] = None
 
-        self.mIsValid: bool = None
+    def setDialogHelpText(self, text: str):
+        self.mDialogHelpText = text
 
-    def openExpressionDialog(self):
+    def openCodeDialog(self):
         """Opens a dialog with QgsCodeEditorPython to edit the expression."""
-        dialog = PythonExpressionDialog(self)
+        dialog = PythonCodeDialog(self)
         dialog.validationRequest.connect(self.doValidationRequest)
         dialog.setWindowTitle("Edit Python Expression")
-        dialog.setExpression(self.expression())
+        dialog.setCode(self.code())
+        dialog.setHelpText(self.mDialogHelpText)
         # Connect dialog buttons
         buttonBox = dialog.buttonBox()
         buttonBox.accepted.connect(lambda d=dialog: self.applyExpression(d))
@@ -157,24 +165,37 @@ class PythonExpressionWidget(QWidget):
 
     def doValidationRequest(self, data: dict = None):
         if data is None:
-            data = validation_request_dictionary(self.expression())
-        self.validationRequest.emit(data)
+            data = {
+                PythonCodeDialog.VALKEY_CODE: self.code(),
+                PythonCodeDialog.VALKEY_PREVIEW_TEXT: None,
+                PythonCodeDialog.VALKEY_PREVIEW_TOOLTIP: None
+            }
+            if isinstance(self.mLayer, QgsVectorLayer):
+                for f in self.mLayer.getFeatures():
+                    data[PythonCodeDialog.VALKEY_FEATURE] = f
+                    break
 
-        error = data.get('error', None)
-        if isinstance(error, str):
+        try:
+            self.validationRequest.emit(data)
+        except Exception as ex:
+            data[PythonCodeDialog.VALKEY_ERROR] = str(ex)
+
+        self.mValidationError = data.get('error', None)
+
+        if isinstance(self.mValidationError, str):
             self.lineEdit.setStyleSheet('color:red;')
         else:
             self.lineEdit.setStyleSheet('')
 
-    def applyExpression(self, dialog: PythonExpressionDialog):
+    def applyExpression(self, dialog: PythonCodeDialog):
         """Applies the expression from the code editor to the line edit."""
 
-        self.lineEdit.setText(dialog.expression())
+        self.lineEdit.setText(dialog.code())
         dialog.accept()
 
-    def onExpressionChanged(self, text):
+    def onCodeChanged(self, text):
         """Emit signal when the expression changes."""
-        self.expressionChanged.emit(text)
+        self.codeChanged.emit(text)
         self.doValidationRequest()
 
     def setLayer(self, layer: QgsVectorLayer):
@@ -184,21 +205,18 @@ class PythonExpressionWidget(QWidget):
     def layer(self) -> Optional[QgsVectorLayer]:
         return self.mLayer
 
-    def expression(self):
+    def code(self):
         """Returns the current expression in the QLineEdit."""
         return self.lineEdit.text()
 
-    def setExpression(self, expression):
+    def setCode(self, expression):
         """Sets the expression in the QLineEdit."""
         self.lineEdit.setText(expression)
 
         self.doValidationRequest()
 
-    def isValidExpression(self) -> Tuple[bool, Optional[str]]:
+    def isValid(self) -> bool:
+        return self.mValidationError in [None, '']
 
-        d = validation_request_dictionary(self.expression())
-        self.validationRequest.emit(d)
-
-        error = d.get('error', None)
-
-        return not isinstance(error, str), error
+    def validationError(self) -> Optional[str]:
+        return self.mValidationError

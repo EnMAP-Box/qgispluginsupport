@@ -28,6 +28,7 @@ import sys
 from typing import Any, List, Optional, Union
 
 import numpy as np
+from PyQt5.QtCore import QObject, pyqtSignal
 
 from qgis.PyQt.QtCore import QAbstractItemModel, QMimeData, QModelIndex, QSize, Qt
 from qgis.PyQt.QtGui import QColor, QIcon, QPen, QPixmap, QStandardItem, QStandardItemModel
@@ -43,6 +44,8 @@ from qgis.core import Qgis, QgsExpression, QgsExpressionContext, QgsExpressionCo
 from qgis.gui import QgsColorButton, QgsDoubleSpinBox, QgsFieldExpressionWidget, QgsMapLayerComboBox, \
     QgsPropertyOverrideButton, QgsSpinBox
 from ..core import is_profile_field, is_spectral_library, profile_field_names
+from ..core.spectralprofile import decodeProfileValueDict
+from ...editors.pythoncodeeditor import PythonCodeWidget, PythonCodeDialog
 from ...layerfielddialog import LayerFieldWidget
 from ...plotstyling.plotstyling import PlotStyle, PlotStyleButton, PlotWidgetStyle, PlotStyleWidget
 from ...pyqtgraph.pyqtgraph import InfiniteLine, PlotDataItem
@@ -804,6 +807,80 @@ class GeneralSettingsGroup(PropertyItemGroup):
 
     def isVisible(self) -> bool:
         return True
+
+
+class PythonCodeItem(PropertyItem):
+    """
+    A property item to collect python code
+    """
+
+    class Signals(QObject):
+
+        validationRequest = pyqtSignal(dict)
+
+        def __init__(self, *args, **kwds):
+            super().__init__(*args, **kwds)
+
+    def __init__(self, *args, **kwds):
+
+        super().__init__(*args, **kwds)
+
+        self.setEditable(True)
+        self.mCode: str = ''
+        self.mIsValid: bool = True
+        self.signals = PythonCodeItem.Signals()
+        self.mDialogHelpText = 'Enter python code'
+
+    def setDialogHelpText(self, text: str):
+        self.mDialogHelpText = text
+
+    def code(self) -> str:
+        return self.mCode
+
+    def createEditor(self, parent):
+        w = PythonCodeWidget(parent=parent)
+        w.setCode(self.mCode)
+        w.setDialogHelpText(self.mDialogHelpText)
+        w.validationRequest.connect(self.signals.validationRequest.emit)
+        return w
+
+    def data(self, role: int = ...) -> Any:
+
+        if role == Qt.DisplayRole:
+            return self.mCode
+
+        if role == Qt.ToolTipRole:
+            return self.mCode
+
+        if role == Qt.ForegroundRole:
+            if not self.mIsValid:
+                return QColor('red')
+
+        return super().data(role)
+
+    def setModelData(self, editor: PythonCodeWidget, model: QAbstractItemModel, index: QModelIndex):
+        index.data()
+        if editor.isValid():
+            self.setCode(editor.code())
+
+    def setCode(self, code: str):
+        assert isinstance(code, str)
+        expr_old = self.mCode
+        if code != expr_old:
+            self.mCode = code
+            self.emitDataChanged()
+
+    def setEditorData(self, editor: PythonCodeWidget, index: QModelIndex):
+
+        parent = self.parent()
+        if isinstance(parent, ProfileVisualizationGroup):
+            if layer := parent.layer():
+                editor.setLayer(layer)
+        editor.setCode(self.mCode)
+
+    def heightHint(self) -> int:
+        h = 10
+        return h
 
 
 class PlotStyleItem(PropertyItem):
@@ -1944,6 +2021,13 @@ class ProfileVisualizationGroup(PropertyItemGroup):
             'Filter', 'Filter for feature rows', QgsPropertyDefinition.StandardPropertyTemplate.String))
         self.mPFilter.setProperty(QgsProperty.fromExpression(''))
 
+        self.mPCode = PythonCodeItem('Data')
+        self.mPCode.setToolTip('Modify profile data with python code')
+        self.mPCode.setDialogHelpText('<h1>Modify profile data</h1><br>'
+                                      'Example 1: <code>y = y*100</code> scales profile data by 100<br>'
+                                      "Example 2: <code>xUnit = 'nm'</code> specifies the wavelength unit if missed in the data")
+        self.mPCode.signals.validationRequest.connect(self._validate_data_expression)
+
         self.mPColor: ProfileColorPropertyItem = ProfileColorPropertyItem('Color')
         self.mPColor.setDefinition(QgsPropertyDefinition(
             'Color', 'Color of spectral profile', QgsPropertyDefinition.StandardPropertyTemplate.ColorWithAlpha))
@@ -1951,7 +2035,8 @@ class ProfileVisualizationGroup(PropertyItemGroup):
 
         self.mStats = ProfileStatsGroup()
         # self.mPColor.signals().dataChanged.connect(lambda : self.setPlotStyle(self.generatePlotStyle()))
-        for pItem in [self.mPField, self.mPLabel, self.mPFilter, self.mPColor, self.mPStyle, self.mProfileCandidates,
+        for pItem in [self.mPField, self.mPLabel, self.mPFilter, self.mPCode,
+                      self.mPColor, self.mPStyle, self.mProfileCandidates,
                       self.mStats]:
             self.appendRow(pItem.propertyRow())
 
@@ -1960,6 +2045,48 @@ class ProfileVisualizationGroup(PropertyItemGroup):
         self.setCheckState(Qt.Checked)
         self.setDropEnabled(False)
         self.setDragEnabled(False)
+
+    def _validate_data_expression(self, data):
+
+        # 1. compile expression
+
+        code = data[PythonCodeDialog.VALKEY_CODE]
+
+        code = ['import numpy as np', 'y = np.asarray(y)', code, ]
+        error = None
+        compiled_code = None
+        try:
+            compiled_code = compile('\n'.join(code), f'<band expression: "{code}">', 'exec')
+        except Exception as ex:
+            error = str(ex)
+
+        feature = data.get(PythonCodeDialog.VALKEY_FEATURE)
+        field = self.mPField.field()
+        if not error and isinstance(feature, QgsFeature) and isinstance(field, str):
+            # 2. execute code
+            try:
+
+                kwds = decodeProfileValueDict(feature.attribute(field))
+
+                exec(compiled_code, kwds, kwds)
+                assert 'y' in kwds, 'Missing y in kwds'
+
+            except Exception as ex:
+                error = str(ex)
+        data[PythonCodeDialog.VALKEY_ERROR] = error
+
+        if error:
+            data[PythonCodeDialog.VALKEY_PREVIEW_TEXT] = '<b><span style="color:red">error</span></b>'
+            data[PythonCodeDialog.VALKEY_PREVIEW_TOOLTIP] = f'<span style="color:red">{error}</span>'
+        else:
+            results = kwds['y']
+            data[PythonCodeDialog.VALKEY_PREVIEW_TEXT] = f'{results}'
+            data[PythonCodeDialog.VALKEY_PREVIEW_TOOLTIP] = f'Resulting value: {results}'
+            pass
+
+        # 2. run expression on feature data
+
+        s = ""
 
     def fromMap(self, data: dict):
 
@@ -1997,6 +2124,7 @@ class ProfileVisualizationGroup(PropertyItemGroup):
             'filter_expression': self.filterExpression(),
             'color_expression': color_expression,
             'tooltip_expression': self.labelExpression(),
+            'data_expression': self.dataExpression(),
             'plot_style': plot_style.map(),
             'statistics': self.mStats.map(),
             'candidate_style': candidate_style,
@@ -2119,6 +2247,12 @@ class ProfileVisualizationGroup(PropertyItemGroup):
         p = self.mPLabel.property()
         p.setExpressionString(expression)
         self.mPLabel.setProperty(p)
+
+    def setDataExpression(self, expression: str):
+        self.mPCode.setCode(expression)
+
+    def dataExpression(self) -> str:
+        return self.mPCode.code()
 
     def labelExpression(self) -> str:
         return self.mPLabel.property().expressionString()
