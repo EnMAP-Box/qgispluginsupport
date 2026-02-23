@@ -208,7 +208,9 @@ class TestSpeclibPlotting(TestCase):
         items1 = [i for i in pi.items if isinstance(i, SpectralProfilePlotDataItem)]
         vis0: ProfileVisualizationGroup = slw.plotModel().visualizations()[0]
         vis0.setDataExpression('y = y / 100\nx = np.asarray([11,22,33,44])')
+        QgsApplication.instance().processEvents()
         slw.updatePlot()
+        QgsApplication.instance().processEvents()
         errors = slw.plotModel().errors()
         self.assertEqual(0, len(errors), msg=f'unexpected errors: {"\n".join(errors)}')
         items2 = [i for i in pi.items if isinstance(i, SpectralProfilePlotDataItem)]
