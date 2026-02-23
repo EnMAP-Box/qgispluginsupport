@@ -18,6 +18,7 @@ from qgis.core import QgsExpression, QgsExpressionContext, QgsExpressionContextS
     QgsFeature, QgsFeatureRenderer, QgsFeatureRequest, QgsField, QgsMarkerSymbol, QgsProject, QgsProperty, \
     QgsRenderContext, QgsSingleSymbolRenderer, QgsSymbol, QgsVectorLayer, QgsVectorLayerCache
 from .spectrallibraryplotitems import SpectralProfilePlotItem, SpectralViewBox
+from .spectrallibraryplotmodelitems import lists_to_numpy_array
 from .spectralprofilecandidates import CUSTOM_PROPERTY_CANDIDATE_FIDs, SpectralProfileCandidates
 from ..core import profile_field_indices, profile_field_list, profile_fields, is_profile_field
 from ..core.spectralprofile import decodeProfileValueDict
@@ -435,7 +436,8 @@ class SpectralProfilePlotModel(QStandardItemModel):
                     requires_replot = ['vis_id', 'name', 'field_name', 'layer_id',
                                        'layer_source', 'layer_name', 'layer_provider', 'label_expression',
                                        'filter_expression', 'show_candidates', 'candidate_style',
-                                       'color_expression', 'tooltip_expression', 'plot_style']
+                                       'color_expression', 'data_expression',
+                                       'tooltip_expression', 'plot_style']
                     requires_restats = ['statistics']
                     for v_o, v_n in zip(v_old, v_new):
                         for k in set(v_o.keys()) | set(v_n.keys()):
@@ -1345,6 +1347,22 @@ class SpectralProfilePlotModel(QStandardItemModel):
             candidate_fids = layer.customProperty(CUSTOM_PROPERTY_CANDIDATE_FIDs, [])
 
             referenced_aids = []
+
+            data_expression = vis.get('data_expression', None)
+            data_expression_code = None
+            if isinstance(data_expression, str):
+                data_expression = data_expression.strip()
+                if data_expression != '':
+                    # 1. compile expression
+                    code = ['import numpy as np', data_expression]
+                    error = None
+
+                    try:
+                        data_expression_code = compile('\n'.join(code), f'<data_expression: "{code}">', 'exec')
+                    except Exception as ex:
+                        error = str(ex)
+                    pass
+
             color_expression = QgsExpression(vis['color_expression'])
             if color_expression.hasParserError():
                 continue
@@ -1435,8 +1453,25 @@ class SpectralProfilePlotModel(QStandardItemModel):
                 # fid = feature.id()
 
                 t0 = datetime.datetime.now()
-                plot_data: Optional[dict] = self.plotData1(layer_id, field_index, feature, xunit)
-                add_dt('plotData1', t0)
+
+                if data_expression_code is None:
+                    plot_data: Optional[dict] = self.plotData1(layer_id, field_index, feature, xunit)
+                    add_dt('plotData1', t0)
+                else:
+                    # override / manipulate data using python code
+                    try:
+                        kwds = self.rawData(layer_id, field_index, feature).copy()
+                        lists_to_numpy_array(kwds)
+                        kwds['f'] = feature
+
+                        exec(data_expression_code, globals=kwds)
+
+                        raw_data = {k: kwds[k] for k in ['x', 'y', 'xUnit', 'yUnit', 'bbl'] if k in kwds}
+                        plot_data = self.profileDataToXUnit(raw_data, xunit)
+                    except Exception as ex:
+
+                        error = str(ex)
+                        continue
 
                 # t0 = datetime.datetime.now()
                 # plot_data: Optional[dict] = self.plotData2(layer_id, field_index, feature, xunit)

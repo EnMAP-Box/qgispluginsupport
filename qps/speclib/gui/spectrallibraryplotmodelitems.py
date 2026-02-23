@@ -28,9 +28,9 @@ import sys
 from typing import Any, List, Optional, Union
 
 import numpy as np
-from PyQt5.QtCore import QObject, pyqtSignal
 
 from qgis.PyQt.QtCore import QAbstractItemModel, QMimeData, QModelIndex, QSize, Qt
+from qgis.PyQt.QtCore import QObject, pyqtSignal
 from qgis.PyQt.QtGui import QColor, QIcon, QPen, QPixmap, QStandardItem, QStandardItemModel
 from qgis.PyQt.QtWidgets import QCheckBox, QComboBox, QDoubleSpinBox, QHBoxLayout, QLineEdit, QMenu, QSizePolicy, \
     QSpinBox, QWidget
@@ -1944,6 +1944,18 @@ class ProfileStatsGroup(PropertyItemGroup):
         return d
 
 
+def lists_to_numpy_array(raw_data: dict, keys=('x', 'y', 'bbl')):
+    """
+    Converts all list values into numpy arrays.
+    :param raw_data:
+    :param keys:
+    :return:
+    """
+    for k in keys:
+        if k in raw_data and isinstance(raw_data[k], list):
+            raw_data[k] = np.asarray(raw_data[k])
+
+
 class ProfileVisualizationGroup(PropertyItemGroup):
     """
     Controls the visualization for a set of profiles
@@ -2022,10 +2034,16 @@ class ProfileVisualizationGroup(PropertyItemGroup):
         self.mPFilter.setProperty(QgsProperty.fromExpression(''))
 
         self.mPCode = PythonCodeItem('Data')
-        self.mPCode.setToolTip('Modify profile data with python code')
+        self.mPCode.setToolTip('Modify profile data with python expressions')
         self.mPCode.setDialogHelpText('<h1>Modify profile data</h1><br>'
-                                      'Example 1: <code>y = y*100</code> scales profile data by 100<br>'
-                                      "Example 2: <code>xUnit = 'nm'</code> specifies the wavelength unit if missed in the data")
+                                      'Set or overwrite the following raw profile data using python code:'
+                                      '<table>'
+                                      '<tr><th>Variable</th><th>Description</th></tr>'
+                                      '<tr><td>y</td><td>numpy array with profile values</td></tr>'
+                                      '<tr><td>x</td><td>numpy array with profile x values, e.g. wavelengths</td></tr>'
+                                      '</table>'
+                                      'Example 1: <code>y *= 100</code> scale profile values by 100<br>'
+                                      "Example 2: <code>xUnit = 'nm'</code> specify the wavelength unit")
         self.mPCode.signals.validationRequest.connect(self._validate_data_expression)
 
         self.mPColor: ProfileColorPropertyItem = ProfileColorPropertyItem('Color')
@@ -2067,7 +2085,8 @@ class ProfileVisualizationGroup(PropertyItemGroup):
             try:
 
                 kwds = decodeProfileValueDict(feature.attribute(field))
-
+                kwds['f'] = feature
+                lists_to_numpy_array(kwds)
                 exec(compiled_code, kwds, kwds)
                 assert 'y' in kwds, 'Missing y in kwds'
 
@@ -2079,9 +2098,12 @@ class ProfileVisualizationGroup(PropertyItemGroup):
             data[PythonCodeDialog.VALKEY_PREVIEW_TEXT] = '<b><span style="color:red">error</span></b>'
             data[PythonCodeDialog.VALKEY_PREVIEW_TOOLTIP] = f'<span style="color:red">{error}</span>'
         else:
-            results = kwds['y']
-            data[PythonCodeDialog.VALKEY_PREVIEW_TEXT] = f'{results}'
-            data[PythonCodeDialog.VALKEY_PREVIEW_TOOLTIP] = f'Resulting value: {results}'
+            results = []
+            for k in ['y', 'x', 'xUnit']:
+                if k in kwds:
+                    results.append(f'{k}={kwds[k]}')
+            data[PythonCodeDialog.VALKEY_PREVIEW_TEXT] = f"{'<br>'.join(results)}"
+            data[PythonCodeDialog.VALKEY_PREVIEW_TOOLTIP] = f"Results:\n{'<br>'.join(results)}"
             pass
 
         # 2. run expression on feature data
