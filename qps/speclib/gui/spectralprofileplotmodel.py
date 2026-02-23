@@ -18,6 +18,7 @@ from qgis.core import QgsExpression, QgsExpressionContext, QgsExpressionContextS
     QgsFeature, QgsFeatureRenderer, QgsFeatureRequest, QgsField, QgsMarkerSymbol, QgsProject, QgsProperty, \
     QgsRenderContext, QgsSingleSymbolRenderer, QgsSymbol, QgsVectorLayer, QgsVectorLayerCache
 from .spectrallibraryplotitems import SpectralProfilePlotItem, SpectralViewBox
+from .spectrallibraryplotmodelitems import lists_to_numpy_array
 from .spectralprofilecandidates import CUSTOM_PROPERTY_CANDIDATE_FIDs, SpectralProfileCandidates
 from ..core import profile_field_indices, profile_field_list, profile_fields, is_profile_field
 from ..core.spectralprofile import decodeProfileValueDict
@@ -31,7 +32,7 @@ from ...pyqtgraph.pyqtgraph import (LegendItem, mkBrush, mkPen, PlotCurveItem, P
                                     SpotItem, FillBetweenItem, SignalProxy)
 from ...pyqtgraph.pyqtgraph.GraphicsScene.mouseEvents import HoverEvent, MouseClickEvent
 from ...signalproxy import SignalProxyUndecorated
-from ...unitmodel import BAND_INDEX, BAND_NUMBER, datetime64, UnitConverterFunctionModel, UnitWrapper
+from ...unitmodel import BAND_INDEX, BAND_NUMBER, datetime64, UnitConverterFunctionModel, UnitWrapper, UNKNOWN_UNIT
 from ...utils import convertDateUnit, xy_pair_matrix
 
 logger = logging.getLogger(__name__)
@@ -168,6 +169,8 @@ class SpectralProfilePlotModel(QStandardItemModel):
         self.mLayerCaches: Dict[str, QgsVectorLayerCache] = dict()
         self.nUpdates: int = 0
 
+        self.mErrors: Set[str] = set()
+
         self.mSignalProxies: Dict[str, List[SignalProxy]] = dict()
         self.mModelItems: Set[PropertyItemGroup] = set()
 
@@ -268,6 +271,13 @@ class SpectralProfilePlotModel(QStandardItemModel):
         self.mDefaultProfileCandidateStyle = style
 
         self.mCurrentSelectionColor: QColor = QColor('white')
+
+    def errors(self) -> List[str]:
+        """
+        Returns a list of errors that occurred during the last update.
+        :return:
+        """
+        return list(self.mErrors)
 
     def onCandidatesChanged(self, layer_ids: List[str]):
         s = ""
@@ -435,7 +445,8 @@ class SpectralProfilePlotModel(QStandardItemModel):
                     requires_replot = ['vis_id', 'name', 'field_name', 'layer_id',
                                        'layer_source', 'layer_name', 'layer_provider', 'label_expression',
                                        'filter_expression', 'show_candidates', 'candidate_style',
-                                       'color_expression', 'tooltip_expression', 'plot_style']
+                                       'color_expression', 'data_expression',
+                                       'tooltip_expression', 'plot_style']
                     requires_restats = ['statistics']
                     for v_o, v_n in zip(v_old, v_new):
                         for k in set(v_o.keys()) | set(v_n.keys()):
@@ -1273,6 +1284,8 @@ class SpectralProfilePlotModel(QStandardItemModel):
         antialiasing = settings['general'].get('antialiasing', False)
         self.mCurrentSelectionColor = QColor(settings['general']['color_sc'])
 
+        self.mErrors.clear()
+
         def func_selected_style(plotStyle: PlotStyle):
             style2 = plotStyle.clone()
             style2.setLineWidth(plotStyle.lineWidth() + 2)
@@ -1345,6 +1358,24 @@ class SpectralProfilePlotModel(QStandardItemModel):
             candidate_fids = layer.customProperty(CUSTOM_PROPERTY_CANDIDATE_FIDs, [])
 
             referenced_aids = []
+
+            data_expression = vis.get('data_expression', None)
+            data_expression_code = None
+            if isinstance(data_expression, str):
+                data_expression = data_expression.strip()
+                if data_expression != '':
+                    # 1. compile expression
+                    code = ['import numpy as np', data_expression]
+                    error = None
+
+                    try:
+                        data_expression_code = compile('\n'.join(code), f'<data_expression: "{code}">', 'exec')
+                    except Exception as ex:
+                        error = f'{vis_id}:{ex}'
+                        self.mErrors.add(error)
+
+                    pass
+
             color_expression = QgsExpression(vis['color_expression'])
             if color_expression.hasParserError():
                 continue
@@ -1435,8 +1466,26 @@ class SpectralProfilePlotModel(QStandardItemModel):
                 # fid = feature.id()
 
                 t0 = datetime.datetime.now()
-                plot_data: Optional[dict] = self.plotData1(layer_id, field_index, feature, xunit)
-                add_dt('plotData1', t0)
+
+                if data_expression_code is None:
+                    plot_data: Optional[dict] = self.plotData1(layer_id, field_index, feature, xunit)
+                    add_dt('plotData1', t0)
+                else:
+                    # override / manipulate data using python code
+                    try:
+                        kwds = self.rawData(layer_id, field_index, feature).copy()
+                        lists_to_numpy_array(kwds)
+                        kwds['f'] = feature
+
+                        exec(data_expression_code, kwds)
+
+                        raw_data = {k: kwds[k] for k in ['x', 'y', 'xUnit', 'yUnit', 'bbl'] if k in kwds}
+                        plot_data = self.profileDataToXUnit(raw_data, xunit)
+                    except Exception as ex:
+
+                        error = f'{vis_id}:{ex}'
+                        self.mErrors.add(error)
+                        continue
 
                 # t0 = datetime.datetime.now()
                 # plot_data: Optional[dict] = self.plotData2(layer_id, field_index, feature, xunit)
@@ -1511,7 +1560,10 @@ class SpectralProfilePlotModel(QStandardItemModel):
             rawData = self.rawData(pdi.mLayerID, pdi.mFieldIndex, pdi.mFeatureID)
 
             if rawData:
-                xunit2 = self.mXUnitModel.findUnit(rawData.get('xUnit', None))
+                xunit2 = rawData.get('xUnit', None)
+                if xunit2 is None and isinstance(rawData.get('x'), list):
+                    xunit2 = UNKNOWN_UNIT
+                xunit2 = self.mXUnitModel.findUnit(xunit2)
                 if isinstance(xunit2, str) and xunit2 != xunit:
                     self.mXUnitInitialized = True
                     self.setXUnit(xunit2)
