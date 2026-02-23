@@ -86,36 +86,30 @@ class PythonCodeEditorTestCases(TestCase):
         errMsg = 'MyError'
 
         def onValidateRequest(data: dict):
+            for k in [PythonCodeDialog.VALKEY_CODE,
+                      PythonCodeDialog.VALKEY_ERROR,
+                      # PythonCodeDialog.VALKEY_FEATURE,
+                      PythonCodeDialog.VALKEY_PREVIEW_TEXT,
+                      PythonCodeDialog.VALKEY_PREVIEW_TOOLTIP, ]:
+                self.assertTrue(k in data, msg=f"Missing key: {k}")
 
-            expr = data.get('expression')
-            self.assertIsInstance(expr, str)
-            self.assertTrue(data['is_valid'] is None)
-            self.assertTrue(data['error'] is None)
-
-            data['is_valid'] = expr in is_ok
-            if expr not in is_ok:
-                data['error'] = errMsg
+                code = data.get(PythonCodeDialog.VALKEY_CODE)
+                try:
+                    compiled_code = compile(code, f'<expression: "{code}">', 'exec')
+                    data[PythonCodeDialog.VALKEY_PREVIEW_TEXT] = 'Done!'
+                except Exception as ex:
+                    data[PythonCodeDialog.VALKEY_ERROR] = errMsg
 
         w = PythonCodeWidget()
         w.validationRequest.connect(onValidateRequest)
         w.setCode('1+3')
-        b, err = w.isValidExpression()
-        self.assertTrue(b and err is None)
+        self.assertTrue(w.isValid())
 
-        w.setCode('foo"')
-        b, err = w.isValidExpression()
-        s = ""
-        self.assertTrue(b is False and isinstance(err, str))
+        w.setCode('a = "foobar"')
+        self.assertTrue(w.isValid())
 
-        w.setCode('foo')
-
-        for expr in ['foo', '1+2', 'broken"python']:
-            w.setCode(expr)
-            b, err = w.isValidExpression()
-            if expr in is_ok:
-                self.assertTrue(b and err is None)
-            else:
-                self.assertTrue(b is False and err == errMsg)
+        w.setCode('broken"python')
+        self.assertFalse(w.isValid())
 
 
 if __name__ == '__main__':

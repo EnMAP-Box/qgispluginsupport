@@ -168,7 +168,8 @@ class PythonCodeWidget(QWidget):
             data = {
                 PythonCodeDialog.VALKEY_CODE: self.code(),
                 PythonCodeDialog.VALKEY_PREVIEW_TEXT: None,
-                PythonCodeDialog.VALKEY_PREVIEW_TOOLTIP: None
+                PythonCodeDialog.VALKEY_PREVIEW_TOOLTIP: None,
+                PythonCodeDialog.VALKEY_ERROR: None,
             }
             if isinstance(self.mLayer, QgsVectorLayer):
                 for f in self.mLayer.getFeatures():
