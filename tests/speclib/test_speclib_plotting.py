@@ -209,7 +209,8 @@ class TestSpeclibPlotting(TestCase):
         vis0: ProfileVisualizationGroup = slw.plotModel().visualizations()[0]
         vis0.setDataExpression('y = y / 100\nx = np.asarray([11,22,33,44])')
         slw.updatePlot()
-
+        errors = slw.plotModel().errors()
+        self.assertEqual(0, len(errors), msg=f'unexpected errors: {"\n".join(errors)}')
         items2 = [i for i in pi.items if isinstance(i, SpectralProfilePlotDataItem)]
         self.assertEqual(len(items1), len(items2))
         for item1, item2 in zip(items1, items2):

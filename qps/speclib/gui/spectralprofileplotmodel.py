@@ -4,7 +4,6 @@ import io
 import json
 import logging
 import math
-import sys
 import warnings
 from typing import Dict, Iterator, List, Optional, Set, Tuple, Union
 
@@ -170,6 +169,8 @@ class SpectralProfilePlotModel(QStandardItemModel):
         self.mLayerCaches: Dict[str, QgsVectorLayerCache] = dict()
         self.nUpdates: int = 0
 
+        self.mErrors: Set[str] = set()
+
         self.mSignalProxies: Dict[str, List[SignalProxy]] = dict()
         self.mModelItems: Set[PropertyItemGroup] = set()
 
@@ -270,6 +271,13 @@ class SpectralProfilePlotModel(QStandardItemModel):
         self.mDefaultProfileCandidateStyle = style
 
         self.mCurrentSelectionColor: QColor = QColor('white')
+
+    def errors(self) -> List[str]:
+        """
+        Returns a list of errors that occurred during the last update.
+        :return:
+        """
+        return list(self.mErrors)
 
     def onCandidatesChanged(self, layer_ids: List[str]):
         s = ""
@@ -1276,7 +1284,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
         antialiasing = settings['general'].get('antialiasing', False)
         self.mCurrentSelectionColor = QColor(settings['general']['color_sc'])
 
-        ERRORS = dict()
+        self.mErrors.clear()
 
         def func_selected_style(plotStyle: PlotStyle):
             style2 = plotStyle.clone()
@@ -1363,7 +1371,9 @@ class SpectralProfilePlotModel(QStandardItemModel):
                     try:
                         data_expression_code = compile('\n'.join(code), f'<data_expression: "{code}">', 'exec')
                     except Exception as ex:
-                        error = str(ex)
+                        error = f'{vis_id}:{ex}'
+                        self.mErrors.add(error)
+
                     pass
 
             color_expression = QgsExpression(vis['color_expression'])
@@ -1474,11 +1484,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
                     except Exception as ex:
 
                         error = f'{vis_id}:{ex}'
-                        if error not in ERRORS:
-                            ERRORS[error] = 0
-                            print(error, file=sys.stderr)
-                        else:
-                            ERRORS[error] += 1
+                        self.mErrors.add(error)
                         continue
 
                 # t0 = datetime.datetime.now()
