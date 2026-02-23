@@ -4,6 +4,7 @@ import io
 import json
 import logging
 import math
+import sys
 import warnings
 from typing import Dict, Iterator, List, Optional, Set, Tuple, Union
 
@@ -1275,6 +1276,8 @@ class SpectralProfilePlotModel(QStandardItemModel):
         antialiasing = settings['general'].get('antialiasing', False)
         self.mCurrentSelectionColor = QColor(settings['general']['color_sc'])
 
+        ERRORS = dict()
+
         def func_selected_style(plotStyle: PlotStyle):
             style2 = plotStyle.clone()
             style2.setLineWidth(plotStyle.lineWidth() + 2)
@@ -1470,7 +1473,12 @@ class SpectralProfilePlotModel(QStandardItemModel):
                         plot_data = self.profileDataToXUnit(raw_data, xunit)
                     except Exception as ex:
 
-                        error = str(ex)
+                        error = f'{vis_id}:{ex}'
+                        if error not in ERRORS:
+                            ERRORS[error] = 0
+                            print(error, file=sys.stderr)
+                        else:
+                            ERRORS[error] += 1
                         continue
 
                 # t0 = datetime.datetime.now()
