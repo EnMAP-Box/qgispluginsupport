@@ -212,7 +212,8 @@ class TestSpeclibPlotting(TestCase):
         slw.updatePlot()
         QgsApplication.instance().processEvents()
         errors = slw.plotModel().errors()
-        self.assertEqual(0, len(errors), msg=f'unexpected errors: {"\n".join(errors)}')
+        error_str = '\n'.join(errors)
+        self.assertEqual(0, len(errors), msg=f'unexpected errors: {error_str}')
         items2 = [i for i in pi.items if isinstance(i, SpectralProfilePlotDataItem)]
         self.assertEqual(len(items1), len(items2))
         for item1, item2 in zip(items1, items2):
