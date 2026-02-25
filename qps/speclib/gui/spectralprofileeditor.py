@@ -727,7 +727,9 @@ class SpectralProfileEditorConfigWidget(QgsEditorConfigWidget):
         self.setLayout(hbox)
 
     def config(self, *args, **kwargs) -> dict:
-        config = {}
+        config = {
+            'foo': 'bar',
+        }
 
         return config
 
@@ -746,7 +748,8 @@ class SpectralProfileFieldFormatter(QgsFieldFormatter):
     def representValue(self, layer: QgsVectorLayer, fieldIndex: int, config: dict, cache, value):
 
         if value not in [None, NULL]:
-            return SPECTRAL_PROFILE_FIELD_REPRESENT_VALUE
+            # return SPECTRAL_PROFILE_FIELD_REPRESENT_VALUE
+            return f'<b>{value}</b>'
             # return f'{SPECTRAL_PROFILE_FIELD_REPRESENT_VALUE} ({layer.fields().at(fieldIndex).typeName()})'
         else:
             return 'NULL'
