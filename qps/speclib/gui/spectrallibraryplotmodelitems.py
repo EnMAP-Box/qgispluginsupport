@@ -223,6 +223,9 @@ class PropertyLabel(QStandardItem):
     def data(self, role: int = ...) -> Any:
         if role == Qt.UserRole:
             return self
+        if role == Qt.ForegroundRole:
+            # quick fix to avoid overwriting the TreeViewDelegetes standard color
+            return None
         return super().data(role)
 
 
