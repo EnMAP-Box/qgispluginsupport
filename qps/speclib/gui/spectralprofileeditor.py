@@ -252,7 +252,8 @@ class InlineListEncoder(JSONEncoder):
                 else:
                     value = self.encode(v)
                     items.append(f'{indent}{key}: {value}')
-            return f'{{\n{",\n".join(items)}\n}}'
+            text = ',\n'.join(items)
+            return f'{{\n{text}\n}}'
         return super().encode(obj)
 
 
