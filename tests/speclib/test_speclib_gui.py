@@ -209,7 +209,7 @@ class TestSpeclibWidgets(TestCase):
                                 # logging.FileHandler("debug.log"),  # Log to a file
                                 logging.StreamHandler()  # Log to console
                             ])
-        sl1 = TestObjects.createSpectralLibrary(n=10)
+        sl1 = TestObjects.createSpectralLibrary(n=10, n_bands=[25, 100])
         sl1.setName('Speclib A')
 
         sl2 = TestObjects.createSpectralLibrary(n=10)

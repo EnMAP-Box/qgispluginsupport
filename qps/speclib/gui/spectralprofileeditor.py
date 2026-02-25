@@ -10,6 +10,7 @@ import numpy as np
 
 from qgis.PyQt.QtCore import NULL, pyqtSignal, QAbstractTableModel, QModelIndex, QSortFilterProxyModel, \
     Qt, QVariant
+from qgis.PyQt.QtCore import QObject
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QComboBox, QFrame, QGroupBox, QHBoxLayout, QHeaderView, QLabel, QLineEdit, QSizePolicy, \
     QSpacerItem, QTableView, QToolButton, QVBoxLayout, QWidget
@@ -381,6 +382,7 @@ class SpectralProfileEditorWidget(QGroupBox):
     CNT = 0
 
     profileChanged = pyqtSignal()
+    viewChangeRequest = pyqtSignal(int)
 
     def __init__(self, *args, **kwds):
         super(SpectralProfileEditorWidget, self).__init__(*args, **kwds)
@@ -412,14 +414,16 @@ class SpectralProfileEditorWidget(QGroupBox):
         self.btnPlot.setToolTip('View profile in plot.')
         self.btnPlot.setCheckable(True)
         self.btnPlot.setIcon(QIcon(':/qps/ui/icons/speclib_plot.svg'))
-        self.btnPlot.clicked.connect(lambda: self.setViewMode(self.VIEW_PLOT))
+        # self.btnPlot.clicked.connect(lambda: self.setViewMode(self.VIEW_PLOT))
+        self.btnPlot.clicked.connect(lambda: self.viewChangeRequest.emit(self.VIEW_PLOT))
 
         self.btnJson = QToolButton()
         self.btnJson.setText('JSON')
         self.btnJson.setToolTip('View/edit profile values in JSON editor.')
         self.btnJson.setCheckable(True)
         self.btnJson.setIcon(QIcon(':/images/themes/default/mIconFieldJson.svg'))
-        self.btnJson.clicked.connect(lambda: self.setViewMode(self.VIEW_JSON_EDITOR))
+        # self.btnJson.clicked.connect(lambda: self.setViewMode(self.VIEW_JSON_EDITOR))
+        self.btnJson.clicked.connect(lambda: self.viewChangeRequest.emit(self.VIEW_JSON_EDITOR))
 
         self.btnClear = QToolButton()
         self.btnClear.setText('Clear')
@@ -432,7 +436,8 @@ class SpectralProfileEditorWidget(QGroupBox):
         self.btnTable.setText('Table')
         self.btnTable.setToolTip('Edit profile values in table editor.')
         self.btnTable.setIcon(QIcon(':/images/themes/default/mActionOpenTable.svg'))
-        self.btnTable.clicked.connect(lambda: self.setViewMode(self.VIEW_TABLE))
+        # self.btnTable.clicked.connect(lambda: self.setViewMode(self.VIEW_TABLE))
+        self.btnTable.clicked.connect(lambda: self.viewChangeRequest.emit(self.VIEW_TABLE))
 
         self.controlBar.addWidget(self.btnPlot)
         self.controlBar.addWidget(self.btnJson)
@@ -504,11 +509,12 @@ class SpectralProfileEditorWidget(QGroupBox):
 
     def setViewMode(self, mode: int):
 
-        self.updateCurrentWidget(mode)
-        cw = self.mCurrentWidget
-        self.btnJson.setChecked(isinstance(cw, SpectralProfileJsonEditor))
-        self.btnTable.setChecked(isinstance(cw, SpectralProfileTableEditor))
-        self.btnPlot.setChecked(isinstance(cw, SpectralProfilePlotWidget))
+        if mode != self.viewMode():
+            self.updateCurrentWidget(mode)
+            cw = self.mCurrentWidget
+            self.btnJson.setChecked(isinstance(cw, SpectralProfileJsonEditor))
+            self.btnTable.setChecked(isinstance(cw, SpectralProfileTableEditor))
+            self.btnPlot.setChecked(isinstance(cw, SpectralProfilePlotWidget))
 
     def viewMode(self) -> int:
         cw = self.mCurrentWidget
@@ -519,7 +525,7 @@ class SpectralProfileEditorWidget(QGroupBox):
         elif isinstance(cw, SpectralProfilePlotWidget):
             return self.VIEW_PLOT
         else:
-            raise NotImplementedError()
+            return 0
 
     RX_JSON_ERROR = re.compile(r'(?P<msg>.*): line.*(?P<line>\d+) column.*(?P<col>\d+).*\(char.*(?P<char>\d+)\)', re.I)
 
@@ -556,8 +562,7 @@ class SpectralProfileEditorWidget(QGroupBox):
         Initializes widget elements like QComboBoxes etc.
         :param conf: dict
         """
-        SpectralProfileEditorWidget.CNT += 1
-        logger.debug(f'initConfig #{self.CNT}')
+        pass
 
     def setProfile(self, profile: dict):
         """
@@ -632,22 +637,37 @@ class SpectralProfileEditorWidget(QGroupBox):
 
 
 class SpectralProfileEditorWidgetWrapper(QgsEditorWidgetWrapper):
+    class GlobalSignals(QObject):
+
+        viewChangeRequest = pyqtSignal(str, int)
+
+    GLOBAL_SIGNALS = GlobalSignals()
 
     def __init__(self, vl: QgsVectorLayer, fieldIdx: int, editor: QWidget, parent: QWidget):
         super(SpectralProfileEditorWidgetWrapper, self).__init__(vl, fieldIdx, editor, parent)
-        self.mWidget: QWidget = None
+        self.mWidget: Optional[QWidget] = None
 
         self.mLastValue: QVariant = QVariant()
-        s = ""
+        self.mLayerID = vl.id()
 
     def createWidget(self, parent: QWidget):
         # log('createWidget')
 
         if not self.isInTable(parent):
             self.mWidget = SpectralProfileEditorWidget(parent=parent)
+            self.mWidget.viewChangeRequest.connect(self.requestViewChange)
+            self.GLOBAL_SIGNALS.viewChangeRequest.connect(self.onViewChangeRequest)
         else:
             self.mWidget = QLabel('Profile', parent=parent)
         return self.mWidget
+
+    def requestViewChange(self, mode: int):
+        self.GLOBAL_SIGNALS.viewChangeRequest.emit(self.mLayerID, mode)
+
+    def onViewChangeRequest(self, layer_id: str, mode: int):
+        if layer_id == self.mLayerID and isinstance(self.mWidget, SpectralProfileEditorWidget):
+            self.mWidget.setViewMode(mode)
+            # logger.debug(f'SpectralProfileEditorWidgetWrapper.onViewChangeRequest: {mode} {self.mWidget}')
 
     def initWidget(self, editor: QWidget):
         # log(' initWidget')
@@ -657,6 +677,8 @@ class SpectralProfileEditorWidgetWrapper(QgsEditorWidgetWrapper):
 
             editor.profileChanged.connect(self.onValueChanged)
             editor.initConfig(conf)
+            # SpectralProfileEditorWidget.CNT += 1
+            # logger.debug(f'SpectralProfileEditorWidget.CNT = {SpectralProfileEditorWidget.CNT}')
 
         elif isinstance(editor, QLabel):
             editor.setText(f'{SPECTRAL_PROFILE_FIELD_REPRESENT_VALUE} ({self.field().typeName()})')
