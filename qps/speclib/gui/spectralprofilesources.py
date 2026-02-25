@@ -1869,16 +1869,16 @@ class SpectralProfileBridge(TreeModel):
         c = index.column()
 
         if index.isValid():
-            if isinstance(node, ValidateNode) and role == Qt.ForegroundRole:
-                if isinstance(node, SpectralFeatureGeneratorNode):
-                    s = ""
-                if node.isCheckable() and not node.checked():
-                    return QColor(cNotUsed)
-                if node.hasErrors(recursive=True):
-                    node.hasErrors(recursive=True)
-                    return QColor(cError)
-                else:
-                    return QColor(cValid)
+            # if isinstance(node, ValidateNode) and role == Qt.ForegroundRole:
+            #    if isinstance(node, SpectralFeatureGeneratorNode):
+            #        s = ""
+            #    if node.isCheckable() and not node.checked():
+            #        return QColor(cNotUsed)
+            #    if node.hasErrors(recursive=True):
+            #        node.hasErrors(recursive=True)
+            #        return QColor(cError)
+            #    else:
+            #        return QColor(cValid)
 
             if isinstance(node, SpectralFeatureGeneratorNode):
                 speclib = node.speclib()
@@ -1890,7 +1890,7 @@ class SpectralProfileBridge(TreeModel):
                         else:
                             return speclib.name()
 
-                    if role == Qt.ForegroundRole:
+                    if False and role == Qt.ForegroundRole:
                         if not node.checked():
                             return QColor(cNotUsed)
 
@@ -1936,10 +1936,10 @@ class SpectralProfileBridge(TreeModel):
                 has_source = isinstance(node.profileSource(), SpectralProfileSource)
                 p = node.parentNode()
 
-                if role == Qt.ForegroundRole:
-                    if isinstance(p, SpectralProfileGeneratorNode):
-                        if not has_source and p.checked():
-                            return QColor(cError)
+                # if False and role == Qt.ForegroundRole:
+                #     if isinstance(p, SpectralProfileGeneratorNode):
+                #         if not has_source and p.checked():
+                #             return QColor(cError)
 
                 if c == 1 and role == Qt.DisplayRole:
                     for err in node.errors():
@@ -1985,8 +1985,8 @@ class SpectralProfileBridge(TreeModel):
                             errors = node.errors(recursive=True)
                             tt += '<br><span style="color:' + cstring + '">' + '<br>'.join(errors) + '</span>'
                         return tt
-                    if role == Qt.ForegroundRole:
-                        return QColor(cstring)
+                    # if role == Qt.ForegroundRole:
+                    #     return QColor(cstring)
 
                 if c == 1:
                     if role == Qt.DisplayRole:
@@ -2250,7 +2250,22 @@ class SpectralProfileBridgeViewDelegate(QStyledItemDelegate):
         super(SpectralProfileBridgeViewDelegate, self).__init__(parent=parent)
         assert isinstance(treeView, QTreeView)
         self.mTreeView: QTreeView = treeView
-        self.mSpectralProfileBridge: SpectralProfileBridge = None
+        self.mSpectralProfileBridge: Optional[SpectralProfileBridge] = None
+
+    def sizeHint(self, option, index):
+        node = index.data(Qt.UserRole)
+        if index.column() == 1 and isinstance(node, PlotStyleNode):
+            plotStyle: PlotStyle = node.value()
+            w = self.mTreeView.columnWidth(index.column())
+            if w > 0:
+                px = plotStyle.createPixmap(QSize(w, 50))  # 50 or desired minimum height
+                return QSize(px.width(), px.height())
+        elif index.column() == 1:
+            self.initStyleOption(option, index)
+            doc = QTextDocument()
+            doc.setHtml(option.text)
+            return QSize(int(doc.idealWidth()), int(doc.size().height()))
+        return super().sizeHint(option, index)
 
     def paint(self, painter: QPainter, option: QStyleOptionViewItem, index: QModelIndex):
 
@@ -2274,7 +2289,7 @@ class SpectralProfileBridgeViewDelegate(QStyledItemDelegate):
             option.text = ""
             option.widget.style().drawControl(QStyle.CE_ItemViewItem, option, painter)
 
-            # shift text right to make icon visible
+            # shift text right to make the icon visible
             iconSize: QSize = option.icon.actualSize(option.rect.size())
             if iconSize.isValid():
                 dx = iconSize.width()
@@ -2286,7 +2301,7 @@ class SpectralProfileBridgeViewDelegate(QStyledItemDelegate):
             painter.setClipRect(clip)
 
             ctx = QAbstractTextDocumentLayout.PaintContext()
-            # set text color to red for selected item
+            # set text color to red for the selected item
             # if (option.state & QStyle.State_Selected):
             #     ctx.palette.setColor(QPalette.Text, QColor("red"))
             ctx.clip = clip
@@ -2447,6 +2462,8 @@ class SpectralProfileBridgeTreeView(TreeView):
 
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
+        self.setUniformRowHeights(False)
+        self.setStyleSheet("QTreeView::item { min-height: 24px; }")
 
     def selectedFeatureGenerators(self) -> List[SpectralFeatureGeneratorNode]:
         return [n for n in self.selectedNodes() if isinstance(n, SpectralFeatureGeneratorNode)]
