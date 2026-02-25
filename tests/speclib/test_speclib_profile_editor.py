@@ -5,6 +5,8 @@ from qgis.PyQt.QtCore import NULL, QSize, Qt, QVariant
 from qgis.PyQt.QtWidgets import QCheckBox, QVBoxLayout, QWidget
 from qgis.core import QgsActionManager, QgsFeature
 from qgis.gui import QgsDualView, QgsGui, QgsMapCanvas, QgsSearchWidgetWrapper
+from qps import initAll
+from qps.layerproperties import AttributeTableWidget
 from qps.speclib import EDITOR_WIDGET_REGISTRY_KEY, FIELD_VALUES
 from qps.speclib.core import profile_field_list
 from qps.speclib.core.spectralprofile import decodeProfileValueDict, prepareProfileValueDict
@@ -17,6 +19,7 @@ from qps.testing import start_app, TestCase, TestObjects
 from qps.unitmodel import BAND_NUMBER
 
 start_app()
+initAll()
 
 
 def valid_profile_dicts() -> List[dict]:
@@ -43,6 +46,25 @@ class TestSpeclibWidgets(TestCase):
 
     def valid_profile_dicts(self):
         return valid_profile_dicts()
+
+    def test_table_widgets(self):
+
+        sl = TestObjects.createSpectralLibrary(n=5, n_bands=[5, 25])
+
+        w = AttributeTableWidget(sl)
+
+        self.showGui(w)
+
+    def test_SpectralProfileTableEditor(self):
+
+        profile = list(TestObjects.spectralProfiles(1, n_bands=[8]))[0]
+
+        d = decodeProfileValueDict(profile.attribute('profiles'))
+
+        editor = SpectralProfileTableEditor()
+        editor.setProfileDict(d)
+        editor.setReadOnly(False)
+        self.showGui(editor)
 
     def test_SpectralProfileTableModel(self):
 
