@@ -1,6 +1,10 @@
 name: 🐍 Conda Environments
 
 on:
+  workflow_run:
+    workflows: [ "❄ Flake8" ]
+    types: [ completed ]
+
   push:
     branches:
       - '**'
