@@ -1,6 +1,10 @@
 name: 🧪 Tests
 
 on:
+  workflow_run:
+    workflows: [ "❄ Flake8" ]
+    types: [ completed ]
+
   push:
     branches:
       # - 'master'
