@@ -36,7 +36,7 @@ from qgis.core import (Qgis, QgsAction, QgsApplication, QgsCategorizedSymbolRend
                        QgsFeatureRenderer,
                        QgsFeatureRequest, QgsField, QgsFieldModel, QgsFieldProxyModel, QgsFields, QgsHillshadeRenderer,
                        QgsLayerTreeGroup,
-                       QgsLayerTreeLayer, QgsMapLayer, QgsMapLayerStyle, QgsMultiBandColorRenderer,
+                       QgsLayerTreeLayer, QgsMapLayer, QgsVectorTileLayer, QgsMapLayerStyle, QgsMultiBandColorRenderer,
                        QgsPalettedRasterRenderer, QgsProject,
                        QgsRasterBandStats, QgsRasterDataProvider, QgsRasterLayer, QgsRasterRenderer,
                        QgsReadWriteContext, QgsRectangle,
@@ -74,7 +74,7 @@ from qgis.gui import \
     QgsExpressionBuilderDialog
 # auto-generated file.
 from qgis.gui import QgsOrganizeTableColumnsDialog
-from qgis.gui import QgsRasterLayerProperties, QgsGui, QgsVectorLayerProperties
+from qgis.gui import QgsRasterLayerProperties, QgsGui, QgsVectorLayerProperties, QgsVectorTileLayerProperties
 from . import DIR_UI_FILES
 from .classification.classificationscheme import ClassificationScheme
 from .models import OptionListModel, Option
@@ -932,6 +932,9 @@ def showLayerPropertiesDialog(layer: QgsMapLayer,
 
         elif isinstance(layer, QgsVectorLayer):
             dialog = QgsVectorLayerProperties(canvas=canvas, messageBar=messageBar, lyr=layer, parent=parent)
+
+        elif isinstance(layer, QgsVectorTileLayer):
+            dialog = QgsVectorTileLayerProperties(lyr=layer, canvas=canvas, messageBar=messageBar, parent=parent)
 
         if dialog:
             if hasattr(dialog, 'addPropertiesPageFactory'):
