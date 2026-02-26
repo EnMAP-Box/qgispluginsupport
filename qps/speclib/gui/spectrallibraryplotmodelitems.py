@@ -30,6 +30,7 @@ from typing import Any, List, Optional, Union
 import numpy as np
 
 from qgis.PyQt.QtCore import QAbstractItemModel, QMimeData, QModelIndex, QSize, Qt
+from qgis.PyQt.QtCore import QObject, pyqtSignal
 from qgis.PyQt.QtGui import QColor, QIcon, QPen, QPixmap, QStandardItem, QStandardItemModel
 from qgis.PyQt.QtWidgets import QCheckBox, QComboBox, QDoubleSpinBox, QHBoxLayout, QLineEdit, QMenu, QSizePolicy, \
     QSpinBox, QWidget
@@ -43,6 +44,8 @@ from qgis.core import Qgis, QgsExpression, QgsExpressionContext, QgsExpressionCo
 from qgis.gui import QgsColorButton, QgsDoubleSpinBox, QgsFieldExpressionWidget, QgsMapLayerComboBox, \
     QgsPropertyOverrideButton, QgsSpinBox
 from ..core import is_profile_field, is_spectral_library, profile_field_names
+from ..core.spectralprofile import decodeProfileValueDict
+from ...editors.pythoncodeeditor import PythonCodeWidget, PythonCodeDialog
 from ...layerfielddialog import LayerFieldWidget
 from ...plotstyling.plotstyling import PlotStyle, PlotStyleButton, PlotWidgetStyle, PlotStyleWidget
 from ...pyqtgraph.pyqtgraph import InfiniteLine, PlotDataItem
@@ -220,6 +223,9 @@ class PropertyLabel(QStandardItem):
     def data(self, role: int = ...) -> Any:
         if role == Qt.UserRole:
             return self
+        if role == Qt.ForegroundRole:
+            # quick fix to avoid overwriting the TreeViewDelegetes standard color
+            return None
         return super().data(role)
 
 
@@ -804,6 +810,80 @@ class GeneralSettingsGroup(PropertyItemGroup):
 
     def isVisible(self) -> bool:
         return True
+
+
+class PythonCodeItem(PropertyItem):
+    """
+    A property item to collect python code
+    """
+
+    class Signals(QObject):
+
+        validationRequest = pyqtSignal(dict)
+
+        def __init__(self, *args, **kwds):
+            super().__init__(*args, **kwds)
+
+    def __init__(self, *args, **kwds):
+
+        super().__init__(*args, **kwds)
+
+        self.setEditable(True)
+        self.mCode: str = ''
+        self.mIsValid: bool = True
+        self.signals = PythonCodeItem.Signals()
+        self.mDialogHelpText = 'Enter python code'
+
+    def setDialogHelpText(self, text: str):
+        self.mDialogHelpText = text
+
+    def code(self) -> str:
+        return self.mCode
+
+    def createEditor(self, parent):
+        w = PythonCodeWidget(parent=parent)
+        w.setCode(self.mCode)
+        w.setDialogHelpText(self.mDialogHelpText)
+        w.validationRequest.connect(self.signals.validationRequest.emit)
+        return w
+
+    def data(self, role: int = ...) -> Any:
+
+        if role == Qt.DisplayRole:
+            return self.mCode
+
+        if role == Qt.ToolTipRole:
+            return self.mCode
+
+        if role == Qt.ForegroundRole:
+            if not self.mIsValid:
+                return QColor('red')
+
+        return super().data(role)
+
+    def setModelData(self, editor: PythonCodeWidget, model: QAbstractItemModel, index: QModelIndex):
+        index.data()
+        if editor.isValid():
+            self.setCode(editor.code())
+
+    def setCode(self, code: str):
+        assert isinstance(code, str)
+        expr_old = self.mCode
+        if code != expr_old:
+            self.mCode = code
+            self.emitDataChanged()
+
+    def setEditorData(self, editor: PythonCodeWidget, index: QModelIndex):
+
+        parent = self.parent()
+        if isinstance(parent, ProfileVisualizationGroup):
+            if layer := parent.layer():
+                editor.setLayer(layer)
+        editor.setCode(self.mCode)
+
+    def heightHint(self) -> int:
+        h = 10
+        return h
 
 
 class PlotStyleItem(PropertyItem):
@@ -1867,6 +1947,18 @@ class ProfileStatsGroup(PropertyItemGroup):
         return d
 
 
+def lists_to_numpy_array(raw_data: dict, keys=('x', 'y', 'bbl')):
+    """
+    Converts all list values into numpy arrays.
+    :param raw_data:
+    :param keys:
+    :return:
+    """
+    for k in keys:
+        if k in raw_data and isinstance(raw_data[k], list):
+            raw_data[k] = np.asarray(raw_data[k])
+
+
 class ProfileVisualizationGroup(PropertyItemGroup):
     """
     Controls the visualization for a set of profiles
@@ -1944,6 +2036,19 @@ class ProfileVisualizationGroup(PropertyItemGroup):
             'Filter', 'Filter for feature rows', QgsPropertyDefinition.StandardPropertyTemplate.String))
         self.mPFilter.setProperty(QgsProperty.fromExpression(''))
 
+        self.mPCode = PythonCodeItem('Data')
+        self.mPCode.setToolTip('Modify profile data with python expressions')
+        self.mPCode.setDialogHelpText('<h1>Modify profile data</h1><br>'
+                                      'Set or overwrite the following raw profile data using python code:'
+                                      '<table>'
+                                      '<tr><th>Variable</th><th>Description</th></tr>'
+                                      '<tr><td>y</td><td>numpy array with profile values</td></tr>'
+                                      '<tr><td>x</td><td>numpy array with profile x values, e.g. wavelengths</td></tr>'
+                                      '</table>'
+                                      'Example 1: <code>y *= 100</code> scale profile values by 100<br>'
+                                      "Example 2: <code>xUnit = 'nm'</code> specify the wavelength unit")
+        self.mPCode.signals.validationRequest.connect(self._validate_data_expression)
+
         self.mPColor: ProfileColorPropertyItem = ProfileColorPropertyItem('Color')
         self.mPColor.setDefinition(QgsPropertyDefinition(
             'Color', 'Color of spectral profile', QgsPropertyDefinition.StandardPropertyTemplate.ColorWithAlpha))
@@ -1951,7 +2056,8 @@ class ProfileVisualizationGroup(PropertyItemGroup):
 
         self.mStats = ProfileStatsGroup()
         # self.mPColor.signals().dataChanged.connect(lambda : self.setPlotStyle(self.generatePlotStyle()))
-        for pItem in [self.mPField, self.mPLabel, self.mPFilter, self.mPColor, self.mPStyle, self.mProfileCandidates,
+        for pItem in [self.mPField, self.mPLabel, self.mPFilter, self.mPCode,
+                      self.mPColor, self.mPStyle, self.mProfileCandidates,
                       self.mStats]:
             self.appendRow(pItem.propertyRow())
 
@@ -1960,6 +2066,52 @@ class ProfileVisualizationGroup(PropertyItemGroup):
         self.setCheckState(Qt.Checked)
         self.setDropEnabled(False)
         self.setDragEnabled(False)
+
+    def _validate_data_expression(self, data):
+
+        # 1. compile expression
+
+        code = data[PythonCodeDialog.VALKEY_CODE]
+
+        code = ['import numpy as np', 'y = np.asarray(y)', code, ]
+        error = None
+        compiled_code = None
+        try:
+            compiled_code = compile('\n'.join(code), f'<band expression: "{code}">', 'exec')
+        except Exception as ex:
+            error = str(ex)
+
+        feature = data.get(PythonCodeDialog.VALKEY_FEATURE)
+        field = self.mPField.field()
+        if not error and isinstance(feature, QgsFeature) and isinstance(field, str):
+            # 2. execute code
+            try:
+
+                kwds = decodeProfileValueDict(feature.attribute(field))
+                kwds['f'] = feature
+                lists_to_numpy_array(kwds)
+                exec(compiled_code, kwds, kwds)
+                assert 'y' in kwds, 'Missing y in kwds'
+
+            except Exception as ex:
+                error = str(ex)
+        data[PythonCodeDialog.VALKEY_ERROR] = error
+
+        if error:
+            data[PythonCodeDialog.VALKEY_PREVIEW_TEXT] = '<b><span style="color:red">error</span></b>'
+            data[PythonCodeDialog.VALKEY_PREVIEW_TOOLTIP] = f'<span style="color:red">{error}</span>'
+        else:
+            results = []
+            for k in ['y', 'x', 'xUnit']:
+                if k in kwds:
+                    results.append(f'{k}={kwds[k]}')
+            data[PythonCodeDialog.VALKEY_PREVIEW_TEXT] = f"{'<br>'.join(results)}"
+            data[PythonCodeDialog.VALKEY_PREVIEW_TOOLTIP] = f"Results:\n{'<br>'.join(results)}"
+            pass
+
+        # 2. run expression on feature data
+
+        s = ""
 
     def fromMap(self, data: dict):
 
@@ -1997,6 +2149,7 @@ class ProfileVisualizationGroup(PropertyItemGroup):
             'filter_expression': self.filterExpression(),
             'color_expression': color_expression,
             'tooltip_expression': self.labelExpression(),
+            'data_expression': self.dataExpression(),
             'plot_style': plot_style.map(),
             'statistics': self.mStats.map(),
             'candidate_style': candidate_style,
@@ -2119,6 +2272,12 @@ class ProfileVisualizationGroup(PropertyItemGroup):
         p = self.mPLabel.property()
         p.setExpressionString(expression)
         self.mPLabel.setProperty(p)
+
+    def setDataExpression(self, expression: str):
+        self.mPCode.setCode(expression)
+
+    def dataExpression(self) -> str:
+        return self.mPCode.code()
 
     def labelExpression(self) -> str:
         return self.mPLabel.property().expressionString()

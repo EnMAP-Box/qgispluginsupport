@@ -13,6 +13,7 @@ from qgis.PyQt.QtGui import QIcon
 
 BAND_INDEX = 'Band Index'
 BAND_NUMBER = 'Band Number'
+UNKNOWN_UNIT = 'unknown'
 
 # Exponents of base 10 to 1 meter [m]
 METRIC_EXPONENTS = {
@@ -304,6 +305,8 @@ class UnitConverterFunctionModel(object):
     def convertFunction(self, unitSrc: Optional[str], unitDst: Optional[str]):
         if unitDst == BAND_INDEX:
             return self.func_return_band_index
+        elif unitDst in UNKNOWN_UNIT:
+            return self.func_return_same
         elif unitDst in [BAND_NUMBER, None, '']:
             return self.func_return_band_number
 
@@ -332,7 +335,7 @@ class XUnitModel(UnitModel):
 
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
-
+        self.setAllowEmptyUnit(False)
         self.addUnit(BAND_NUMBER, description=BAND_NUMBER)
         self.addUnit(BAND_INDEX, description=BAND_INDEX)
         for u in ['Nanometers',
@@ -355,7 +358,8 @@ class XUnitModel(UnitModel):
                          description=f'Distance [{baseUnit}]',
                          tooltip=f'Distance in {u} [{baseUnit}]')
 
-        self.addUnit(None, description='Unknown Unit')
+        self.mUnknownUnit = UnitWrapper(UNKNOWN_UNIT, 'Unknown Unit', tooltip='Unknown units / raw values')
+        self.addUnit(self.mUnknownUnit)
 
     def findUnit(self, unit) -> str:
         if unit in [None, NULL]:

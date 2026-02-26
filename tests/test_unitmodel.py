@@ -2,12 +2,12 @@ import calendar
 import datetime
 
 import numpy as np
-from qps.testing import TestCase, start_app
-from qps.unitmodel import UnitConverterFunctionModel, UnitLookup, UnitModel, UnitWrapper, XUnitModel, datetime64, \
-    days_per_year
 
 from qgis.PyQt.QtCore import QDate, QDateTime, Qt
 from qgis.PyQt.QtWidgets import QComboBox
+from qps.testing import TestCase, start_app
+from qps.unitmodel import UnitConverterFunctionModel, UnitLookup, UnitModel, UnitWrapper, XUnitModel, datetime64, \
+    days_per_year
 
 start_app()
 
@@ -142,6 +142,14 @@ class UnitModelTests(TestCase):
         self.assertIsInstance(uw, UnitWrapper)
         cb = QComboBox()
         cb.setModel(model)
+
+        def onIndexChanged(idx):
+            data = cb.itemData(idx, Qt.UserRole + 1)
+            data2 = cb.currentData(Qt.UserRole + 1)
+            assert data == data2
+            print(data)
+
+        cb.currentIndexChanged.connect(onIndexChanged)
 
         self.showGui(cb)
 

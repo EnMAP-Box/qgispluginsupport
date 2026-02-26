@@ -197,6 +197,32 @@ class TestSpeclibPlotting(TestCase):
 
         slw.project().removeAllMapLayers()
 
+    def test_python_code_data_manipulation(self):
+
+        speclib = TestObjects.createSpectralLibrary(n=2, n_bands=[4])
+        project = QgsProject()
+        project.addMapLayers([speclib])
+        slw = SpectralLibraryWidget(speclib=speclib, project=project)
+        pi = slw.libraryPlotWidget().plotWidget().plotItem1
+
+        items1 = [i for i in pi.items if isinstance(i, SpectralProfilePlotDataItem)]
+        vis0: ProfileVisualizationGroup = slw.plotModel().visualizations()[0]
+        vis0.setDataExpression('y = y / 100\nx = np.asarray([11,22,33,44])')
+        QgsApplication.instance().processEvents()
+        slw.updatePlot()
+        QgsApplication.instance().processEvents()
+        errors = slw.plotModel().errors()
+        error_str = '\n'.join(errors)
+        self.assertEqual(0, len(errors), msg=f'unexpected errors: {error_str}')
+        items2 = [i for i in pi.items if isinstance(i, SpectralProfilePlotDataItem)]
+        self.assertEqual(len(items1), len(items2))
+        for item1, item2 in zip(items1, items2):
+            a1 = item1.yData
+            a2 = item2.yData
+            self.assertTrue(np.allclose(a2, a1 / 100))
+            self.assertTrue(np.array_equal(item2.xData, [11, 22, 33, 44]))
+        project.removeAllMapLayers()
+
     def test_vectorenderers(self):
 
         speclib = TestObjects.createSpectralLibrary()
