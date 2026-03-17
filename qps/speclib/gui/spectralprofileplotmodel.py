@@ -1410,7 +1410,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
                 request.setFilterExpression(filter_expression.expression())
 
             if show_selected_only:
-                request.setFilterFids(selected_fids)
+                request.setFilterFids(selected_fids + candidate_fids)
 
             field_name = vis['field_name']
             field_index = layer.fields().lookupField(field_name)

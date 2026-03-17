@@ -28,6 +28,7 @@ from qps.speclib.gui.spectrallibraryplotmodelitems import PlotStyleItem, Profile
     SpectralProfileColorPropertyWidget
 from qps.speclib.gui.spectrallibraryplotwidget import SpectralLibraryPlotWidget
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
+from qps.speclib.gui.spectralprofilecandidates import SpectralProfileCandidates
 from qps.speclib.gui.spectralprofileplotmodel import copy_items, SpectralProfilePlotModel, STATS_FUNCTIONS
 from qps.testing import start_app, TestCase, TestObjects
 from qps.unitmodel import BAND_INDEX, BAND_NUMBER
@@ -640,6 +641,32 @@ class TestSpeclibPlotting(TestCase):
         copy_items(items, 'CSV')
         data = QgsApplication.instance().clipboard().mimeData().text()
         print(data)
+
+    def test_show_selected_profiles(self):
+
+        sl1 = TestObjects.createSpectralLibrary(n=2, n_bands=[10])
+        sl2 = TestObjects.createSpectralLibrary(n=4, n_bands=[50])
+
+        fids1 = sl1.allFeatureIds()
+        fids2 = sl2.allFeatureIds()
+
+        project = QgsProject()
+        project.addMapLayers([sl1, sl2])
+
+        C = SpectralProfileCandidates()
+        C.setProfileCandidates(sl1, fids1[0])
+        C.setProfileCandidates(sl2, fids2[0])
+
+        w = SpectralLibraryWidget()
+        w.setProject(project)
+        w.actionShowProfileViewSettings.toggled.emit(True)
+        w.createProfileVisualization(sl1)
+        w.createProfileVisualization(sl2)
+        m: SpectralProfilePlotModel = w.plotModel()
+
+        self.showGui(w)
+        w.close()
+        project.removeAllMapLayers()
 
     def test_SpectralLibraryPlotWidget(self):
 
