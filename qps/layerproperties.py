@@ -931,7 +931,17 @@ def showLayerPropertiesDialog(layer: QgsMapLayer,
             dialog = QgsRasterLayerProperties(layer, canvas, parent=parent)
 
         elif isinstance(layer, QgsVectorLayer):
+            vector_layer_tools = VectorLayerTools()
             dialog = QgsVectorLayerProperties(canvas=canvas, messageBar=messageBar, lyr=layer, parent=parent)
+            btnToggle = dialog.findChildren(QToolButton, name='mToggleEditingButton')
+            btnSave = dialog.findChildren(QToolButton, name='mSaveLayerEditsButton')
+
+            if len(btnToggle) == 1 and len(btnSave) == 1:
+                btnToggle: QToolButton = btnToggle[0]
+                btnSave: QToolButton = btnSave[0]
+
+                btnToggle.toggled.connect(lambda *args, lyr=layer: vector_layer_tools.toggleEditing(lyr))
+                btnSave.clicked.connect(lambda *args, lyr=layer: vector_layer_tools.saveEdits(lyr))
 
         elif isinstance(layer, QgsVectorTileLayer):
             dialog = QgsVectorTileLayerProperties(lyr=layer, canvas=canvas, messageBar=messageBar, parent=parent)
