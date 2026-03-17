@@ -88,6 +88,12 @@ class LayerPropertyTests(TestCase):
         vl = TestObjects.createVectorLayer()
         showLayerPropertiesDialog(vl)
 
+    @unittest.skipIf(TestCase.runsInCI(), 'blocking dialog')
+    def test_vectorlayerproperties(self):
+
+        vl = TestObjects.createVectorLayer()
+        showLayerPropertiesDialog(vl)
+
     @unittest.skip('Crashes CI, unknown reason')
     def test_layerPropertiesDialog_RasterBandWidget(self):
 
