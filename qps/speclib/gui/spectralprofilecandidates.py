@@ -61,6 +61,26 @@ class SpectralProfileCandidates(object):
         return changed
 
     @classmethod
+    def setProfileCandidates(cls, layer: QgsVectorLayer, candidate_fids: List[int], is_candidate: bool = True):
+        """
+        Can be used to set or unset existing features as candidates
+        :param layers:
+        :param candidates:
+        :return:
+        """
+        if isinstance(candidate_fids, int):
+            candidate_fids = [candidate_fids]
+
+        old_fids = layer.customProperty(CUSTOM_PROPERTY_CANDIDATE_FIDs, [])
+
+        if is_candidate:
+            new_fids = set(candidate_fids).union(set(old_fids))
+        else:
+            new_fids = set(old_fids).difference(set(candidate_fids))
+
+        layer.setCustomProperty(CUSTOM_PROPERTY_CANDIDATE_FIDs, list(new_fids))
+
+    @classmethod
     def addProfileCandidates(cls,
                              project: QgsProject,
                              candidates: Dict[str, List[QgsFeature]],
