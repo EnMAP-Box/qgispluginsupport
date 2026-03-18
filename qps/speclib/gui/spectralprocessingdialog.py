@@ -901,13 +901,13 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
                         spectralProperties = QgsRasterLayerSpectralProperties.fromRasterLayer(lyr)
                         wl = spectralProperties.wavelengths()
                         wlu = spectralProperties.wavelengthUnits()
-                        bbl = spectralProperties.badBands()
+                        bbl = spectralProperties.badBands(default=1)
 
-                        # wavelength need to be defined for all bands
+                        # wavelength needs to be defined for all bands
                         if any([w is None for w in wl]):
                             wl = None
 
-                        # choose 1st wavelength unit for entire profile
+                        # choose the 1st wavelength unit for the entire profile
                         for w in wlu:
                             if w not in [None, '']:
                                 wlu = w
