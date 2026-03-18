@@ -392,7 +392,7 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
         """
         return self.bandValues(None, SpectralPropertyKeys.WavelengthUnit)
 
-    def badBands(self, default: Optional[int] = 1) -> List[int]:
+    def badBands(self, default: Optional[int] = None) -> List[int]:
         """
         Convenience function to return bad band (multiplier) values as list
         0 = False = do not use
