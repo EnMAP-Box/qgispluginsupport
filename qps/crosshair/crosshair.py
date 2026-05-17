@@ -30,7 +30,7 @@
 import math
 import pathlib
 import warnings
-from typing import Union
+from typing import Union, Optional
 
 import numpy as np
 
@@ -176,7 +176,7 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
         """Returns the Crosshair visibility"""
         return self.mShow
 
-    def setRasterGridLayer(self, qgsRasterLayer: QgsRasterLayer):
+    def setRasterGridLayer(self, qgsRasterLayer: Optional[QgsRasterLayer]):
         """
         Sets the QgsRasterLayer with the raster grid to show
         :param qgsRasterLayer:
@@ -202,6 +202,15 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
         :rtype:
         """
         self.mRasterGridLayer = None
+
+    def rasterGridLayerId(self) -> Optional[str]:
+        """
+        Returns the raster grid layer ID
+        :return: str
+        """
+        if self.mRasterGridLayer is None:
+            return None
+        return self.mRasterGridLayer.id()
 
     def rasterGridLayer(self) -> QgsRasterLayer:
         """
