@@ -701,6 +701,7 @@ class SpectralProfileEditorWidgetWrapper(QgsEditorWidgetWrapper):
 
         if not self.isInTable(parent):
             self.mWidget = SpectralProfileEditorWidget(parent=parent)
+            self.mWidget.setMinimumHeight(200)
             self.mWidget.viewChangeRequest.connect(self.requestViewChange)
             self.GLOBAL_SIGNALS.viewChangeRequest.connect(self.onViewChangeRequest)
         else:
