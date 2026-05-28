@@ -14,9 +14,13 @@ ignore =
     # allow unused local variables
     F841,
     # allow lambda functions
-    E731
+    E731,
     # allow continuation line over-indented for visual indent
-    E127
+    E127,
+    # QGIS 4 related checks
+    QGS107,
+    QGS201,QGS202,
+    QGS401,QGS402,QGS403,QGS406,QGS410
 
 max-line-length=120
 max-complexity = 10

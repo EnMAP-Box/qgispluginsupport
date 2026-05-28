@@ -4,12 +4,6 @@ import unittest
 
 import numpy as np
 from osgeo import gdal_array
-
-from qgis.PyQt.QtCore import QByteArray
-from qgis.core import edit, Qgis, QgsCoordinateTransform, QgsExpression, QgsExpressionContext, \
-    QgsExpressionContextUtils, QgsExpressionFunction, QgsFeature, QgsField, QgsFields, QgsGeometry, QgsMapLayerStore, \
-    QgsPointXY, QgsProject, QgsProperty, QgsRasterLayer, QgsVectorLayer, QgsWkbTypes
-from qgis.gui import QgsFieldCalculator
 from qps.qgisenums import QGIS_WKBTYPE, QMETATYPE_DOUBLE, QMETATYPE_INT, QMETATYPE_QSTRING
 from qps.qgsfunctions import ExpressionFunctionUtils, Format_Py, HelpStringMaker, RasterArray, RasterProfile, \
     ReadSpectralProfile, SpectralData, SpectralEncoding, SpectralMath
@@ -21,6 +15,13 @@ from qps.speclib.processing.aggregateprofiles import createSpectralProfileFuncti
 from qps.testing import start_app, TestCase, TestObjects
 from qps.utils import file_search, SpatialExtent, SpatialPoint
 from qpstestdata import DIR_SED, enmap, enmap_multipolygon, enmap_pixel
+
+from qgis import processing
+from qgis.PyQt.QtCore import QByteArray
+from qgis.core import edit, Qgis, QgsProcessing, QgsCoordinateTransform, QgsExpression, QgsExpressionContext, \
+    QgsExpressionContextUtils, QgsExpressionFunction, QgsFeature, QgsField, QgsFields, QgsGeometry, QgsMapLayerStore, \
+    QgsPointXY, QgsProject, QgsProperty, QgsRasterLayer, QgsVectorLayer, QgsWkbTypes
+from qgis.gui import QgsFieldCalculator
 
 start_app()
 
@@ -566,11 +567,10 @@ class QgsFunctionTests(TestCase):
         s = ""
 
         QgsProject.instance().addMapLayers([lyrRaster, lyrPoints])
-        import processing
         results = processing.run("native:fieldcalculator",
                                  {'INPUT': lyrPoints,
                                   'FIELD_NAME': 'profiles', 'FIELD_TYPE': 2, 'FIELD_LENGTH': 0, 'FIELD_PRECISION': 0,
-                                  'FORMULA': " raster_profile('EnMAP')", 'OUTPUT': 'TEMPORARY_OUTPUT'},
+                                  'FORMULA': " raster_profile('EnMAP')", 'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT},
                                  )
         lyrSpeclib: QgsVectorLayer = results['OUTPUT']
         lyrSpeclib.setName('Spectral Library')
