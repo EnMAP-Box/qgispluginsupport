@@ -6,7 +6,7 @@ name: qgis_ltr
 channels:
   - conda-forge
 dependencies:
-  - qgis=3.40
+  - qgis=3.44
   - pip
   - matplotlib
 

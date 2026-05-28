@@ -14,6 +14,7 @@ from numpy import nan
 from qgis.PyQt.QtCore import NULL, QAbstractListModel, QItemSelection, QModelIndex, QObject, QRect, QRectF, QSize, \
     QSortFilterProxyModel, QVariant, Qt, pyqtSignal
 from qgis.PyQt.QtGui import QAbstractTextDocumentLayout, QColor, QFont, QIcon, QPainter, QTextDocument
+from qgis.PyQt.QtGui import QPalette
 from qgis.PyQt.QtWidgets import QComboBox, QDoubleSpinBox, QSpinBox, QStyle, QStyleOptionViewItem, \
     QStyledItemDelegate, QTableView, QTreeView, QWidget
 from qgis.core import Qgis, QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsExpression, QgsExpressionContext, \
@@ -1129,9 +1130,9 @@ class StandardFieldGeneratorNode(FieldGeneratorNode):
             expression = expression.expression()
         elif isinstance(expression, str):
             expression = expression.strip()
-            # if the expression does not start with @, ' or ", wrap it as string 'example string'
-            if not re.search(r'^[@"\']', expression.strip()):
-                expression = f"'{expression}'"
+            # # if the expression does not start with @, ' or ", wrap it as string 'example string'
+            # if not re.search(r'^[@"\']', expression.strip()):
+            #    expression = f"'{expression}'"
         self.mExpressionString = expression
         super().setValue(self.mExpressionString)
         self.validate()
@@ -1943,7 +1944,7 @@ class SpectralProfileBridge(TreeModel):
 
                 if c == 1 and role == Qt.DisplayRole:
                     for err in node.errors():
-                        return f'<span style="color:{cError};">{err}</span>'
+                        return f'<span style="">{err}</span>'
 
                     return node.value()
 
@@ -1983,7 +1984,7 @@ class SpectralProfileBridge(TreeModel):
                             tt += f'"{field.displayName()}" {field.displayType(False)} {editor}'
                         if has_errors:
                             errors = node.errors(recursive=True)
-                            tt += '<br><span style="color:' + cstring + '">' + '<br>'.join(errors) + '</span>'
+                            tt += '<br><span style="">' + '<br>'.join(errors) + '</span>'
                         return tt
                     # if role == Qt.ForegroundRole:
                     #     return QColor(cstring)
@@ -1994,9 +1995,9 @@ class SpectralProfileBridge(TreeModel):
                             expr = node.expressionString()
                             if isinstance(expr, str):
                                 if expr == '':
-                                    return f'<span style="color:{cstring};font-style:italic">Undefined</span>'
+                                    return '<span style="font-style:italic">Undefined</span>'
                                 else:
-                                    return f'<span style="color:{cstring};font-style:italic">{expr}</span>'
+                                    return f'<span style="font-style:italic">{expr}</span>'
 
                     if role == Qt.ToolTipRole:
                         tt = ''
@@ -2270,6 +2271,7 @@ class SpectralProfileBridgeViewDelegate(QStyledItemDelegate):
     def paint(self, painter: QPainter, option: QStyleOptionViewItem, index: QModelIndex):
 
         node = index.data(Qt.UserRole)
+
         if index.column() == 1 and isinstance(node, PlotStyleNode):
             plotStyle: PlotStyle = node.value()
             total_h = self.mTreeView.rowHeight(index)
@@ -2305,6 +2307,11 @@ class SpectralProfileBridgeViewDelegate(QStyledItemDelegate):
             # if (option.state & QStyle.State_Selected):
             #     ctx.palette.setColor(QPalette.Text, QColor("red"))
             ctx.clip = clip
+            if isinstance(node, ValidateNode):
+                if node.hasErrors():
+                    ctx.palette.setColor(QPalette.Text, QColor("red"))
+                elif node.isCheckable() and not node.checked():
+                    ctx.palette.setColor(QPalette.Text, option.palette.color(QPalette.Disabled, QPalette.Text))
             doc.documentLayout().draw(painter, ctx)
             painter.restore()
         else:
