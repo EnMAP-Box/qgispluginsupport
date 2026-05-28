@@ -22,16 +22,6 @@ import os.path
 import unittest
 from pathlib import Path
 
-import processing
-import qgis.testing
-import qgis.utils
-from processing.ProcessingPlugin import ProcessingPlugin
-from qgis.PyQt.QtCore import QModelIndex, QObject, Qt
-from qgis.PyQt.QtWidgets import QDialog
-from qgis.core import edit, QgsApplication, QgsFeature, QgsProcessingAlgorithm, \
-    QgsProcessingAlgRunnerTask, QgsProcessingOutputRasterLayer, QgsProcessingRegistry, QgsProject, QgsTaskManager, \
-    QgsVectorLayer
-from qgis.gui import QgsProcessingRecentAlgorithmLog, QgsProcessingToolboxProxyModel
 from qps.processing.algorithmdialog import AlgorithmDialog
 from qps.processing.processingalgorithmdialog import ProcessingAlgorithmDialog
 from qps.qgsfunctions import registerQgsExpressionFunctions
@@ -44,6 +34,17 @@ from qps.speclib.processing.exportspectralprofiles import ExportSpectralProfiles
 from qps.speclib.processing.importspectralprofiles import ImportSpectralProfiles
 from qps.testing import ExampleAlgorithmProvider, get_iface, start_app, TestCase, TestObjects
 from qpstestdata import ecosis_csv, asd_with_gps, spectral_evolution_sed, svc_sig
+
+import qgis.testing
+import qgis.utils
+from processing.ProcessingPlugin import ProcessingPlugin
+from qgis import processing
+from qgis.PyQt.QtCore import QModelIndex, QObject, Qt
+from qgis.PyQt.QtWidgets import QDialog
+from qgis.core import edit, QgsApplication, QgsFeature, QgsProcessingAlgorithm, \
+    QgsProcessingAlgRunnerTask, QgsProcessingOutputRasterLayer, QgsProcessingRegistry, QgsProject, QgsTaskManager, \
+    QgsVectorLayer
+from qgis.gui import QgsProcessingRecentAlgorithmLog, QgsProcessingToolboxProxyModel
 
 start_app()
 

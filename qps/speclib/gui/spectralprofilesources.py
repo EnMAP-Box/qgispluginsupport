@@ -1130,7 +1130,7 @@ class StandardFieldGeneratorNode(FieldGeneratorNode):
             expression = expression.expression()
         elif isinstance(expression, str):
             expression = expression.strip()
-            ## if the expression does not start with @, ' or ", wrap it as string 'example string'
+            # # if the expression does not start with @, ' or ", wrap it as string 'example string'
             # if not re.search(r'^[@"\']', expression.strip()):
             #    expression = f"'{expression}'"
         self.mExpressionString = expression
@@ -1995,7 +1995,7 @@ class SpectralProfileBridge(TreeModel):
                             expr = node.expressionString()
                             if isinstance(expr, str):
                                 if expr == '':
-                                    return f'<span style="font-style:italic">Undefined</span>'
+                                    return '<span style="font-style:italic">Undefined</span>'
                                 else:
                                     return f'<span style="font-style:italic">{expr}</span>'
 
