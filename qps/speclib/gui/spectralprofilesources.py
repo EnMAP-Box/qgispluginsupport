@@ -290,8 +290,8 @@ class StandardLayerProfileSource(SpectralProfileSource):
 
         context = QgsExpressionContext()
         source_scope: QgsExpressionContextScope = QgsExpressionContextUtils.layerScope(self.mLayer)
-        renameScopeVariables(source_scope, 'layer_', f'source_')
-        renameScopeVariables(source_scope, '_layer_', f'_source_')
+        renameScopeVariables(source_scope, 'layer_', 'source_')
+        renameScopeVariables(source_scope, '_layer_', '_source_')
         if suffix != '':
             for n1 in list(source_scope.variableNames()):
                 n2 = f'{n1}{suffix}'
