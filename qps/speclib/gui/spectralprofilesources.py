@@ -88,7 +88,7 @@ class SpectralProfileSource(QObject):
         """
         raise NotImplementedError
 
-    def expressionContext(self) -> QgsExpressionContext:
+    def expressionContext(self, suffix: str = '') -> QgsExpressionContext:
         """
         Returns a QgsExpressionContext prototype similar to that returned by collectProfiles
         It should contain all variables with exemplary values that can be used e.g. to define expression functions.
@@ -277,7 +277,9 @@ class StandardLayerProfileSource(SpectralProfileSource):
     def layer(self) -> QgsRasterLayer:
         return self.mLayer
 
-    def expressionContext(self, point: Union[QgsPointXY, SpatialPoint] = None) -> QgsExpressionContext:
+    def expressionContext(self,
+                          point: Union[None, QgsPointXY, SpatialPoint] = None,
+                          suffix: str = '') -> QgsExpressionContext:
         if point is None:
             # dummy point
             point = SpatialPoint.fromMapLayerCenter(self.mLayer)
@@ -295,17 +297,18 @@ class StandardLayerProfileSource(SpectralProfileSource):
         px = self.m2p.transform(point)
         scope = QgsExpressionContextScope('pixel')
 
-        def addVar(name, value, description):
+        def addVar(name, value, description) -> str:
             scope.addVariable(QgsExpressionContextScope.StaticVariable(
-                name=name, value=value, description=description
-            ))
+                name=name, value=value, description=description))
+            return name
 
-        addVar('px_x', int(px.x()), 'Pixel x position.<br>Most-left = 0')
-        addVar('px_y', int(px.y()), 'Pixel y position.<br>Most-top = 0')
-        addVar('geo_x', point.x(), 'Pixel x coordinate in source CRS')
-        addVar('geo_y', point.y(), 'Pixel y coordinate in source CRS')
-
-        context.setHighlightedVariables(['px_x', 'px_y', 'geo_x', 'geo_y'])
+        to_highlight = [
+            addVar(f'px_x{suffix}', int(px.x()), 'Pixel x position.<br>Most-left = 0'),
+            addVar(f'px_y{suffix}', int(px.y()), 'Pixel y position.<br>Most-top = 0'),
+            addVar(f'geo_x{suffix}', point.x(), 'Pixel x coordinate in source CRS'),
+            addVar(f'geo_y{suffix}', point.y(), 'Pixel y coordinate in source CRS'),
+        ]
+        context.setHighlightedVariables(to_highlight)
         context.appendScope(scope)
         return context
 
@@ -418,14 +421,14 @@ class MapCanvasLayerProfileSource(SpectralProfileSource):
     def toolTip(self) -> str:
         return self.MODE_TOOLTIP[self.mMode]
 
-    def expressionContext(self) -> QgsExpressionContext:
+    def expressionContext(self, suffix: str = '') -> QgsExpressionContext:
         if isinstance(self.mLastContext, QgsExpressionContext):
             return self.mLastContext
         elif isinstance(self.mMapCanvas, QgsMapCanvas):
             for lyr in self.mMapCanvas.layers():
                 if isinstance(lyr, QgsRasterLayer):
                     src = StandardLayerProfileSource(lyr)
-                    return src.expressionContext()
+                    return src.expressionContext(suffix=suffix)
         return QgsExpressionContext()
 
     def collectProfiles(self, point: SpatialPoint,
@@ -1193,8 +1196,9 @@ class SpectralFeatureGeneratorExpressionContextGenerator(QgsExpressionContextGen
                 context.setFeature(self.mFeature)
 
             scope = QgsExpressionContextScope('profiles')
-            for source in self.mNode.spectralProfileSources(checked=True):
-                c = source.expressionContext()
+            for i, source in enumerate(self.mNode.spectralProfileSources()):
+                suffix = '' if i == 0 else f'{i}'
+                c = source.expressionContext(suffix=suffix)
                 highlighted.update(c.highlightedVariables())
                 addVariablesToScope(scope, c)
             context.appendScope(scope)
