@@ -289,9 +289,15 @@ class StandardLayerProfileSource(SpectralProfileSource):
         assert isinstance(point, QgsPointXY)
 
         context = QgsExpressionContext()
-        source_scope = QgsExpressionContextUtils.layerScope(self.mLayer)
-        renameScopeVariables(source_scope, 'layer_', 'source_')
-        renameScopeVariables(source_scope, '_layer_', '_source_')
+        source_scope: QgsExpressionContextScope = QgsExpressionContextUtils.layerScope(self.mLayer)
+        renameScopeVariables(source_scope, 'layer_', f'source_')
+        renameScopeVariables(source_scope, '_layer_', f'_source_')
+        if suffix != '':
+            for n1 in list(source_scope.variableNames()):
+                n2 = f'{n1}{suffix}'
+                source_scope.addVariable(QgsExpressionContextScope.StaticVariable(
+                    name=n2, value=source_scope.variable(n1), description=source_scope.description(n1)))
+                source_scope.removeVariable(n1)
         context.appendScope(source_scope)
         context.setGeometry(QgsGeometry.fromPointXY(point))
         px = self.m2p.transform(point)
@@ -316,6 +322,7 @@ class StandardLayerProfileSource(SpectralProfileSource):
                         point: SpatialPoint,
                         kernel_size: QSize = QSize(1, 1),
                         snap: bool = False,
+                        suffix: str = '',
                         **kwargs) \
             -> List[Tuple[Dict, QgsExpressionContext]]:
 
@@ -349,7 +356,7 @@ class StandardLayerProfileSource(SpectralProfileSource):
                       resY * kernel_size.height())
         rect.moveCenter(point.toQPointF())
 
-        profilesWithContext: List[Dict, QgsExpressionContext] = []
+        profilesWithContext: List[Tuple[Dict, QgsExpressionContext]] = []
 
         if kernel_size == QSize(1, 1):
             g = QgsGeometry.fromPointXY(point)
@@ -378,7 +385,7 @@ class StandardLayerProfileSource(SpectralProfileSource):
         loc_geo = fcontext.variable('raster_array_geo')
 
         for pDict, px_geo in zip(profiles_at, loc_geo):
-            context = self.expressionContext(px_geo)
+            context = self.expressionContext(px_geo, suffix=suffix)
             profilesWithContext.append((pDict, context))
 
         return profilesWithContext
@@ -1697,14 +1704,18 @@ class SpectralProfileBridge(TreeModel):
             return []
 
         new_features: List[QgsFeature] = []
-        PROFILE_DATA: Dict[str, List[dict, QgsExpressionContext]] = dict()
+        PROFILE_DATA: Dict[str, List[Tuple[dict, QgsExpressionContext]]] = dict()
         # PLOT_STYLES: Dict[str, PlotStyle] = dict()
-        for pgnode in fgnode.spectralProfileGeneratorNodes(checked=True):
+        for i, pgnode in enumerate(fgnode.spectralProfileGeneratorNodes()):
             pgnode: SpectralProfileGeneratorNode
+            if not pgnode.checked():
+                continue
+            suffix = '' if i == 0 else f'{i}'
+
             field_name = pgnode.field().name()
             if field_name not in speclib_fields:
                 continue
-            results = pgnode.profiles(point, canvas=canvas, snap=self.mSnapToPixelCenter)
+            results = pgnode.profiles(point, canvas=canvas, snap=self.mSnapToPixelCenter, suffix=suffix)
             if len(results) > 0:
                 PROFILE_DATA[field_name] = results
                 # PLOT_STYLES[pgnode.field().name()] = pgnode.plotStyle().clone()
