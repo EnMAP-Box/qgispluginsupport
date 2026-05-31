@@ -43,7 +43,7 @@ from qgis.PyQt.QtCore import QModelIndex, QObject, Qt
 from qgis.PyQt.QtWidgets import QDialog
 from qgis.core import edit, QgsApplication, QgsFeature, QgsProcessingAlgorithm, \
     QgsProcessingAlgRunnerTask, QgsProcessingOutputRasterLayer, QgsProcessingRegistry, QgsProject, QgsTaskManager, \
-    QgsVectorLayer
+    QgsVectorLayer, QgsProcessing
 from qgis.gui import QgsProcessingRecentAlgorithmLog, QgsProcessingToolboxProxyModel
 
 start_app()
@@ -196,7 +196,7 @@ class ProcessingToolsTest(TestCase):
                 {'aggregate': 'median', 'delimiter': ',', 'input': '"profiles"', 'length': -1,
                  'name': 'p_median', 'precision': 0, 'sub_type': 0, 'type': 10, 'type_name': 'text'}
             ],
-            AggregateProfiles.P_OUTPUT: 'TEMPORARY_OUTPUT'}
+            AggregateProfiles.P_OUTPUT: QgsProcessing.TEMPORARY_OUTPUT}
 
         # r1 = alg.prepare(parameters, context, feedback)
         # r2 = alg.processAlgorithm(parameters, context, feedback)
@@ -242,7 +242,7 @@ class ProcessingToolsTest(TestCase):
         on_complete(success, results)
 
         # test processing.run
-        results = processing.run(alg_id, parameters, context=context)
+        results = processing.run(alg_id, parameters, context=context, is_child_algorithm=True)
         on_complete(True, results)
 
         # test run by task

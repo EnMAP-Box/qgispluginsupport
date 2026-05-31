@@ -129,7 +129,7 @@ class TestSpeclibWidgets(TestCase):
         # drop a valid speclib
         md = QMimeData()
         from qpstestdata import envi_sli
-
+        envi_sli = str(envi_sli)
         sl = QgsVectorLayer(envi_sli, 'Speclib')
 
         md.setUrls([QUrl.fromLocalFile(envi_sli)])

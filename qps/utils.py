@@ -68,7 +68,7 @@ from qgis.core import Qgis, QgsApplication, QgsCoordinateReferenceSystem, QgsCoo
     QgsRasterLayer, QgsRasterRenderer, QgsRectangle, QgsTask, QgsVector, QgsVectorDataProvider, QgsVectorFileWriter, \
     QgsVectorLayer, QgsWkbTypes
 from qgis.core import QgsExpressionContextScope, QgsExpressionContext, QgsFeatureRenderer, QgsSingleSymbolRenderer, \
-    QgsMarkerSymbol, QgsExpressionContextUtils, QgsRenderContext, QgsSymbol
+    QgsMarkerSymbol, QgsExpressionContextUtils, QgsRenderContext, QgsSymbol, QgsProcessing
 from qgis.gui import QgisInterface, QgsDialog, QgsGui, QgsMapCanvas, QgsMapLayerComboBox, QgsMessageViewer
 from .qgisenums import QGIS_LAYERFILTER, QGIS_WKBTYPE, QMETATYPE_BOOL, QMETATYPE_DOUBLE, QMETATYPE_INT, \
     QMETATYPE_QBYTEARRAY, QMETATYPE_QCHAR, QMETATYPE_QDATE, QMETATYPE_QDATETIME, QMETATYPE_QSTRING, \
@@ -827,7 +827,7 @@ def ogrDataSource(data_source, update: int = 0) -> ogr.DataSource:
                               INPUT=data_source.source(),
                               LAYER_NAME='',
                               LAYER_OPTIONS='',
-                              OUTPUT='TEMPORARY_OUTPUT'
+                              OUTPUT=QgsProcessing.TEMPORARY_OUTPUT,
                               )
 
             assert alg.prepareAlgorithm(parameters, context, feedback), feedback.textLog()

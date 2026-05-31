@@ -20,7 +20,7 @@ from qgis import processing
 from qgis.PyQt.QtCore import QByteArray
 from qgis.core import edit, Qgis, QgsProcessing, QgsCoordinateTransform, QgsExpression, QgsExpressionContext, \
     QgsExpressionContextUtils, QgsExpressionFunction, QgsFeature, QgsField, QgsFields, QgsGeometry, QgsMapLayerStore, \
-    QgsPointXY, QgsProject, QgsProperty, QgsRasterLayer, QgsVectorLayer, QgsWkbTypes
+    QgsPointXY, QgsProject, QgsProperty, QgsRasterLayer, QgsVectorLayer, QgsWkbTypes, QgsProcessingContext
 from qgis.gui import QgsFieldCalculator
 
 start_app()
@@ -567,12 +567,14 @@ class QgsFunctionTests(TestCase):
         s = ""
 
         QgsProject.instance().addMapLayers([lyrRaster, lyrPoints])
+        context = QgsProcessingContext()
         results = processing.run("native:fieldcalculator",
                                  {'INPUT': lyrPoints,
                                   'FIELD_NAME': 'profiles', 'FIELD_TYPE': 2, 'FIELD_LENGTH': 0, 'FIELD_PRECISION': 0,
                                   'FORMULA': " raster_profile('EnMAP')", 'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT},
-                                 )
-        lyrSpeclib: QgsVectorLayer = results['OUTPUT']
+                                 context=context,
+                                 is_child_algorithm=True)
+        lyrSpeclib = context.getMapLayer(results['OUTPUT'])
         lyrSpeclib.setName('Spectral Library')
         assert SpectralLibraryUtils.makeToProfileField(lyrSpeclib, 'profiles')
 
