@@ -152,11 +152,12 @@ class MetadataUtils(object):
                 ('center_wavelength', BandFieldNames.Wavelength),
                 ('full_width_half_max', BandFieldNames.FWHM),
             ],
-                'raster:bands': [
-                    ('nodata', BandFieldNames.NoData),
-                    ('scale', BandFieldNames.Scale),
-                    ('offset', BandFieldNames.Offset),
-                ],
+                'raster:bands':
+                    [
+                        ('nodata', BandFieldNames.NoData),
+                        ('scale', BandFieldNames.Scale),
+                        ('offset', BandFieldNames.Offset),
+                    ],
             }
 
             for asset_key, asset in stac_item.assets.items():
