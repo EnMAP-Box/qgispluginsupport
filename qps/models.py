@@ -854,13 +854,15 @@ class PyObjectTreeNode(TreeNode):
 
                 if isinstance(k, str) and k.startswith('__'):
                     continue
-                if isinstance(v, (types.BuiltinFunctionType,
-                                  pyqtSignal,
-                                  pyqtBoundSignal,
-                                  sip.wrappertype)
-                              ) or \
-                        inspect.isfunction(v) or \
-                        inspect.ismethod(v):
+                if (
+                    isinstance(v, (types.BuiltinFunctionType,
+                                   pyqtSignal,
+                                   pyqtBoundSignal,
+                                   sip.wrappertype)
+                               )
+                    or inspect.isfunction(v)
+                    or inspect.ismethod(v)
+                ):
                     continue
 
                 # create a new node
@@ -1322,7 +1324,7 @@ class TreeView(QTreeView):
         self.populateContextMenu.emit(menu)
 
         if not menu.isEmpty():
-            menu.exec_(self.viewport().mapToGlobal(event.pos()))
+            menu.exec(self.viewport().mapToGlobal(event.pos()))
 
     def setAutoExpansionDepth(self, depth: int):
         """
