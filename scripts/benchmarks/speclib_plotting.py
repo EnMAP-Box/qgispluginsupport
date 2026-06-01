@@ -65,4 +65,4 @@ measure(f'Increase maxProfiles to 99999 ({n_items(w)} profiles)')
 model.updatePlot()
 measure(f'Replot all ({n_items(w)} profiles)')
 
-# app.exec_()
+# app.exec()

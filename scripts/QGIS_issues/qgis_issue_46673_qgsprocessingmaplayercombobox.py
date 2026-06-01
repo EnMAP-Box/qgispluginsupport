@@ -9,7 +9,7 @@ from qgis.core import QgsProcessingParameterMultipleLayers, QgsProcessingContext
 from qgis.gui import QgsProcessingGui, QgsGui, QgsProcessingParameterWidgetContext
 from qgis.testing.mocked import start_app
 
-APP = start_app()
+app = start_app()
 
 uri = 'Point?crs=epsg:4326&field=id:integer&field=name:string(20)'
 layerA = QgsVectorLayer(uri, 'Layer A', 'memory')
@@ -36,4 +36,4 @@ for row, param in enumerate([param1, param2]):
 w = QWidget()
 w.setLayout(layout)
 w.show()
-APP.exec_()
+app.exec()

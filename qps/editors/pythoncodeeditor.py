@@ -161,7 +161,7 @@ class PythonCodeWidget(QWidget):
         if self.mLayer:
             dialog.setLayer(self.mLayer)
 
-        dialog.exec_()
+        dialog.exec()
 
     def doValidationRequest(self, data: dict = None):
         if data is None:

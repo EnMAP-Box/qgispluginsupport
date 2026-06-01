@@ -121,7 +121,7 @@ class SpectralMathTests(TestCase):
             self.assertIsInstance(variant_map, dict)
             self.assertEqual(variant_map.get('name', None), name)
             s = ""
-            # dlg.exec_()
+            # dlg.exec()
 
         model: QgsProcessingModelAlgorithm = md
         # md.model().addModelParameter()

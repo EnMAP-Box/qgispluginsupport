@@ -39,7 +39,7 @@ with edit(sl):
         assert sl.addFeature(f)
 
 calc = QgsFieldCalculator(sl)
-calc.exec_()
+calc.exec()
 
 for f in sl.getFeatures():
     f: QgsFeature

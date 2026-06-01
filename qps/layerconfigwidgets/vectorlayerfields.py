@@ -552,7 +552,7 @@ class LayerFieldsConfigWidget(QpsMapLayerConfigWidget):
         lyr = self.mapLayer()
         if isinstance(lyr, QgsVectorLayer) and lyr.isEditable():
             d = AddAttributeDialog(lyr)
-            d.exec_()
+            d.exec()
             if d.result() == QDialog.DialogCode.Accepted:
                 field = d.field()
                 lyr.addAttribute(field)

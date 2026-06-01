@@ -1,7 +1,7 @@
 from typing import List
 
-from qgis.core import QgsFeature
 from qgis.core import QgsCoordinateReferenceSystem, QgsPointXY, QgsRasterLayer
+from qgis.core import QgsFeature
 from qgis.gui import QgsMapCanvas
 from qps import initAll
 from qps.maptools import CursorLocationMapTool
@@ -13,7 +13,6 @@ from qps.utils import SpatialPoint
 
 app = start_app(resources=findQGISResourceFiles())
 initAll()
-
 
 slw = SpectralLibraryWidget()
 slw.show()
@@ -47,4 +46,4 @@ p = canvas.pos()
 p.setX(p.x() - canvas.width())
 p.setY(slw.pos().y())
 canvas.move(p)
-app.exec_()
+app.exec()

@@ -464,7 +464,7 @@ class SpectralProcessingTests(TestCase):
                 super().__init__(*args, **kwds)
 
         d = D()
-        d.exec_()
+        d.exec()
 
     def test_SpectralLibraryWidget(self):
 

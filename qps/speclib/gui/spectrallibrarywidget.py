@@ -237,7 +237,7 @@ class SpectralLibraryWidget(QWidget):
             if isinstance(lyr, QgsVectorLayer):
                 d = SpectralProfileFieldActivatorDialog()
                 d.setLayer(lyr)
-                d.exec_()
+                d.exec()
 
     def libraryPlotWidget(self) -> SpectralLibraryPlotWidget:
         return self.mSpeclibPlotWidget
@@ -340,7 +340,7 @@ class SpectralLibraryWidget(QWidget):
                     parameters=parameters)
                 # dialog.setMainMessageBar(self.mainMessageBar())
                 # dialog.sigOutputsCreated.connect(self.onSpectralProcessingOutputsCreated)
-                dialog.exec_()
+                dialog.exec()
 
                 dialog.close()
 
@@ -455,7 +455,7 @@ class SpectralLibraryWidget(QWidget):
         alg.initAlgorithm({})
         d = AlgorithmDialog(alg, context=context)
         d.algorithmFinished.connect(onFinished)
-        d.exec_()
+        d.exec()
 
         lyr = results.get(ExtractSpectralProfiles.P_OUTPUT, None)
         if isinstance(lyr, (QgsVectorLayer, str)):
@@ -484,7 +484,7 @@ class SpectralLibraryWidget(QWidget):
         alg.initAlgorithm({})
         d = AlgorithmDialog(alg, context=context)
         d.algorithmFinished.connect(onFinished)
-        d.exec_()
+        d.exec()
 
         lyr = results.get(ImportSpectralProfiles.P_OUTPUT, None)
         if isinstance(lyr, (QgsVectorLayer, str)):
@@ -555,7 +555,7 @@ class SpectralLibraryWidget(QWidget):
             alg.initAlgorithm(conf)
             d = AlgorithmDialog(alg, context=context)
             d.algorithmFinished.connect(onFinished)
-            d.exec_()
+            d.exec()
 
             files = results.get(ExportSpectralProfiles.P_OUTPUT, [])
             if len(files) > 0:

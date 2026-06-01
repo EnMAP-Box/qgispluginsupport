@@ -60,4 +60,4 @@ registry.addProvider(myProvider)
 D = ModelerDialog()
 D.show()
 
-app.exec_()
+app.exec()

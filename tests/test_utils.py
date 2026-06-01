@@ -94,7 +94,7 @@ class TestUtils(TestCase):
 
         with TemporaryGlobalLayerContext(p2):
             gui = QgsFieldCalculator(lyrB, None)
-            gui.exec_()
+            gui.exec()
 
     def test_loadUi(self):
 

@@ -432,7 +432,7 @@ class LayerFieldWidget(QWidget):
         d.setLayer(self.mLayer)
         d.setField(self.mField)
 
-        if d.exec_() == d.Accepted:
+        if d.exec() == d.Accepted:
             self.setLayerField(d.layer(), d.field())
 
     def setLayerField(self, layer: QgsMapLayer, field: Union[None, str, QgsField] = None):

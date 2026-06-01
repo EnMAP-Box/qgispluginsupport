@@ -318,8 +318,10 @@ class GDALBandMetadataModel(QgsVectorLayer):
 
     def bandKey(self, bandNo: int) -> str:
         assert bandNo > 0
-        if isinstance(self.mMapLayer, QgsRasterLayer) \
-                and isinstance(self.mMapLayer.dataProvider(), QgsRasterDataProvider):
+        if (
+            isinstance(self.mMapLayer, QgsRasterLayer)
+            and isinstance(self.mMapLayer.dataProvider(), QgsRasterDataProvider)
+        ):
             self.mMapLayer: QgsRasterLayer
             z = math.floor(math.log10(self.mMapLayer.bandCount())) + 1
         else:
@@ -1263,10 +1265,12 @@ class BandPropertyCalculator(QgsFieldCalculator):
         cbFields: QComboBox = self.findChild(QComboBox, name='mExistingFieldComboBox')
         gbUpdate: QGroupBox = self.findChild(QGroupBox, name='mUpdateExistingGroupBox')
 
-        if isinstance(cbOnlyUpdate, QCheckBox) and \
-                isinstance(gbNewField, QGroupBox) and \
-                isinstance(cbFields, QComboBox) and \
-                isinstance(gbUpdate, QGroupBox):
+        if (
+            isinstance(cbOnlyUpdate, QCheckBox)
+            and isinstance(gbNewField, QGroupBox)
+            and isinstance(cbFields, QComboBox)
+            and isinstance(gbUpdate, QGroupBox)
+        ):
 
             gridLayout: QGridLayout = self.layout()
 
@@ -1461,7 +1465,7 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
         masterModel: QgsAttributeTableModel = dualView.masterModel()
         calc: QgsFieldCalculator = BandPropertyCalculator(dualView.masterModel().layer(), self)
 
-        if calc.exec_() == QDialog.Accepted:
+        if calc.exec() == QDialog.Accepted:
             col = masterModel.fieldCol(calc.changedAttributeId())
             if col >= 0:
                 masterModel.reload(masterModel.index(0, col), masterModel.index(masterModel.rowCount() - 1, col))
@@ -1501,7 +1505,7 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
                                    domains=domains,
                                    major_objects=major_objects)
 
-        if d.exec_() == QDialog.Accepted:
+        if d.exec() == QDialog.Accepted:
             item = d.metadataItem()
             # set init
             item.initialValue = None
@@ -1641,9 +1645,11 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
 
     def updateGroupVisibilities(self):
 
-        if self.supportsGDALClassification \
-                and isinstance(self.mClassificationScheme, ClassificationScheme) \
-                and len(self.mClassificationScheme) > 0:
+        if (
+            self.supportsGDALClassification
+            and isinstance(self.mClassificationScheme, ClassificationScheme)
+            and len(self.mClassificationScheme) > 0
+        ):
             self.gbClassificationScheme.setVisible(True)
             self.classificationSchemeWidget.setClassificationScheme(self.mClassificationScheme)
         else:

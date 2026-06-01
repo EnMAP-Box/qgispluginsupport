@@ -677,8 +677,8 @@ class ClassificationScheme(QAbstractTableModel):
         return cs
 
     def featureRenderer(self,
-                        symbolType: Union[QgsMarkerSymbol, QgsFillSymbol, QgsLineSymbol] = QgsFillSymbol) -> \
-            QgsCategorizedSymbolRenderer:
+                        symbolType: Union[QgsMarkerSymbol, QgsFillSymbol, QgsLineSymbol] = QgsFillSymbol
+                        ) -> QgsCategorizedSymbolRenderer:
         """
         Returns the ClassificationScheme as QgsCategorizedSymbolRenderer
         :return: ClassificationScheme
@@ -1698,7 +1698,7 @@ class ClassificationSchemeWidget(QWidget):
                 dialog.setTextValue('Select map layer')
                 dialog.setComboBoxItems(choices)
                 dialog.setOption(QInputDialog.UseListViewForComboBoxItems)
-                if dialog.exec_() == QDialog.Accepted:
+                if dialog.exec() == QDialog.Accepted:
                     selection = dialog.textValue()
                     i = choices.index(selection)
                     layer = possibleLayers[i]
@@ -1867,7 +1867,7 @@ class ClassificationSchemeDialog(QgsDialog):
         :return: None | ClassificationScheme
         """
         d = cls(*args, **kwds)
-        d.exec_()
+        d.exec()
 
         if d.result() == QDialog.DialogCode.Accepted:
             return d.classificationScheme()

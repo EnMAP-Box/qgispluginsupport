@@ -430,7 +430,7 @@ class ResourceTableView(QTableView):
             a = m.addAction('Copy Icon')
             a.triggered.connect(lambda *args, n=uri: QApplication.clipboard().setPixmap(QPixmap(n)))
 
-            m.exec_(event.globalPos())
+            m.exec(event.globalPos())
 
         pass
 
@@ -565,5 +565,5 @@ def showResources() -> ResourceBrowser:
     browser = ResourceBrowser()
     browser.show()
     if needQApp:
-        QApplication.instance().exec_()
+        QApplication.instance().exec()
     return browser

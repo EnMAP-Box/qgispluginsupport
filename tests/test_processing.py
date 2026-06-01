@@ -87,7 +87,7 @@ class ProcessingToolsTest(TestCase):
         d = ProcessingAlgorithmDialog()
         model = MyAlgModel(None)
         d.setAlgorithmModel(model)
-        result = d.exec_()
+        result = d.exec()
         if result == QDialog.Accepted:
             alg = d.algorithm()
             self.assertIsInstance(alg, QgsProcessingAlgorithm)
@@ -139,7 +139,7 @@ class ProcessingToolsTest(TestCase):
         alg = reg.algorithmById(alg_id)
         d = AlgorithmDialog(alg, False, None)
         d.context = context
-        d.exec_()
+        d.exec()
         processingPlugin.executeAlgorithm(alg_id, None, in_place=False, as_batch=False)
 
         project.removeAllMapLayers()
@@ -318,7 +318,7 @@ class ProcessingToolsTest(TestCase):
 
         d = AlgorithmDialog(alg, context=context)
         d.algorithmFinished.connect(onFinished)
-        d.exec_()
+        d.exec()
 
         lyr = results.get(ImportSpectralProfiles.P_OUTPUT)
         if lyr:
@@ -350,7 +350,7 @@ class ProcessingToolsTest(TestCase):
 
         d = AlgorithmDialog(alg, context=context)
         d.algorithmFinished.connect(onFinished)
-        d.exec_()
+        d.exec()
 
         lyr = results.get(ExportSpectralProfiles.P_OUTPUT)
         if lyr:

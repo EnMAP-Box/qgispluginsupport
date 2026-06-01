@@ -143,7 +143,7 @@ class SpectralProfilePlotView(QTreeView):
 
         if not menu.isEmpty():
             # actions = menu.actions()
-            menu.exec_(self.viewport().mapToGlobal(event.pos()))
+            menu.exec(self.viewport().mapToGlobal(event.pos()))
             # s = actions
 
     def removeItems(self, vis: List[PropertyItemGroup]):
@@ -575,7 +575,7 @@ class SpectralLibraryPlotWidget(QWidget):
         d.setWindowTitle('Select Raster Layer')
         d.setProject(self.plotModel().project())
         d.mapLayerComboBox().setFilters(QgsMapLayerProxyModel.RasterLayer)
-        if d.exec_() == QDialog.Accepted:
+        if d.exec() == QDialog.Accepted:
             layer = d.layer()
 
         existing_layers = [v.layerId() for v in self.mPlotModel.layerRendererVisualizations()]

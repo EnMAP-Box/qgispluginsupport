@@ -241,9 +241,10 @@ class SpectralLibraryUtils:
 
     @staticmethod
     def createProfileField(
-            name: str,
-            comment: str = None,
-            encoding: ProfileEncoding = ProfileEncoding.Text) -> QgsField:
+        name: str,
+        comment: Optional[str] = None,
+        encoding: ProfileEncoding = ProfileEncoding.Text
+    ) -> QgsField:
         """
         Creates a QgsField that can store spectral profiles
         :param name: field name
@@ -539,11 +540,12 @@ class SpectralLibraryUtils:
 
     @staticmethod
     def createSpectralLibrary(
-            profile_fields: List[str] = [FIELD_VALUES],
-            name: str = DEFAULT_NAME,
-            encoding: ProfileEncoding = ProfileEncoding.Json,
-            wkbType: QGIS_WKBTYPE = QGIS_WKBTYPE.Point,
-            crs: QgsCoordinateReferenceSystem = None) -> QgsVectorLayer:
+        profile_fields: List[str] = [FIELD_VALUES],
+        name: str = DEFAULT_NAME,
+        encoding: ProfileEncoding = ProfileEncoding.Json,
+        wkbType: QGIS_WKBTYPE = QGIS_WKBTYPE.Point,
+        crs: Optional[QgsCoordinateReferenceSystem] = None
+    ) -> QgsVectorLayer:
         """
         Creates an empty in-memory spectral library with a "name" and a "profiles" field
         """
@@ -916,7 +918,7 @@ class SpectralLibraryUtils:
         w.show()
 
         if app:
-            app.exec_()
+            app.exec()
 
         return w
 

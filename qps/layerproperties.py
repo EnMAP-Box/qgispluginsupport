@@ -199,7 +199,7 @@ class CopyAttributesDialog(QDialog):
                         parent=None) -> bool:
 
         d = CopyAttributesDialog(layer, fields)
-        if d.exec_() == QDialog.Accepted:
+        if d.exec() == QDialog.Accepted:
             was_editable = layer.isEditable()
             layer.startEditing()
             layer.beginEditCommand('Add attributes')
@@ -402,8 +402,11 @@ class AddAttributeDialog(QDialog):
         :return:
         """
         field = self.privateField()
-        if can_store_spectral_profiles(
-                field) and self.cbSpectralProfile.isEnabled() and self.cbSpectralProfile.isChecked():
+        if (
+            can_store_spectral_profiles(field)
+            and self.cbSpectralProfile.isEnabled()
+            and self.cbSpectralProfile.isChecked()
+        ):
             # field.setComment('Spectral Profile Field')
             setup = QgsEditorWidgetSetup(EDITOR_WIDGET_REGISTRY_KEY, {})
             field.setEditorWidgetSetup(setup)
@@ -455,8 +458,10 @@ class AddAttributeDialog(QDialog):
         errors = []
         name = self.tbName.text()
         existing_names = self.mLayer.fields().names()
-        if self.mCaseSensitive and name in existing_names or \
-                not self.mCaseSensitive and name.lower() in [n.lower() for n in existing_names]:
+        if (
+            self.mCaseSensitive and name in existing_names
+            or not self.mCaseSensitive and name.lower() in [n.lower() for n in existing_names]
+        ):
             errors.append('Field name "{}" already exists.'.format(name))
         elif name == '':
             errors.append('Missing field name')
@@ -969,7 +974,7 @@ def showLayerPropertiesDialog(layer: QgsMapLayer,
         if dialog:
             if modal:
                 dialog.setModal(True)
-                return dialog.exec_()
+                return dialog.exec()
             else:
                 dialog.setModal(False)
                 dialog.show()
@@ -1068,8 +1073,10 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
 
         r = QgsFeatureRequest()
         needsGeom = False
-        if mLayer.geometryType() != QgsWkbTypes.NullGeometry and \
-                initialMode == QgsAttributeTableFilterModel.ShowVisible:
+        if (
+            mLayer.geometryType() != QgsWkbTypes.NullGeometry
+            and initialMode == QgsAttributeTableFilterModel.ShowVisible
+        ):
             mc = self.mMapCanvas
             extent = QgsRectangle(mc.mapSettings().mapToLayerCoordinates(mLayer, mc.extent()))
             r.setFilterRect(extent)
@@ -1313,14 +1320,18 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
         self.mRunFieldCalc.setEnabled(isValid)
 
     def updateMultiEditButtonState(self):
-        if not isinstance(self.mLayer, QgsVectorLayer) or \
-                (self.mLayer.editFormConfig().layout() == QgsEditFormConfig.UiFileLayout):
+        if (
+            not isinstance(self.mLayer, QgsVectorLayer)
+            or (self.mLayer.editFormConfig().layout() == QgsEditFormConfig.UiFileLayout)
+        ):
             return
 
         self.mActionToggleMultiEdit.setEnabled(self.mLayer.isEditable())
 
-        if not self.mLayer.isEditable() or \
-                (self.mLayer.isEditable() and self.mMainView.view() != QgsDualView.AttributeEditor):
+        if (
+            not self.mLayer.isEditable()
+            or (self.mLayer.isEditable() and self.mMainView.view() != QgsDualView.AttributeEditor)
+        ):
             self.mActionToggleMultiEdit.setChecked(False)
 
     def openConditionalStyles(self):
@@ -1707,7 +1718,7 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
     def mActionAddAttribute_triggered(self):
         if isinstance(self.mLayer, QgsVectorLayer) and self.mLayer.isEditable():
             d = AddAttributeDialog(self.mLayer)
-            d.exec_()
+            d.exec()
             if d.result() == QDialog.Accepted:
                 field = d.field()
                 self.mLayer.addAttribute(field)
@@ -1721,7 +1732,7 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
         if FIELD_CALCULATOR:
             with TemporaryGlobalLayerContext(self.mLayer.project()) as c:
                 calc: QgsFieldCalculator = QgsFieldCalculator(self.mLayer, self)
-                if calc.exec_() == QDialog.Accepted:
+                if calc.exec() == QDialog.Accepted:
                     col = masterModel.fieldCol(calc.changedAttributeId())
                     if col >= 0:
                         masterModel.reload(masterModel.index(0, col),
@@ -1732,7 +1743,7 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
             return
 
         dlg = QgsOrganizeTableColumnsDialog(self.mLayer, self.mLayer.attributeTableConfig(), self)
-        if dlg.exec_() == QDialog.Accepted:
+        if dlg.exec() == QDialog.Accepted:
             config = dlg.config()
             self.mMainView.setAttributeTableConfig(config)
 
@@ -1742,7 +1753,7 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
 
         d = RemoveAttributeDialog(self.mLayer)
 
-        if d.exec_() == QDialog.Accepted:
+        if d.exec() == QDialog.Accepted:
             fieldIndices = d.fieldIndices()
             self.mLayer.beginEditCommand('Delete attributes')
             if self.mLayer.deleteAttributes(fieldIndices):
@@ -1787,8 +1798,8 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
         masterModel = self.mMainView.masterModel()
         f = QgsFeature(self.mLayer.fields())
         if self.vectorLayerTools().addFeature(
-                self.mLayer,
-                f=f
+            self.mLayer,
+            f=f
         ):
             masterModel.reload(masterModel.index(0, 0), masterModel.index(
                 masterModel.rowCount() - 1, masterModel.columnCount() - 1))
@@ -1797,7 +1808,7 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
         dlg = QgsExpressionSelectionDialog(self.mLayer)
         dlg.setMessageBar(self.mainMessageBar())
         dlg.setAttribute(Qt.WA_DeleteOnClose)
-        dlg.exec_()
+        dlg.exec()
 
     def mActionToggleEditing_toggled(self, b: bool):
         if not isinstance(self.mLayer, QgsVectorLayer):
@@ -1806,8 +1817,11 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
         # this has to be done, because in case only one cell has been changed and is still enabled, the change
         # would not be added to the mEditBuffer. By disabling, it looses focus and the change will be stored.
         s = ""
-        if self.mLayer.isEditable() and \
-                self.mMainView.tableView().indexWidget(self.mMainView.tableView().currentIndex()) is not None:
+        if (
+            self.mLayer.isEditable()
+            and self.mMainView.tableView().indexWidget(self.mMainView.tableView().currentIndex()
+                                                       ) is not None
+        ):
             self.mMainView.tableView().indexWidget(self.mMainView.tableView().currentIndex()).setEnabled(False)
 
         self.vectorLayerTools().toggleEditing(self.mLayer)

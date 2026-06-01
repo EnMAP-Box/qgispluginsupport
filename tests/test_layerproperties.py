@@ -244,7 +244,7 @@ class LayerPropertyTests(TestCase):
         lyr.commitChanges()
         d = CopyAttributesDialog(sl, lyr.fields())
 
-        if d.exec_() == QDialog.Accepted:
+        if d.exec() == QDialog.Accepted:
             sl.startEditing()
             for f in d.selectedFields():
                 sl.addAttribute(f)

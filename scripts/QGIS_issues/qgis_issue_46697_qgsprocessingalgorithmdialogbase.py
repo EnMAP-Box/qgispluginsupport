@@ -4,7 +4,7 @@ from qgis.core import QgsApplication, QgsProcessingRegistry
 from qgis.gui import QgsProcessingAlgorithmDialogBase
 from qgis.testing.mocked import start_app
 
-APP = start_app()
+app = start_app()
 
 QgsApplication.processingRegistry().addProvider(QgsNativeAlgorithms())
 Processing.initialize()
@@ -36,4 +36,4 @@ HiddenHelp.setWindowTitle(f'{HiddenHelp.windowTitle()} (Hidden Help)')
 
 VisibleHelp.show()
 HiddenHelp.show()
-APP.exec_()
+app.exec()

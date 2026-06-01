@@ -544,7 +544,7 @@ class TestCase(QgisTestCase):
             try:
                 app.exec()
             except Exception:
-                app.exec_()
+                app.exec()
 
         return True
 

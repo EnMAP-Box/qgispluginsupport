@@ -129,7 +129,7 @@ def run():
         tasks.append(MyTask('Task A{}'.format(i + 1)))
     d1.setWindowTitle('Dialog 1')
     d1.addTasks(tasks)
-    d1.exec_()
+    d1.exec()
 
     if False:
         d2 = MyTaskDialog()
@@ -138,7 +138,7 @@ def run():
             tasks.append(MyTask('Task B {}'.format(i)))
         d2.setWindowTitle('Second Dialog')
         d2.addTasks(tasks)
-        d2.exec_()
+        d2.exec()
 
     print('Script finished')
 

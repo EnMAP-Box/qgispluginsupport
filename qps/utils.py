@@ -377,8 +377,10 @@ def file_search(rootdir,
                         if pattern.search(name):
                             yield entry.path.replace('\\', '/')
 
-                    elif (ignoreCase and fnmatch.fnmatch(name, pattern.lower())) \
-                            or fnmatch.fnmatch(name, pattern):
+                    elif (
+                        (ignoreCase and fnmatch.fnmatch(name, pattern.lower()))
+                        or fnmatch.fnmatch(name, pattern)
+                    ):
                         yield entry.path.replace('\\', '/')
                 elif entry.is_dir() and recursive is True:
                     for r in file_search(entry.path, pattern,
@@ -403,8 +405,10 @@ def file_search(rootdir,
                         if pattern.search(name):
                             yield entry.path.replace('\\', '/')
 
-                    elif (ignoreCase and fnmatch.fnmatch(name, pattern.lower())) \
-                            or fnmatch.fnmatch(name, pattern):
+                    elif (
+                        (ignoreCase and fnmatch.fnmatch(name, pattern.lower()))
+                        or fnmatch.fnmatch(name, pattern)
+                    ):
                         yield entry.path.replace('\\', '/')
 
 
@@ -1830,9 +1834,11 @@ def defaultBands(dataset) -> List[int]:
         return defaultBands(gdal.Open(dataset))
     elif isinstance(dataset, QgsRasterDataProvider):
         return defaultBands(dataset.dataSourceUri())
-    elif isinstance(dataset, QgsRasterLayer) and \
-            isinstance(dataset.dataProvider(), QgsRasterDataProvider) and \
-            dataset.dataProvider().name() == 'gdal':
+    elif (
+        isinstance(dataset, QgsRasterLayer)
+        and isinstance(dataset.dataProvider(), QgsRasterDataProvider)
+        and dataset.dataProvider().name() == 'gdal'
+    ):
         return defaultBands(dataset.source())
     elif isinstance(dataset, gdal.Dataset):
 
@@ -3297,8 +3303,10 @@ class MapGeometryToPixel(object):
         return [self.geo2px(x, y) for x, y in zip(xvalues, yvalues)]
 
     def memoryLayerBand(self, qgsGeometry: QgsGeometry) -> Tuple[gdal.Band, ogr.Layer]:
-        if not isinstance(self.srs, SpatialReference) and \
-                isinstance(self.crs, QgsCoordinateReferenceSystem):
+        if (
+            not isinstance(self.srs, SpatialReference)
+            and isinstance(self.crs, QgsCoordinateReferenceSystem)
+        ):
             self.srs = SpatialReference(self.crs.toWkt())
 
         if not isinstance(self.rsMEM, gdal.Dataset):
@@ -3464,14 +3472,15 @@ class ExtentTileIterator(object):
         return rect
 
 
-def rasterizeFeatures(featureSource: QgsFeatureSource,
-                      rasterLayer: QgsRasterLayer,
-                      request: QgsFeatureRequest = QgsFeatureRequest(),
-                      all_touched: bool = True,
-                      pixel_metadata: bool = True,
-                      blockSize: int = 0,
-                      feedback: QgsProcessingFeedback = QgsProcessingFeedback()) -> \
-        Iterator[Tuple[QgsFeature, np.ndarray, Dict[str, Any]]]:
+def rasterizeFeatures(
+    featureSource: QgsFeatureSource,
+    rasterLayer: QgsRasterLayer,
+    request: QgsFeatureRequest = QgsFeatureRequest(),
+    all_touched: bool = True,
+    pixel_metadata: bool = True,
+    blockSize: int = 0,
+    feedback: QgsProcessingFeedback = QgsProcessingFeedback()
+) -> Iterator[Tuple[QgsFeature, np.ndarray, Dict[str, Any]]]:
     transform = QgsCoordinateTransform()
     transform.setSourceCrs(featureSource.crs())
     transform.setDestinationCrs(rasterLayer.crs())
@@ -3877,11 +3886,11 @@ class SelectMapLayersDialog(QgsDialog):
                 box.setCurrentIndex(i)
                 break
 
-    def exec_(self):
+    def exec(self):
 
         if len(self.mMapLayerBoxes) == 0:
             self.addLayerDescription('Map Layer', QgsMapLayerProxyModel.All)
-        super(SelectMapLayersDialog, self).exec_()
+        super(SelectMapLayersDialog, self).exec()
 
     def addLayerDescription(self, info: str,
                             filters: QGIS_LAYERFILTER,

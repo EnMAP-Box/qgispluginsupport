@@ -95,4 +95,4 @@ class TestQgsRangeWidgetSetup(TestCase):
             canvas = QgsMapCanvas()
             mbar = QgsMessageBar()
             d = QgsVectorLayerProperties(canvas, mbar, lyr2, None)
-            d.exec_()
+            d.exec()

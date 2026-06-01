@@ -19,4 +19,4 @@ assert lyrB1.project() == pB
 assert lyrB2.project() == pB
 
 calc = QgsFieldCalculator(lyrB1)
-calc.exec_()
+calc.exec()
