@@ -294,6 +294,8 @@ class EnviSpectralLibraryWriter(SpectralProfileFileWriter):
 
         iGrp = -1
         field = self.mField
+        if field is None:
+            field = profile_field_names(features[0])[0]
 
         PROFILES = groupBySpectralProperties(features, field=field, fwhm=True, bbl=True, mode='features')
         for i, (k, profiles) in enumerate(PROFILES.items()):

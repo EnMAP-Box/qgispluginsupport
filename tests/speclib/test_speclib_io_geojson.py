@@ -6,7 +6,7 @@ from osgeo import ogr
 from qgis.PyQt.QtCore import QVariant
 from qgis.core import QgsCoordinateReferenceSystem, QgsField, QgsPoint, QgsProject, \
     QgsVectorFileWriter, QgsVectorLayer
-from qps.speclib.core import is_profile_field, profile_field_names
+from qps.speclib.core import is_profile_field, profile_field_names, is_spectral_library
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
 from qps.speclib.io.geojson import GeoJsonFieldValueConverter, GeoJSONSpectralLibraryReader, \
@@ -54,6 +54,7 @@ class TestSpeclibIOGeoJSON(TestCase):
         for lyr in [lyrYes, lyrNo]:
             self.assertTrue(lyr.isValid())
             self.assertEqual(n, lyr.featureCount())
+            self.assertTrue(is_spectral_library(lyr))
         self.assertEqual(lyrYes.crs(), crs4326)
         self.assertEqual(lyrNo.crs(), crsUTM)
 

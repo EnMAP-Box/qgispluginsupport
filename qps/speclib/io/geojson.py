@@ -13,6 +13,7 @@ from qgis.core import QgsFeatureIterator
 from ..core import is_profile_field
 from ..core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict, SpectralProfileFileReader, \
     SpectralProfileFileWriter
+from ...fieldvalueconverter import GenericFieldValueConverter
 from ...qgisenums import QMETATYPE_QSTRING
 
 
@@ -126,9 +127,11 @@ class GeoJSONSpectralLibraryWriter(SpectralProfileFileWriter):
         options.skipAttributeCreation = False
         options.driverName = 'GeoJSON'
 
-        converter = GeoJsonFieldValueConverter(srcFields)
+        dstFields = GenericFieldValueConverter.compatibleTargetFields(srcFields, 'GeoJSON')
+        converter = GenericFieldValueConverter(srcFields, dstFields)
+        # converter = GeoJsonFieldValueConverter(srcFields)
         options.fieldValueConverter = converter
-        dstFields = converter.convertedFields()
+        # dstFields = converter.convertedFields()
 
         writer_crs: QgsCoordinateReferenceSystem = crsJson if self.mRFC7946 else self.mCrs
         writer: QgsVectorFileWriter = QgsVectorFileWriter.create(path.as_posix(),

@@ -3,16 +3,17 @@
 import os
 import pathlib
 
+from osgeo import gdal
+
 from qgis.core import QgsVectorLayer
-
 from qgis.testing import start_app
-from qps.speclib.core import profile_field_names
-from qps.speclib.io.asd import ASDSpectralLibraryIO
-from qps.speclib.io.envi import EnviSpectralLibraryIO
-from qps.speclib.io.geojson import GeoJsonSpectralLibraryIO
-from qps.speclib.io.geopackage import GeoPackageSpectralLibraryIO
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
+from qps.speclib.io.asd import ASDBinaryFile
+from qps.speclib.io.envi import EnviSpectralLibraryWriter
+from qps.speclib.io.geojson import GeoJSONSpectralLibraryWriter
+from qps.speclib.io.geopackage import GeoPackageSpectralLibraryWriter
 
+gdal.UseExceptions()
 app = start_app()
 
 DIR_INPUTS = pathlib.Path(__file__).parents[1] / 'qpstestdata/asd/gps'
@@ -23,8 +24,9 @@ for entry in os.scandir(DIR_INPUTS):
     if entry.is_file() and entry.name.endswith('.asd'):
         files.append(entry.path)
 
-profiles = ASDSpectralLibraryIO.importProfiles(DIR_INPUTS)
-
+profiles = []
+for file in files:
+    profiles.extend(ASDBinaryFile(file).asFeatures())
 assert len(profiles) == len(files)
 
 # create an in-memory spectral library
@@ -35,8 +37,11 @@ SpectralLibraryUtils.addProfiles(layer, profiles, addMissingFields=True)
 assert layer.commitChanges(), layer.error()
 assert layer.featureCount() == len(files)
 
+features = list(layer.getFeatures())
+
 # write as GeoPackage
-gpkgFiles = GeoPackageSpectralLibraryIO.exportProfiles(DIR_OUTPUTS / 'speclibGPKG.gpkg', layer)
+gpkgFiles = GeoPackageSpectralLibraryWriter(crs=layer.crs()).writeFeatures(DIR_OUTPUTS / 'speclibGPKG.gpkg',
+                                                                           features)
 print(f'Geopackage(s): {gpkgFiles}')
 
 # write as GeoJSON
@@ -45,16 +50,11 @@ layer.startEditing()
 # layer.deleteAttribute(layer.fields().lookupField('Spectrum'))
 
 layer.commitChanges()
-jsonFiles = GeoJsonSpectralLibraryIO.exportProfiles(DIR_OUTPUTS / 'speclibJSON.geojson', layer)
+jsonFiles = GeoJSONSpectralLibraryWriter().writeFeatures(DIR_OUTPUTS / 'speclibJSON.geojson', features)
 print(f'GeoJSON File(s): {jsonFiles}')
 
 # write as ENVI Spectral Library
-enviFiles = []
-for name in profile_field_names(layer):
-    settings = {'profile_field': name}
-    files = EnviSpectralLibraryIO.exportProfiles(
-        DIR_OUTPUTS / f'speclibENVI_{name}.sli', layer, exportSettings=settings)
-    enviFiles.extend(files)
+enviFiles = EnviSpectralLibraryWriter().writeFeatures(DIR_OUTPUTS / 'speclibENVI.sli', features)
 print(f'ENVI Spectral Libraries: {enviFiles}')
 
 if True:
@@ -63,4 +63,4 @@ if True:
 
     w = SpectralLibraryWidget(speclib=layer)
     w.show()
-    app.exec_()
+    app.exec()

@@ -412,7 +412,7 @@ class SpectralProfileFileWriter(object):
     Base class for writers that can write SpectralProfile data to a file
     """
 
-    def __init__(self, *args, field: str = None, **kwds):
+    def __init__(self, *args, field: Optional[str] = None, **kwds):
         self.mField = field
 
     @classmethod
