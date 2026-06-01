@@ -27,8 +27,7 @@ envi_bbl = [0, 1]
 settings = {
     'missing.tif': {},
     'envistyle_wl.tif': {
-        'dsMD': {'ENVI':
-                     {'wavelength': envi_wl_nm}}
+        'dsMD': {'ENVI': {'wavelength': envi_wl_nm}}
     },
 }
 

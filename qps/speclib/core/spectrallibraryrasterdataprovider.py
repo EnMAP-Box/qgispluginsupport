@@ -675,10 +675,9 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
             stats.height = band_data.shape[-2]
             stats.width = band_data.shape[-1]
 
-            statsGathered = QGIS_RASTERBANDSTATISTIC.Sum | \
-                            QGIS_RASTERBANDSTATISTIC.Min | \
-                            QGIS_RASTERBANDSTATISTIC.Max | \
-                            QGIS_RASTERBANDSTATISTIC.Mean
+            statsGathered = (
+                    QGIS_RASTERBANDSTATISTIC.Sum | QGIS_RASTERBANDSTATISTIC.Min
+                    | QGIS_RASTERBANDSTATISTIC.Max | QGIS_RASTERBANDSTATISTIC.Mean)
 
             if Qgis.versionInt() >= 33600:
                 stats.statsGathered = Qgis.RasterBandStatistics(statsGathered)

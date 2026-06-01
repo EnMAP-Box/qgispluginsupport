@@ -396,13 +396,11 @@ class MapCanvasLayerProfileSource(SpectralProfileSource):
     MODE_LAST_LAYER = 'last'
     MODE_ALL_LAYERS = 'all'
 
-    MODE_TOOLTIP = {MODE_FIRST_LAYER:
-                        'Returns profiles of the first / top visible raster layer in the map layer stack',
-                    MODE_LAST_LAYER:
-                        'Returns profiles of the last / bottom visible raster layer in the map layer stack',
-                    MODE_ALL_LAYERS:
-                        'Returns profiles of all raster layers',
-                    }
+    MODE_TOOLTIP = {
+        MODE_FIRST_LAYER: 'Returns profiles of the first / top visible raster layer in the map layer stack',
+        MODE_LAST_LAYER: 'Returns profiles of the last / bottom visible raster layer in the map layer stack',
+        MODE_ALL_LAYERS: 'Returns profiles of all raster layers',
+    }
 
     def __init__(self, canvas: QgsMapCanvas = None, mode: str = MODE_FIRST_LAYER):
         super().__init__()
