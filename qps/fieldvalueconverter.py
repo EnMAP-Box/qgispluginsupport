@@ -266,32 +266,28 @@ class GenericFieldValueConverter(QgsVectorFileWriter.FieldValueConverter):
 
             self.mFieldConverters[i] = func
 
-    def conversionFunction(self, fDst, fSrc):
+    def conversionFunction(self, fDst: QgsField, fSrc: QgsField):
         if is_profile_field(fSrc):
             if fDst.type() in [QMETATYPE_QVARIANTMAP, QMETATYPE_QSTRING]:
-                func = lambda value, f=fDst: self.convertProfileField(value, f)
+                return lambda value, f=fDst: self.convertProfileField(value, f)
             s = ""
         elif fDst.type() == QMETATYPE_QSTRING:
             if fDst.typeName() == 'JSON':
-                func = lambda value: GenericPropertyTransformer.toJson(value)
+                return lambda value: GenericPropertyTransformer.toJson(value)
             else:
-                func = lambda value: GenericPropertyTransformer.toString(value)
+                return lambda value: GenericPropertyTransformer.toString(value)
         elif fDst.type() == QMETATYPE_QDATETIME:
-            func = lambda value: GenericPropertyTransformer.toDateTime(value)
+            return lambda value: GenericPropertyTransformer.toDateTime(value)
         elif fDst.type() == QMETATYPE_QDATE:
-            func = lambda value: GenericPropertyTransformer.toDate(value)
+            return lambda value: GenericPropertyTransformer.toDate(value)
         elif fDst.type() == QMETATYPE_QTIME:
-            func = lambda value: GenericPropertyTransformer.toTime(value)
+            return lambda value: GenericPropertyTransformer.toTime(value)
         elif fDst.type() == QMETATYPE_QVARIANTMAP:
-            func = lambda value: GenericPropertyTransformer.toMap(value)
-            # if fDst.typeName() == 'JSON':
-            #    func = lambda value: GenericPropertyTransformer.toJson(value)
-            # else:
-            #    func = lambda value: GenericPropertyTransformer.toMap(value)
+            return lambda value: GenericPropertyTransformer.toMap(value)
         else:
             # default: don't convert
-            func = lambda value: value
-        return func
+            return lambda value: value
+        # return func
 
     @staticmethod
     def compatibleTargetFields(srcFields: QgsFields, targetDriver: str) -> QgsFields:

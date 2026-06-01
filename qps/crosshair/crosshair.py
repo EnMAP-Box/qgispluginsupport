@@ -403,10 +403,10 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
                         y2 = ex.yMaximum() - (y * yres)
                         return QgsPointXY(x2, y2)
 
-                    func = lambda x, y: self.toCanvasCoordinates(
-                        ms.layerToMapCoordinates(lyr,
-                                                 px2LayerGeo(x, y)))
-                    lyrCoord2CanvasPx = func
+                    def lyrCoord2CanvasPx(x, y):
+                        return self.toCanvasCoordinates(
+                            ms.layerToMapCoordinates(lyr, px2LayerGeo(x, y)))
+
                     if 0 <= pxX < ns and 0 <= pxY < nl:
                         # get pixel edges in map canvas coordinates
 

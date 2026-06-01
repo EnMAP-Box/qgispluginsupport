@@ -1384,13 +1384,16 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
 
         self.btnBandCalculator.setDefaultAction(self.actionBandCalculator)
         self.actionBandCalculator.triggered.connect(lambda: self.showCalculator(self.bandDualView))
+
         # self.btnCalculator.setDefaultAction(self.actionCalculator)
         # self.actionCalculator.triggered.connect(lambda: self.showCalculator(self.dualView))
 
-        updateBandFilter = lambda: self.updateFilter(
-            self.bandDualView, self.tbBandFilter.text(), self.optionBandMatchCase, self.optionBandRegex)
-        updateFilter = lambda: self.updateFilter(
-            self.metadataView, self.tbFilter.text(), self.optionMatchCase, self.optionRegex)
+        def updateBandFilter(*args):
+            self.updateFilter(self.bandDualView, self.tbBandFilter.text(),
+                              self.optionBandMatchCase, self.optionBandRegex)
+
+        def updateFilter(*args):
+            self.updateFilter(self.metadataView, self.tbFilter.text(), self.optionMatchCase, self.optionRegex)
 
         self.tbBandFilter.textChanged.connect(updateBandFilter)
         self.optionBandMatchCase.changed.connect(updateBandFilter)
