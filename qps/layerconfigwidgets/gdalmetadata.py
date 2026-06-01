@@ -147,11 +147,13 @@ class MetadataUtils(object):
             stac_item = pystac.Item.from_dict(d)
 
             # field, keys
-            field_items = {'eo:bands': [
-                ('common_name', BandFieldNames.Name),
-                ('center_wavelength', BandFieldNames.Wavelength),
-                ('full_width_half_max', BandFieldNames.FWHM),
-            ],
+            field_items = {
+                'eo:bands':
+                    [
+                        ('common_name', BandFieldNames.Name),
+                        ('center_wavelength', BandFieldNames.Wavelength),
+                        ('full_width_half_max', BandFieldNames.FWHM),
+                    ],
                 'raster:bands':
                     [
                         ('nodata', BandFieldNames.NoData),

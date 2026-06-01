@@ -1780,8 +1780,8 @@ class ClassificationSchemeWidget(QWidget):
 
     def onClipboard(self, *args):
         mimeData = QApplication.clipboard().mimeData()
-        b = isinstance(mimeData, QMimeData) and (
-                MIMEDATA_KEY_TEXT in mimeData.formats() or MIMEDATA_KEY_QGIS_STYLE in mimeData.formats())
+        b = (isinstance(mimeData, QMimeData)
+             and (MIMEDATA_KEY_TEXT in mimeData.formats() or MIMEDATA_KEY_QGIS_STYLE in mimeData.formats()))
         self.actionPasteClasses.setEnabled(b)
 
     def onTableDoubleClick(self, idx):

@@ -282,7 +282,7 @@ class SpectralProfilePlotViewDelegate(QStyledItemDelegate):
 
                         # Use highlighted text color if an item is selected
                         text_role = QPalette.HighlightedText if (
-                                option.state & QStyle.State_Selected) else QPalette.Text
+                            option.state & QStyle.State_Selected) else QPalette.Text
                         style.drawItemText(painter, rect, Qt.AlignLeft | Qt.AlignVCenter, palette, enabled, p,
                                            textRole=text_role)
                         x0 = rect.x() + rect.width() + margin
