@@ -2,7 +2,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 
-from qgis.PyQt.QtCore import NULL, QByteArray, QMetaType
+from qgis.PyQt.QtCore import NULL, QByteArray, QVariant, QMetaType
 from qgis.core import edit, QgsAggregateCalculator, QgsCoordinateReferenceSystem, QgsCoordinateTransformContext, \
     QgsDistanceArea, QgsEditorWidgetSetup, QgsExpression, QgsExpressionContext, QgsExpressionContextScope, \
     QgsExpressionContextUtils, QgsExpressionFunction, QgsExpressionNode, QgsExpressionNodeColumnRef, \

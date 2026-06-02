@@ -40,6 +40,7 @@ import numpy as np
 from osgeo import gdal, gdal_array
 
 from qgis.PyQt.QtCore import NULL, QMetaType
+from qgis.PyQt.QtCore import NULL, QVariant, QMetaType
 from qgis.core import QgsExpression, QgsExpressionContext, QgsExpressionContextScope, QgsFeature, QgsFeatureIterator, \
     QgsFeatureRequest, QgsField, QgsFields, QgsProcessingFeedback, QgsVectorLayer
 from .. import EMPTY_VALUES, FIELD_FID, FIELD_NAME, FIELD_VALUES

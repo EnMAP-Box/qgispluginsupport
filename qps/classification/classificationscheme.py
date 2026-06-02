@@ -41,6 +41,7 @@ from osgeo import gdal
 
 from qgis.PyQt.QtCore import NULL, pyqtSignal, QAbstractListModel, QAbstractTableModel, QByteArray, QItemSelectionModel, \
     QMimeData, QModelIndex, QObject, QSize, Qt, QMetaType
+    QMimeData, QModelIndex, QObject, QSize, Qt, QVariant, QMetaType
 from qgis.PyQt.QtGui import QBrush, QClipboard, QColor, QIcon, QPixmap
 from qgis.PyQt.QtWidgets import QAction, QApplication, QColorDialog, QComboBox, QDialog, QDialogButtonBox, QFileDialog, \
     QHBoxLayout, QInputDialog, QMenu, QMessageBox, QPushButton, QTableView, QToolButton, QVBoxLayout, QWidget

@@ -26,7 +26,7 @@
 """
 import pathlib
 
-from qgis.PyQt.QtCore import NULL, QMetaType
+from qgis.PyQt.QtCore import NULL, QVariant, QMetaType
 from qgis.PyQt.QtWidgets import QWidget
 from qgis.core import QgsCoordinateReferenceSystem, QgsField, QgsFields, QgsSettings
 
