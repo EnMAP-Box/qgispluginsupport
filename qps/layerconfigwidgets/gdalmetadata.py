@@ -45,6 +45,7 @@ from qgis.gui import QgsAttributeEditorContext, QgsAttributeTableModel, QgsDualV
     QgsMapCanvas, QgsMapLayerConfigWidgetFactory, QgsMessageBar
 
 if qgis.PyQt.QtCore.QT_VERSION_STR[0] == '5':
+    # noqa: QGS406
     from qgis.PyQt.QtCore import QRegExp as QRegularExpression
 else:
     from qgis.PyQt.QtCore import QRegularExpression

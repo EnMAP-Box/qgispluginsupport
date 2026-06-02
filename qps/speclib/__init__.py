@@ -26,7 +26,7 @@
 """
 import pathlib
 
-from qgis.PyQt.QtCore import NULL, QVariant, QMetaType
+from qgis.PyQt.QtCore import NULL, QMetaType
 from qgis.PyQt.QtWidgets import QWidget
 from qgis.core import QgsCoordinateReferenceSystem, QgsField, QgsFields, QgsSettings
 
@@ -35,7 +35,7 @@ EDITOR_WIDGET_REGISTRY_KEY = 'SpectralProfile'
 
 SPECLIB_EPSG_CODE = 4326
 
-EMPTY_VALUES = [None, NULL, QVariant(), '', 'None']
+EMPTY_VALUES = [None, NULL, '', 'None']
 
 FIELD_VALUES = 'profiles'
 FIELD_NAME = 'name'

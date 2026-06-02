@@ -35,7 +35,7 @@ from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union
 
 import numpy as np
 
-from qgis.PyQt.QtCore import NULL, QByteArray, QCoreApplication, QVariant
+from qgis.PyQt.QtCore import NULL, QByteArray, QCoreApplication
 from qgis.core import Qgis, QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsExpression, QgsExpressionContext, \
     QgsExpressionContextScope, QgsExpressionFunction, QgsExpressionNode, QgsExpressionNodeFunction, QgsFeature, \
     QgsFeatureRequest, QgsField, QgsGeometry, QgsMapLayer, QgsMapToPixel, QgsMessageLog, QgsPointXY, QgsProject, \
@@ -135,7 +135,7 @@ class HelpStringMaker(object):
                     defaultValue = P.defaultValue()
                     if isinstance(defaultValue, str):
                         defaultValue = f"'{defaultValue}'"
-                    if defaultValue not in [None, QVariant()]:
+                    if defaultValue not in [None, NULL]:
                         syntax += f'={defaultValue}'
 
                     syntax += '</span>'
@@ -450,7 +450,7 @@ class StaticExpressionFunction(QgsExpressionFunction):
             # print(f'#R: {type(r)} :{r}')
             return r
         else:
-            return QVariant()
+            return NULL
 
 
 class ExpressionFunctionUtils(object):
@@ -536,8 +536,10 @@ class ExpressionFunctionUtils(object):
         return k
 
     @staticmethod
-    def cachedCrsTransformation(context: QgsExpressionContext, layer: QgsMapLayer) \
-            -> QgsCoordinateTransform:
+    def cachedCrsTransformation(
+        context: QgsExpressionContext,
+        layer: QgsMapLayer
+    ) -> QgsCoordinateTransform:
         """
         Returns a CRS Transformation from the context to the layer CRS
         """
@@ -1003,10 +1005,10 @@ class SpectralMath(QgsExpressionFunction):
 
         if len(values) < 1:
             parent.setEvalErrorString(f'{self.name()}: requires at least 1 argument')
-            return QVariant()
+            return NULL
         if not isinstance(values[-1], str):
             parent.setEvalErrorString(f'{self.name()}: last argument needs to be a string')
-            return QVariant()
+            return NULL
 
         encoding = None
 
@@ -1020,7 +1022,7 @@ class SpectralMath(QgsExpressionFunction):
         if not isinstance(pyExpression, str):
             parent.setEvalErrorString(
                 f'{self.name()}: Argument {iPy + 1} needs to be a string with python code')
-            return QVariant()
+            return NULL
 
         try:
             profilesData = values[0:-1]
@@ -1062,7 +1064,7 @@ class SpectralMath(QgsExpressionFunction):
             return encodeProfileValueDict(d, encoding)
         except Exception as ex:
             parent.setEvalErrorString(f'{ex}')
-            return QVariant()
+            return NULL
 
     def usesGeometry(self, node) -> bool:
         return True

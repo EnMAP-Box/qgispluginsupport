@@ -40,7 +40,7 @@ import numpy as np
 from osgeo import gdal
 
 from qgis.PyQt.QtCore import NULL, pyqtSignal, QAbstractListModel, QAbstractTableModel, QByteArray, QItemSelectionModel, \
-    QMimeData, QModelIndex, QObject, QSize, Qt, QVariant, QMetaType
+    QMimeData, QModelIndex, QObject, QSize, Qt, QMetaType
 from qgis.PyQt.QtGui import QBrush, QClipboard, QColor, QIcon, QPixmap
 from qgis.PyQt.QtWidgets import QAction, QApplication, QColorDialog, QComboBox, QDialog, QDialogButtonBox, QFileDialog, \
     QHBoxLayout, QInputDialog, QMenu, QMessageBox, QPushButton, QTableView, QToolButton, QVBoxLayout, QWidget
@@ -1211,7 +1211,6 @@ class ClassificationScheme(QAbstractTableModel):
         classes = []
         for i, catName in enumerate(cat):
             classInfo: ClassInfo = ClassInfo(name=catName, label=i)
-            NULL = QVariant()
             if ct is not None:
                 gdal_color = ct.GetColorEntry(i)
                 if gdal_color in [None, NULL]:

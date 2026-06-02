@@ -31,7 +31,9 @@ import sys
 from pathlib import Path
 from typing import Any, Generator, List, Optional, Union
 
-from qgis.PyQt.QtCore import QAbstractTableModel, QDirIterator, QFile, QModelIndex, QRegExp, QSortFilterProxyModel, Qt, \
+import qgis.Pyt.QtCore
+
+from qgis.PyQt.QtCore import QAbstractTableModel, QDirIterator, QFile, QModelIndex, QSortFilterProxyModel, Qt, \
     QTextStream
 from qgis.PyQt.QtGui import QContextMenuEvent, QIcon, QPixmap
 from qgis.PyQt.QtSvg import QGraphicsSvgItem
@@ -39,6 +41,12 @@ from qgis.PyQt.QtWidgets import QAction, QApplication, QGraphicsPixmapItem, QGra
     QLineEdit, QMenu, QTableView, QTextBrowser, QToolButton, QWidget
 from qgis.PyQt.QtXml import QDomDocument, QDomElement
 from .utils import file_search, findUpwardPath
+
+if qgis.PyQt.QtCore.QT_VERSION_STR[0] == '5':
+    # noqa: QGS406
+    from qgis.PyQt.QtCore import QRegExp as QRegularExpression
+else:
+    from qgis.PyQt.QtCore import QRegularExpression
 
 REGEX_FILEXTENSION_IMAGE = re.compile(r'\.([^.]+)$')
 REGEX_QGIS_IMAGES_QRC = re.compile(r'.*QGIS[^\/]*[\/]images[\/]images\.qrc$')
@@ -482,12 +490,12 @@ class ResourceBrowser(QWidget):
 
         txt = self.tbFilter.text()
 
-        expr = QRegExp(txt)
+        expr = QRegularExpression(txt)
 
         if self.optionUseRegex.isChecked():
-            expr.setPatternSyntax(QRegExp.RegExp)
+            expr.setPatternSyntax(QRegularExpression.RegExp)
         else:
-            expr.setPatternSyntax(QRegExp.Wildcard)
+            expr.setPatternSyntax(QRegularExpression.Wildcard)
 
         if self.optionCaseSensitive.isChecked():
             expr.setCaseSensitivity(Qt.CaseSensitive)

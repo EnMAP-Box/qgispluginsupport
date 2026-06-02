@@ -39,7 +39,7 @@ from typing import List, Tuple, Union, Optional
 import numpy as np
 from osgeo import gdal, gdal_array
 
-from qgis.PyQt.QtCore import NULL, QVariant, QMetaType
+from qgis.PyQt.QtCore import NULL, QMetaType
 from qgis.core import QgsExpression, QgsExpressionContext, QgsExpressionContextScope, QgsFeature, QgsFeatureIterator, \
     QgsFeatureRequest, QgsField, QgsFields, QgsProcessingFeedback, QgsVectorLayer
 from .. import EMPTY_VALUES, FIELD_FID, FIELD_NAME, FIELD_VALUES
@@ -228,7 +228,7 @@ def writeCSVMetadata(pathCSV: str, profiles: List[QgsFeature], profile_names: Li
             assert isinstance(p, QgsFeature)
             d = {}
 
-            if spectrumName in [None, NULL, QVariant()]:
+            if spectrumName in [None, NULL]:
                 spectrumName = ''
             d['spectra names'] = str(spectrumName).replace(',', '-')
             d[CSV_GEOMETRY_COLUMN] = p.geometry().asWkt()

@@ -1692,7 +1692,7 @@ def as_py_value(value, datatype: Qgis.DataType):
     :param datatype:
     :return:
     """
-    if value in [None, QVariant()]:
+    if value in [None, NULL]:
         return None
     if datatype in [Qgis.Byte, Qgis.Int16, Qgis.Int32, Qgis.UInt16, Qgis.UInt32]:
         return int(value)

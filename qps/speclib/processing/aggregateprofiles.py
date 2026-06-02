@@ -2,7 +2,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 
-from qgis.PyQt.QtCore import NULL, QByteArray, QVariant, QMetaType
+from qgis.PyQt.QtCore import NULL, QByteArray, QMetaType
 from qgis.core import edit, QgsAggregateCalculator, QgsCoordinateReferenceSystem, QgsCoordinateTransformContext, \
     QgsDistanceArea, QgsEditorWidgetSetup, QgsExpression, QgsExpressionContext, QgsExpressionContextScope, \
     QgsExpressionContextUtils, QgsExpressionFunction, QgsExpressionNode, QgsExpressionNodeColumnRef, \
@@ -44,7 +44,7 @@ class AggregateProfilesCalculator(QgsAggregateCalculator):
                   feedback: Optional[QgsFeedback] = ...) -> Optional[dict]:
 
         if not isinstance(self.layer(), QgsVectorLayer):
-            return QVariant()
+            return NULL
         error = ''
         context = context if isinstance(context, QgsExpressionContext) else self.layer().createExpressionContext()
         if not isinstance(feedback, QgsFeedback):
@@ -57,7 +57,7 @@ class AggregateProfilesCalculator(QgsAggregateCalculator):
             expression = QgsExpression(fieldOrExpression)
             if expression.hasParserError() or not expression.prepare(context):
                 error = expression.parserErrorString() if expression.hasParserError() else expression.evalErrorString()
-                return QVariant()
+                return NULL
 
         if not expression:
             lst = set(self.layer().fields().at(attrNum).name())
@@ -107,7 +107,7 @@ class AggregateProfilesCalculator(QgsAggregateCalculator):
                     yUnit = d.get('yUnit')
 
         if len(profileDictionaries) == 0:
-            return QVariant()
+            return NULL
         y = None
         x = profileDictionaries[0].get('x', None)
 
@@ -559,10 +559,10 @@ class SpectralAggregation(QgsExpressionFunction):
 
         if len(values) < 1:
             parent.setEvalErrorString(f'{self.name()}: requires at least 1 argument')
-            return QVariant()
+            return NULL
         if not isinstance(values[-1], str):
             parent.setEvalErrorString(f'{self.name()}: last argument needs to be a string')
-            return QVariant()
+            return NULL
 
         encoding = None
 
@@ -576,7 +576,7 @@ class SpectralAggregation(QgsExpressionFunction):
         if not isinstance(pyExpression, str):
             parent.setEvalErrorString(
                 f'{self.name()}: Argument {iPy + 1} needs to be a string with python code')
-            return QVariant()
+            return NULL
 
         try:
             profilesData = values[0:-1]
@@ -618,7 +618,7 @@ class SpectralAggregation(QgsExpressionFunction):
             return encodeProfileValueDict(d, encoding)
         except Exception as ex:
             parent.setEvalErrorString(f'{ex}')
-            return QVariant()
+            return NULL
 
     def usesGeometry(self, node) -> bool:
         return True
@@ -640,13 +640,13 @@ def spfcnAggregateGeneric(
 ):
     if not isinstance(context, QgsExpressionContext):
         parent.setEvalErrorString('Cannot use aggregate function in this context')
-        return QVariant()
+        return NULL
 
     # find current layer:
     vl: QgsVectorLayer = context.variable('layer')
     if not isinstance(vl, QgsVectorLayer):
         parent.setEvalErrorString('Cannot use aggregate function in this context')
-        return QVariant()
+        return NULL
 
     nodeProfile: QgsExpressionNode = values[0]
     nodeGroupBy: QgsExpressionNode = values[1]
@@ -741,7 +741,7 @@ def spfcnAggregateGeneric(
     subContext.appendScope(subScope)
 
     field_index = QgsExpression.expressionToLayerFieldIndex(subExpression, vl)
-    result = QVariant()
+    result = NULL
     if field_index != -1:
         field = vl.fields().at(field_index)
         fids = []
@@ -765,7 +765,7 @@ def spfcnAggregateGeneric(
             result = AGG.calculate(aggregate, subExpression, context, context.feedback())
         except Exception as ex:
             parent.setEvalErrorString(f'Unable to aggregate:<br>{ex}')
-            return QVariant()
+            return NULL
 
     if isinstance(result, dict):
         if encoding is not None:
@@ -773,7 +773,7 @@ def spfcnAggregateGeneric(
         context.setCachedValue(cacheKey, result)
         return result
     # print(f'# Result: {result}')
-    return QVariant()
+    return NULL
     # return
 
 

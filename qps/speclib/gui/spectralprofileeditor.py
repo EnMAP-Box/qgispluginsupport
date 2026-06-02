@@ -693,7 +693,7 @@ class SpectralProfileEditorWidgetWrapper(QgsEditorWidgetWrapper):
         super(SpectralProfileEditorWidgetWrapper, self).__init__(vl, fieldIdx, editor, parent)
         self.mWidget: Optional[QWidget] = None
 
-        self.mLastValue: QVariant = QVariant()
+        self.mLastValue: QVariant = NULL
         self.mLayerID = vl.id()
 
     def createWidget(self, parent: QWidget):
