@@ -8,13 +8,10 @@ from uuid import uuid4
 import numpy as np
 from osgeo import gdal
 
-from qgis.PyQt.QtCore import QDate, QDateTime, QLocale, Qt, QTime
-from qgis.PyQt.QtCore import QMetaType
+from qgis.PyQt.QtCore import QDate, QDateTime, QLocale, Qt, QTime, QMetaType
 from qgis.core import Qgis, QgsCoordinateReferenceSystem, QgsEditorWidgetSetup, QgsExpressionContext, QgsFeature, \
     QgsField, QgsFields, QgsProject, QgsProperty, QgsPropertyTransformer, QgsRemappingSinkDefinition, \
     QgsVectorDataProvider, QgsVectorFileWriter, QgsVectorLayer
-from .qgisenums import QMETATYPE_QDATE, QMETATYPE_QDATETIME, QMETATYPE_QSTRING, QMETATYPE_QTIME, \
-    QMETATYPE_QVARIANTMAP
 from .speclib import EDITOR_WIDGET_REGISTRY_KEY
 from .speclib.core import is_profile_field
 from .speclib.core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict, ProfileEncoding
@@ -129,17 +126,17 @@ class GenericPropertyTransformer(QgsPropertyTransformer):
         if is_profile_field(dstField):
             encoding = ProfileEncoding.fromInput(dstField)
             return lambda v, e=encoding: encodeProfileValueDict(decodeProfileValueDict(v), encoding)
-        elif dstField.type() == QMETATYPE_QSTRING:
+        elif dstField.type() == QMetaType.QString:
             if dstField.typeName() == 'JSON':
                 return lambda value: GenericPropertyTransformer.toJson(value)
             return lambda v: GenericPropertyTransformer.toString(v)
-        elif dstField.type() == QMETATYPE_QDATETIME:
+        elif dstField.type() == QMetaType.QDateTime:
             return lambda v: GenericPropertyTransformer.toDateTime(v)
-        elif dstField.type() == QMETATYPE_QDATE:
+        elif dstField.type() == QMetaType.QDate:
             return lambda v: GenericPropertyTransformer.toDate(v)
-        elif dstField.type() == QMETATYPE_QTIME:
+        elif dstField.type() == QMetaType.QTime:
             return lambda v: GenericPropertyTransformer.toTime(v)
-        elif dstField.type() == QMETATYPE_QVARIANTMAP:
+        elif dstField.type() == QMetaType.QVariantMap:
             return lambda v: GenericPropertyTransformer.toMap(v)
         return lambda v: v
 
@@ -268,21 +265,21 @@ class GenericFieldValueConverter(QgsVectorFileWriter.FieldValueConverter):
 
     def conversionFunction(self, fDst: QgsField, fSrc: QgsField):
         if is_profile_field(fSrc):
-            if fDst.type() in [QMETATYPE_QVARIANTMAP, QMETATYPE_QSTRING]:
+            if fDst.type() in [QMetaType.QVariantMap, QMetaType.QString]:
                 return lambda value, f=fDst: self.convertProfileField(value, f)
             s = ""
-        elif fDst.type() == QMETATYPE_QSTRING:
+        elif fDst.type() == QMetaType.QString:
             if fDst.typeName() == 'JSON':
                 return lambda value: GenericPropertyTransformer.toJson(value)
             else:
                 return lambda value: GenericPropertyTransformer.toString(value)
-        elif fDst.type() == QMETATYPE_QDATETIME:
+        elif fDst.type() == QMetaType.QDateTime:
             return lambda value: GenericPropertyTransformer.toDateTime(value)
-        elif fDst.type() == QMETATYPE_QDATE:
+        elif fDst.type() == QMetaType.QDate:
             return lambda value: GenericPropertyTransformer.toDate(value)
-        elif fDst.type() == QMETATYPE_QTIME:
+        elif fDst.type() == QMetaType.QTime:
             return lambda value: GenericPropertyTransformer.toTime(value)
-        elif fDst.type() == QMETATYPE_QVARIANTMAP:
+        elif fDst.type() == QMetaType.QVariantMap:
             return lambda value: GenericPropertyTransformer.toMap(value)
         else:
             # default: don't convert
@@ -309,7 +306,7 @@ class GenericFieldValueConverter(QgsVectorFileWriter.FieldValueConverter):
         supports_json: QgsVectorDataProvider.NativeType = None
         supports_map: QgsVectorDataProvider.NativeType = None
 
-        string_types = [n for n in native_types if n.mType == QMETATYPE_QSTRING]
+        string_types = [n for n in native_types if n.mType == QMetaType.QString]
         if len(string_types) == 0:
             warnings.warn('Unable to convert to string')
             return QgsFields(srcFields)
@@ -321,7 +318,7 @@ class GenericFieldValueConverter(QgsVectorFileWriter.FieldValueConverter):
             supports_string: QgsVectorDataProvider.NativeType = string_types[0]
 
         for n in native_types:
-            if supports_string is None and n.mType == QMETATYPE_QSTRING:
+            if supports_string is None and n.mType == QMetaType.QString:
                 supports_string = n
             if n.mTypeName.lower() == 'json':
                 supports_json = n
@@ -355,7 +352,7 @@ class GenericFieldValueConverter(QgsVectorFileWriter.FieldValueConverter):
                         dstF = fieldFromNativeType(supports_string, srcF.name(), comment=srcF.comment())
                     dstF.setEditorWidgetSetup(QgsEditorWidgetSetup(EDITOR_WIDGET_REGISTRY_KEY, {}))
 
-                elif srcF.type() == QMETATYPE_QVARIANTMAP:
+                elif srcF.type() == QMetaType.QVariantMap:
                     if supports_json:
                         dstF = fieldFromNativeType(supports_json, srcF.name(), comment=srcF.comment())
                     elif supports_map:

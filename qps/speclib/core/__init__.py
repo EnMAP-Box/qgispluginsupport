@@ -1,8 +1,7 @@
 from typing import Dict, List, Union
 
-from qgis.PyQt.QtCore import QVariant
+from qgis.PyQt.QtCore import QMetaType
 from qgis.core import QgsFeature, QgsField, QgsFields, QgsVectorLayer, QgsMapLayer
-from ...qgisenums import QMETATYPE_QBYTEARRAY, QMETATYPE_QSTRING, QMETATYPE_QVARIANTMAP
 
 
 def create_profile_field(*args, **kwds) -> QgsField:
@@ -22,9 +21,9 @@ def can_store_spectral_profiles(field: QgsField) -> bool:
     """
     if not (isinstance(field, QgsField) and field.length() in [0, -1, 2 ** 16 - 1]):
         return False
-    b = field.type() in [QMETATYPE_QBYTEARRAY,
-                         QMETATYPE_QSTRING,
-                         QMETATYPE_QVARIANTMAP  # JSON
+    b = field.type() in [QMetaType.QByteArray,
+                         QMetaType.QString,
+                         QMetaType.QVariantMap  # JSON
                          ]
 
     return b
@@ -124,8 +123,7 @@ def profile_field_list(spectralLibrary: Union[QgsFeature, QgsVectorLayer, QgsFie
     return [pfields.at(i) for i in range(pfields.count())]
 
 
-def profile_field_lookup(spectralLibrary: Union[QgsFeature, QgsVectorLayer]) -> \
-        Dict[Union[int, str], QgsField]:
+def profile_field_lookup(spectralLibrary: Union[QgsFeature, QgsVectorLayer]) -> Dict[Union[int, str], QgsField]:
     """
     Returns a dictionary to lookup spectral profile fields by name or field index
     :param spectralLibrary: QgsVectorLayer
@@ -169,7 +167,7 @@ def first_profile_field_index(source: Union[QgsFields, QgsFeature, QgsVectorLaye
         return first_profile_field_index(source.fields())
     elif isinstance(source, QgsFields):
         for f in source:
-            if f.type() == QVariant.ByteArray:
+            if f.type() == QMetaType.QByteArray:
                 return source.lookupField(f.name())
     return -1
 

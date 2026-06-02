@@ -22,8 +22,8 @@ import sys
 import warnings
 from typing import Any, Dict, List, Optional, Union
 
-from qgis.PyQt.QtCore import QTextStream, QByteArray
-from qgis.PyQt.QtCore import pyqtSignal, QMimeData, QModelIndex, QObject, QTimer, QVariant
+from qgis.PyQt.QtCore import QTextStream, QByteArray, QMetaType
+from qgis.PyQt.QtCore import pyqtSignal, QMimeData, QModelIndex, QObject, QTimer
 from qgis.PyQt.QtGui import QCloseEvent, QIcon
 from qgis.PyQt.QtWidgets import QAction, QButtonGroup, QCheckBox, QComboBox, QDialog, QDialogButtonBox, \
     QGridLayout, QHBoxLayout, QLabel, QLineEdit, QMainWindow, QMenu, QMessageBox, QSizePolicy, QSpacerItem, \
@@ -1669,7 +1669,7 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
 
                     qAction: QAction = actionMenu.addAction(action.icon(), action.shortTitle())
                     qAction.setToolTip(action.name())
-                    qAction.setData(QVariant.fromValue < QgsAction > (action))
+                    qAction.setData(QMetaType.fromValue < QgsAction > (action))
                     qAction.triggered.connect(self.layerActionTriggered)
 
             self.mActionFeatureActions.setMenu(actionMenu)

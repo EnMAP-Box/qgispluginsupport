@@ -39,7 +39,7 @@ from typing import List, Tuple, Union, Optional
 import numpy as np
 from osgeo import gdal, gdal_array
 
-from qgis.PyQt.QtCore import NULL, QVariant
+from qgis.PyQt.QtCore import NULL, QVariant, QMetaType
 from qgis.core import QgsExpression, QgsExpressionContext, QgsExpressionContextScope, QgsFeature, QgsFeatureIterator, \
     QgsFeatureRequest, QgsField, QgsFields, QgsProcessingFeedback, QgsVectorLayer
 from .. import EMPTY_VALUES, FIELD_FID, FIELD_NAME, FIELD_VALUES
@@ -49,7 +49,6 @@ from ..core.spectralprofile import decodeProfileValueDict, encodeProfileValueDic
     prepareProfileValueDict, SpectralProfileFileReader, SpectralProfileFileWriter, \
     groupBySpectralProperties
 from ...gdal_utils import GDALConfigChanges
-from ...qgisenums import QMETATYPE_DOUBLE, QMETATYPE_INT, QMETATYPE_QSTRING
 from ...qgsrasterlayerproperties import stringToType
 
 # lookup GDAL Data Type and its size in bytes
@@ -451,18 +450,18 @@ class EnviSpectralLibraryReader(SpectralProfileFileReader):
         n_profiles = md.get('lines')
 
         fields.append(create_profile_field(FIELD_VALUES))
-        fields.append(QgsField(FIELD_NAME, QMETATYPE_QSTRING))
+        fields.append(QgsField(FIELD_NAME, QMetaType.QString))
         # add ENVI Header fields
         to_exclude = SINGLE_VALUE_TAGS
         for k, v in md.items():
             if isinstance(v, list) and k not in to_exclude and len(v) == n_profiles:
                 field = None
                 if isinstance(v[0], float):
-                    fields.append(QgsField(k, QMETATYPE_DOUBLE))
+                    fields.append(QgsField(k, QMetaType.Double))
                 elif isinstance(v[0], int):
-                    fields.append(QgsField(k, QMETATYPE_INT))
+                    fields.append(QgsField(k, QMetaType.Int))
                 else:
-                    fields.append(QgsField(k, QMETATYPE_QSTRING))
+                    fields.append(QgsField(k, QMetaType.QString))
 
         # add CSV fields
         lyrCSV = readCSVMetadata(source)

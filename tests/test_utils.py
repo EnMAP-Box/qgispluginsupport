@@ -65,7 +65,7 @@ class TestUtils(TestCase):
         lyr = TestObjects.createRasterLayer()
         lyr.setName('A')
         lid = lyr.id()
-        p2.addMapLayer(lyr)
+        assert p2.addMapLayer(lyr)
 
         self.assertFalse(lid in p1.mapLayers().keys())
         self.assertTrue(lid in p2.mapLayers().keys())
@@ -85,12 +85,12 @@ class TestUtils(TestCase):
         self.assertTrue(len(p1.mapLayers().keys()) == 0)
         from qpstestdata import enmap_polygon, enmap_pixel
         lyrA = QgsVectorLayer(enmap_polygon.as_posix(), 'A', 'ogr')
-        p1.addMapLayer(lyrA)
+        assert p1.addMapLayer(lyrA)
 
         p2 = QgsProject()
 
         lyrB = QgsVectorLayer(enmap_pixel.as_posix(), 'B', 'ogr')
-        p2.addMapLayer(lyrB)
+        assert p2.addMapLayer(lyrB)
 
         with TemporaryGlobalLayerContext(p2):
             gui = QgsFieldCalculator(lyrB, None)
@@ -423,7 +423,7 @@ class TestUtils(TestCase):
         p = QgsProject()
         lyr1 = TestObjects.createRasterLayer()
         lyr2 = TestObjects.createVectorLayer()
-        p.addMapLayers([lyr1, lyr2])
+        assert p.addMapLayers([lyr1, lyr2])
         d = SelectMapLayerDialog()
         d.setProject(p)
 
@@ -1101,7 +1101,7 @@ class TestUtils(TestCase):
         lyrR = TestObjects.createRasterLayer()
         lyrV = TestObjects.createVectorLayer()
         layers = [lyrR, lyrV]
-        QgsProject.instance().addMapLayers(layers)
+        assert QgsProject.instance().addMapLayers(layers)
         d = SelectMapLayersDialog()
         d.addLayerDescription('Any Type', QgsMapLayerProxyModel.All)
         layers2 = d.mapLayers()

@@ -3,7 +3,7 @@ import unittest
 
 from osgeo import ogr
 
-from qgis.PyQt.QtCore import QVariant
+from qgis.PyQt.QtCore import QMetaType
 from qgis.core import QgsCoordinateReferenceSystem, QgsField, QgsPoint, QgsProject, \
     QgsVectorFileWriter, QgsVectorLayer
 from qps.speclib.core import is_profile_field, profile_field_names, is_spectral_library
@@ -69,7 +69,7 @@ class TestSpeclibIOGeoJSON(TestCase):
         for field in sl.fields():
             field2 = converter.fieldDefinition(field)
             self.assertIsInstance(field2, QgsField)
-            self.assertTrue(field2.type() not in [QVariant.ByteArray, 8])
+            self.assertTrue(field2.type() not in [QMetaType.QByteArray, 8])
             fieldc = cloned.fieldDefinition(field)
             self.assertEqual(field2, fieldc)
 

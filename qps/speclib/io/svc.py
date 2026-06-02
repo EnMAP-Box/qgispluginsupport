@@ -6,10 +6,9 @@ from typing import Match, Optional, Union
 
 import numpy as np
 
-from qgis.PyQt.QtCore import QDateTime, Qt
+from qgis.PyQt.QtCore import QDateTime, Qt, QMetaType
 from qgis.core import QgsEditorWidgetSetup, QgsField, QgsFields, QgsPointXY
 from ..core.spectralprofile import prepareProfileValueDict, SpectralProfileFileReader
-from ...qgisenums import QMETATYPE_QDATETIME, QMETATYPE_QSTRING
 
 # GPS Longitude  DDDmm.mmmmC
 # GPS Latitude  DDmm.mmmmC
@@ -128,10 +127,10 @@ class SVCSigFile(SpectralProfileFileReader):
 
         fields = super().standardFields()
 
-        gpsTimeTField = QgsField('gpsTimeT', type=QMETATYPE_QDATETIME)
-        gpsTimeRField = QgsField('gpsTimeR', type=QMETATYPE_QDATETIME)
+        gpsTimeTField = QgsField('gpsTimeT', type=QMetaType.QDateTime)
+        gpsTimeRField = QgsField('gpsTimeR', type=QMetaType.QDateTime)
 
-        pictureField = QgsField(self.KEY_Picture, type=QMETATYPE_QSTRING)
+        pictureField = QgsField(self.KEY_Picture, type=QMetaType.QString)
 
         # setup attachment widget
         config = {'DocumentViewer': 1,

@@ -6,7 +6,7 @@ import unittest
 import numpy as np
 from osgeo import gdal
 
-from qgis.PyQt.QtCore import QEvent, QMetaType, QPointF, Qt
+from qgis.PyQt.QtCore import QEvent, QPointF, Qt, QMetaType
 from qgis.PyQt.QtGui import QColor, QMouseEvent, QPen
 from qgis.PyQt.QtWidgets import QHBoxLayout, QVBoxLayout, QWidget
 from qgis.PyQt.QtXml import QDomDocument, QDomElement
@@ -18,7 +18,6 @@ from qgis.gui import QgsMapCanvas
 from qps import DIR_REPO, initAll
 from qps.plotstyling.plotstyling import MarkerSymbol, PlotStyle
 from qps.pyqtgraph.pyqtgraph import InfiniteLine
-from qps.qgisenums import QMETATYPE_DOUBLE, QMETATYPE_INT, QMETATYPE_QSTRING
 from qps.speclib.core import create_profile_field, profile_field_list, profile_field_names, profile_fields
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
 from qps.speclib.core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict, prepareProfileValueDict
@@ -229,9 +228,9 @@ class TestSpeclibPlotting(TestCase):
         speclib = TestObjects.createSpectralLibrary()
         with edit(speclib):
             n = speclib.featureCount()
-            speclib.addAttribute(QgsField('class', QMETATYPE_QSTRING))
-            speclib.addAttribute(QgsField('float', QMETATYPE_DOUBLE))
-            speclib.addAttribute(QgsField('int', QMETATYPE_INT))
+            speclib.addAttribute(QgsField('class', QMetaType.QString))
+            speclib.addAttribute(QgsField('float', QMetaType.Double))
+            speclib.addAttribute(QgsField('int', QMetaType.Int))
             for i, feature in enumerate(speclib.getFeatures()):
                 vclass = 'cat1' if i % 2 else 'cat2'
                 vfloat = (i + 1) / n
@@ -276,7 +275,7 @@ class TestSpeclibPlotting(TestCase):
     def test_SpectralProfileColorProperty(self):
         speclib: QgsVectorLayer = TestObjects.createSpectralLibrary()
         speclib.startEditing()
-        colorField = QgsField('color', type=QMETATYPE_QSTRING)
+        colorField = QgsField('color', type=QMetaType.QString)
         colorField.setEditorWidgetSetup(QgsEditorWidgetSetup('color', {}))
         speclib.addAttribute(colorField)
         speclib.commitChanges(False)

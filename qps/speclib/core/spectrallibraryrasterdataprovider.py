@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 
-from qgis.PyQt.QtCore import NULL, QByteArray, QDateTime, QMetaType, QObject, QUrl, QUrlQuery, QVariant
+from qgis.PyQt.QtCore import NULL, QByteArray, QDateTime, QObject, QUrl, QUrlQuery, QMetaType
 from qgis.PyQt.QtGui import QColor
 from qgis.core import Qgis, QgsColorRampShader, QgsCoordinateReferenceSystem, QgsDataProvider, QgsFeature, \
     QgsFeatureRequest, QgsField, QgsFields, QgsPointXY, QgsProject, \
@@ -15,12 +15,7 @@ from qgis.core import Qgis, QgsColorRampShader, QgsCoordinateReferenceSystem, Qg
 from .spectralprofile import groupBySpectralProperties, spectralSettingsDict
 from ..core import is_profile_field, profile_fields
 from ..core.spectralprofile import decodeProfileValueDict  # , groupBySpectralProperties_depr, SpectralSetting
-from ...qgisenums import QGIS_RASTERBANDSTATISTIC, QGIS_RASTERINTERFACECAPABILITY, QMETATYPE_BOOL, QMETATYPE_DOUBLE, \
-    QMETATYPE_INT, \
-    QMETATYPE_QDATE, QMETATYPE_QDATETIME, \
-    QMETATYPE_QSTRING, \
-    QMETATYPE_QTIME, QMETATYPE_UINT, \
-    QMETATYPE_ULONGLONG
+from ...qgisenums import QGIS_RASTERBANDSTATISTIC, QGIS_RASTERINTERFACECAPABILITY
 from ...unitmodel import BAND_INDEX
 from ...utils import HashableRectangle, nextColor, numpyToQgisDataType, qgisToNumpyDataType, \
     qgsField
@@ -205,16 +200,16 @@ class FieldToRasterValueConverter(QObject):
     This class converts QgsFeature values of a field from / to 3D-array raster layer values
     """
     LUT_FIELD_TYPES = {
-        QMETATYPE_BOOL: Qgis.DataType.Byte,
-        QMETATYPE_INT: Qgis.DataType.Int32,
-        QMETATYPE_UINT: Qgis.DataType.UInt32,
-        QMetaType.Type.LongLong: Qgis.DataType.Int32,
-        QMETATYPE_ULONGLONG: Qgis.DataType.UInt32,
-        QMETATYPE_DOUBLE: Qgis.DataType.Float32,
-        QMETATYPE_QSTRING: Qgis.DataType.Int32,
-        QMETATYPE_QDATETIME: Qgis.DataType.Int32,
-        QMETATYPE_QDATE: Qgis.DataType.Int32,
-        QMETATYPE_QTIME: Qgis.DataType.Int32,
+        QMetaType.Bool: Qgis.DataType.Byte,
+        QMetaType.Int: Qgis.DataType.Int32,
+        QMetaType.UInt: Qgis.DataType.UInt32,
+        QMetaType.LongLong: Qgis.DataType.Int32,
+        QMetaType.ULong: Qgis.DataType.UInt32,
+        QMetaType.Double: Qgis.DataType.Float32,
+        QMetaType.QString: Qgis.DataType.Int32,
+        QMetaType.QDateTime: Qgis.DataType.Int32,
+        QMetaType.QDate: Qgis.DataType.Int32,
+        QMetaType.QTime: Qgis.DataType.Int32,
     }
 
     NO_DATA_CANDIDATES = [-1, -9999]
@@ -263,7 +258,7 @@ class FieldToRasterValueConverter(QObject):
 
     def isClassification(self) -> bool:
 
-        return self.field().type() == QMETATYPE_QSTRING
+        return self.field().type() == QMetaType.QString
 
     def colorInterpretation(self, bandNo: int) -> int:
 
@@ -330,7 +325,7 @@ class FieldToRasterValueConverter(QObject):
         noData = None
         numericValues = None
 
-        if field.type() == QMETATYPE_QSTRING:
+        if field.type() == QMetaType.QString:
             # convert text values to raster class values
             noData = 0
             uniqueValues = set(fieldValues)
@@ -350,10 +345,10 @@ class FieldToRasterValueConverter(QObject):
 
             numericValues = [LUT[v] for v in fieldValues]
 
-        elif field.type() in [QMETATYPE_BOOL,
-                              QMETATYPE_INT, QVariant.UInt,
-                              QVariant.LongLong, QVariant.ULongLong,
-                              QMETATYPE_DOUBLE]:
+        elif field.type() in [QMetaType.Bool,
+                              QMetaType.Int, QMetaType.UInt,
+                              QMetaType.LongLong, QMetaType.ULongLong,
+                              QMetaType.Double, QMetaType.Double]:
             # convert int/bool/floats to 1-D raster class valuess
             for c in self.NO_DATA_CANDIDATES:
                 if c not in fieldValues:
@@ -371,7 +366,7 @@ class FieldToRasterValueConverter(QObject):
                     numericValues.append(noData)
                 else:
                     numericValues.append(v)
-        elif field.type() == QMETATYPE_QDATETIME:
+        elif field.type() == QMetaType.QDateTime:
             # convert datetime values to raster class values
             numericValues = []
             noData = -9999
