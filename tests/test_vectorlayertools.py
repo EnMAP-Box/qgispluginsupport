@@ -26,14 +26,13 @@ class TestCasesVectorLayerTools(TestCase):
 
         tools.sigEditingStarted.connect(onEditingStarted)
         tools.sigMessage.connect(onMessage)
-        tools.startEditing(lyr)
+        assert tools.startEditing(lyr)
 
         self.assertTrue(self.cntEdits == 1)
         # tools.addFeature(lyr, None, f0.geometry(), f0)
-        tools.stopEditing(lyr, True)
-        tools.stopEditing(lyr, False)
-        tools.commitError(lyr)
-        tools.saveEdits(lyr)
+        assert tools.stopEditing(lyr, True)
+        assert tools.stopEditing(lyr, False)
+        assert tools.saveEdits(lyr)
         tools.commitError(lyr)
 
 

@@ -3,10 +3,9 @@ import site
 import unittest
 
 from qgis.core import QgsProject, QgsVectorLayer, QgsVectorLayerExporter, \
-    QgsField, QgsEditorWidgetSetup, Qgis
+    QgsField, QgsEditorWidgetSetup, Qgis, QMetaType
 from qgis.gui import QgsGui
 from qgis.testing.mocked import get_iface
-from qps.qgisenums import QMETATYPE_QSTRING
 
 DIR_QGIS_REPO = pathlib.Path(r'F:\Repositories\QGIS')
 assert DIR_QGIS_REPO.is_dir()
@@ -39,8 +38,8 @@ class PyQgsOGRProvider(unittest.TestCase):
         self.assertTrue(layer.isValid())
         self.assertTrue(layer.providerType() == 'ogr')
 
-        field1 = QgsField(name='field1', type=QMETATYPE_QSTRING)
-        field2 = QgsField(name='field2', type=QMETATYPE_QSTRING)
+        field1 = QgsField(name='field1', type=QMetaType.QString)
+        field2 = QgsField(name='field2', type=QMetaType.QString)
         setup1 = QgsEditorWidgetSetup(editor_widget_type, {})
         setup2 = QgsEditorWidgetSetup(editor_widget_type, {})
 

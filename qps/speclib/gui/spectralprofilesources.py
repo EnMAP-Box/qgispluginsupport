@@ -12,7 +12,7 @@ import numpy as np
 from numpy import nan
 
 from qgis.PyQt.QtCore import NULL, QAbstractListModel, QItemSelection, QModelIndex, QObject, QRect, QRectF, QSize, \
-    QSortFilterProxyModel, QVariant, Qt, pyqtSignal
+    QSortFilterProxyModel, Qt, pyqtSignal, QMetaType
 from qgis.PyQt.QtGui import QAbstractTextDocumentLayout, QColor, QFont, QIcon, QPainter, QTextDocument
 from qgis.PyQt.QtGui import QPalette
 from qgis.PyQt.QtWidgets import QComboBox, QDoubleSpinBox, QSpinBox, QStyle, QStyleOptionViewItem, \
@@ -35,7 +35,6 @@ from ..core.spectralprofile import encodeProfileValueDict, \
 from ...externals.htmlwidgets import HTMLComboBox
 from ...models import Option, OptionListModel, OptionTreeNode, TreeModel, TreeNode, TreeView, setCurrentComboBoxValue
 from ...plotstyling.plotstyling import PlotStyle, PlotStyleButton
-from ...qgisenums import QMETATYPE_BOOL, QMETATYPE_DOUBLE, QMETATYPE_INT, QMETATYPE_QDATETIME, QMETATYPE_QSTRING
 from ...qgsfunctions import RasterProfile
 from ...qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from ...utils import HashableRect, SpatialPoint, aggregateArray, iconForFieldType, loadUi, rasterLayerMapToPixel
@@ -71,12 +70,13 @@ class SpectralProfileSource(QObject):
     def setToolTip(self, toolTip: str):
         self.mToolTip = toolTip
 
-    def collectProfiles(self,
-                        point: SpatialPoint,
-                        kernel_size: QSize = QSize(1, 1),
-                        snap: bool = False,
-                        **kwargs) \
-            -> List[Tuple[Dict, QgsExpressionContext]]:
+    def collectProfiles(
+        self,
+        point: SpatialPoint,
+        kernel_size: QSize = QSize(1, 1),
+        snap: bool = False,
+        **kwargs
+    ) -> List[Tuple[Dict, QgsExpressionContext]]:
         """
         A function to collect profiles.
         Needs to consume point and kernel_size
@@ -194,8 +194,11 @@ class ProfileSamplingMode(object):
     def aggregation(self) -> str:
         return self.mAggregation
 
-    def profiles(self, point: SpatialPoint, profiles: List[Tuple[Dict, QgsExpressionContext]]) \
-            -> List[Tuple[Dict, QgsExpressionContext]]:
+    def profiles(
+        self,
+        point: SpatialPoint,
+        profiles: List[Tuple[Dict, QgsExpressionContext]]
+    ) -> List[Tuple[Dict, QgsExpressionContext]]:
         """
         Aggregates the profiles collected from a profile source
         in the way as described
@@ -318,13 +321,14 @@ class StandardLayerProfileSource(SpectralProfileSource):
         context.appendScope(scope)
         return context
 
-    def collectProfiles(self,
-                        point: SpatialPoint,
-                        kernel_size: QSize = QSize(1, 1),
-                        snap: bool = False,
-                        suffix: str = '',
-                        **kwargs) \
-            -> List[Tuple[Dict, QgsExpressionContext]]:
+    def collectProfiles(
+        self,
+        point: SpatialPoint,
+        kernel_size: QSize = QSize(1, 1),
+        snap: bool = False,
+        suffix: str = '',
+        **kwargs
+    ) -> List[Tuple[Dict, QgsExpressionContext]]:
 
         point = point.toCrs(self.mLayer.crs())
         if not isinstance(point, SpatialPoint):
@@ -436,12 +440,13 @@ class MapCanvasLayerProfileSource(SpectralProfileSource):
                     return src.expressionContext(suffix=suffix)
         return QgsExpressionContext()
 
-    def collectProfiles(self, point: SpatialPoint,
-                        kernel_size: QSize = QSize(1, 1),
-                        canvas: QgsMapCanvas = None,
-                        snap: bool = False,
-                        **kwargs) \
-            -> List[Tuple[Dict, QgsExpressionContext]]:
+    def collectProfiles(
+        self, point: SpatialPoint,
+        kernel_size: QSize = QSize(1, 1),
+        canvas: QgsMapCanvas = None,
+        snap: bool = False,
+        **kwargs
+    ) -> List[Tuple[Dict, QgsExpressionContext]]:
         if isinstance(canvas, QgsMapCanvas):
             self.mMapCanvas = canvas
 
@@ -604,8 +609,10 @@ class SpectralProfileSourceModel(QAbstractListModel):
                 continue
 
             assert isinstance(source, SpectralProfileSource), f'Got {source} instead SpectralProfileSource'
-            if source not in self.mSources \
-                    and source not in to_insert:
+            if (
+                source not in self.mSources
+                and source not in to_insert
+            ):
                 to_insert.append(source)
 
         if len(to_insert) > 0:
@@ -645,8 +652,10 @@ class SpectralProfileSourceModel(QAbstractListModel):
 
         return None
 
-    def removeSources(self, sources: Union[SpectralProfileSource, List[SpectralProfileSource]]) \
-            -> List[SpectralProfileSource]:
+    def removeSources(
+        self,
+        sources: Union[SpectralProfileSource, List[SpectralProfileSource]]
+    ) -> List[SpectralProfileSource]:
         if not isinstance(sources, Iterable):
             sources = [sources]
         removed = []
@@ -1775,17 +1784,17 @@ class SpectralProfileBridge(TreeModel):
                 prop = QgsProperty.fromExpression(node.expressionString())
                 t = field.type()
                 b = False
-                if t == QMETATYPE_INT:
+                if t == QMetaType.Int:
                     v, b = prop.valueAsInt(context)
-                elif t == QMETATYPE_BOOL:
+                elif t == QMetaType.Bool:
                     v, b = prop.valueAsBool(context)
-                elif t == QMETATYPE_DOUBLE:
+                elif t == QMetaType.Double:
                     v, b = prop.valueAsDouble(context)
-                elif t == QMETATYPE_QDATETIME:
+                elif t == QMetaType.QDateTime:
                     v, b = prop.valueAsDateTime(context)
-                elif t == QMETATYPE_QSTRING:
+                elif t == QMetaType.QString:
                     v, b = prop.valueAsString(context)
-                elif t == QVariant.Color:
+                elif t == QMetaType.QColor:
                     v, b = prop.valueAsColor(context)
                 else:
                     continue
@@ -1826,8 +1835,9 @@ class SpectralProfileBridge(TreeModel):
             self.rootNode().appendChildNodes(generator)
         generator.validate()
 
-    def featureGenerators(self, speclib: bool = True, checked: bool = True) -> \
-            List[SpectralFeatureGeneratorNode]:
+    def featureGenerators(
+        self, speclib: bool = True, checked: bool = True
+    ) -> List[SpectralFeatureGeneratorNode]:
 
         for n in self.rootNode().childNodes():
             if isinstance(n, SpectralFeatureGeneratorNode):
@@ -2043,10 +2053,12 @@ class SpectralProfileBridge(TreeModel):
 
         update_parent = None
 
-        if role == Qt.CheckStateRole \
-                and isinstance(node, TreeNode) \
-                and node.isCheckable() and \
-                value in [Qt.Checked, Qt.Unchecked]:
+        if (
+            role == Qt.CheckStateRole
+            and isinstance(node, TreeNode)
+            and node.isCheckable()
+            and value in [Qt.Checked, Qt.Unchecked]
+        ):
             changed = node.checkState() != value
             if changed:
                 node.setCheckState(value)

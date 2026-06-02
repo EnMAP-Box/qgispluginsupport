@@ -20,7 +20,7 @@ import json
 import os
 import unittest
 
-from qgis.PyQt.QtCore import QByteArray, QDataStream, QIODevice, QSize, Qt
+from qgis.PyQt.QtCore import QByteArray, QDataStream, QIODevice, QSize, Qt, QMetaType
 from qgis.PyQt.QtGui import QBrush
 from qgis.PyQt.QtGui import QColor, QPen
 from qgis.PyQt.QtWidgets import QCheckBox, QComboBox, QGridLayout, QHBoxLayout, QLabel, QVBoxLayout, QWidget
@@ -33,7 +33,6 @@ from qps.plotstyling.plotstyling import createSetPlotStyleAction, list2pen, Mark
     plotStyleEditorWidgetFactory, PlotStyleEditorWidgetWrapper, PlotStyleWidget, PlotWidgetStyle, XMLTAG_PLOTSTYLENODE
 from qps.pyqtgraph.pyqtgraph import mkBrush
 from qps.pyqtgraph.pyqtgraph.graphicsItems.ScatterPlotItem import Symbols as pgSymbols
-from qps.qgisenums import QMETATYPE_DOUBLE, QMETATYPE_INT, QMETATYPE_QSTRING
 from qps.testing import start_app, TestCase
 
 start_app()
@@ -44,10 +43,10 @@ class PlotStyleTests(TestCase):
     def create_vectordataset(self) -> QgsVectorLayer:
         vl = QgsVectorLayer("Point?crs=EPSG:4326", 'test', "memory")
         vl.startEditing()
-        vl.addAttribute(QgsField(name='fStyle', type=QMETATYPE_QSTRING, typeName='varchar', len=500))
-        vl.addAttribute(QgsField(name='fString', type=QMETATYPE_QSTRING, typeName='varchar', len=50))
-        vl.addAttribute(QgsField(name='fInt', type=QMETATYPE_INT, typeName='int'))
-        vl.addAttribute(QgsField(name='fDouble', type=QMETATYPE_DOUBLE))
+        vl.addAttribute(QgsField(name='fStyle', type=QMetaType.QString, typeName='varchar', len=500))
+        vl.addAttribute(QgsField(name='fString', type=QMetaType.QString, typeName='varchar', len=50))
+        vl.addAttribute(QgsField(name='fInt', type=QMetaType.Int, typeName='int'))
+        vl.addAttribute(QgsField(name='fDouble', type=QMetaType.Double))
         vl.addFeature(QgsFeature(vl.fields()))
         vl.commitChanges()
         return vl

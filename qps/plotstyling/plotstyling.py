@@ -34,7 +34,7 @@ from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
 
-from qgis.PyQt.QtCore import pyqtSignal, QByteArray, QDataStream, QIODevice, QMimeData, QObject, QSize, Qt
+from qgis.PyQt.QtCore import pyqtSignal, QByteArray, QDataStream, QIODevice, QMimeData, QObject, QSize, Qt, QMetaType
 from qgis.PyQt.QtGui import QBrush, QClipboard, QColor, QIcon, QPainter, QPainterPath, QPen, QPixmap
 from qgis.PyQt.QtWidgets import QApplication, QComboBox, QDialog, QDialogButtonBox, QLabel, QMenu, QSpinBox, \
     QToolButton, QVBoxLayout, QWidget, QWidgetAction
@@ -45,7 +45,6 @@ from qgis.gui import QgsColorButton, QgsDialog, QgsEditorConfigWidget, QgsEditor
 from ..pyqtgraph import pyqtgraph as pg
 from ..pyqtgraph.pyqtgraph import mkBrush, mkPen
 from ..pyqtgraph.pyqtgraph.graphicsItems.ScatterPlotItem import drawSymbol, renderSymbol
-from ..qgisenums import QMETATYPE_QSTRING
 from ..utils import findMapLayer, loadUi, SignalBlocker
 
 DEBUG = False
@@ -312,7 +311,7 @@ def createSetPlotStyleAction(field, mapLayerStore='QgsProject.instance()'):
     :return: QgsAction
     """
     assert isinstance(field, QgsField)
-    assert field.type() == QMETATYPE_QSTRING
+    assert field.type() == QMetaType.QString
 
     iconPath = ':/qt-project.org/styles/commonstyle/images/standardbutton-clear-128.png'
     pythonCode = """
@@ -1465,9 +1464,9 @@ class PlotStyleEditorWidgetFactory(QgsEditorWidgetFactory):
         # log(' fieldScore()')
         field = vl.fields().at(fieldIdx)
         assert isinstance(field, QgsField)
-        if field.type() == QMETATYPE_QSTRING and field.length() > 400 and field.name().upper() == 'STYLE':
+        if field.type() == QMetaType.QString and field.length() > 400 and field.name().upper() == 'STYLE':
             return 20
-        elif field.type() == QMETATYPE_QSTRING:
+        elif field.type() == QMetaType.QString:
             return 5
         else:
             return 0  # no support

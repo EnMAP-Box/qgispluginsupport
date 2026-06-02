@@ -4,7 +4,14 @@ import unittest
 
 import numpy as np
 from osgeo import gdal_array
-from qps.qgisenums import QGIS_WKBTYPE, QMETATYPE_DOUBLE, QMETATYPE_INT, QMETATYPE_QSTRING
+
+from qgis import processing
+from qgis.PyQt.QtCore import QByteArray, QMetaType
+from qgis.core import edit, Qgis, QgsProcessing, QgsCoordinateTransform, QgsExpression, QgsExpressionContext, \
+    QgsExpressionContextUtils, QgsExpressionFunction, QgsFeature, QgsField, QgsFields, QgsGeometry, QgsMapLayerStore, \
+    QgsPointXY, QgsProject, QgsProperty, QgsRasterLayer, QgsVectorLayer, QgsWkbTypes, QgsProcessingContext
+from qgis.gui import QgsFieldCalculator
+from qps.qgisenums import QGIS_WKBTYPE
 from qps.qgsfunctions import ExpressionFunctionUtils, Format_Py, HelpStringMaker, RasterArray, RasterProfile, \
     ReadSpectralProfile, SpectralData, SpectralEncoding, SpectralMath
 from qps.speclib.core import profile_fields
@@ -15,13 +22,6 @@ from qps.speclib.processing.aggregateprofiles import createSpectralProfileFuncti
 from qps.testing import start_app, TestCase, TestObjects
 from qps.utils import file_search, SpatialExtent, SpatialPoint
 from qpstestdata import DIR_SED, enmap, enmap_multipolygon, enmap_pixel
-
-from qgis import processing
-from qgis.PyQt.QtCore import QByteArray
-from qgis.core import edit, Qgis, QgsProcessing, QgsCoordinateTransform, QgsExpression, QgsExpressionContext, \
-    QgsExpressionContextUtils, QgsExpressionFunction, QgsFeature, QgsField, QgsFields, QgsGeometry, QgsMapLayerStore, \
-    QgsPointXY, QgsProject, QgsProperty, QgsRasterLayer, QgsVectorLayer, QgsWkbTypes, QgsProcessingContext
-from qgis.gui import QgsFieldCalculator
 
 start_app()
 
@@ -34,11 +34,11 @@ def createAggregateTestLayer():
             {'class': 'b', 'num': 3, 't_mean': 4.0, 't_min': 3, 't_max': 5},
             {'class': 'b', 'num': 5, 't_mean': 4.0, 't_min': 3, 't_max': 5},
             ]
-    fields = [QgsField('class', QMETATYPE_QSTRING),
-              QgsField('num', QMETATYPE_INT),
-              QgsField('t_mean', QMETATYPE_DOUBLE),
-              QgsField('t_min', QMETATYPE_DOUBLE),
-              QgsField('t_max', QMETATYPE_DOUBLE)
+    fields = [QgsField('class', QMetaType.QString),
+              QgsField('num', QMetaType.Int),
+              QgsField('t_mean', QMetaType.Double),
+              QgsField('t_min', QMetaType.Double),
+              QgsField('t_max', QMetaType.Double)
               ]
     with edit(sl):
         for f in fields:
@@ -156,25 +156,25 @@ class QgsFunctionTests(TestCase):
             for feature in sl.getFeatures():
                 context.setFeature(feature)
                 exp = QgsExpression(f'{f.name()}("{sfield}", \'text\')')
-                exp.prepare(context)
+                assert exp.prepare(context)
                 self.assertTrue(exp.parserErrorString() == '', msg=exp.parserErrorString())
                 profile = exp.evaluate(context)
                 self.assertIsInstance(profile, str)
 
                 exp = QgsExpression(f'{f.name()}("{sfield}", \'json\')')
-                exp.prepare(context)
+                assert exp.prepare(context)
                 self.assertTrue(exp.parserErrorString() == '', msg=exp.parserErrorString())
                 profile = exp.evaluate(context)
                 self.assertIsInstance(profile, dict)
 
                 exp = QgsExpression(f'{f.name()}("{sfield}", \'map\')')
-                exp.prepare(context)
+                assert exp.prepare(context)
                 self.assertTrue(exp.parserErrorString() == '', msg=exp.parserErrorString())
                 profile = exp.evaluate(context)
                 self.assertIsInstance(profile, dict)
 
                 exp = QgsExpression(f'{f.name()}("{sfield}", \'bytes\')')
-                exp.prepare(context)
+                assert exp.prepare(context)
                 self.assertTrue(exp.parserErrorString() == '', msg=exp.parserErrorString())
                 profile = exp.evaluate(context)
                 self.assertIsInstance(profile, QByteArray)
@@ -787,7 +787,7 @@ class QgsFunctionTests(TestCase):
         ]
         QgsProject.instance().addMapLayer(sl)
         with edit(sl):
-            sl.addAttribute(QgsField('class', QMETATYPE_QSTRING))
+            sl.addAttribute(QgsField('class', QMetaType.QString))
             for item in data:
                 f = QgsFeature(sl.fields())
 

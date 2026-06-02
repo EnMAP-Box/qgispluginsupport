@@ -54,8 +54,8 @@ from osgeo.ogr import OFSTBoolean, OFSTNone, OFTBinary, OFTDate, OFTDateTime, OF
 from osgeo.osr import SpatialReference
 
 from qgis.PyQt import uic
-from qgis.PyQt.QtCore import NULL, QByteArray, QDirIterator, QMetaType, QObject, QPoint, QPointF, QRect, Qt, QUrl, \
-    QVariant
+from qgis.PyQt.QtCore import NULL, QByteArray, QDirIterator, QObject, QPoint, QPointF, QRect, Qt, QUrl, \
+    QVariant, QMetaType
 from qgis.PyQt.QtGui import QColor, QIcon
 from qgis.PyQt.QtWidgets import QAction, QComboBox, QDialogButtonBox, QGridLayout, QHBoxLayout, QLabel, QMainWindow, \
     QMenu, QToolButton, QWidget
@@ -70,12 +70,7 @@ from qgis.core import Qgis, QgsApplication, QgsCoordinateReferenceSystem, QgsCoo
 from qgis.core import QgsExpressionContextScope, QgsExpressionContext, QgsFeatureRenderer, QgsSingleSymbolRenderer, \
     QgsMarkerSymbol, QgsExpressionContextUtils, QgsRenderContext, QgsSymbol, QgsProcessing
 from qgis.gui import QgisInterface, QgsDialog, QgsGui, QgsMapCanvas, QgsMapLayerComboBox, QgsMessageViewer
-from .qgisenums import QGIS_LAYERFILTER, QGIS_WKBTYPE, QMETATYPE_BOOL, QMETATYPE_DOUBLE, QMETATYPE_INT, \
-    QMETATYPE_QBYTEARRAY, QMETATYPE_QCHAR, QMETATYPE_QDATE, QMETATYPE_QDATETIME, QMETATYPE_QSTRING, \
-    QMETATYPE_QSTRINGLIST, \
-    QMETATYPE_QTIME, \
-    QMETATYPE_QVARIANTLIST, \
-    QMETATYPE_UINT
+from .qgisenums import QGIS_LAYERFILTER, QGIS_WKBTYPE
 from .qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from .unitmodel import datetime64, UnitLookup
 
@@ -164,11 +159,11 @@ def variant_type_to_ogr_field_type(variant_type):
     :return:
     """
     ogr_sub_type = OFSTNone
-    if variant_type == QMETATYPE_BOOL:
+    if variant_type == QMetaType.Bool:
         ogr_type = OFTInteger
         ogr_sub_type = OFSTBoolean
 
-    elif variant_type == QMETATYPE_INT:
+    elif variant_type == QMetaType.Int:
         ogr_type = OFTInteger
 
     elif variant_type == QMetaType.LongLong:
@@ -177,22 +172,22 @@ def variant_type_to_ogr_field_type(variant_type):
     elif variant_type == QMetaType.Double:
         ogr_type = OFTReal
 
-    elif variant_type in [QMETATYPE_QCHAR, QMETATYPE_QSTRING]:
+    elif variant_type in [QMetaType.QChar, QMetaType.QString]:
         ogr_type = OFTString
 
-    elif variant_type == QMETATYPE_QSTRINGLIST:
+    elif variant_type == QMetaType.QStringLIST:
         ogr_type = OFTStringList
 
-    elif variant_type == QMETATYPE_QBYTEARRAY:
+    elif variant_type == QMetaType.QByteArray:
         ogr_type = OFTBinary
 
-    elif variant_type == QMETATYPE_QDATE:
+    elif variant_type == QMetaType.QDate:
         ogr_type = OFTDate
 
-    elif variant_type == QMETATYPE_QTIME:
+    elif variant_type == QMetaType.QTime:
         ogr_type = OFTTime
 
-    elif variant_type == QMETATYPE_QDATETIME:
+    elif variant_type == QMetaType.QDateTime:
         ogr_type = OFTDateTime
 
     else:
@@ -659,28 +654,28 @@ def createQgsField(name: str, exampleValue: Any, comment: str = None) -> QgsFiel
     :return: QgsField
     """
     if isinstance(exampleValue, str):
-        return QgsField(name, QMETATYPE_QSTRING, 'varchar', comment=comment)
+        return QgsField(name, QMetaType.QString, 'varchar', comment=comment)
     elif isinstance(exampleValue, bool):
-        return QgsField(name, QMETATYPE_BOOL, 'int', len=1, comment=comment)
+        return QgsField(name, QMetaType.Bool, 'int', len=1, comment=comment)
     elif isinstance(exampleValue, (int, np.int8, np.int16, np.int32, np.int64)):
-        return QgsField(name, QMETATYPE_INT, 'int', comment=comment)
+        return QgsField(name, QMetaType.Int, 'int', comment=comment)
     elif isinstance(exampleValue, (np.uint, np.uint8, np.uint16, np.uint32, np.uint64)):
-        return QgsField(name, QMETATYPE_UINT, 'uint', comment=comment)
+        return QgsField(name, QMetaType.UInt, 'uint', comment=comment)
     elif isinstance(exampleValue, (float, np.double, np.float16, np.float32, np.float64)):
-        return QgsField(name, QMETATYPE_DOUBLE, 'double', comment=comment)
+        return QgsField(name, QMetaType.Double, 'double', comment=comment)
     elif isinstance(exampleValue, np.ndarray):
-        return QgsField(name, QMETATYPE_QSTRING, 'varchar', comment=comment)
+        return QgsField(name, QMetaType.QString, 'varchar', comment=comment)
     elif isinstance(exampleValue, np.datetime64):
-        return QgsField(name, QMETATYPE_QDATETIME, comment=comment)
+        return QgsField(name, QMetaType.QDateTime, comment=comment)
     elif isinstance(exampleValue, (bytes, QByteArray)):
-        return QgsField(name, QMETATYPE_QBYTEARRAY, 'Binary', comment=comment)
+        return QgsField(name, QMetaType.QByteArray, 'Binary', comment=comment)
     elif isinstance(exampleValue, list):
         assert len(exampleValue) > 0, 'need at least one value in provided list'
         v = exampleValue[0]
         prototype = createQgsField(name, v)
         subType = prototype.type()
         typeName = prototype.typeName()
-        return QgsField(name, QMETATYPE_QVARIANTLIST, typeName, comment=comment, subType=subType)
+        return QgsField(name, QMetaType.QVariantList, typeName, comment=comment, subType=subType)
     elif isinstance(exampleValue, type):
         return createQgsField(name, exampleValue(1), comment=comment)
     else:
@@ -756,12 +751,12 @@ def setQgsFieldValue(feature: QgsFeature, field, value):
     assert isinstance(field, QgsField)
 
     if value is None:
-        value = QVariant.NULL
-    if field.type() == QMETATYPE_QSTRING:
+        value = QMetaType.NULL
+    if field.type() == QMetaType.QString:
         value = str(value)
-    elif field.type() in [QMETATYPE_INT, QMETATYPE_BOOL]:
+    elif field.type() in [QMetaType.Int, QMetaType.Bool]:
         value = int(value)
-    elif field.type() in [QMETATYPE_DOUBLE]:
+    elif field.type() in [QMetaType.Double]:
         value = float(value)
 
     feature.setAttribute(field.name(), value)

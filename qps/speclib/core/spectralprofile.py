@@ -12,12 +12,11 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 
-from qgis.PyQt.QtCore import NULL, QByteArray, QDateTime, QJsonDocument, Qt, QVariant
+from qgis.PyQt.QtCore import NULL, QByteArray, QDateTime, QJsonDocument, Qt, QMetaType
 from qgis.core import QgsExpressionContext, QgsFeature, QgsField, QgsFields, QgsGeometry, \
     QgsPointXY, QgsProcessingFeedback, QgsPropertyTransformer, QgsVectorLayer
 from . import create_profile_field, profile_fields
 from .. import EMPTY_VALUES
-from ...qgisenums import QMETATYPE_QDATETIME, QMETATYPE_QSTRING, QMETATYPE_QVARIANTMAP
 
 # The values that describe a spectral profiles
 # y in 1st position ot show profile values in string representations first
@@ -180,7 +179,7 @@ class ProfileEncoding(enum.Enum):
         elif isinstance(input, QgsField):
             if input.type() == 8:
                 return ProfileEncoding.Json
-            elif input.type() == QVariant.ByteArray:
+            elif input.type() == QMetaType.QByteArray:
                 return ProfileEncoding.Bytes
             else:
                 return ProfileEncoding.Text
@@ -545,12 +544,12 @@ class SpectralProfileFileReader(object):
                 create_profile_field(SpectralProfileFileReader.KEY_Target, encoding=ProfileEncoding.Dict))
             fields.append(
                 create_profile_field(SpectralProfileFileReader.KEY_Reflectance, encoding=ProfileEncoding.Dict))
-            fields.append(QgsField(SpectralProfileFileReader.KEY_ReferenceTime, QMETATYPE_QDATETIME))
-            fields.append(QgsField(SpectralProfileFileReader.KEY_TargetTime, QMETATYPE_QDATETIME))
-            fields.append(QgsField(SpectralProfileFileReader.KEY_Name, QMETATYPE_QSTRING))
-            fields.append(QgsField(SpectralProfileFileReader.KEY_Path, QMETATYPE_QSTRING))
-            fields.append(QgsField(SpectralProfileFileReader.KEY_Metadata, QMETATYPE_QVARIANTMAP,
-                                   typeName='map', subType=QMETATYPE_QSTRING))
+            fields.append(QgsField(SpectralProfileFileReader.KEY_ReferenceTime, QMetaType.QDateTime))
+            fields.append(QgsField(SpectralProfileFileReader.KEY_TargetTime, QMetaType.QDateTime))
+            fields.append(QgsField(SpectralProfileFileReader.KEY_Name, QMetaType.QString))
+            fields.append(QgsField(SpectralProfileFileReader.KEY_Path, QMetaType.QString))
+            fields.append(QgsField(SpectralProfileFileReader.KEY_Metadata, QMetaType.QVariantMap,
+                                   typeName='map', subType=QMetaType.QString))
             SpectralProfileFileReader._STANDARD_FIELDS = fields
         return QgsFields(SpectralProfileFileReader._STANDARD_FIELDS)
 

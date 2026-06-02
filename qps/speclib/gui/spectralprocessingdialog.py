@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 from processing import createContext
 from processing.gui.AlgorithmDialogBase import AlgorithmDialogBase
 from processing.gui.wrappers import WidgetWrapper, WidgetWrapperFactory
-from qgis.PyQt.QtCore import pyqtSignal, QModelIndex, QObject, Qt, QTimer
+from qgis.PyQt.QtCore import pyqtSignal, QModelIndex, QObject, Qt, QTimer, QMetaType
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QCheckBox, QComboBox, QDialog, QGridLayout, QLabel, QLineEdit, QPushButton, QSizePolicy, \
     QVBoxLayout, QWidget
@@ -32,7 +32,6 @@ from ..core.spectrallibraryrasterdataprovider import createRasterLayers, FieldTo
 from ..core.spectralprofile import encodeProfileValueDict, prepareProfileValueDict, ProfileEncoding
 from ..gui.spectralprofilefieldcombobox import SpectralProfileFieldComboBox
 from ...processing.processingalgorithmdialog import ProcessingAlgorithmDialog
-from ...qgisenums import QMETATYPE_QSTRING
 from ...qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from ...utils import iconForFieldType, numpyToQgisDataType, qgsRasterLayer, rasterArray
 
@@ -935,7 +934,7 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
                                 value = encodeProfileValueDict(pdict, target_field)
                             else:
                                 value = float(tmp[0, 0, i])
-                                if target_field.type() == QMETATYPE_QSTRING:
+                                if target_field.type() == QMetaType.QString:
                                     value = str(value)
                             assert speclib.changeAttributeValue(feature.id(), target_field_index, value)
                             # assert feature.setAttribute(target_field_index, value)

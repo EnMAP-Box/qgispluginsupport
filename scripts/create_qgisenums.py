@@ -108,12 +108,12 @@ QMETATYPE_UINT = QMetaType.UInt if Qgis.versionInt() >= 33800 else QVariant.UInt
 QMETATYPE_ULONG = QMetaType.ULong
 QMETATYPE_ULONGLONG = QMetaType.ULongLong if Qgis.versionInt() >= 33800 else QVariant.ULongLong
 QMETATYPE_LONGLONG = QMetaType.LongLong if Qgis.versionInt() >= 33800 else QVariant.LongLong
-QMETATYPE_QTIME = QMetaType.QTime if Qgis.versionInt() >= 33800 else QVariant.Time
-QMETATYPE_QDATE = QMetaType.QDate if Qgis.versionInt() >= 33800 else QVariant.Date
-QMETATYPE_QDATETIME = QMetaType.QDateTime if Qgis.versionInt() >= 33800 else QVariant.DateTime
-QMETATYPE_QVARIANTMAP = QMetaType.QVariantMap if Qgis.versionInt() >= 33800 else QVariant.Map
-QMETATYPE_QBYTEARRAY = QMetaType.QByteArray if Qgis.versionInt() >= 33800 else QVariant.ByteArray
-QMETATYPE_QVARIANTLIST = QMetaType.QVariantList if Qgis.versionInt() >= 33800 else QVariant.List
+QMetaType.QTime = QMetaType.QTime if Qgis.versionInt() >= 33800 else QVariant.Time
+QMetaType.QDate = QMetaType.QDate if Qgis.versionInt() >= 33800 else QVariant.Date
+QMetaType.QDateTIME = QMetaType.QDateTime if Qgis.versionInt() >= 33800 else QVariant.DateTime
+QMetaType.QVariantMap = QMetaType.QVariantMap if Qgis.versionInt() >= 33800 else QVariant.Map
+QMetaType.QByteArray = QMetaType.QByteArray if Qgis.versionInt() >= 33800 else QVariant.ByteArray
+QMetaType.QVariantList = QMetaType.QVariantList if Qgis.versionInt() >= 33800 else QVariant.List
 """
 
 # init all

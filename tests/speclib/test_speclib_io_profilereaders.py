@@ -5,10 +5,9 @@ from datetime import datetime
 from typing import List
 
 import qpstestdata
-from qgis.PyQt.QtCore import QDateTime, Qt
+from qgis.PyQt.QtCore import QDateTime, Qt, QMetaType
 from qgis.core import edit, QgsFeature, QgsField
 from qps.fieldvalueconverter import collect_native_types
-from qps.qgisenums import QMETATYPE_QDATE, QMETATYPE_QDATETIME
 from qps.speclib.core import is_spectral_feature, profile_field_names, is_spectral_library
 from qps.speclib.core.spectralprofile import decodeProfileValueDict, SpectralProfileFileReader, validateProfileValueDict
 from qps.speclib.io.asd import ASDBinaryFile
@@ -114,8 +113,8 @@ class TestSpeclibIO_SpectralProfileReaders(TestCase):
 
         nt = collect_native_types()
         with edit(vl):
-            assert vl.addAttribute(QgsField('datetime', QMETATYPE_QDATETIME))
-            assert vl.addAttribute(QgsField('date', QMETATYPE_QDATE))
+            assert vl.addAttribute(QgsField('datetime', QMetaType.QDateTime))
+            assert vl.addAttribute(QgsField('date', QMetaType.QDate))
 
         f = QgsFeature(vl.fields())
         dt = datetime.now()

@@ -4,14 +4,13 @@ import random
 import unittest
 from typing import Iterator, List, Tuple
 
-from qgis.PyQt.QtCore import QSize, Qt
+from qgis.PyQt.QtCore import QSize, Qt, QMetaType
 from qgis.PyQt.QtWidgets import QHBoxLayout, QPushButton, QSplitter, QVBoxLayout, QWidget
 from qgis.core import edit, Qgis, QgsExpressionContext, QgsFeature, QgsField, QgsGeometry, QgsMapToPixel, QgsPoint, \
     QgsPointXY, QgsProject, QgsRaster, QgsRasterDataProvider, QgsRasterLayer, QgsVectorLayer, QgsWkbTypes
 from qgis.gui import QgsDualView, QgsMapCanvas
 from qps import initAll
 from qps.maptools import CursorLocationMapTool
-from qps.qgisenums import QMETATYPE_DOUBLE, QMETATYPE_INT, QMETATYPE_QSTRING
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
 from qps.speclib.core.spectralprofile import isProfileValueDict
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
@@ -622,12 +621,12 @@ class SpectralProcessingTests(TestCase):
             for oldName, newName in RENAME.items():
                 idx = sl.fields().lookupField(oldName)
                 sl.renameAttribute(idx, newName)
-            sl.addAttribute(QgsField('px_x', QMETATYPE_INT))
-            sl.addAttribute(QgsField('px_y', QMETATYPE_INT))
-            sl.addAttribute(QgsField('geo_x', QMETATYPE_DOUBLE))
-            sl.addAttribute(QgsField('geo_y', QMETATYPE_DOUBLE))
-            sl.addAttribute(QgsField('text', QMETATYPE_QSTRING))
-            sl.addAttribute(QgsField('color', QMETATYPE_QSTRING))
+            sl.addAttribute(QgsField('px_x', QMetaType.Int))
+            sl.addAttribute(QgsField('px_y', QMetaType.Int))
+            sl.addAttribute(QgsField('geo_x', QMetaType.Double))
+            sl.addAttribute(QgsField('geo_y', QMetaType.Double))
+            sl.addAttribute(QgsField('text', QMetaType.QString))
+            sl.addAttribute(QgsField('color', QMetaType.QString))
 
         sl.commitChanges()
 
@@ -650,7 +649,7 @@ class SpectralProcessingTests(TestCase):
 
         self.assertTrue(n1.hasErrors())
         self.assertTrue(len(errors) > 0)
-        field = QgsField('n1field', QMETATYPE_QSTRING)
+        field = QgsField('n1field', QMetaType.QString)
         n1.setField(field)
         n1.setExpression("'foobar'")
         errors2 = list(n1.errors(recursive=True))

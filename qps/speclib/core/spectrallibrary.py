@@ -37,7 +37,7 @@ from typing import Dict, List, Optional, Union
 
 from osgeo import gdal, ogr
 
-from qgis.PyQt.QtCore import QDateTime, QMimeData, Qt, QUrl, QVariant
+from qgis.PyQt.QtCore import QDateTime, QMimeData, Qt, QUrl, QMetaType
 from qgis.PyQt.QtWidgets import QWidget
 from qgis.core import QgsProcessingContext
 from qgis.core import edit, Qgis, QgsAction, QgsActionManager, QgsApplication, QgsAttributeTableConfig, \
@@ -52,8 +52,7 @@ from .spectralprofile import decodeProfileValueDict, encodeProfileValueDict, pre
     groupBySpectralProperties, SpectralProfileFileWriter, SpectralProfileFileReader
 from .. import EDITOR_WIDGET_REGISTRY_KEY, FIELD_NAME, FIELD_VALUES, SPECLIB_EPSG_CODE
 from ...plotstyling.plotstyling import PlotStyle
-from ...qgisenums import QGIS_WKBTYPE, QMETATYPE_QBYTEARRAY, QMETATYPE_QDATE, QMETATYPE_QDATETIME, QMETATYPE_QSTRING, \
-    QMETATYPE_QVARIANTMAP
+from ...qgisenums import QGIS_WKBTYPE
 from ...utils import copyEditorWidgetSetup, findMapLayer, qgsField, SpatialPoint
 
 # get to now how we can import this module
@@ -254,11 +253,11 @@ class SpectralLibraryUtils:
         """
         encoding = ProfileEncoding.fromInput(encoding)
         if encoding == ProfileEncoding.Bytes:
-            field = QgsField(name=name, type=QMETATYPE_QBYTEARRAY, comment=comment)
+            field = QgsField(name=name, type=QMetaType.QByteArray, comment=comment)
         elif encoding == ProfileEncoding.Text:
-            field = QgsField(name=name, type=QMETATYPE_QSTRING, len=-1, comment=comment)
+            field = QgsField(name=name, type=QMetaType.QString, len=-1, comment=comment)
         elif encoding == ProfileEncoding.Json:
-            field = QgsField(name=name, type=QMETATYPE_QVARIANTMAP, typeName='JSON', comment=comment)
+            field = QgsField(name=name, type=QMetaType.QVariantMap, typeName='JSON', comment=comment)
 
         setup = QgsEditorWidgetSetup(EDITOR_WIDGET_REGISTRY_KEY, {})
         field.setEditorWidgetSetup(setup)
@@ -414,7 +413,7 @@ class SpectralLibraryUtils:
         # assume that binary fields without other editor widgets are Spectral Profile Widgets
         for idx in range(source.fields().count()):
             field: QgsField = source.fields().at(idx)
-            if field.type() == QVariant.ByteArray and field.editorWidgetSetup().type() == '':
+            if field.type() == QMetaType.QByteArray and field.editorWidgetSetup().type() == '':
                 source.setEditorWidgetSetup(idx, QgsEditorWidgetSetup(EDITOR_WIDGET_REGISTRY_KEY, {}))
 
         if not is_spectral_library(source):
@@ -490,12 +489,12 @@ class SpectralLibraryUtils:
                 v = attributes[n]
                 if is_profile_field(f) and isinstance(v, dict):
                     v = encodeProfileValueDict(v, f)
-                elif f.type() == QMETATYPE_QDATETIME:
+                elif f.type() == QMetaType.QDateTime:
                     if isinstance(v, datetime.datetime):
                         v = QDateTime.fromString(v.isoformat(), Qt.DateFormat.ISODate)
                     elif isinstance(v, datetime.date):
                         v = QDateTime.fromString(v.isoformat(), Qt.DateFormat.ISODate)
-                elif f.type() == QMETATYPE_QDATE:
+                elif f.type() == QMetaType.QDate:
                     if isinstance(v, datetime.datetime):
                         v = QDateTime.fromString(v.isoformat(), Qt.DateFormat.ISODate)
                     elif isinstance(v, datetime.date):
@@ -561,7 +560,7 @@ class SpectralLibraryUtils:
         lyr.setCustomProperty('skipMemoryLayerCheck', 1)
         with edit(lyr):
             lyr.beginEditCommand('Add fields')
-            assert lyr.addAttribute(QgsField(name=FIELD_NAME, type=QMETATYPE_QSTRING))
+            assert lyr.addAttribute(QgsField(name=FIELD_NAME, type=QMetaType.QString))
 
             for fieldname in profile_fields:
                 if isinstance(fieldname, QgsField):

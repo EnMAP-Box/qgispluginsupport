@@ -3,7 +3,7 @@ import warnings
 from typing import List, Optional, Union
 
 from qgis.PyQt.QtCore import pyqtSignal, QAbstractItemModel, QItemSelectionModel, QMimeData, QModelIndex, \
-    QRect, QSize, QSortFilterProxyModel, Qt
+    QRect, QSize, QSortFilterProxyModel, Qt, QMetaType
 from qgis.PyQt.QtGui import QColor, QContextMenuEvent, QDragEnterEvent, QDropEvent, QFontMetrics, QIcon, \
     QPainter, QPalette, QPixmap
 from qgis.PyQt.QtWidgets import QAbstractItemView, QAction, QApplication, QComboBox, QDialog, QFrame, QHBoxLayout, \
@@ -22,7 +22,6 @@ from .. import speclibUiPath
 from ..core import profile_field_list
 from ...models import SettingsModel
 from ...plotstyling.plotstyling import PlotStyle, PlotWidgetStyle
-from ...qgisenums import QMETATYPE_INT, QMETATYPE_QSTRING
 from ...utils import loadUi, SelectMapLayerDialog
 
 
@@ -667,7 +666,7 @@ class SpectralLibraryPlotWidget(QWidget):
                 rx3 = re.compile('fid', re.I)
                 for rx in [rx1, rx2, rx3]:
                     for field_name in layer.fields():
-                        if field_name.type() in [QMETATYPE_QSTRING, QMETATYPE_INT] and rx.search(field_name.name()):
+                        if field_name.type() in [QMetaType.QString, QMetaType.Int] and rx.search(field_name.name()):
                             name_field = field_name
                             break
                     if name_field:

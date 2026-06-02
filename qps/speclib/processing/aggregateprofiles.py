@@ -2,7 +2,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 
-from qgis.PyQt.QtCore import NULL, QByteArray, QMetaType, QVariant
+from qgis.PyQt.QtCore import NULL, QByteArray, QVariant, QMetaType
 from qgis.core import edit, QgsAggregateCalculator, QgsCoordinateReferenceSystem, QgsCoordinateTransformContext, \
     QgsDistanceArea, QgsEditorWidgetSetup, QgsExpression, QgsExpressionContext, QgsExpressionContextScope, \
     QgsExpressionContextUtils, QgsExpressionFunction, QgsExpressionNode, QgsExpressionNodeColumnRef, \
@@ -15,9 +15,6 @@ from .. import EDITOR_WIDGET_REGISTRY_KEY
 from ..core import is_profile_field
 from ..core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict, prepareProfileValueDict, \
     ProfileEncoding
-from ...qgisenums import QMETATYPE_BOOL, QMETATYPE_DOUBLE, QMETATYPE_INT, QMETATYPE_QDATE, QMETATYPE_QDATETIME, \
-    QMETATYPE_QSTRING, \
-    QMETATYPE_QTIME
 from ...qgsfunctions import HM, SPECLIB_FUNCTION_GROUP, SpectralMath, StaticExpressionFunction
 
 
@@ -77,7 +74,7 @@ class AggregateProfilesCalculator(QgsAggregateCalculator):
             request.setFilterFids(self.mFIDs[:])
 
         # todo: set order by
-        resultType = QVariant.UserType
+        # resultType = QMetaType.UserType
         request.setExpressionContext(context)
         request.setFeedback(feedback)
         features = list(self.layer().getFeatures(request))
@@ -148,15 +145,16 @@ class AggregateProfilesCalculator(QgsAggregateCalculator):
 
 
 class AggregateMemoryLayer(QgsVectorLayer):
-    memoryLayerFieldType = {QMETATYPE_INT: 'integer',
-                            QVariant.LongLong: 'long',
-                            QMETATYPE_DOUBLE: 'double',
-                            QMETATYPE_QSTRING: 'string',
-                            QMETATYPE_QDATE: 'date',
-                            QMETATYPE_QTIME: 'time',
-                            QMETATYPE_QDATETIME: 'datetime',
-                            QVariant.ByteArray: 'binary',
-                            QMETATYPE_BOOL: 'boolean'}
+    memoryLayerFieldType = {QMetaType.Int: 'integer',
+                            QMetaType.Long: 'long',
+                            QMetaType.LongLong: 'long',
+                            QMetaType.Double: 'double',
+                            QMetaType.QString: 'string',
+                            QMetaType.QDate: 'date',
+                            QMetaType.QTime: 'time',
+                            QMetaType.QDateTime: 'datetime',
+                            QMetaType.QByteArray: 'binary',
+                            QMetaType.Bool: 'boolean'}
     uri = 'memory:'
 
     def __init__(self,
@@ -186,7 +184,7 @@ class AggregateMemoryLayer(QgsVectorLayer):
         for field in fields:
             field: QgsField
             lengthPrecission = f'({field.length()},{field.precision()})'
-            if field.type() in [QVariant.List, QMetaType.QStringList]:
+            if field.type() in [QMetaType.QVariantList, QMetaType.QStringList]:
                 ftype = field.subType()
                 ltype = '[]'
             else:
@@ -633,12 +631,12 @@ class SpectralAggregation(QgsExpressionFunction):
 
 
 def spfcnAggregateGeneric(
-        aggregate: QgsAggregateCalculator.Aggregate,
-        values: list,
-        parameters: QgsAggregateCalculator.AggregateParameters,
-        context: QgsExpressionContext,
-        parent: QgsExpression,
-        orderByPos: int = -1
+    aggregate: QgsAggregateCalculator.Aggregate,
+    values: list,
+    parameters: QgsAggregateCalculator.AggregateParameters,
+    context: QgsExpressionContext,
+    parent: QgsExpression,
+    orderByPos: int = -1
 ):
     if not isinstance(context, QgsExpressionContext):
         parent.setEvalErrorString('Cannot use aggregate function in this context')
