@@ -31,10 +31,8 @@ import sys
 from pathlib import Path
 from typing import Any, Generator, List, Optional, Union
 
-import qgis.Pyt.QtCore
-
 from qgis.PyQt.QtCore import QAbstractTableModel, QDirIterator, QFile, QModelIndex, QSortFilterProxyModel, Qt, \
-    QTextStream
+    QTextStream, QT_VERSION_STR
 from qgis.PyQt.QtGui import QContextMenuEvent, QIcon, QPixmap
 from qgis.PyQt.QtSvg import QGraphicsSvgItem
 from qgis.PyQt.QtWidgets import QAction, QApplication, QGraphicsPixmapItem, QGraphicsScene, QGraphicsView, QLabel, \
@@ -42,9 +40,8 @@ from qgis.PyQt.QtWidgets import QAction, QApplication, QGraphicsPixmapItem, QGra
 from qgis.PyQt.QtXml import QDomDocument, QDomElement
 from .utils import file_search, findUpwardPath
 
-if qgis.PyQt.QtCore.QT_VERSION_STR[0] == '5':
-    # noqa: QGS406
-    from qgis.PyQt.QtCore import QRegExp as QRegularExpression
+if QT_VERSION_STR[0] == '5':
+    from qgis.PyQt.QtCore import QRegExp as QRegularExpression  # noqa: QGS406
 else:
     from qgis.PyQt.QtCore import QRegularExpression
 

@@ -33,9 +33,8 @@ from typing import Any, Dict, List, Match, Pattern, Tuple, Union
 
 from osgeo import gdal, ogr
 
-import qgis.PyQt.QtCore
 from qgis.PyQt.QtCore import NULL, QAbstractTableModel, QMimeData, QModelIndex, QSortFilterProxyModel, Qt, QTimer, QUrl, \
-    QMetaType
+    QMetaType, QT_VERSION_STR
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction, QApplication, QCheckBox, QComboBox, QDialog, QDialogButtonBox, QGridLayout, \
     QGroupBox, QHBoxLayout, QLabel, QLineEdit, QMenu, QSizePolicy, QTableView, QWidget
@@ -44,9 +43,8 @@ from qgis.core import edit, Qgis, QgsAttributeTableConfig, QgsDefaultValue, QgsE
 from qgis.gui import QgsAttributeEditorContext, QgsAttributeTableModel, QgsDualView, QgsFieldCalculator, QgsGui, \
     QgsMapCanvas, QgsMapLayerConfigWidgetFactory, QgsMessageBar
 
-if qgis.PyQt.QtCore.QT_VERSION_STR[0] == '5':
-    # noqa: QGS406
-    from qgis.PyQt.QtCore import QRegExp as QRegularExpression
+if QT_VERSION_STR[0] == '5':
+    from qgis.PyQt.QtCore import QRegExp as QRegularExpression  # noqa: QGS406
 else:
     from qgis.PyQt.QtCore import QRegularExpression
 
