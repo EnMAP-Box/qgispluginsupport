@@ -12,6 +12,7 @@ dependencies:
   - colorama
 
   # Development
+  - bandit
   - gitpython
   - git-lfs
   - pytest

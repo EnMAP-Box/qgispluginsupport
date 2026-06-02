@@ -6,13 +6,14 @@ name: qgis_minimum
 channels:
   - conda-forge
 dependencies:
-  - qgis=3.38
+  - qgis=3.40
   - python=3.10
   - gdal=3.9
   - pip
   - matplotlib
 
   # Development
+  - bandit
   - gitpython
   - git-lfs
   - pytest
