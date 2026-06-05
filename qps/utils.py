@@ -1896,6 +1896,29 @@ def bandClosestToWavelength(dataset, wl, wl_unit: str = 'nm') -> int:
     return 0
 
 
+def stringToByteArray(text: Union[str, QDomDocument]):
+    """
+    Converts input into a QByteArray
+    :param text: bytes or str
+    :return: QByteArray
+    """
+
+    if isinstance(text, QDomDocument):
+        text = text.toString()
+    data = QByteArray()
+    data.append(text)
+    return data
+
+
+def stringFromByteArray(data: QByteArray):
+    """
+    Decodes a QByteArray into a str
+    :param data: QByteArray
+    :return: str
+    """
+    return data.data().decode()
+
+
 def parseBadBandList(dataset) -> List[int]:
     """
     Returns the bad-band-list if it is specified explicitly
