@@ -199,13 +199,6 @@ class TestsClassificationScheme(TestCase):
         self.assertIsInstance(cs2, ClassificationScheme)
         self.assertEqual(cs, cs2)
 
-        p = cs.pickle()
-        self.assertIsInstance(p, bytes)
-
-        cs3 = ClassificationScheme.fromPickle(p)
-        self.assertIsInstance(cs3, ClassificationScheme)
-        self.assertEqual(cs3, cs)
-
     def test_ClassInfoComboBox(self):
         scheme = self.createClassSchemeA()
 

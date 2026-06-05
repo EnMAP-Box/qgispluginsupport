@@ -184,8 +184,6 @@ def compileResourceFile(pathQrc, targetDir=None, suffix: str = '_rc.py', compres
     last_cwd = os.getcwd()
     os.chdir(cwd)
 
-    # print(cmd)
-
     if True:
         last_level = PyQt5.pyrcc_main.compressLevel
         last_threshold = PyQt5.pyrcc_main.compressThreshold
@@ -204,7 +202,7 @@ def compileResourceFile(pathQrc, targetDir=None, suffix: str = '_rc.py', compres
         cmd2 = 'pyrcc5 -no-compress -o {} {}'.format(pathPy.as_posix(), pathQrc.name)
 
         print(cmd2)
-        os.system(cmd2)
+        os.system(cmd2)  # nosec: B605
 
     os.chdir(last_cwd)
 

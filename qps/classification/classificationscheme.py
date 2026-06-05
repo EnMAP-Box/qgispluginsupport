@@ -29,7 +29,6 @@ import csv
 import json
 import os
 import pathlib
-import pickle
 import re
 import sys
 import warnings
@@ -41,7 +40,7 @@ from osgeo import gdal
 
 from qgis.PyQt.QtCore import NULL, pyqtSignal, QAbstractListModel, QAbstractTableModel, QByteArray, QItemSelectionModel, \
     QMimeData, QModelIndex, QObject, QSize, Qt, QMetaType
-from qgis.PyQt.QtGui import QBrush, QClipboard, QColor, QIcon, QPixmap
+from qgis.PyQt.QtGui import QBrush, QColor, QIcon, QPixmap
 from qgis.PyQt.QtWidgets import QAction, QApplication, QColorDialog, QComboBox, QDialog, QDialogButtonBox, QFileDialog, \
     QHBoxLayout, QInputDialog, QMenu, QMessageBox, QPushButton, QTableView, QToolButton, QVBoxLayout, QWidget
 from qgis.PyQt.QtXml import QDomDocument, QDomImplementation
@@ -50,7 +49,7 @@ from qgis.core import Qgis, QgsCategorizedSymbolRenderer, QgsField, QgsFillSymbo
     QgsReadWriteContext, QgsRendererCategory, QgsVectorLayer
 from qgis.gui import QgsDialog, QgsEditorConfigWidget, QgsEditorWidgetFactory, QgsEditorWidgetWrapper, QgsGui, \
     QgsMapLayerComboBox
-from ..utils import gdalDataset, loadUi, nextColor, registeredMapLayers
+from ..utils import gdalDataset, loadUi, nextColor, registeredMapLayers, stringFromByteArray, stringToByteArray
 
 DEFAULT_UNCLASSIFIEDCOLOR = QColor('black')
 DEFAULT_FIRST_COLOR = QColor('#a6cee3')
@@ -95,26 +94,26 @@ def hasClassification(pathOrDataset):
         elif isinstance(ds, QgsRasterLayer):
             ds = gdal.Open(ds.source())
     except Exception as ex:
-        pass
+        ds = None
 
     if not isinstance(ds, gdal.Dataset):
         return False
 
     for b in range(ds.RasterCount):
         band = ds.GetRasterBand(b + 1)
-        assert isinstance(band, gdal.Band)
         if band.GetCategoryNames() or band.GetColorTable():
             return True
     return False
 
 
-def getTextColorWithContrast(c: QColor) -> QColor:
+def getTextColorWithContrast(c: Union[str, QColor]) -> QColor:
     """
     Returns a QColor with good contrast to c
     :param c: QColor
     :return: QColor
     """
-    assert isinstance(c, QColor)
+    if not isinstance(c, QColor):
+        c = QColor(c)
     if c.lightness() < 0.5:
         return QColor('white')
     else:
@@ -147,8 +146,8 @@ class ClassInfo(QObject):
         Sets the label value.
         :param label: int, must be >= 0
         """
-        assert isinstance(label, int)
-        assert label >= 0
+        if not isinstance(label, int) and label >= 0:
+            raise Exception('label must be int >= 0')
         self.mLabel = label
         self.sigSettingsChanged.emit()
 
@@ -180,7 +179,8 @@ class ClassInfo(QObject):
         """
         if not isinstance(color, QColor):
             color = QColor(color)
-        assert isinstance(color, QColor)
+        if not isinstance(color, QColor):
+            raise Exception('color must be a QColor')
         self.mColor = color
         self.sigSettingsChanged.emit()
 
@@ -189,8 +189,7 @@ class ClassInfo(QObject):
         Sets thes class name
         :param name: str
         """
-        assert isinstance(name, str)
-        self.mName = name
+        self.mName = str(name)
         self.sigSettingsChanged.emit()
 
     def pixmap(self, *args) -> QPixmap:
@@ -250,7 +249,9 @@ class ClassInfo(QObject):
 
     @classmethod
     def fromMap(cls, data: dict) -> 'ClassInfo':
-        assert isinstance(data, dict)
+        if not isinstance(data, dict):
+            raise Exception('data must be a dict')
+
         return ClassInfo(label=data.get('label'),
                          name=data.get('name'),
                          color=data.get('color'))
@@ -320,8 +321,7 @@ class ClassificationScheme(QAbstractTableModel):
             row = parent.row()
         if action == Qt.MoveAction:
             if MIMEDATA_INTERNAL_IDs in mimeData.formats():
-                ba = bytes(mimeData.data(MIMEDATA_INTERNAL_IDs))
-                ids = pickle.loads(ba)
+                ids = json.loads(stringFromByteArray(mimeData.data(MIMEDATA_INTERNAL_IDs)))
 
                 classesToBeMoved = [c for c in self if id(c) in ids]
                 self.beginResetModel()
@@ -357,7 +357,7 @@ class ClassificationScheme(QAbstractTableModel):
         cs.insertClasses(classes)
         mimeData = QMimeData()
         mimeData.setData(MIMEDATA_KEY, cs.qByteArray())
-        mimeData.setData(MIMEDATA_INTERNAL_IDs, QByteArray(pickle.dumps([id(c) for c in classes])))
+        mimeData.setData(MIMEDATA_INTERNAL_IDs, stringToByteArray(json.dumps([id(c) for c in classes])))
         mimeData.setText(cs.toString())
 
         featureRenderer = self.featureRenderer()
@@ -585,29 +585,18 @@ class ClassificationScheme(QAbstractTableModel):
         """
         return json.dumps(self.asMap())
 
-    def pickle(self) -> bytes:
-        """
-        Serializes this ClassificationScheme a byte object, which can be
-        deserialized with ClassificationScheme.fromPickle()
-        :return: bytes
-        """
-        return pickle.dumps(self.json())
-
     def qByteArray(self) -> QByteArray:
         """
         Serializes this ClassicationScheme as QByteArray.
         Can be deserialized with ClassificationScheme.fromQByteArray()
         :return: QByteArray
         """
-        return QByteArray(self.pickle())
+        return stringToByteArray(self.json())
 
     @classmethod
     def fromQByteArray(cls, array: QByteArray):
-        return cls.fromPickle(bytes(array))
-
-    @classmethod
-    def fromPickle(cls, pkl: bytes):
-        return cls.fromJson(pickle.loads(pkl))
+        txt = stringFromByteArray(array)
+        return cls.fromJson(txt)
 
     @classmethod
     def fromFile(cls, p: str):
@@ -686,7 +675,7 @@ class ClassificationScheme(QAbstractTableModel):
         r = QgsCategorizedSymbolRenderer(self.name(), [])
 
         for c in self:
-            assert isinstance(c, ClassInfo)
+            c: ClassInfo
             try:
                 symbol = symbolType()
             except TypeError:
@@ -716,7 +705,7 @@ class ClassificationScheme(QAbstractTableModel):
         classes = []
         class_values = []
         for cat in renderer.categories():
-            assert isinstance(cat, QgsRendererCategory)
+            cat: QgsRendererCategory
             name = cat.label()
             value = cat.value()
             color = QColor(cat.symbol().color())
@@ -831,7 +820,7 @@ class ClassificationScheme(QAbstractTableModel):
         """
         ct = gdal.ColorTable()
         for i, c in enumerate(self):
-            assert isinstance(c, ClassInfo)
+            c: ClassInfo
             ct.SetColorEntry(i, c.mColor.getRgb())
         return ct
 
@@ -858,12 +847,11 @@ class ClassificationScheme(QAbstractTableModel):
         """
         if isinstance(classes, ClassInfo):
             classes = [classes]
-        assert isinstance(classes, list)
 
         removedIndices = []
         for c in classes:
-            assert c in self.mClasses
-            removedIndices.append(self.mClasses.index(c))
+            if c in self.mClasses:
+                removedIndices.append(self.mClasses.index(c))
 
         removedIndices = list(reversed(sorted(removedIndices)))
         removedClasses = []
@@ -882,8 +870,9 @@ class ClassificationScheme(QAbstractTableModel):
         Can be used to populate the ClassificationScheme.
         :param n: int, number of classes to add.
         """
-        assert isinstance(n, int)
-        assert n >= 0
+        if not isinstance(n, int) and n >= 0:
+            raise Exception('n must be >=0 ')
+
         classes = []
 
         if len(self) > 0:
@@ -917,16 +906,18 @@ class ClassificationScheme(QAbstractTableModel):
         """
         if isinstance(classes, ClassInfo):
             classes = [ClassInfo]
-
-        assert isinstance(classes, list)
+        if not isinstance(classes, list):
+            raise AssertionError('classes must be a list of ClassInfo')
         if len(classes) == 0:
             return
 
         for c in classes:
-            assert isinstance(c, ClassInfo)
-            assert id(c) not in [id(c) for c in
-                                 self.mClasses], \
-                'You cannot add the same ClassInfo instance to a ClassificationScheme twice. Create a copy first.'
+            if not isinstance(c, ClassInfo):
+                raise AssertionError(f'Not a ClassInfo {c}')
+
+            if id(c) in [id(c) for c in self.mClasses]:
+                raise AssertionError(
+                    'You cannot add the same ClassInfo instance to a ClassificationScheme twice. Create a copy first.')
 
         if index is None:
             # default: add new classes to end of list
@@ -936,7 +927,6 @@ class ClassificationScheme(QAbstractTableModel):
 
         self.beginInsertRows(QModelIndex(), index, index + len(classes) - 1)
         for i, c in enumerate(classes):
-            assert isinstance(c, ClassInfo)
             index = index + i
             # c.sigSettingsChanged.connect(self.onClassInfoSettingChanged)
             self.mClasses.insert(index, c)
@@ -988,7 +978,6 @@ class ClassificationScheme(QAbstractTableModel):
         :param c: ClassInfo
         :param index: int, index to add the ClassInfo. Defaults to the end.
         """
-        assert isinstance(c, ClassInfo)
         self.insertClasses([c], index=index)
 
     def saveToRasterBand(self, band: gdal.Band):
@@ -997,15 +986,13 @@ class ClassificationScheme(QAbstractTableModel):
         ClassInfo names are stored by gdal.Band.SetCategoryNames and colors as gdal.ColorTable.
         :param band: gdal.Band
         """
-        assert isinstance(band, gdal.Band)
 
         ct = gdal.ColorTable()
         cat = []
 
         for i, classInfo in enumerate(self.mClasses):
-            c = classInfo.mColor
+            c: QColor = classInfo.mColor
             cat.append(classInfo.mName)
-            assert isinstance(c, QColor)
             rgba = (c.red(), c.green(), c.blue(), c.alpha())
             ct.SetColorEntry(i, rgba)
         if len(cat) == 0:
@@ -1044,8 +1031,8 @@ class ClassificationScheme(QAbstractTableModel):
         """
         from ..utils import gdalDataset
         ds = gdalDataset(raster)
-        assert isinstance(ds, gdal.Dataset)
-        assert ds.RasterCount > bandIndex
+        if not (isinstance(ds, gdal.Dataset) and ds.RasterCount > bandIndex):
+            raise Exception('Unable to retrieve gdal.Dataset')
         band = ds.GetRasterBand(bandIndex + 1)
         self.saveToRasterBand(band)
         ds.FlushCache()
@@ -1202,7 +1189,6 @@ class ClassificationScheme(QAbstractTableModel):
         :param band: gdal.Band
         :return: ClassificationScheme, None if classes are undefined.
         """
-        assert isinstance(band, gdal.Band)
         ct = band.GetColorTable()
         cat = band.GetCategoryNames()
         if not isinstance(cat, list) or len(cat) == 0:
@@ -1248,7 +1234,6 @@ class ClassificationScheme(QAbstractTableModel):
             if bandIndex is None:
                 return None
 
-        assert bandIndex >= 0 and bandIndex < ds.RasterCount
         band = ds.GetRasterBand(bandIndex + 1)
         return ClassificationScheme.fromRasterBand(band)
 
@@ -1318,8 +1303,7 @@ class ClassificationScheme(QAbstractTableModel):
 
         cs = cls.create(nc)
         for i, row in enumerate(rows):
-            c = cs[i]
-            assert isinstance(c, ClassInfo)
+            c: ClassInfo = cs[i]
             if iLabel is not None:
                 c.setLabel(int(row[fieldnames[iLabel]]))
             if iName is not None:
@@ -1368,7 +1352,6 @@ class ClassificationSchemeComboBoxModel(QAbstractListModel):
         self.mAllowEmptyField = False
 
     def setAllowEmptyField(self, b: bool):
-        assert isinstance(b, bool)
         changed = self.mAllowEmptyField != b
 
         if changed:
@@ -1385,7 +1368,6 @@ class ClassificationSchemeComboBoxModel(QAbstractListModel):
         return self.mAllowEmptyField
 
     def setClassificationScheme(self, classScheme: ClassificationScheme):
-        assert isinstance(classScheme, ClassificationScheme)
         self.beginResetModel()
         self.mClassScheme = classScheme
         self.endResetModel()
@@ -1430,10 +1412,10 @@ class ClassificationSchemeComboBoxModel(QAbstractListModel):
         else:
 
             classInfo = self.mClassScheme.data(idxCs, role=Qt.UserRole)
-            assert isinstance(classInfo, ClassInfo)
+            if not isinstance(classInfo, ClassInfo):
+                raise Exception(f'wrong type: {classInfo}')
             if role == Qt.UserRole:
                 return classInfo
-            assert isinstance(classInfo, ClassInfo)
             nCols = self.mClassScheme.columnCount(idxCs)
             if role in [Qt.DisplayRole, Qt.ToolTipRole, Qt.WhatsThisRole]:
                 infos = []
@@ -1513,7 +1495,6 @@ class ClassificationSchemeComboBox(QComboBox):
         Sets the combobox model. Must be of type `ClassificationSchemeComboBoxModel`.
         :param model: ClassificationSchemeComboBoxModel
         """
-        assert isinstance(model, ClassificationSchemeComboBoxModel)
         super(ClassificationSchemeComboBox, self).setModel(model)
         self.mModel = model
 
@@ -1569,7 +1550,7 @@ class ClassificationSchemeWidget(QWidget):
         if classificationScheme is not None:
             self.setClassificationScheme(classificationScheme)
         self.mScheme.sigIsEditableChanged.connect(self.onIsEditableChanged)
-        assert isinstance(self.tableClassificationScheme, QTableView)
+        self.tableClassificationScheme: QTableView
         self.tableClassificationScheme.setModel(self.mScheme)
         self.tableClassificationScheme.doubleClicked.connect(self.onTableDoubleClick)
         self.tableClassificationScheme.resizeColumnsToContents()
@@ -1615,12 +1596,10 @@ class ClassificationSchemeWidget(QWidget):
         cs = ClassificationScheme()
         cs.insertClasses(classes)
         cb = QApplication.clipboard()
-        assert isinstance(cb, QClipboard)
         cb.setMimeData(cs.mimeData(None, vector_layer=vector_layer))
 
     def onPasteClasses(self):
         cb = QApplication.clipboard()
-        assert isinstance(cb, QClipboard)
         mimeData = QApplication.clipboard().mimeData()
 
         cs = ClassificationScheme.fromMimeData(mimeData)
@@ -1784,7 +1763,6 @@ class ClassificationSchemeWidget(QWidget):
 
     def onTableDoubleClick(self, idx):
         model = self.tableClassificationScheme.model()
-        assert isinstance(model, ClassificationScheme)
         classInfo = model.index2ClassInfo(idx)
         if idx.column() == ClassificationScheme.cColor and model.isEditable():
             c = QColorDialog.getColor(classInfo.mColor, self.tableClassificationScheme,
@@ -1843,11 +1821,13 @@ class ClassificationSchemeWidget(QWidget):
                 QMessageBox.critical(self, "Unable to load class info", str(ex))
 
     def appendClassificationScheme(self, classificationScheme):
-        assert isinstance(classificationScheme, ClassificationScheme)
+        if not isinstance(classificationScheme, ClassificationScheme):
+            raise Exception(f'wrong type: {classificationScheme}')
         self.mScheme.insertClasses([c for c in classificationScheme])
 
-    def setClassificationScheme(self, classificationScheme):
-        assert isinstance(classificationScheme, ClassificationScheme)
+    def setClassificationScheme(self, classificationScheme: ClassificationScheme):
+        if not isinstance(classificationScheme, ClassificationScheme):
+            raise Exception(f'wrong type: {classificationScheme}')
         self.mScheme.clear()
         self.appendClassificationScheme(classificationScheme)
 
@@ -1895,7 +1875,6 @@ class ClassificationSchemeDialog(QgsDialog):
         return self.w.classificationScheme()
 
     def setClassificationScheme(self, classificationScheme):
-        assert isinstance(classificationScheme, ClassificationScheme)
         self.w.setClassificationScheme(classificationScheme)
 
 
@@ -1967,7 +1946,8 @@ class ClassificationSchemeEditorConfigWidget(QgsEditorConfigWidget):
     def __init__(self, vl: QgsVectorLayer, fieldIdx: int, parent: QWidget):
         super(ClassificationSchemeEditorConfigWidget, self).__init__(vl, fieldIdx, parent)
         # self.setupUi(self)
-        assert isinstance(vl, QgsVectorLayer)
+        if not isinstance(vl, QgsVectorLayer):
+            raise Exception('vl is not a QgsVectorLayer')
         self.mSchemeWidget = ClassificationSchemeWidget(parent=self)
         self.mSchemeWidget.classificationScheme().sigClassesAdded.connect(self.onClassesAdded)
         self.mSchemeWidget.classificationScheme().sigClassesRemoved.connect(self.onClassesRemoved)
@@ -2156,7 +2136,6 @@ class ClassificationSchemeWidgetFactory(QgsEditorWidgetFactory):
         if fieldIdx < 0:
             return 0
         field = vl.fields().at(fieldIdx)
-        assert isinstance(field, QgsField)
         if re.search('(int|float|double|text|string)', field.typeName(), re.I):
             if re.search('class', field.name(), re.I):
                 return 5  # should we return 10 for showing specialized support?

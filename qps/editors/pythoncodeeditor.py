@@ -1,3 +1,4 @@
+from builtins import AssertionError
 from pathlib import Path
 from typing import Optional
 
@@ -200,7 +201,8 @@ class PythonCodeWidget(QWidget):
         self.doValidationRequest()
 
     def setLayer(self, layer: QgsVectorLayer):
-        assert isinstance(layer, QgsVectorLayer) and layer.isValid()
+        if not (isinstance(layer, QgsVectorLayer) and layer.isValid()):
+            raise AssertionError(f'layer must be valid: {layer}')
         self.mLayer = layer
 
     def layer(self) -> Optional[QgsVectorLayer]:

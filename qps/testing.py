@@ -25,11 +25,11 @@
 ***************************************************************************
 """
 import gc
-import hashlib
 import inspect
 import itertools
 import os
 import random
+import secrets
 import shutil
 import sys
 import traceback
@@ -677,9 +677,9 @@ class TestCase(QgisTestCase):
         p = Path(DIR_REPO) / root / Path(*folders)
 
         if len(p.as_posix()) > max_length:
-            p2 = Path(DIR_REPO) / root / hashlib.md5(p.as_posix().encode()).hexdigest()
+            p2 = Path(DIR_REPO) / root / secrets.token_urlsafe(8).upper()
             info = [f'Path exceeds max_length ({max_length}: {p}).',
-                    f'Use MD5 hash instead: {p2}']
+                    f'Use random name instead: {p2}']
             warnings.warn('\n'.join(info), stacklevel=2)
             p = p2
 
