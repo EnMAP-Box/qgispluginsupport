@@ -1460,7 +1460,6 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
         assert self.bandMetadataModel.isEditable() == isEditable
 
     def showCalculator(self, dualView: QgsDualView):
-        assert isinstance(dualView, QgsDualView)
         masterModel: QgsAttributeTableModel = dualView.masterModel()
         calc: QgsFieldCalculator = BandPropertyCalculator(dualView.masterModel().layer(), self)
 
@@ -1592,7 +1591,8 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
             try:
                 if self.is_gdal:
                     ds = gdalDataset(self.mapLayer(), gdal.GA_Update)
-                    assert isinstance(ds, gdal.Dataset)
+                    if not isinstance(ds, gdal.Dataset):
+                        raise AssertError(f'Unable to open GDAL source for {self.mapLayer()} in update mode')
                     if self.supportsGDALClassification:
                         cs = self.classificationSchemeWidget.classificationScheme()
                         if isinstance(cs, ClassificationScheme):
