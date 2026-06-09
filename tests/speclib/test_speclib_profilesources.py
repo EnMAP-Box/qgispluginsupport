@@ -77,7 +77,8 @@ class SpectralProcessingTests(TestCase):
             size = k_mode.kernelSize()
             x, y = size.width(), size.height()
             profiles = source.collectProfiles(pt, QSize(x, y))
-            self.assertTrue(len(profiles) > 0)
+
+            self.assertTrue(len(profiles) > 0, msg=f'No profiles for {pt}')
             self.assertTrue(len(profiles) < x * y)
 
             s = ""

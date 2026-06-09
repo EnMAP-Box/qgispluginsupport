@@ -1592,7 +1592,7 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
                 if self.is_gdal:
                     ds = gdalDataset(self.mapLayer(), gdal.GA_Update)
                     if not isinstance(ds, gdal.Dataset):
-                        raise AssertError(f'Unable to open GDAL source for {self.mapLayer()} in update mode')
+                        raise AssertionError(f'Unable to open GDAL source for {self.mapLayer()} in update mode')
                     if self.supportsGDALClassification:
                         cs = self.classificationSchemeWidget.classificationScheme()
                         if isinstance(cs, ClassificationScheme):

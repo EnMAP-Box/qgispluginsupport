@@ -310,7 +310,8 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
                     # rad = -90 * math.pi / 180
                     # print(f'{rad}\n{bearing}')
                     x0 = None
-                    if (crs.isValid()
+                    if (
+                        crs.isValid()
                         and distanceArea.lengthUnits() == QgsUnitTypes.DistanceUnit.DistanceMeters
                         and math.isfinite(bearing)
                     ):

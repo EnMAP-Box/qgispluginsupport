@@ -23,7 +23,7 @@
 ***************************************************************************
 """
 import pathlib
-from typing import List, Union
+from typing import List, Union, Optional
 
 import numpy as np
 
@@ -95,11 +95,11 @@ class BandCombination(object):
         if isinstance(band_keys, str):
             band_keys = (band_keys,)
         if not (isinstance(band_keys, tuple) and len(band_keys) > 0):
-            raise AssertError('band_keys must be a tuple')
+            raise AssertionError('band_keys must be a tuple')
 
         for b in band_keys:
             if not (b in LUT_WAVELENGTH.keys()):
-                raise AssertError(f'Unknown wavelength key: {b}')
+                raise AssertionError(f'Unknown wavelength key: {b}')
 
         self.mBand_keys = band_keys
         self.mName = name
@@ -166,7 +166,7 @@ class RasterBandConfigWidget(QpsMapLayerConfigWidget):
         self.mRendererXMLString: Optional[str] = None
         self.mLayer.rendererChanged.connect(self.syncToLayer)
         if not isinstance(self.cbSingleBand, QgsRasterBandComboBox):
-            raise AssertError('self.cbSingleBand is not a QgsRasterBandComboBox')
+            raise AssertionError('self.cbSingleBand is not a QgsRasterBandComboBox')
 
         self.cbSingleBand.setLayer(self.mLayer)
         self.cbMultiBandRed.setLayer(self.mLayer)
@@ -231,7 +231,7 @@ class RasterBandConfigWidget(QpsMapLayerConfigWidget):
 
         self.gbSingleBandWavelength.setLayout(lSingle)
         if not self.gbSingleBandWavelength.layout() == lSingle:
-            raise AssertError('requires FlowLayout')
+            raise AssertionError('requires FlowLayout')
         self.gbMultiBandWavelength.setLayout(lMulti)
         lSingle.setContentsMargins(0, 0, 0, 0)
         lSingle.setSpacing(0)
