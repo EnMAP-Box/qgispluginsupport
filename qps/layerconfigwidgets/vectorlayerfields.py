@@ -23,6 +23,7 @@
 ***************************************************************************
 """
 import sys
+from typing import Dict
 
 from qgis.PyQt.QtCore import QSortFilterProxyModel, QModelIndex, pyqtSignal
 from qgis.PyQt.QtCore import Qt
@@ -249,7 +250,7 @@ class LayerAttributeFormConfigEditorWidget(QWidget):
         self.mField = layer.fields().at(index)
 
         if not isinstance(self.mField, QgsField):
-            raise AssertError(f'Unable to get field for index {index}')
+            raise AssertionError(f'Unable to get field for index {index}')
         self.mFieldIndex = index
 
         self.mFieldNameLabel = QLabel(parent)
