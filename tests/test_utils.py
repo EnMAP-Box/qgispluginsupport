@@ -901,8 +901,8 @@ class TestUtils(TestCase):
                   ]
 
         for n in range(25):
-            points.append(QgsPointXY(random.uniform(ext.xMinimum(), ext.xMaximum()),
-                                     random.uniform(ext.yMinimum(), ext.yMaximum())))
+            points.append(QgsPointXY(random.uniform(ext.xMinimum(), ext.xMaximum()),  # nosec B311
+                                     random.uniform(ext.yMinimum(), ext.yMaximum())))  # nosec B311
 
         for i, p in enumerate(points):
             # create empty rectangle = single point

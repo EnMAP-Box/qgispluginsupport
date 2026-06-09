@@ -29,7 +29,7 @@ features = []
 for i, n in enumerate(['A', 'B', 'C', 'D']):
     feature = QgsFeature(fields)
     feature.setAttribute('name', n)
-    feature.setAttribute('num', random.randint(0, 100))
+    feature.setAttribute('num', random.randint(0, 100))  # nosec B311
     pkl = QByteArray(pickle.dumps(dict(testdata=f'{i}:{n}')))
     feature.setAttribute('binary', pkl)
     features.append(feature)

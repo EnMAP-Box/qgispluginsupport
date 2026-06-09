@@ -387,8 +387,8 @@ class SpectralProcessingTests(TestCase):
 
         def onClicked():
             ext = SpatialExtent.fromMapCanvas(canvas)
-            x = random.uniform(ext.xMinimum(), ext.xMaximum())
-            y = random.uniform(ext.yMinimum(), ext.yMaximum())
+            x = random.uniform(ext.xMinimum(), ext.xMaximum())  # nosec B311
+            y = random.uniform(ext.yMinimum(), ext.yMaximum())  # nosec B311
             pt = SpatialPoint(ext.crs(), x, y)
             panel.loadCurrentMapSpectra(pt, mapCanvas=canvas, runAsync=False)
 
