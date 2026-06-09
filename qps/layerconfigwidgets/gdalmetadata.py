@@ -316,7 +316,8 @@ class GDALBandMetadataModel(QgsVectorLayer):
         return DOMAIN
 
     def bandKey(self, bandNo: int) -> str:
-        assert bandNo > 0
+        if not bandNo > 0:
+            raise AssertionError('bandNo must be greater than 0')
         if (
             isinstance(self.mMapLayer, QgsRasterLayer)
             and isinstance(self.mMapLayer.dataProvider(), QgsRasterDataProvider)
@@ -363,7 +364,8 @@ class GDALBandMetadataModel(QgsVectorLayer):
         return v
 
     def initFields(self):
-        assert self.fields().count() == 0
+        if self.fields().count() != 0:
+            raise AssertionError('fields() must be empty')
         # define default fields
         is_editable = self.isEditable()
         self.startEditing()
@@ -570,7 +572,8 @@ class GDALBandMetadataModel(QgsVectorLayer):
         if field is None:
             fields = self.fields().names()
         else:
-            assert field in self.fields().names()
+            if field not in self.fields().names():
+                raise AssertionError(f'unknown field: {field}')
             fields = [field]
 
         MD = {f: [] for f in fields}
@@ -697,7 +700,8 @@ class GDALBandMetadataModel(QgsVectorLayer):
                             value = self.toFieldValue(value)
 
                         f.setAttribute(n, value)
-                    assert self.addFeature(f)
+                    if not self.addFeature(f):
+                        raise AssertionError('failed to add feature')
                 self.endEditCommand()
                 self.hasEdits = False
         self.hasEdits = False
@@ -715,7 +719,8 @@ class GDALBandMetadataModel(QgsVectorLayer):
         gdal.SetConfigOption('GDAL_PAM_ENABLED', 'YES')
 
         ds = gdalDataset(self.mMapLayer, eAccess=gdal.GA_Update)
-        assert isinstance(ds, gdal.Dataset)
+        if not isinstance(ds, gdal.Dataset):
+            raise AssertionError('ds must be a gdal.Dataset')
 
         is_envi: bool = ds.GetDriver().ShortName == 'ENVI'
 
@@ -1009,7 +1014,8 @@ class GDALMetadataModel(QAbstractTableModel):
         debugLog(f'DEBUG: add & commit features {datetime.datetime.now() - t0}')
 
     def appendMetadataItem(self, item: GDALMetadataItem):
-        assert isinstance(item, GDALMetadataItem)
+        if not isinstance(item, GDALMetadataItem):
+            raise AssertionError('item must be a GDALMetadataItem')
         self.beginInsertRows(QModelIndex(), self.rowCount(), self.rowCount())
         self.mFeatures.append(item)
         self.endInsertRows()
@@ -1020,11 +1026,13 @@ class GDALMetadataModel(QAbstractTableModel):
         gdal.SetConfigOption('GDAL_PAM_ENABLED', 'YES')
 
         ds: gdal.Dataset = gdalDataset(self.mMapLayer, gdal.GA_Update)
-        assert isinstance(ds, gdal.Dataset)
+        if not isinstance(ds, gdal.Dataset):
+            raise AssertionError('ds must be a gdal.Dataset')
 
         modified = [f for f in self.mFeatures if f.isModified()]
         for item in [f for f in modified if f.obj == gdal.Dataset.__name__]:
-            assert gdal.CPLE_None == ds.SetMetadataItem(item.key, str(item.value), item.domain)
+            if gdal.CPLE_None != ds.SetMetadataItem(item.key, str(item.value), item.domain):
+                raise AssertionError('failed to set metadata item')
 
         LUT_BANDS = {}
         for item in [f for f in modified if gdal.Band.__name__ in f.obj]:
@@ -1033,8 +1041,10 @@ class GDALMetadataModel(QAbstractTableModel):
 
         for b, items in LUT_BANDS.items():
             band: gdal.Dataset = ds.GetRasterBand(b)
-            assert isinstance(band, gdal.Band)
-            assert gdal.CPLE_None == band.SetMetadataItem(item.key, str(item.value), item.domain)
+            if not isinstance(band, gdal.Band):
+                raise AssertionError('band must be a gdal.Band')
+            if gdal.CPLE_None != band.SetMetadataItem(item.key, str(item.value), item.domain):
+                raise AssertionError('failed to set metadata item')
 
         ds.FlushCache()
         del ds
@@ -1043,14 +1053,17 @@ class GDALMetadataModel(QAbstractTableModel):
 
     def applyToOGRSource(self):
         ds: ogr.DataSource = ogrDataSource(self.mMapLayer, update=gdal.GA_Update)
-        assert isinstance(ds, ogr.DataSource)
+        if not isinstance(ds, ogr.DataSource):
+            raise AssertionError('ds must be an ogr.DataSource')
 
         modified = [f for f in self.mFeatures if f.isModified()]
         for item in modified:
             match = RX_MAJOR_OBJECT_ID.match(item.obj)
-            assert match
+            if not match:
+                raise AssertionError(f'invalid major object id: {item.obj}')
             if item.obj == ogr.DataSource.__name__:
-                assert gdal.CPLE_None == ds.SetMetadataItem(item.key, str(item.value), item.domain)
+                if gdal.CPLE_None != ds.SetMetadataItem(item.key, str(item.value), item.domain):
+                    raise AssertionError('failed to set metadata item')
             else:
                 D = match.groupdict()
                 layerid = D.get('layerid', None)
@@ -1061,8 +1074,10 @@ class GDALMetadataModel(QAbstractTableModel):
                     layer: ogr.Layer = ds.GetLayerByIndex(int(layerid))
                 elif layername:
                     layer: ogr.Layer = ds.GetLayerByName(layername)
-                assert isinstance(layer, ogr.Layer)
-                assert gdal.CPLE_None == layer.SetMetadataItem(item.key, str(item.value), item.domain)
+                if not isinstance(layer, ogr.Layer):
+                    raise AssertionError('layer must be an ogr.Layer')
+                if gdal.CPLE_None != layer.SetMetadataItem(item.key, str(item.value), item.domain):
+                    raise AssertionError('failed to set metadata item')
 
         ds.FlushCache()
         del ds
@@ -1176,7 +1191,8 @@ class GDALMetadataItemDialog(QDialog):
         loadUi(pathUi, self)
 
         for mo in major_objects:
-            assert RX_MAJOR_OBJECT_ID.match(mo), mo
+            if not RX_MAJOR_OBJECT_ID.match(mo):
+                raise AssertionError(mo)
 
         self.tbKey: QLineEdit
         self.tbValue: QLineEdit
@@ -1256,7 +1272,8 @@ class BandPropertyCalculator(QgsFieldCalculator):
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
 
-        assert self.objectName() == 'QgsFieldCalculatorBase'
+        if self.objectName() != 'QgsFieldCalculatorBase':
+            raise AssertionError("objectName() must be 'QgsFieldCalculatorBase'")
         self.setWindowTitle('Band Property Calculator')
 
         cbOnlyUpdate: QCheckBox = self.findChild(QCheckBox, name='mOnlyUpdateSelectedCheckBox')
@@ -1409,7 +1426,8 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
         self.optionMatchCase.changed.connect(updateFilter)
         self.optionRegex.changed.connect(updateFilter)
 
-        assert isinstance(self.classificationSchemeWidget, ClassificationSchemeWidget)
+        if not isinstance(self.classificationSchemeWidget, ClassificationSchemeWidget):
+            raise AssertionError('classificationSchemeWidget must be a ClassificationSchemeWidget')
 
         self.is_gdal = self.is_ogr = self.supportsGDALClassification = False
         self.classificationSchemeWidget.setIsEditable(False)
@@ -1456,8 +1474,10 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
             self.metadataModel.setEditable(False)
             self.bandMetadataModel.commitChanges()
 
-        assert self.metadataModel.isEditable() == isEditable
-        assert self.bandMetadataModel.isEditable() == isEditable
+        if self.metadataModel.isEditable() != isEditable:
+            raise AssertionError('metadataModel editable state mismatch')
+        if self.bandMetadataModel.isEditable() != isEditable:
+            raise AssertionError('bandMetadataModel editable state mismatch')
 
     def showCalculator(self, dualView: QgsDualView):
         masterModel: QgsAttributeTableModel = dualView.masterModel()
