@@ -67,12 +67,15 @@ def create_stac_item(path_img: Union[str, Path], stac_root: Union[str, Path]) ->
     """
     path_img = Path(path_img)
     stac_root = Path(stac_root)
-    assert path_img.is_file()
-    assert stac_root.is_dir()
+    if not (path_img.is_file()):
+        raise AssertionError
+    if not (stac_root.is_dir()):
+        raise AssertionError
     path_rel = path_img.relative_to(stac_root)
 
     ds: Dataset = Open(path_img.as_posix())
-    assert isinstance(ds, Dataset)
+    if not (isinstance(ds, Dataset)):
+        raise AssertionError
 
     infoOptions = InfoOptions(format='json')
     infos = Info(ds, options=infoOptions)
@@ -122,7 +125,8 @@ def create_stac_item(path_img: Union[str, Path], stac_root: Union[str, Path]) ->
 def create_stac_item_collection(output_dir: Union[str, Path], path_json: Union[str, Path]) -> pystac.ItemCollection:
     path_json = Path(path_json)
     stac_root = path_json.parent
-    assert stac_root.is_dir()
+    if not (stac_root.is_dir()):
+        raise AssertionError
     items = []
     for e in os.scandir(output_dir):
         if e.is_file() and rx_image_files.search(e.name):

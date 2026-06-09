@@ -13,8 +13,10 @@ reg: QgsProcessingRegistry = QgsApplication.instance().processingRegistry()
 alg1 = reg.algorithmById('native:rescaleraster')
 alg2 = reg.algorithmById('gdal:aspect')
 
-assert alg1.shortHelpString() != ''
-assert alg2.shortHelpString() == ''
+if not (alg1.shortHelpString() != ''):
+    raise AssertionError
+if not (alg2.shortHelpString() == ''):
+    raise AssertionError
 
 
 class ExampleDialog(QgsProcessingAlgorithmDialogBase):

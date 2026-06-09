@@ -97,7 +97,8 @@ class MyTaskDialog(QDialog):
     def onCancel(self):
         mgr: QgsTaskManager = QgsApplication.taskManager()
         for t in mgr.tasks():
-            assert isinstance(t, QgsTask)
+            if not isinstance(t, QgsTask):
+                raise AssertionError
             t.cancel()
 
         self.btnStart.setEnabled(True)
@@ -113,7 +114,8 @@ class MyTaskDialog(QDialog):
 
         self.mTasks.clear()
         for t in tasks:
-            assert isinstance(t, MyTask)
+            if not isinstance(t, MyTask):
+                raise AssertionError
             t.mCallback = self.onFinished
             mgr.addTask(t)
 

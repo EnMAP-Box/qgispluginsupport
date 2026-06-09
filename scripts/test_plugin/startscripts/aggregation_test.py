@@ -36,7 +36,8 @@ with edit(sl):
         dump = encodeProfileValueDict(data, sl.fields()['profile'])
         f.setAttribute('profile', dump)
         f.setAttribute('class', item['class'])
-        assert sl.addFeature(f)
+        if not (sl.addFeature(f)):
+            raise AssertionError
 
 calc = QgsFieldCalculator(sl)
 calc.exec()

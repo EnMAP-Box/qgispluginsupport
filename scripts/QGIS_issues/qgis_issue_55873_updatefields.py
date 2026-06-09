@@ -33,16 +33,22 @@ layer.setEditorWidgetSetup(0, QgsEditorWidgetSetup('Color', {}))
 # Example 2: editorWidgetSetup and comment not considered in field comparison
 field1 = QgsField('info', QMetaType.QString)
 field2 = QgsField('info', QMetaType.QString)
-assert field1 == field2
-assert field1.editorWidgetSetup().type() == field2.editorWidgetSetup().type()
-assert field1.comment() == field2.comment()
+if not (field1 == field2):
+    raise AssertionError
+if not (field1.editorWidgetSetup().type() == field2.editorWidgetSetup().type()):
+    raise AssertionError
+if not (field1.comment() == field2.comment()):
+    raise AssertionError
 
 # change comment and editorWidgetSetup
 field2.setEditorWidgetSetup(QgsEditorWidgetSetup('Color', {}))
 field2.setComment('Color info value')
 
-assert field1.editorWidgetSetup().type() != field2.editorWidgetSetup().type()
-assert field1.comment() != field2.comment()
+if not (field1.editorWidgetSetup().type() != field2.editorWidgetSetup().type()):
+    raise AssertionError
+if not (field1.comment() != field2.comment()):
+    raise AssertionError
 
 # different QgsEditorWidgetSetup types, but still same field?
-assert field1 != field2
+if not (field1 != field2):
+    raise AssertionError

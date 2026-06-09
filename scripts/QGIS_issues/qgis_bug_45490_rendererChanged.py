@@ -12,7 +12,8 @@ app = start_app()
 
 path = pathlib.Path(QgsApplication.prefixPath()) / 'resources' / 'data' / 'world_map.gpkg|layername=countries'
 lyr = QgsVectorLayer(path.as_posix(), 'World')
-assert lyr.isValid()
+if not (lyr.isValid()):
+    raise AssertionError
 
 r = QgsCategorizedSymbolRenderer('NAME')
 for name in lyr.uniqueValues(lyr.fields().lookupField('NAME')):

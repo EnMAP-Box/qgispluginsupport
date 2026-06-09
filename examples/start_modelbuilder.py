@@ -2,9 +2,9 @@ from processing.modeler.ModelerDialog import ModelerDialog
 from qgis.core import QgsApplication, QgsProcessingRegistry, QgsProcessingAlgorithm, \
     QgsProcessingParameterNumber, QgsProcessingParameterRasterDestination, \
     QgsProcessingContext, QgsProcessingFeedback, QgsProcessingParameterFile
-from qps.testing import start_app, StartOptions, ExampleAlgorithmProvider
+from qps.testing import start_app, ExampleAlgorithmProvider
 
-app: QgsApplication = start_app(options=StartOptions.All)
+app: QgsApplication = start_app()
 
 
 class MyParameter(QgsProcessingParameterFile):
@@ -41,11 +41,7 @@ class TestProcessingAlgorithm(QgsProcessingAlgorithm):
                                          0.00, 999999.99))
         self.addParameter(QgsProcessingParameterRasterDestination('pathOutput', 'The Output Dataset'))
 
-    def processAlgorithm(self, parameters, context, feedback):
-        assert isinstance(parameters, dict)
-        assert isinstance(context, QgsProcessingContext)
-        assert isinstance(feedback, QgsProcessingFeedback)
-
+    def processAlgorithm(self, parameters: dict, context: QgsProcessingContext, feedback: QgsProcessingFeedback):
         outputs = {}
         return outputs
 

@@ -13,7 +13,10 @@ if True:
 start_app()
 
 crs1 = QgsCoordinateReferenceSystem('EPSG:4326')
-assert crs1.isValid()
+if not (crs1.isValid()):
+    raise AssertionError
 crs2 = QgsCoordinateReferenceSystem.fromWkt(crs1.toWkt())
-assert crs1.toWkt() == crs2.toWkt()
-assert crs2.isValid()  # <-- raises error
+if not (crs1.toWkt() == crs2.toWkt()):
+    raise AssertionError
+if not (crs2.isValid()):
+    raise AssertionError  # <-- raises error

@@ -5,7 +5,8 @@ from qgis.core import QgsCoordinateReferenceSystem, QgsPointXY, QgsCoordinateTra
 crsSrc = QgsCoordinateReferenceSystem('EPSG:4326')
 crsDst = QgsCoordinateReferenceSystem('EPSG:32633')
 transform = QgsCoordinateTransform(crsSrc, crsDst, QgsProject.instance())
-assert transform.isValid()
+if not (transform.isValid()):
+    raise AssertionError
 
 point = QgsPointXY(12.0, 52.0)
 # this works well

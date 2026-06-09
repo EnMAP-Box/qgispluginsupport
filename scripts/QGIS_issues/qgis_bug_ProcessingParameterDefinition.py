@@ -85,7 +85,7 @@ class SpectralMathTests(TestCase):
 
     def test_TestMyParameter(self):
         procReg = QgsApplication.instance().processingRegistry()
-        assert isinstance(procReg, QgsProcessingRegistry)
+        self.assertIsInstance(procReg, QgsProcessingRegistry)
 
         myType = MyParameterType()
         procReg.addParameterType(myType)
@@ -131,6 +131,7 @@ class SpectralMathTests(TestCase):
 
 if __name__ == '__main__':
     procReg = QgsApplication.instance().processingRegistry()
-    assert isinstance(procReg, QgsProcessingRegistry)
+    if not (isinstance(procReg, QgsProcessingRegistry)):
+        raise AssertionError
     parameterType = MyParameterType()
     procReg.addParameterType(parameterType)

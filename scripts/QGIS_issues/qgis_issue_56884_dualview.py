@@ -59,4 +59,5 @@ if True:
     print(f'zoomed feature ids: {canvas.zoom_fids}')
     print(f'panned feature ids: {canvas.pan_fids}')
 else:
-    assert len(canvas.flash_fids) > 0
+    if not (len(canvas.flash_fids) > 0):
+        raise AssertionError

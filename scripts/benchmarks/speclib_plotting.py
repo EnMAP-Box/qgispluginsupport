@@ -43,7 +43,8 @@ def n_items(w: SpectralLibraryWidget):
 
 t0 = datetime.datetime.now()
 layer = QgsVectorLayer(path_large_speclib)
-assert layer.isValid()
+if not (layer.isValid()):
+    raise AssertionError
 # layer.setSubsetString('"fid" <= 550')
 
 measure(f'Open Layer with {layer.featureCount()} features')

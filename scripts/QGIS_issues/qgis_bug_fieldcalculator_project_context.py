@@ -13,10 +13,14 @@ lyrB2 = QgsVectorLayer('Point?crs=epsg:4326&field=bar:string(20)', 'B2', 'memory
 pA.addMapLayer(lyrA)
 pB.addMapLayers([lyrB1, lyrB2])
 
-assert pA != pB
-assert lyrA.project() == pA
-assert lyrB1.project() == pB
-assert lyrB2.project() == pB
+if not (pA != pB):
+    raise AssertionError
+if not (lyrA.project() == pA):
+    raise AssertionError
+if not (lyrB1.project() == pB):
+    raise AssertionError
+if not (lyrB2.project() == pB):
+    raise AssertionError
 
 calc = QgsFieldCalculator(lyrB1)
 calc.exec()

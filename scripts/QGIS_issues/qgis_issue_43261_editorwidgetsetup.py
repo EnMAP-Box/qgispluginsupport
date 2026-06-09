@@ -8,7 +8,8 @@ from qgis.gui import QgsGui
 from qgis.testing.mocked import get_iface
 
 DIR_QGIS_REPO = pathlib.Path(r'F:\Repositories\QGIS')
-assert DIR_QGIS_REPO.is_dir()
+if not (DIR_QGIS_REPO.is_dir()):
+    raise AssertionError
 
 site.addsitedir(DIR_QGIS_REPO / 'tests' / 'src' / 'python')
 
@@ -25,7 +26,7 @@ class PyQgsOGRProvider(unittest.TestCase):
 
         editor_widget_type = 'Color'
         factory = QgsGui.instance().editorWidgetRegistry().factory(editor_widget_type)
-        assert factory.name() == editor_widget_type
+        self.assertEqual(factory.name(), editor_widget_type)
 
         # 1. create a vector
         uri = "point?crs=epsg:4326&field=id:integer"
@@ -44,9 +45,9 @@ class PyQgsOGRProvider(unittest.TestCase):
         setup2 = QgsEditorWidgetSetup(editor_widget_type, {})
 
         # 2. Add field, set editor widget after commitChanges()
-        assert layer.startEditing()
+        self.assertTrue(layer.startEditing())
         layer.addAttribute(field1)
-        assert layer.commitChanges(stopEditing=False)
+        self.assertTrue(layer.commitChanges(stopEditing=False))
         i = layer.fields().lookupField(field1.name())
         layer.setEditorWidgetSetup(i, setup1)
 

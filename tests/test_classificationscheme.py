@@ -377,8 +377,8 @@ class TestsClassificationScheme(TestCase):
 
     def test_io_CSV(self):
 
-        pathTmp = tempfile.mktemp(suffix='.csv')
-
+        tmpDir = self.createTestOutputDirectory()
+        pathTmp = str(tmpDir / 'test_io_CSV.csv')
         cs = self.createClassSchemeA()
         self.assertIsInstance(cs, ClassificationScheme)
         path = cs.saveToCsv(pathTmp)

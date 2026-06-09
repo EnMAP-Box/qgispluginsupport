@@ -27,15 +27,19 @@ for entry in os.scandir(DIR_INPUTS):
 profiles = []
 for file in files:
     profiles.extend(ASDBinaryFile(file).asFeatures())
-assert len(profiles) == len(files)
+if not (len(profiles) == len(files)):
+    raise AssertionError
 
 # create an in-memory spectral library
 layer = SpectralLibraryUtils.createSpectralLibrary([])
-assert isinstance(layer, QgsVectorLayer)
+if not (isinstance(layer, QgsVectorLayer)):
+    raise AssertionError
 layer.startEditing()
 SpectralLibraryUtils.addProfiles(layer, profiles, addMissingFields=True)
-assert layer.commitChanges(), layer.error()
-assert layer.featureCount() == len(files)
+if not (layer.commitChanges()):
+    raise AssertionError(layer.error())
+if not (layer.featureCount() == len(files)):
+    raise AssertionError
 
 features = list(layer.getFeatures())
 
