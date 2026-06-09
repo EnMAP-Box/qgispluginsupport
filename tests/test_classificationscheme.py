@@ -56,7 +56,7 @@ class TestsClassificationScheme(TestCase):
         rl = TestObjects.createRasterLayer(nb=3)
 
         renderer = QgsPalettedRasterRenderer(None, 1, {})
-        assert isinstance(renderer, QgsPalettedRasterRenderer)
+        self.assertIsInstance(renderer, QgsPalettedRasterRenderer)
         rl.setRenderer(renderer)
 
         return rl

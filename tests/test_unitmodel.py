@@ -146,7 +146,8 @@ class UnitModelTests(TestCase):
         def onIndexChanged(idx):
             data = cb.itemData(idx, Qt.UserRole + 1)
             data2 = cb.currentData(Qt.UserRole + 1)
-            assert data == data2
+            if not (data == data2):
+                raise AssertionError
             print(data)
 
         cb.currentIndexChanged.connect(onIndexChanged)

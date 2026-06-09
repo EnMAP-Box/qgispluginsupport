@@ -40,9 +40,9 @@ class TestSpeclibIO_EcoSIS(TestCase):
 
             reader = EcoSISSpectralLibraryReader(file)
             features = reader.asFeatures()
-            assert len(features) == n_lines - 1
+            self.assertEqual(len(features), n_lines - 1)
             for f in features:
-                assert is_spectral_feature(f)
+                self.assertTrue(is_spectral_feature(f))
             s = ""
 
     def test_read_EcoSIS_processing_alg(self):
@@ -68,12 +68,12 @@ class TestSpeclibIO_EcoSIS(TestCase):
             results = alg.processAlgorithm(par, context, feedback)
             results = alg.postProcessAlgorithm(context, feedback)
             lyr = results.get(ImportSpectralProfiles.P_OUTPUT)
-            assert isinstance(lyr, QgsVectorLayer)
+            self.assertIsInstance(lyr, QgsVectorLayer)
             for f in lyr.getFeatures():
                 dump = f.attribute('reflectance')
                 data = decodeProfileValueDict(dump)
                 for k in ['x', 'y', 'xUnit']:
-                    assert k in data
+                    self.assertIn(k, data)
 
                 for a in f.attributes():
                     self.assertTrue(a is not None)

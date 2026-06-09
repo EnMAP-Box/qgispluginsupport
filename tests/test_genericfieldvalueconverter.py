@@ -53,7 +53,7 @@ class GenericFieldValueConverterTests(TestCase):
         for ext in formats:
             path, drvName = create_vsimemfile(ext)
             lyr = QgsVectorLayer(path)
-            assert lyr.isValid()
+            self.assertTrue(lyr.isValid())
 
     def test_collect_native_types_0(self):
 
@@ -153,11 +153,11 @@ class GenericFieldValueConverterTests(TestCase):
                                                                      QgsProject.instance().transformContext(),
                                                                      options,
                                                                      )
-            assert not writer.hasError(), writer.errorMessage()
-            assert isinstance(writer, QgsVectorFileWriter)
+            self.assertFalse(writer.hasError(), writer.errorMessage())
+            self.assertIsInstance(writer, QgsVectorFileWriter)
             for f in lyr.getFeatures():
-                assert writer.addFeature(f), f'{writer.errorMessage()}'
-            assert writer.flushBuffer()
+                self.assertTrue(writer.addFeature(f), f'{writer.errorMessage()}')
+            self.assertTrue(writer.flushBuffer())
 
 
 if __name__ == '__main__':

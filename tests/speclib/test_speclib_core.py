@@ -472,7 +472,7 @@ class SpeclibCoreTests(TestCase):
         groups = SpectralLibraryUtils.groupBySpectralProperties(sl1)
         self.assertTrue(len(groups) > 0)
         for key, profiles in groups.items():
-            assert isinstance(key, str)
+            self.assertIsInstance(key, str)
             data = json.loads(key)
             self.assertIsInstance(data, dict)
 

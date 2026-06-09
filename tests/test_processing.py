@@ -294,7 +294,7 @@ class ProcessingToolsTest(TestCase):
         lyr = results[ImportSpectralProfiles.P_OUTPUT]
         if isinstance(lyr, str):
             lyr = QgsVectorLayer(lyr)
-        assert lyr.isValid()
+        self.assertTrue(lyr.isValid())
 
         dt = datetime.datetime.now() - t0
         seconds = dt.total_seconds()
@@ -313,7 +313,8 @@ class ProcessingToolsTest(TestCase):
         results = {}
 
         def onFinished(ok, res):
-            assert ok
+            if not (ok):
+                raise AssertionError
             results.update(res)
 
         d = AlgorithmDialog(alg, context=context)
@@ -322,9 +323,9 @@ class ProcessingToolsTest(TestCase):
 
         lyr = results.get(ImportSpectralProfiles.P_OUTPUT)
         if lyr:
-            assert isinstance(lyr, QgsVectorLayer)
-            assert is_spectral_library(lyr)
-            assert lyr.featureCount() > 0
+            self.assertIsInstance(lyr, QgsVectorLayer)
+            self.assertTrue(is_spectral_library(lyr))
+            self.assertGreater(lyr.featureCount(), 0)
         s = ""
 
     @unittest.skipIf(TestCase.runsInCI(), 'blocking dialog')
@@ -345,7 +346,8 @@ class ProcessingToolsTest(TestCase):
         results = {}
 
         def onFinished(ok, res):
-            assert ok
+            if not (ok):
+                raise AssertionError
             results.update(res)
 
         d = AlgorithmDialog(alg, context=context)
@@ -354,9 +356,9 @@ class ProcessingToolsTest(TestCase):
 
         lyr = results.get(ExportSpectralProfiles.P_OUTPUT)
         if lyr:
-            assert isinstance(lyr, QgsVectorLayer)
-            assert is_spectral_library(lyr)
-            assert lyr.featureCount() > 0
+            self.assertIsInstance(lyr, QgsVectorLayer)
+            self.assertTrue(is_spectral_library(lyr))
+            self.assertGreater(lyr.featureCount(), 0)
         s = ""
 
     def test_spectralprofile_import(self):

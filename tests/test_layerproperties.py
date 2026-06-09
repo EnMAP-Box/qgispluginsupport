@@ -252,7 +252,7 @@ class LayerPropertyTests(TestCase):
 
     def test_AttributeTableWidget(self):
         vl = TestObjects.createVectorLayer()
-        assert vl.isSpatial()
+        self.assertTrue(vl.isSpatial())
         w = AttributeTableWidget(vl)
         vl.startEditing()
 

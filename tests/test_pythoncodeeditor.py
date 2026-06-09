@@ -47,7 +47,8 @@ class PythonCodeEditorTestCases(TestCase):
                     kwds = {'f': attributes.copy()}
 
                     exec(compiled_code, kwds)
-                    assert 'y' in kwds, 'Missing y in kwds'
+                    if not ('y' in kwds):
+                        raise AssertionError('Missing y in kwds')
 
                 except Exception as ex:
                     error = str(ex)

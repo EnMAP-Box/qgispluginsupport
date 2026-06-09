@@ -260,7 +260,7 @@ class TestQgsRasterLayerProperties(TestCase):
             del ds
 
             props = QgsRasterLayerSpectralProperties.fromRasterLayer(path)
-            assert props.wavelengthUnits()[0] == 'nm'
+            self.assertEqual(props.wavelengthUnits()[0], 'nm')
 
             lyr = QgsRasterLayer(path.as_posix())
             self.assertTrue(lyr.isValid())
@@ -365,7 +365,7 @@ class TestQgsRasterLayerProperties(TestCase):
 
         del lyr
         lyr = QgsRasterLayer(path_img.as_posix())
-        assert lyr.isValid()
+        self.assertTrue(lyr.isValid())
         prop3 = QgsRasterLayerSpectralProperties.fromRasterLayer(lyr)
 
         self.assertEqualProperties(prop1, prop3)

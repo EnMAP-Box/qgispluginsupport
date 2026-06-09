@@ -47,7 +47,7 @@ class SpectralProcessingTests(TestCase):
         sl.beginEditCommand('Delete features')
         success, n_del = sl.deleteSelectedFeatures(context)
         sl.endEditCommand()
-        assert success
+        self.assertTrue(success)
         print(f'Required {datetime.datetime.now() - t0} to delete {n_del} features')
         # self.showGui(dv)
 
@@ -310,7 +310,7 @@ class SpectralProcessingTests(TestCase):
         sl1 = slw1.plotModel().visualizations()[0].layer()
 
         with edit(sl1):
-            assert SpectralLibraryUtils.addSpectralProfileField(sl1, 'profile_new')
+            self.assertTrue(SpectralLibraryUtils.addSpectralProfileField(sl1, 'profile_new'))
 
         # re-add generators
         fgnode1 = panel.createRelation()
@@ -330,7 +330,7 @@ class SpectralProcessingTests(TestCase):
 
         sl1 = slw1.plotModel().spectralLibraries()[0]
         with edit(sl1):
-            assert SpectralLibraryUtils.addSpectralProfileField(sl1, 'profile2')
+            self.assertTrue(SpectralLibraryUtils.addSpectralProfileField(sl1, 'profile2'))
 
         speclib_sources = slw1.spectralLibraries()
         QgsProject.instance().addMapLayers(speclib_sources, False)

@@ -12,7 +12,8 @@ with edit(lyr):
     for i in range(5):
         f = QgsFeature(lyr.fields())
         f.setAttribute('value', i)
-        assert lyr.addFeature(f)
+        if not (lyr.addFeature(f)):
+            raise AssertionError
 
 # QgsProject.instance().addMapLayer(lyr)
 

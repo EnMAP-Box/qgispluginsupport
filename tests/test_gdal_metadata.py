@@ -104,7 +104,7 @@ class TestsGdalMetadata(TestCase):
             return xml_string
 
         aux_xml1 = read_aux_xml(img_path)
-        assert 'MYNAME_1' not in aux_xml1
+        self.assertNotIn('MYNAME_1', aux_xml1)
         s = ""
         lyr = QgsRasterLayer(img_path)
         model = GDALBandMetadataModel()
@@ -127,7 +127,7 @@ class TestsGdalMetadata(TestCase):
             wavelLength.append(wl)
             model.updateFeature(f)
         model.commitChanges(True)
-        assert model.hasEdits
+        self.assertTrue(model.hasEdits)
         model.applyToLayer()
         del model, lyr
         aux_xml2 = read_aux_xml(img_path)
@@ -136,8 +136,8 @@ class TestsGdalMetadata(TestCase):
         for b in range(ds.RasterCount):
             band: gdal.Band = ds.GetRasterBand(b + 1)
             name1 = band.GetDescription()
-            assert name1 == bandNames[b]
-            assert float(band.GetMetadataItem('wavelength')) == float(wavelLength[b])
+            self.assertEqual(name1, bandNames[b])
+            self.assertEqual(float(band.GetMetadataItem('wavelength')), float(wavelLength[b]))
 
         self.showGui(view)
 
@@ -370,7 +370,7 @@ class TestsGdalMetadata(TestCase):
         del ds
 
         lyr = QgsRasterLayer(path.as_posix(), 'test')
-        assert lyr.bandCount() == nb + 1
+        self.assertEqual(lyr.bandCount(), nb + 1)
 
         box = QgsRasterBandComboBox()
         box.setLayer(lyr)
@@ -417,13 +417,15 @@ class TestsGdalMetadata(TestCase):
 
         def create_vrt(name: str) -> gdal.Dataset:
             path = (test_dir / f'{name}.vrt').as_posix()
-            assert path not in files, 'already created'
+            if not (path not in files):
+                raise AssertionError('already created')
             files.append(path)
             ds = gdal.Translate(path, enmap.as_posix())
             # clear existing metadata
             ds.SetMetadataItem('wavelength', None)
             ds.SetMetadataItem('wavelength_units', None)
-            assert isinstance(ds, gdal.Dataset)
+            if not (isinstance(ds, gdal.Dataset)):
+                raise AssertionError
             return ds
 
         def set_metadata(ds: gdal.Dataset,
@@ -431,7 +433,7 @@ class TestsGdalMetadata(TestCase):
                          values: list,
                          domain: str = None,
                          band_wise: bool = True):
-            assert ds.RasterCount == len(values)
+            self.assertEqual(ds.RasterCount, len(values))
             if band_wise:
                 for b in range(ds.RasterCount):
                     band: gdal.Band = ds.GetRasterBand(b + 1)

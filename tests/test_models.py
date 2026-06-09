@@ -53,7 +53,8 @@ def findNode(view, path: Union[str, List[str]], parent: QModelIndex = QModelInde
                 continue
             else:
                 break
-        assert row not in CHILD_NAMES
+        if not (row not in CHILD_NAMES):
+            raise AssertionError
         CHILD_NAMES[row] = [model.index(r2, 0, parent).data() for r2 in range(row)]
         child: QModelIndex = model.index(row, 0, parent)
         child_name = child.data(Qt.DisplayRole)
@@ -112,7 +113,7 @@ class ModelTests(TestCase):
                         rows: int = 2,
                         depth: int = 3,
                         cols: int = 4) -> TreeNode:
-        assert isinstance(parentNode, TreeNode)
+        self.assertIsInstance(parentNode, TreeNode)
 
         pDepth = parentNode.depth()
         if depth == pDepth:
@@ -214,10 +215,10 @@ class ModelTests(TestCase):
 
         t = 'test'
         n2.setToolTip(t)
-        assert n2.toolTip() == t
+        self.assertEqual(n2.toolTip(), t)
 
         n2.setStatusTip(t)
-        assert n2.statusTip() == t
+        self.assertEqual(n2.statusTip(), t)
 
     def test_treeModelNew(self):
 

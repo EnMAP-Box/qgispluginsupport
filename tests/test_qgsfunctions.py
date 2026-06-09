@@ -42,20 +42,23 @@ def createAggregateTestLayer():
               ]
     with edit(sl):
         for f in fields:
-            assert sl.addAttribute(f)
+            if not (sl.addAttribute(f)):
+                raise AssertionError
 
         # add features
         for d in data:
             f = QgsFeature(sl.fields())
             for name, value in d.items():
                 f.setAttribute(name, value)
-            assert sl.addFeature(f)
+            if not (sl.addFeature(f)):
+                raise AssertionError
 
     for i, f in enumerate(sl.getFeatures()):
         f: QgsFeature
         d1: dict = data[i]
         d2: dict = f.attributeMap()
-        assert d1 == d2
+        if not (d1 == d2):
+            raise AssertionError
 
     return sl
 
@@ -63,8 +66,10 @@ def createAggregateTestLayer():
 def createAggregateTestProfileLayer():
     sl = createAggregateTestLayer()
     with edit(sl):
-        assert SpectralLibraryUtils.addSpectralProfileField(sl, 'profile', encoding=ProfileEncoding.Json)
-        assert sl.fields()['profile'].editorWidgetSetup().type() == 'SpectralProfile'
+        if not (SpectralLibraryUtils.addSpectralProfileField(sl, 'profile', encoding=ProfileEncoding.Json)):
+            raise AssertionError
+        if not (sl.fields()['profile'].editorWidgetSetup().type() == 'SpectralProfile'):
+            raise AssertionError
         idx = sl.fields().indexOf('profile')
         for f in sl.getFeatures():
             f: QgsFeature
@@ -73,7 +78,8 @@ def createAggregateTestProfileLayer():
 
             yvec = [i * num for i in range(1, 4)]
             profile = {'y': yvec}
-            assert sl.changeAttributeValue(f.id(), idx, profile)
+            if not (sl.changeAttributeValue(f.id(), idx, profile)):
+                raise AssertionError
             s = ""
 
     return sl
@@ -102,9 +108,9 @@ class QgsFunctionTests(TestCase):
         value = exp.evaluate(context)
 
         exp = QgsExpression("raster_value('myraster', 1, $geometry)")
-        assert exp.prepare(context), exp.parserErrorString()
+        self.assertTrue(exp.prepare(context), exp.parserErrorString())
         b1value = exp.evaluate(context)
-        assert exp.evalErrorString() == '', exp.evalErrorString()
+        self.assertEqual(exp.evalErrorString(), '', exp.evalErrorString())
 
         f1 = RasterArray()
         self.registerFunction(f1)
@@ -156,25 +162,25 @@ class QgsFunctionTests(TestCase):
             for feature in sl.getFeatures():
                 context.setFeature(feature)
                 exp = QgsExpression(f'{f.name()}("{sfield}", \'text\')')
-                assert exp.prepare(context)
+                self.assertTrue(exp.prepare(context))
                 self.assertTrue(exp.parserErrorString() == '', msg=exp.parserErrorString())
                 profile = exp.evaluate(context)
                 self.assertIsInstance(profile, str)
 
                 exp = QgsExpression(f'{f.name()}("{sfield}", \'json\')')
-                assert exp.prepare(context)
+                self.assertTrue(exp.prepare(context))
                 self.assertTrue(exp.parserErrorString() == '', msg=exp.parserErrorString())
                 profile = exp.evaluate(context)
                 self.assertIsInstance(profile, dict)
 
                 exp = QgsExpression(f'{f.name()}("{sfield}", \'map\')')
-                assert exp.prepare(context)
+                self.assertTrue(exp.prepare(context))
                 self.assertTrue(exp.parserErrorString() == '', msg=exp.parserErrorString())
                 profile = exp.evaluate(context)
                 self.assertIsInstance(profile, dict)
 
                 exp = QgsExpression(f'{f.name()}("{sfield}", \'bytes\')')
-                assert exp.prepare(context)
+                self.assertTrue(exp.prepare(context))
                 self.assertTrue(exp.parserErrorString() == '', msg=exp.parserErrorString())
                 profile = exp.evaluate(context)
                 self.assertIsInstance(profile, QByteArray)
@@ -576,7 +582,7 @@ class QgsFunctionTests(TestCase):
                                  is_child_algorithm=True)
         lyrSpeclib = context.getMapLayer(results['OUTPUT'])
         lyrSpeclib.setName('Spectral Library')
-        assert SpectralLibraryUtils.makeToProfileField(lyrSpeclib, 'profiles')
+        self.assertTrue(SpectralLibraryUtils.makeToProfileField(lyrSpeclib, 'profiles'))
 
         for f in lyrSpeclib.getFeatures():
             f: QgsFeature
@@ -795,7 +801,7 @@ class QgsFunctionTests(TestCase):
                 dump = encodeProfileValueDict(data, sl.fields()['profile'])
                 f.setAttribute('profile', dump)
                 f.setAttribute('class', item['class'])
-                assert sl.addFeature(f)
+                self.assertTrue(sl.addFeature(f))
 
             gui = QgsFieldCalculator(sl, None)
             # create new field: agr with type map

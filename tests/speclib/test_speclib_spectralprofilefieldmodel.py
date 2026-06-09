@@ -31,8 +31,8 @@ class TestSpectralProfileFieldModel(TestCase):
 
         reg: QgsEditorWidgetFactory = QgsGui.editorWidgetRegistry()
 
-        assert SpectralLibraryUtils.makeToProfileField(vl, 'profile1')
-        assert SpectralLibraryUtils.makeToProfileField(vl, 'profile2')
+        self.assertTrue(SpectralLibraryUtils.makeToProfileField(vl, 'profile1'))
+        self.assertTrue(SpectralLibraryUtils.makeToProfileField(vl, 'profile2'))
         pmodel = SpectralProfileFieldListModel()
         pmodel.setLayer(vl)
 
