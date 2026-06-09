@@ -496,7 +496,8 @@ class SpectralProfilePlotModel(QStandardItemModel):
         return self.mBlockUpdates
 
     def createPropertyColor(self, property: QgsProperty, fid: int = None) -> QColor:
-        assert isinstance(property, QgsProperty)
+        if not (isinstance(property, QgsProperty)):
+            raise AssertionError
         defaultColor = QColor('white')
         renderer: QgsFeatureRenderer = None
         context = QgsExpressionContext()
@@ -530,7 +531,8 @@ class SpectralProfilePlotModel(QStandardItemModel):
         return color
 
     def setProject(self, project: QgsProject):
-        assert isinstance(project, QgsProject)
+        if not (isinstance(project, QgsProject)):
+            raise AssertionError
 
         if self.mProject == project:
             return
@@ -781,7 +783,8 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
         layers_changed = False
         for i, item in enumerate(items):
-            assert isinstance(item, PropertyItemGroup)
+            if not (isinstance(item, PropertyItemGroup)):
+                raise AssertionError
 
             item.setProject(self.mProject)
             # remove items if requestRemoval signal is triggered
@@ -826,7 +829,8 @@ class SpectralProfilePlotModel(QStandardItemModel):
             for v in groups:
                 if not (isinstance(v, PropertyItemGroup) and v.isRemovable()):
                     continue
-                assert v in self.mModelItems
+                if not (v in self.mModelItems):
+                    raise AssertionError
 
                 v.disconnectGroup()
 
@@ -1194,8 +1198,10 @@ class SpectralProfilePlotModel(QStandardItemModel):
                 for stat, style in vis['statistics'].items():
                     if isinstance(style, dict):
                         style: PlotStyle = PlotStyle.fromMap(style)
-                    assert isinstance(style, PlotStyle)
-                    assert isinstance(stat, str)
+                    if not (isinstance(style, PlotStyle)):
+                        raise AssertionError
+                    if not (isinstance(stat, str)):
+                        raise AssertionError
 
                     if stat not in STATS_FUNCTIONS:
                         continue
@@ -1707,11 +1713,13 @@ class SpectralProfilePlotModel(QStandardItemModel):
         return self.mDefaultProfileStyle
 
     def setDefaultProfileStyle(self, style: PlotStyle):
-        assert isinstance(style, PlotStyle)
+        if not (isinstance(style, PlotStyle)):
+            raise AssertionError
         self.mDefaultProfileStyle = style
 
     def setDefaultProfileCandidateStyle(self, style: PlotStyle):
-        assert isinstance(style, PlotStyle)
+        if not (isinstance(style, PlotStyle)):
+            raise AssertionError
         self.mDefaultProfileCandidateStyle = style
 
     def defaultProfileCandidateStyle(self) -> PlotStyle:
@@ -2000,7 +2008,8 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
     def onPlotSelectionRequest(self, pdi, modifiers):
         pdi: SpectralProfilePlotDataItem
-        assert isinstance(pdi, SpectralProfilePlotDataItem)
+        if not (isinstance(pdi, SpectralProfilePlotDataItem)):
+            raise AssertionError
         if isinstance(self.speclib(), QgsVectorLayer):
             vis, fid, field, xUnit = pdi.visualizationKey()
 
@@ -2039,7 +2048,8 @@ def copy_items(items: List[SpectralProfilePlotDataItem],
                mode: str = 'json',
                xUnit: Optional[str] = None):
     mode = mode.lower()
-    assert mode in ['json', 'csv', 'excel']
+    if not (mode in ['json', 'csv', 'excel']):
+        raise AssertionError
 
     txt = None
     if mode == 'json':

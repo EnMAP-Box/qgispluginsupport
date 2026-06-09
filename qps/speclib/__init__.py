@@ -44,7 +44,8 @@ FIELD_FID = 'fid'
 
 def defaultSpeclibCrs() -> QgsCoordinateReferenceSystem:
     crs = QgsCoordinateReferenceSystem()
-    assert crs.createFromString(f'EPSG:{SPECLIB_EPSG_CODE}'), f'Unable to create CRS for input "{SPECLIB_EPSG_CODE}"'
+    if not (crs.createFromString(f'EPSG:{SPECLIB_EPSG_CODE}')):
+        raise AssertionError(f'Unable to create CRS for input "{SPECLIB_EPSG_CODE}"')
     return crs
 
 
@@ -86,5 +87,6 @@ def speclibUiPath(name: str) -> str:
         name = name.__class__.__name__.lower() + '.ui'
 
     path = pathlib.Path(__file__).parent / 'ui' / name
-    assert path.is_file(), f'File does not exist: {path}'
+    if not (path.is_file()):
+        raise AssertionError(f'File does not exist: {path}')
     return path.as_posix()

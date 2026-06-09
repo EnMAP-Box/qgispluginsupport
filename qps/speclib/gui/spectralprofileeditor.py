@@ -66,7 +66,8 @@ class SpectralProfileTableModel(QAbstractTableModel):
         self.mIsReadOnly = read_only is True
 
     def setBooleanBBL(self, b: bool):
-        assert isinstance(b, bool)
+        if not (isinstance(b, bool)):
+            raise AssertionError
         self.mBooleanBBL = b
 
     def clear(self):
@@ -85,7 +86,8 @@ class SpectralProfileTableModel(QAbstractTableModel):
         :param values:
         :return:
         """
-        assert isinstance(profile, dict)
+        if not (isinstance(profile, dict)):
+            raise AssertionError
 
         m = copy(self.mValues)
 
@@ -397,7 +399,8 @@ class SpectralProfileTableEditor(QFrame):
         self.setProfileDict(d)
 
     def setProfileDict(self, d: dict):
-        assert isinstance(d, dict)
+        if not (isinstance(d, dict)):
+            raise AssertionError
         self.tableModel.setProfileDict(d)
         self._x_unit = d.get('xUnit', None)
         self._y_unit = d.get('yUnit', None)
@@ -618,7 +621,8 @@ class SpectralProfileEditorWidget(QGroupBox):
         """
         if profile in [None, NULL, QVariant(None)]:
             profile = dict()
-        assert isinstance(profile, dict)
+        if not (isinstance(profile, dict)):
+            raise AssertionError
         self.mDefaultProfile = self.mCurrentProfile = profile.copy()
 
         if isinstance(self.mCurrentWidget,
@@ -888,7 +892,8 @@ class SpectralProfileEditorWidgetFactory(QgsEditorWidgetFactory):
         """
         # log(' fieldScore()')
         field = vl.fields().at(fieldIdx)
-        assert isinstance(field, QgsField)
+        if not (isinstance(field, QgsField)):
+            raise AssertionError
         if can_store_spectral_profiles(field):
             if field.editorWidgetSetup().type() == self.name():
                 return 20  # specialized support

@@ -203,7 +203,8 @@ class SpectralProcessingRasterLayerWidgetWrapper(QgsAbstractProcessingParameterW
                  parent: QObject = None
                  ):
 
-        assert isinstance(parameter, QgsProcessingParameterRasterLayer)
+        if not (isinstance(parameter, QgsProcessingParameterRasterLayer)):
+            raise AssertionError
         self.mMapLayerWidget: QWidget = None
         self.mMapLayerModel: QgsMapLayerModel = None
 
@@ -356,7 +357,8 @@ class SpectralProcessingModelCreatorAlgorithmWrapper(QgsProcessingParametersWidg
                  processingContext: QgsProcessingContext,
 
                  parent: QWidget = None):
-        assert isinstance(speclib, QgsVectorLayer)
+        if not (isinstance(speclib, QgsVectorLayer)):
+            raise AssertionError
 
         super().__init__(alg, parent)
         # self.alg: QgsProcessingAlgorithm = alg.create({})
@@ -443,7 +445,8 @@ class SpectralProcessingModelCreatorAlgorithmWrapper(QgsProcessingParametersWidg
             else:
                 wrapper = WidgetWrapperFactory.create_wrapper(param, self.parent(), row=0, col=0)
 
-            assert isinstance(wrapper, QgsAbstractProcessingParameterWidgetWrapper)
+            if not (isinstance(wrapper, QgsAbstractProcessingParameterWidgetWrapper)):
+                raise AssertionError
 
             wrapper.setWidgetContext(widget_context)
             wrapper.registerProcessingContextGenerator(self.mContextGenerator)
@@ -451,7 +454,8 @@ class SpectralProcessingModelCreatorAlgorithmWrapper(QgsProcessingParametersWidg
             wrapper.widgetValueHasChanged.connect(self.parameterWidgetValueChanged)
 
             # store the wrapper instance
-            assert param.name() not in self.mWrappers, f'{param.name()} in {self.mWrappers.keys()}'
+            if not (param.name() not in self.mWrappers):
+                raise AssertionError(f'{param.name()} in {self.mWrappers.keys()}')
             self.mWrappers[param.name()] = wrapper
 
             old_api = isinstance(wrapper, WidgetWrapper)
@@ -488,7 +492,8 @@ class SpectralProcessingModelCreatorAlgorithmWrapper(QgsProcessingParametersWidg
             wrapper.setWidgetContext(widget_context)
             wrapper.registerProcessingContextGenerator(self.mContextGenerator)
             wrapper.registerProcessingParametersGenerator(self)
-            assert output.name() not in self.mWrappers
+            if not (output.name() not in self.mWrappers):
+                raise AssertionError
             self.mWrappers[output.name()] = wrapper
 
             label = wrapper.createWrappedLabel()
@@ -868,7 +873,8 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
                                         field = QgsField(name=target_field_name, type=Qgis.DataType.Float32)
 
                                 speclib.beginEditCommand(f'Add field {field.name()}')
-                                assert SpectralLibraryUtils.addAttribute(speclib, field)
+                                if not (SpectralLibraryUtils.addAttribute(speclib, field)):
+                                    raise AssertionError
                                 speclib.endEditCommand()
 
                                 target_field_index = speclib.fields().lookupField(target_field_name)
@@ -936,7 +942,8 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
                                 value = float(tmp[0, 0, i])
                                 if target_field.type() == QMetaType.QString:
                                     value = str(value)
-                            assert speclib.changeAttributeValue(feature.id(), target_field_index, value)
+                            if not (speclib.changeAttributeValue(feature.id(), target_field_index, value)):
+                                raise AssertionError
                             # assert feature.setAttribute(target_field_index, value)
 
                     self.log(f'Update {len(activeFeatures)} features')
@@ -993,9 +1000,12 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
 
         file_writer = QgsRasterFileWriter(file_name)
 
-        assert dp.xSize() > 0
-        assert dp.ySize() > 0
-        assert dp.bandCount() > 0
+        if not (dp.xSize() > 0):
+            raise AssertionError
+        if not (dp.ySize() > 0):
+            raise AssertionError
+        if not (dp.bandCount() > 0):
+            raise AssertionError
 
         pipe = QgsRasterPipe()
         if not pipe.set(dp):
@@ -1084,12 +1094,14 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
                 alg = pathlib.Path(alg)
 
         if isinstance(alg, pathlib.Path):
-            assert alg.is_file(), f'Not a model file: {alg}'
+            if not (alg.is_file()):
+                raise AssertionError(f'Not a model file: {alg}')
             m = QgsProcessingModelAlgorithm()
             m.fromFile(alg.as_posix())
             alg = m
 
-        assert isinstance(alg, QgsProcessingAlgorithm)
+        if not (isinstance(alg, QgsProcessingAlgorithm)):
+            raise AssertionError
 
         super().setAlgorithm(alg.create())
         self.mAlg = alg
@@ -1129,7 +1141,8 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
         if isinstance(self.mSpeclib, QgsVectorLayer):
             self.mSpeclib.willBeDeleted.disconnect(self.close)
 
-        assert isinstance(speclib, QgsVectorLayer)
+        if not (isinstance(speclib, QgsVectorLayer)):
+            raise AssertionError
         self.mSpeclib = speclib
         self.mSpeclib.willBeDeleted.connect(self.close)
 

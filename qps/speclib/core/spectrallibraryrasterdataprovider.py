@@ -55,7 +55,8 @@ def createRasterLayers(features: Union[QgsVectorLayer, List[QgsFeature]],
             fields = [f for f in fields]
 
     for field in fields:
-        assert isinstance(field, QgsField)
+        if not (isinstance(field, QgsField)):
+            raise AssertionError
         if is_profile_field(field):
             GROUPS = groupBySpectralProperties(features, field=field)
 
@@ -65,7 +66,8 @@ def createRasterLayers(features: Union[QgsVectorLayer, List[QgsFeature]],
                 xUnit = settings.get('xUnit', '')
                 name = f'{field.name()} ({nb} bands, {xUnit})'
                 layer = QgsRasterLayer('?', name, VectorLayerFieldRasterDataProvider.providerKey())
-                assert layer.isValid()
+                if not (layer.isValid()):
+                    raise AssertionError
                 dp: VectorLayerFieldRasterDataProvider = layer.dataProvider()
                 dp.setActiveFeatures(profiles, field=SpectralProfileValueConverter(field))
                 # layer.setTitle(f'Field "{field.name()}" as raster')
@@ -75,7 +77,8 @@ def createRasterLayers(features: Union[QgsVectorLayer, List[QgsFeature]],
             if isinstance(converter, FieldToRasterValueConverter):
                 name = f'{field.name()} ({field.typeName()})'
                 layer = QgsRasterLayer('?', name, VectorLayerFieldRasterDataProvider.providerKey())
-                assert layer.isValid(), 'Unable to create QgsRasterLayer based on VectorLayerFieldRasterDataProvider'
+                if not (layer.isValid()):
+                    raise AssertionError('Unable to create QgsRasterLayer based on VectorLayerFieldRasterDataProvider')
                 dp: VectorLayerFieldRasterDataProvider = layer.dataProvider()
                 dp.setActiveFeatures(features, field=converter)
                 # layer.setTitle(f'Field "{field.name()}" as raster')
@@ -108,7 +111,8 @@ def featuresToArrays(speclib: QgsVectorLayer,
     :param bbl: False, set True differentiate returned data by BBL too
     :return: dict with a string keys containing all metadata, and a numpy array containing the profile data
     """
-    assert isinstance(speclib, QgsVectorLayer)
+    if not (isinstance(speclib, QgsVectorLayer)):
+        raise AssertionError
 
     if fields is None:
         fields = profile_fields(speclib)
@@ -221,7 +225,8 @@ class FieldToRasterValueConverter(QObject):
     def __init__(self, field: QgsField):
         super().__init__(None)
 
-        assert isinstance(field, QgsField)
+        if not (isinstance(field, QgsField)):
+            raise AssertionError
         self.mField: QgsField = field
         # there need to be a numeric no-data value
         self.mNoData = -1
@@ -384,7 +389,8 @@ class FieldToRasterValueConverter(QObject):
             noData = -9999
             array = noData * np.ones((nb, 1, ns))
 
-        assert array.ndim == 3
+        if not (array.ndim == 3):
+            raise AssertionError
         return array, colorTable, noData
 
     @classmethod
@@ -399,7 +405,8 @@ class SpectralProfileValueConverter(FieldToRasterValueConverter):
         return is_profile_field(field)
 
     def __init__(self, field: QgsField):
-        assert is_profile_field(field)
+        if not (is_profile_field(field)):
+            raise AssertionError
         super(SpectralProfileValueConverter, self).__init__(field)
         self.mSpectralSetting: dict = dict()
 
@@ -543,7 +550,8 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
         if isinstance(layer, QgsVectorLayer):
             if query.hasQueryItem('cachesize'):
                 cs = int(query.queryItemValue('cachesize'))
-                assert cs > 0, 'cachesize needs to be > 0'
+                if not (cs > 0):
+                    raise AssertionError('cachesize needs to be > 0')
                 cacheSize = cs
 
             if layer.featureCount() > 0:
@@ -706,7 +714,8 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
 
         activeField = qgsField(self.fields(), field)
 
-        assert isinstance(activeField, QgsField), f'Field not found/supported: {field}'
+        if not (isinstance(activeField, QgsField)):
+            raise AssertionError(f'Field not found/supported: {field}')
         self.mField = activeField
 
         if not (isinstance(self.fieldConverter(), FieldToRasterValueConverter)
@@ -729,7 +738,8 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
         self.mStatsCache.clear()
 
     def setExtentYOffset(self, offset: int):
-        assert offset >= 0
+        if not (offset >= 0):
+            raise AssertionError
         self.mYOffset = offset
         self.mYOffsetManual = True
 
@@ -743,7 +753,8 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
 
         if not isinstance(features, list):
             features = list(features)
-        assert isinstance(features, list)
+        if not (isinstance(features, list)):
+            raise AssertionError
         self.mFeatures.clear()
         self.mFeatures.extend(features)
 
@@ -761,9 +772,12 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
         return [f.id() for f in self.mFeatures]
 
     def setFieldConverter(self, converter: FieldToRasterValueConverter):
-        assert isinstance(self.activeField(), QgsField)
-        assert isinstance(converter, FieldToRasterValueConverter)
-        assert converter.supportsField(self.activeField())
+        if not (isinstance(self.activeField(), QgsField)):
+            raise AssertionError
+        if not (isinstance(converter, FieldToRasterValueConverter)):
+            raise AssertionError
+        if not (converter.supportsField(self.activeField())):
+            raise AssertionError
         self.mFieldConverter = converter
 
     def fieldConverter(self) -> FieldToRasterValueConverter:

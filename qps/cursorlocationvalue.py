@@ -29,14 +29,13 @@ import os
 from typing import List
 
 from qgis.PyQt.QtCore import QModelIndex, QPoint, QAbstractListModel, pyqtSignal
+from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtGui import QIcon, QClipboard, QColor
 from qgis.PyQt.QtWidgets import QMenu, QApplication, QDockWidget
-
-from qgis.PyQt.QtCore import Qt
-from qgis.core import QgsRasterDataProvider
 from qgis.core import QgsCoordinateReferenceSystem, QgsWkbTypes, QgsField, QgsFeature, \
     QgsMapLayer, QgsVectorLayer, QgsRasterLayer, QgsPointXY, QgsRectangle, QgsTolerance, \
     QgsFeatureRequest, QgsRasterBlock, QgsPalettedRasterRenderer, QgsRaster
+from qgis.core import QgsRasterDataProvider
 from qgis.gui import QgsMapCanvas
 from . import DIR_UI_FILES
 from .classification.classificationscheme import ClassInfo, ClassificationScheme
@@ -46,7 +45,8 @@ from .utils import SpatialPoint, geo2px, as_py_value, loadUi
 
 class SourceValueSet(object):
     def __init__(self, source, point: SpatialPoint):
-        assert isinstance(point, SpatialPoint)
+        if not (isinstance(point, SpatialPoint)):
+            raise AssertionError(f'Wring data type: {point}')
         self.source = source
         self.point = point
 
@@ -61,11 +61,14 @@ class RasterValueSet(SourceValueSet):
     class BandInfo(object):
         def __init__(self, bandIndex, bandValue, bandName,
                      is_nodata: bool = False, classInfo=None):
-            assert bandIndex >= 0
+            if not (bandIndex >= 0):
+                raise AssertionError
             if bandValue is not None:
-                assert type(bandValue) in [float, int]
+                if not (type(bandValue) in [float, int]):
+                    raise AssertionError
             if bandName is not None:
-                assert isinstance(bandName, str)
+                if not (isinstance(bandName, str)):
+                    raise AssertionError
 
             self.is_nodata: bool = bool(is_nodata)
             self.bandIndex = bandIndex
@@ -74,7 +77,8 @@ class RasterValueSet(SourceValueSet):
             self.classInfo = classInfo
 
     def __init__(self, source, point, pxPosition: QPoint):
-        assert isinstance(pxPosition, QPoint)
+        if not (isinstance(pxPosition, QPoint)):
+            raise AssertionError
         super(RasterValueSet, self).__init__(source, point)
         self.pxPosition = pxPosition
         self.noDataValue = None
@@ -84,7 +88,8 @@ class RasterValueSet(SourceValueSet):
 class VectorValueSet(SourceValueSet):
     class FeatureInfo(object):
         def __init__(self, fid):
-            assert isinstance(fid, int)
+            if not (isinstance(fid, int)):
+                raise AssertionError
             self.fid = fid
             self.attributes = collections.OrderedDict()
 
@@ -93,7 +98,8 @@ class VectorValueSet(SourceValueSet):
         self.features = []
 
     def addFeatureInfo(self, featureInfo):
-        assert isinstance(featureInfo, VectorValueSet.FeatureInfo)
+        if not (isinstance(featureInfo, VectorValueSet.FeatureInfo)):
+            raise AssertionError
         self.features.append(featureInfo)
 
 
@@ -156,7 +162,8 @@ class CursorLocationInfoModel(TreeModel):
         self.mCursorLocation: SpatialPoint = None
 
     def setCursorLocation(self, location: SpatialPoint):
-        assert isinstance(location, SpatialPoint)
+        if not (isinstance(location, SpatialPoint)):
+            raise AssertionError
         self.mCursorLocation = location
 
     def setCountFromZero(self, b: bool):
@@ -164,7 +171,8 @@ class CursorLocationInfoModel(TreeModel):
         Specifies if the 1st pixel (upper left corner) is countes as 0,0 (True, default) or 1,1 (False)
         :param b: bool
         """
-        assert isinstance(b, bool)
+        if not (isinstance(b, bool)):
+            raise AssertionError
         self.mCountFromZero = b
 
     def flags(self, index: QModelIndex):
@@ -218,7 +226,8 @@ class CursorLocationInfoModel(TreeModel):
 
             root = TreeNode(name=bn)
             refFeature = sourceValueSet.features[0]
-            assert isinstance(refFeature, QgsFeature)
+            if not (isinstance(refFeature, QgsFeature)):
+                raise AssertionError
             typeName = QgsWkbTypes.displayString(refFeature.geometry().wkbType()).lower()
             if 'polygon' in typeName:
                 root.setIcon(QIcon(r':/images/themes/default/mIconPolygonLayer.svg'))
@@ -229,13 +238,15 @@ class CursorLocationInfoModel(TreeModel):
 
             subNodes = []
             for field in refFeature.fields():
-                assert isinstance(field, QgsField)
+                if not (isinstance(field, QgsField)):
+                    raise AssertionError
 
                 fieldNode = TreeNode(name=field.name())
 
                 featureNodes = []
                 for i, feature in enumerate(sourceValueSet.features):
-                    assert isinstance(feature, QgsFeature)
+                    if not (isinstance(feature, QgsFeature)):
+                        raise AssertionError
                     nf = TreeNode(name='{}'.format(feature.id()))
                     nf.setValues([feature.attribute(field.name()), field.typeName()])
                     nf.setToolTip('Value of feature "{}" in field with name "{}"'.format(feature.id(), field.name()))
@@ -291,10 +302,12 @@ class ComboBoxOptionModel(QAbstractListModel):
 
     def __init__(self, options, parent=None):
         super(ComboBoxOptionModel, self).__init__(parent)
-        assert isinstance(options, list)
+        if not (isinstance(options, list)):
+            raise AssertionError
 
         for o in options:
-            assert isinstance(o, ComboBoxOption)
+            if not (isinstance(o, ComboBoxOption)):
+                raise AssertionError
 
         self.mOptions = options
 
@@ -313,7 +326,8 @@ class ComboBoxOptionModel(QAbstractListModel):
         return None
 
     def option2index(self, option):
-        assert option in self.mOptions
+        if not (option in self.mOptions):
+            raise AssertionError(f'option does not exists: {option}')
         return self.mOptions.index(option)
 
     def data(self, index, role=Qt.DisplayRole):
@@ -321,7 +335,8 @@ class ComboBoxOptionModel(QAbstractListModel):
             return None
 
         option = self.index2option(index)
-        assert isinstance(option, ComboBoxOption)
+        if not (isinstance(option, ComboBoxOption)):
+            raise AssertionError
         value = None
         if role == Qt.DisplayRole:
             value = option.name
@@ -356,7 +371,6 @@ class CursorLocationInfoDock(QDockWidget):
 
         self.mLocationInfoModel = CursorLocationInfoModel()
         self.mTreeView: CursorLocationInfoTreeView
-        assert isinstance(self.mTreeView, CursorLocationInfoTreeView)
         self.mTreeView.setAutoExpansionDepth(3)
         self.mTreeView.setModel(self.mLocationInfoModel)
 
@@ -394,8 +408,10 @@ class CursorLocationInfoDock(QDockWidget):
         :param canvas:
         :return:
         """
-        assert isinstance(canvas, QgsMapCanvas)
-        assert isinstance(point, SpatialPoint)
+        if not (isinstance(canvas, QgsMapCanvas)):
+            raise AssertionError
+        if not (isinstance(point, SpatialPoint)):
+            raise AssertionError
 
         self.setCursorLocation(point)
         self.setCanvas(canvas)
@@ -417,7 +433,8 @@ class CursorLocationInfoDock(QDockWidget):
         mode, lyrtype, rasterbands = self.options()
 
         def layerFilter(canvas):
-            assert isinstance(canvas, QgsMapCanvas)
+            if not (isinstance(canvas, QgsMapCanvas)):
+                raise AssertionError
             lyrs = canvas.layers()
             if lyrtype == 'VECTOR':
                 lyrs = [lyr for lyr in lyrs if isinstance(lyr, QgsVectorLayer)]
@@ -435,12 +452,14 @@ class CursorLocationInfoDock(QDockWidget):
         self.mLocationInfoModel.setCursorLocation(self.cursorLocation())
 
         for lyr in lyrs:
-            assert isinstance(lyr, QgsMapLayer)
+            if not (isinstance(lyr, QgsMapLayer)):
+                raise AssertionError
             if mode == 'TOP_LAYER' and self.mLocationInfoModel.rootNode().childCount() > 0:
                 s = ""
                 break
 
-            assert isinstance(lyr, QgsMapLayer)
+            if not (isinstance(lyr, QgsMapLayer)):
+                raise AssertionError
 
             pointLyr = ptInfo.toCrs(lyr.crs())
             if not (isinstance(pointLyr, SpatialPoint) and lyr.extent().contains(pointLyr)):
@@ -474,7 +493,8 @@ class CursorLocationInfoDock(QDockWidget):
                 if lyr.dataProvider().name() in ['wms']:
                     for b in bandNumbers:
                         block = lyr.renderer().block(b, ext2Px, 3, 3)
-                        assert isinstance(block, QgsRasterBlock)
+                        if not (isinstance(block, QgsRasterBlock)):
+                            raise AssertionError
                         v.bandValues.append(QColor(block.color(0, 0)))
                 else:
                     dp: QgsRasterDataProvider = lyr.dataProvider()
@@ -533,7 +553,8 @@ class CursorLocationInfoDock(QDockWidget):
         Set the cursor location to be loaded.
         :param spatialPoint:
         """
-        assert isinstance(spatialPoint, SpatialPoint)
+        if not (isinstance(spatialPoint, SpatialPoint)):
+            raise AssertionError
         self.mLocationHistory.insert(0, spatialPoint)
         if len(self.mLocationHistory) > self.mMaxPoints:
             del self.mLocationHistory[self.mMaxPoints:]
@@ -569,9 +590,11 @@ class CursorLocationInfoDock(QDockWidget):
         self.setCanvases([mapCanvas])
 
     def setCanvases(self, mapCanvases):
-        assert isinstance(mapCanvases, list)
+        if not (isinstance(mapCanvases, list)):
+            raise AssertionError
         for c in mapCanvases:
-            assert isinstance(c, QgsMapCanvas)
+            if not (isinstance(c, QgsMapCanvas)):
+                raise AssertionError
 
         if len(mapCanvases) == 0:
             self.setCrs(None)
@@ -590,7 +613,8 @@ class CursorLocationInfoDock(QDockWidget):
         :param crs:
         :return:
         """
-        assert isinstance(crs, QgsCoordinateReferenceSystem)
+        if not (isinstance(crs, QgsCoordinateReferenceSystem)):
+            raise AssertionError
         if crs != self.mCrs:
             self.mCrs = crs
             self.btnCrs.setCrs(crs)

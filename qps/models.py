@@ -46,10 +46,12 @@ from qgis.gui import QgsColorButton, QgsSpinBox, QgsDoubleSpinBox
 
 
 def currentComboBoxValue(comboBox):
-    assert isinstance(comboBox, QComboBox)
+    if not (isinstance(comboBox, QComboBox)):
+        raise AssertionError
     if isinstance(comboBox.model(), OptionListModel):
         o = comboBox.currentData(Qt.UserRole)
-        assert isinstance(o, Option)
+        if not (isinstance(o, Option)):
+            raise AssertionError
         return o.mValue
     else:
         return comboBox.currentData()
@@ -62,7 +64,8 @@ def setCurrentComboBoxValue(comboBox, value):
     :param value: any type
     :return: True | False
     """
-    assert isinstance(comboBox, QComboBox)
+    if not (isinstance(comboBox, QComboBox)):
+        raise AssertionError
     model = comboBox.model()
     if not isinstance(model, OptionListModel):
         i = comboBox.findData(value, role=Qt.DisplayRole)
@@ -162,7 +165,8 @@ class OptionListModel(QAbstractListModel):
         self.insertOptions([option])
 
     def addOptions(self, options):
-        assert isinstance(options, list)
+        if not (isinstance(options, list)):
+            raise AssertionError
         self.insertOptions(options)
 
     sigOptionsInserted = pyqtSignal(list)
@@ -174,7 +178,8 @@ class OptionListModel(QAbstractListModel):
             options = [Option(e.value, name=str(e.name)) for e in options]
         if not isinstance(options, list):
             options = [options]
-        assert isinstance(options, list)
+        if not (isinstance(options, list)):
+            raise AssertionError
 
         options = [self.o2o(o) for o in options]
 
@@ -264,7 +269,8 @@ class OptionListModel(QAbstractListModel):
 
         idx = self.createIndex(None, -1, 0)
         for i, o in enumerate(self.mOptions):
-            assert isinstance(o, Option)
+            if not (isinstance(o, Option)):
+                raise AssertionError
             if o.mValue == option:
                 idx.setRow(i)
                 break
@@ -383,7 +389,8 @@ class TreeNode(QObject):
         Sets the nodes's status tip to the string specified by statusTip.
         :param statusTip: str
         """
-        assert isinstance(statusTip, str)
+        if not (isinstance(statusTip, str)):
+            raise AssertionError
         self.mStatusTip = statusTip
 
     def statusTip(self) -> str:
@@ -394,7 +401,8 @@ class TreeNode(QObject):
         return self.mStatusTip
 
     def setCheckState(self, checkState):
-        assert isinstance(checkState, (int, Qt.CheckState))
+        if not (isinstance(checkState, (int, Qt.CheckState))):
+            raise AssertionError
         self.mCheckState = checkState
         self.sigUpdated.emit(self)
 
@@ -423,7 +431,8 @@ class TreeNode(QObject):
         return self.mCheckable is True
 
     def setCheckable(self, b: bool):
-        assert isinstance(b, bool)
+        if not (isinstance(b, bool)):
+            raise AssertionError
         self.mCheckable = b
 
     def clone(self, parent=None):
@@ -435,7 +444,8 @@ class TreeNode(QObject):
         n.mToolTip = self.mToolTip
 
         for childNode in self.mChildren:
-            assert isinstance(childNode, TreeNode)
+            if not (isinstance(childNode, TreeNode)):
+                raise AssertionError
             childNode.clone(parent=n)
         return n
 
@@ -478,10 +488,12 @@ class TreeNode(QObject):
         self.insertChildNodes(len(self.mChildren), child_nodes)
 
     def insertChildNodes(self, index: int, child_nodes):
-        assert index <= len(self.mChildren)
+        if not (index <= len(self.mChildren)):
+            raise AssertionError
         if isinstance(child_nodes, TreeNode):
             child_nodes = [child_nodes]
-        assert isinstance(child_nodes, list)
+        if not (isinstance(child_nodes, list)):
+            raise AssertionError
         unique = []
         for n in child_nodes:
             if n not in unique and n not in self.mChildren:
@@ -497,7 +509,8 @@ class TreeNode(QObject):
         self.beginAddChildNodes.emit(self, index, idxLast)
 
         for i, node in enumerate(child_nodes):
-            assert isinstance(node, TreeNode)
+            if not (isinstance(node, TreeNode)):
+                raise AssertionError
 
             # connect node signals
             node.beginAddChildNodes.connect(self.beginAddChildNodes)
@@ -528,9 +541,12 @@ class TreeNode(QObject):
             child_nodes = [child_nodes]
         child_nodes: List[TreeNode]
         for node in child_nodes:
-            assert isinstance(node, TreeNode)
-            assert node in self.mChildren
-            assert node.parentNode() == self
+            if not (isinstance(node, TreeNode)):
+                raise AssertionError
+            if not (node in self.mChildren):
+                raise AssertionError
+            if not (node.parentNode() == self):
+                raise AssertionError
 
         child_nodes = sorted(child_nodes, key=lambda node: node.nodeIndex())
         removed = []
@@ -723,7 +739,8 @@ class OptionTreeNode(TreeNode):
     def __init__(self, optionModel: OptionListModel, *args, option: Option = None, **kwds):
         super().__init__(*args, **kwds)
 
-        assert isinstance(optionModel, OptionListModel)
+        if not (isinstance(optionModel, OptionListModel)):
+            raise AssertionError
         self.mOptionModel = optionModel
         self.mOption: Option = None
         if option is None and len(optionModel) > 0:
@@ -734,7 +751,8 @@ class OptionTreeNode(TreeNode):
         return self.mOptionModel
 
     def setOption(self, option: Option):
-        assert option in self.mOptionModel
+        if not (option in self.mOptionModel):
+            raise AssertionError
         self.mOption = option
         self.setValue(option.name())
 
@@ -751,7 +769,8 @@ class NumpyArrayIterator(object):
     """
 
     def __init__(self, array: np.ndarray):
-        assert isinstance(array, np.ndarray)
+        if not (isinstance(array, np.ndarray)):
+            raise AssertionError
         self.mArray = array
         self.mIndex = -1
         self.mMax = array.shape[0] if len(array.shape) > 0 else 0
@@ -905,7 +924,8 @@ class TreeModel(QAbstractItemModel):
         self.mRootNode.sigUpdated.connect(self.onNodeUpdated)
 
     def setColumnNames(self, names):
-        assert isinstance(names, list)
+        if not (isinstance(names, list)):
+            raise AssertionError
         self.mRootNode.setValues(names)
 
     def __contains__(self, item):
@@ -922,7 +942,8 @@ class TreeModel(QAbstractItemModel):
         return self.mRootNode
 
     def setupNodeConnections(self, node: TreeNode):
-        assert isinstance(node, TreeNode)
+        if not (isinstance(node, TreeNode)):
+            raise AssertionError
 
     def beginInsertNodes(self, node: TreeNode, first: int, last: int):
         parent = self.node2idx(node)
@@ -941,7 +962,8 @@ class TreeModel(QAbstractItemModel):
         # self.dataChanged.emit(idx1, idx2)
 
     def maxColumnCount(self, index: QModelIndex) -> int:
-        assert isinstance(index, QModelIndex)
+        if not (isinstance(index, QModelIndex)):
+            raise AssertionError
         cnt = self.columnCount(index)
         for row in range(self.rowCount(index)):
             idx = self.index(row, 0, index)
@@ -975,7 +997,8 @@ class TreeModel(QAbstractItemModel):
         s = ""
 
     def headerData(self, section, orientation, role):
-        assert isinstance(section, int)
+        if not (isinstance(section, int)):
+            raise AssertionError
         if orientation == Qt.Horizontal and role == Qt.DisplayRole:
             if section < len(self.mRootNode.values()):
                 return self.mRootNode.values()[section]
@@ -1151,7 +1174,8 @@ class TreeModel(QAbstractItemModel):
         :param parentNodeType: cls
         :return: TreeNode instance
         """
-        assert isinstance(node, TreeNode)
+        if not (isinstance(node, TreeNode)):
+            raise AssertionError
         return node.findParentNode(nodeType)
 
     def indexes2nodes(self, indexes: list):
@@ -1160,7 +1184,8 @@ class TreeModel(QAbstractItemModel):
         :param indexes: [list-of-QModelIndex]
         :return: [list-of-TreeNodes]
         """
-        assert isinstance(indexes, list)
+        if not (isinstance(indexes, list)):
+            raise AssertionError
         nodes = []
         for idx in indexes:
             n = self.idx2node(idx)
@@ -1180,7 +1205,8 @@ class TreeModel(QAbstractItemModel):
             nodes = [nodes]
 
         for n in nodes:
-            assert isinstance(n, TreeNode)
+            if not (isinstance(n, TreeNode)):
+                raise AssertionError
             idx = self.node2idx(n)
             if idx.isValid():
                 n.parentNode().removeChildNodes(n)
@@ -1195,7 +1221,8 @@ class TreeModel(QAbstractItemModel):
         return [self.node2idx(n) for n in nodes]
 
     def expandNode(self, node, expand=True, recursive=True):
-        assert isinstance(node, TreeNode)
+        if not (isinstance(node, TreeNode)):
+            raise AssertionError
         if False and isinstance(self.mTreeView, QTreeView):
             idx = self.node2idx(node)
             self.mTreeView.setExpanded(idx, expand)
@@ -1215,7 +1242,8 @@ class TreeModel(QAbstractItemModel):
             return None
 
         node = index.internalPointer()
-        assert isinstance(node, TreeNode)
+        if not (isinstance(node, TreeNode)):
+            raise AssertionError
         return node
 
     def node2idx(self, node: TreeNode) -> QModelIndex:
@@ -1239,7 +1267,8 @@ class TreeModel(QAbstractItemModel):
         :param role: Qt.ItemRole
         :return: object
         """
-        assert isinstance(index, QModelIndex)
+        if not (isinstance(index, QModelIndex)):
+            raise AssertionError
         if not index.isValid():
             if role == Qt.UserRole:
                 return self.rootNode()
@@ -1247,7 +1276,8 @@ class TreeModel(QAbstractItemModel):
                 return None
 
         node = index.internalPointer()
-        assert isinstance(node, TreeNode)
+        if not (isinstance(node, TreeNode)):
+            raise AssertionError
 
         if role == Qt.UserRole:
             return node
@@ -1284,7 +1314,8 @@ class TreeModel(QAbstractItemModel):
         return None
 
     def flags(self, index):
-        assert isinstance(index, QModelIndex)
+        if not (isinstance(index, QModelIndex)):
+            raise AssertionError
         if not index.isValid():
             return Qt.NoItemFlags
         return Qt.ItemIsEnabled | Qt.ItemIsSelectable
@@ -1305,7 +1336,8 @@ class TreeView(QTreeView):
         self.mAutoFirstColumnSpan: bool = True
 
     def setAutoFirstColumnSpan(self, b: bool):
-        assert isinstance(b, bool)
+        if not (isinstance(b, bool)):
+            raise AssertionError
         self.mAutoFirstColumnSpan = b
 
     def contextMenuEvent(self, event: QContextMenuEvent) -> None:
@@ -1334,7 +1366,8 @@ class TreeView(QTreeView):
         2 = Top and Subnodes expanded
         :param depth: int
         """
-        assert isinstance(depth, int)
+        if not (isinstance(depth, int)):
+            raise AssertionError
         self.mAutoExpansionDepth = depth
 
     def expandSelectedNodes(self, expand: bool):
@@ -1357,7 +1390,8 @@ class TreeView(QTreeView):
         :param prefix: string to identify the parent nodes
         :return: Dict[str, bool] that stores the node expansion states
         """
-        assert isinstance(restore, bool)
+        if not (isinstance(restore, bool)):
+            raise AssertionError
 
         if not isinstance(index, QModelIndex):
             index = QModelIndex()
@@ -1435,7 +1469,8 @@ class TreeView(QTreeView):
         model: QAbstractItemModel = self.model()
         if not isinstance(model, QAbstractItemModel):
             return
-        assert isinstance(parent, QModelIndex)
+        if not (isinstance(parent, QModelIndex)):
+            raise AssertionError
 
         if parent.column() > 0:
             return
@@ -1450,8 +1485,10 @@ class TreeView(QTreeView):
         if not isinstance(last, int):
             last = rows - 1
 
-        assert last < rows
-        assert first <= last
+        if not (last < rows):
+            raise AssertionError
+        if not (first <= last):
+            raise AssertionError
 
         for r in range(first, last + 1):
             idx0: QModelIndex = model.index(r, 0, parent)
@@ -1550,12 +1587,14 @@ class SettingsModel(TreeModel):
 
     def updateRanges(self, ranges: Dict[str, Tuple]):
         for k, v in ranges.items():
-            assert len(v) >= 2
+            if not (len(v) >= 2):
+                raise AssertionError
 
         self.mRANGES.update(ranges)
 
     def updateOptions(self, options: Dict[str, List[Option]]):
-        assert isinstance(options, dict)
+        if not (isinstance(options, dict)):
+            raise AssertionError
         opt = dict()
         for k, olist in options.items():
             olist2 = []
@@ -1586,7 +1625,8 @@ class SettingsModel(TreeModel):
         for i in range(len(key_filter)):
             if isinstance(key_filter[i], str):
                 key_filter[i] = re.compile(key_filter[i])
-            assert isinstance(key_filter[i], Pattern)
+            if not (isinstance(key_filter[i], Pattern)):
+                raise AssertionError
 
         self.mRootNode.removeAllChildNodes()
         self._readGroup(settings, '', self.mRootNode, key_filter)
@@ -1613,7 +1653,8 @@ class SettingsModel(TreeModel):
     def setting_key_node(self, key: str) -> SettingsNode:
 
         for n in self.mRootNode.findChildNodes(SettingsNode, recursive=True):
-            assert isinstance(n, SettingsNode)
+            if not (isinstance(n, SettingsNode)):
+                raise AssertionError
             if n.mSettingsKey == key:
                 return n
         return None
@@ -1741,7 +1782,8 @@ class SettingsTreeViewDelegate(QStyledItemDelegate):
         if index.isValid():
             value = index.data(Qt.EditRole)
             if isinstance(editor, QgsColorButton):
-                assert isinstance(value, QColor)
+                if not (isinstance(value, QColor)):
+                    raise AssertionError
                 editor.setColor(value)
             elif isinstance(editor, QComboBox):
                 setCurrentComboBoxValue(editor, value)

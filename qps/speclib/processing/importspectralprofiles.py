@@ -55,7 +55,8 @@ def file_reader(path: Union[str, Path],
     :return:
     """
     path = Path(path)
-    assert path.is_file()
+    if not (path.is_file()):
+        raise AssertionError(f'Not a file: {path}')
 
     for reader in READERS.values():
         if reader.canReadFile(path):
@@ -405,7 +406,8 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
         # outputPar = QgsProcessingOutputLayerDefinition(parameters.get(self.P_OUTPUT), context.project())
         # remapping = QgsRemappingSinkDefinition()
 
-        assert len(all_fields) == len(dst_fields)
+        if not (len(all_fields) == len(dst_fields)):
+            raise AssertionError
 
         # outputPar.setRemappingDefinition(remapping)
 
@@ -448,7 +450,8 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
             remappingFieldMap = dict()
             transformers = []
             for dstField in dst_fields:
-                assert isinstance(dstField, QgsField)
+                if not (isinstance(dstField, QgsField)):
+                    raise AssertionError
                 if dstField.name() in srcFieldNames:
                     srcFieldName = dstField.name()
                     transformer = GenericPropertyTransformer(dstField)

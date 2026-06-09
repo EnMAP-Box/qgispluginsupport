@@ -76,7 +76,8 @@ def createQgsMapCanvasUserInputWidget(canvas: QgsMapCanvas) -> QgsUserInputWidge
     :param canvas: QgsMapCanvas
     :return: QgsUserInputWidget
     """
-    assert isinstance(canvas, QgsMapCanvas)
+    if not (isinstance(canvas, QgsMapCanvas)):
+        raise AssertionError
     mUserInputWidget = canvas.findChild(QgsUserInputWidget)
     if not isinstance(mUserInputWidget, QgsUserInputWidget):
         mUserInputWidget = QgsUserInputWidget(canvas)
@@ -117,7 +118,8 @@ class MapTools(enum.Enum):
                 arg = MapTools.__members__.get(arg)
             elif arg in values:
                 arg = MapTools.__members__.get(names[values.index(arg)])
-        assert isinstance(arg, MapTools)
+        if not (isinstance(arg, MapTools)):
+            raise AssertionError
         return arg
 
     @staticmethod
@@ -134,8 +136,10 @@ class MapTools(enum.Enum):
 
         mapToolEnum = MapTools.toMapToolEnum(mapToolEnum)
 
-        assert isinstance(mapToolEnum, MapTools)
-        assert isinstance(canvas, QgsMapCanvas)
+        if not (isinstance(mapToolEnum, MapTools)):
+            raise AssertionError
+        if not (isinstance(canvas, QgsMapCanvas)):
+            raise AssertionError
 
         mapTool = None
         if mapToolEnum == MapTools.ZoomIn:
@@ -234,11 +238,13 @@ class CursorLocationMapTool(QgsMapToolEmitPoint):
         return QgsMapTool.ShowContextMenu
 
     def setMouseButtons(self, listOfButtons):
-        assert isinstance(listOfButtons)
+        if not (isinstance(listOfButtons)):
+            raise AssertionError
         self.mButtons = listOfButtons
 
     def canvasPressEvent(self, e):
-        assert isinstance(e, QgsMapMouseEvent)
+        if not (isinstance(e, QgsMapMouseEvent)):
+            raise AssertionError
         if e.button() in self.mButtons:
             geoPoint = self.toMapCoordinates(e.pos())
             self.marker.setCenter(geoPoint)
@@ -323,7 +329,8 @@ class MapToolCenter(CursorLocationMapTool):
         Call to center the linked QgsMapCanvas to a point
         :param point: SpatialPoint to center the map canvas to.
         """
-        assert isinstance(point, SpatialPoint)
+        if not (isinstance(point, SpatialPoint)):
+            raise AssertionError
         point = point.toCrs(self.canvas().mapSettings().destinationCrs())
         if isinstance(point, SpatialPoint):
             self.canvas().setCenter(point)
@@ -596,7 +603,8 @@ class QgsFeatureAction(QAction):
 
         super(QgsFeatureAction, self).__init__(name, parent)
 
-        assert isinstance(layer, QgsVectorLayer)
+        if not (isinstance(layer, QgsVectorLayer)):
+            raise AssertionError
         self.mLayer = layer
         self.mFeature = f
         self.mActionId = actionID
@@ -607,11 +615,13 @@ class QgsFeatureAction(QAction):
         self.mVectorLayerTools = VectorLayerTools()
 
     def setVectorLayerTools(self, tools: QgsVectorLayerTools):
-        assert isinstance(VectorLayerTools, QgsVectorLayerTools)
+        if not (isinstance(VectorLayerTools, QgsVectorLayerTools)):
+            raise AssertionError
         self.mVectorLayerTools = tools
 
     def setAttributeEditorContext(self, context: QgsAttributeEditorContext):
-        assert isinstance(context, QgsAttributeEditorContext)
+        if not (isinstance(context, QgsAttributeEditorContext)):
+            raise AssertionError
         self.mAttributeEditorContext = context
 
     def execute(self):
@@ -647,7 +657,8 @@ class QgsFeatureAction(QAction):
         dialog.addAction(a)
 
         for action in actions:
-            assert isinstance(action, QgsAction)
+            if not (isinstance(action, QgsAction)):
+                raise AssertionError
             if not action.runable():
                 continue
 
@@ -1414,7 +1425,8 @@ class QgsMapToolSelectUtils(object):
             request.setNoAttributes()
 
         fit = vlayer.getFeatures(request)
-        assert isinstance(fit, QgsFeatureIterator)
+        if not (isinstance(fit, QgsFeatureIterator)):
+            raise AssertionError
 
         f = QgsFeature()
         closestFeatureId = 0
@@ -1472,9 +1484,11 @@ class QgsMapToolSelectionHandler(QObject):
     def __init__(self, canvas: QgsMapCanvas, selectionMode, parent: QObject = None):
         super(QgsMapToolSelectionHandler, self).__init__(parent=parent)
         self.mSelectionGeometry = None
-        assert isinstance(selectionMode, QgsMapToolSelectionHandler.SelectionMode)
+        if not (isinstance(selectionMode, QgsMapToolSelectionHandler.SelectionMode)):
+            raise AssertionError
         self.mCanvas = canvas
-        assert isinstance(canvas, QgsMapCanvas)
+        if not (isinstance(canvas, QgsMapCanvas)):
+            raise AssertionError
 
         self.mSelectionMode = selectionMode
         self.mSnapIndicator = QgsSnapIndicator(canvas)
@@ -1771,7 +1785,8 @@ class QgsMapToolSelectionHandler(QObject):
         self.geometryChanged.emit(modifiers)
 
     def setSelectionMode(self, mode):
-        assert isinstance(mode, QgsMapToolSelectionHandler.SelectionMode)
+        if not (isinstance(mode, QgsMapToolSelectionHandler.SelectionMode)):
+            raise AssertionError
         self.mSelectionMode = mode
 
     def selectionMode(self):

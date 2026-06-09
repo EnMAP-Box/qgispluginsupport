@@ -137,7 +137,8 @@ class SpectralProfileColorPropertyWidget(QWidget):
         self.mDefaultColor = QColor(color)
 
     def setToProperty(self, property: QgsProperty):
-        assert isinstance(property, QgsProperty)
+        if not (isinstance(property, QgsProperty)):
+            raise AssertionError
 
         if property.propertyType() == QgsProperty.StaticProperty:
             self.mColorButton.setColor(
@@ -237,7 +238,8 @@ class PropertyItem(PropertyItemBase):
     """
 
     def __init__(self, labelName: str, *args, **kwds):
-        assert isinstance(labelName, str)
+        if not (isinstance(labelName, str)):
+            raise AssertionError
         if 'tooltip' in kwds:
             tt = kwds.pop('tooltip')
         else:
@@ -248,7 +250,8 @@ class PropertyItem(PropertyItemBase):
             key = re.sub(r'[-_]|\s', '_', labelName.lower())
 
         super().__init__(*args, **kwds)
-        assert isinstance(key, str) and ' ' not in key
+        if not (isinstance(key, str) and ' ' not in key):
+            raise AssertionError
         self.mKey = key
         self.setEditable(False)
         self.setDragEnabled(False)
@@ -355,7 +358,8 @@ class PropertyItemGroup(PropertyItemBase):
         self.mProject: QgsProject = project
 
     def setProject(self, project: QgsProject):
-        assert isinstance(project, QgsProject)
+        if not (isinstance(project, QgsProject)):
+            raise AssertionError
         self.mProject = project
 
     def project(self) -> QgsProject:
@@ -488,7 +492,8 @@ class PropertyItemGroup(PropertyItemBase):
     def toMimeData(propertyGroups: List['PropertyItemGroup']):
 
         for g in propertyGroups:
-            assert isinstance(g, PropertyItemGroup)
+            if not (isinstance(g, PropertyItemGroup)):
+                raise AssertionError
 
         md = QMimeData()
         context = QgsReadWriteContext()
@@ -748,7 +753,8 @@ class GeneralSettingsGroup(PropertyItemGroup):
         self.mLegendGroup.setCheckState(state)
 
     def setMaximumProfiles(self, n: int):
-        assert n >= 0
+        if not (n >= 0):
+            raise AssertionError
         self.mP_MaxProfiles.setProperty(QgsProperty.fromValue(n))
 
     def expressionContext(self) -> QgsExpressionContext:
@@ -867,7 +873,8 @@ class PythonCodeItem(PropertyItem):
             self.setCode(editor.code())
 
     def setCode(self, code: str):
-        assert isinstance(code, str)
+        if not (isinstance(code, str)):
+            raise AssertionError
         expr_old = self.mCode
         if code != expr_old:
             self.mCode = code
@@ -1095,7 +1102,8 @@ class SpectralProfileLayerFieldItem(PropertyItem):
         elif isinstance(field_name, QgsField):
             field_name = field_name.name()
 
-        assert layer_id is None or isinstance(layer_id, str)
+        if not (layer_id is None or isinstance(layer_id, str)):
+            raise AssertionError
 
         if layer_id != self.mLayerID or field_name != self.mFieldName:
             self.mLayerID = layer_id
@@ -1151,7 +1159,8 @@ class TextItem(PropertyItem):
         return self.data(Qt.EditRole)
 
     def setText(self, text: str):
-        assert isinstance(text, str)
+        if not (isinstance(text, str)):
+            raise AssertionError
         self.setData(text, Qt.EditRole)
 
     def createEditor(self, parent: QWidget) -> QLineEdit:
@@ -1222,8 +1231,10 @@ class QgsPropertyItem(PropertyItem):
         return self.mProperty
 
     def setProperty(self, property: QgsProperty):
-        assert isinstance(property, QgsProperty)
-        assert isinstance(self.mDefinition, QgsPropertyDefinition), 'Call setDefinition(propertyDefinition) first'
+        if not (isinstance(property, QgsProperty)):
+            raise AssertionError
+        if not (isinstance(self.mDefinition, QgsPropertyDefinition)):
+            raise AssertionError('Call setDefinition(propertyDefinition) first')
         b = self.mProperty != property
         self.mProperty = property
         if b:
@@ -1231,8 +1242,10 @@ class QgsPropertyItem(PropertyItem):
             self.emitDataChanged()
 
     def setDefinition(self, propertyDefinition: QgsPropertyDefinition):
-        assert isinstance(propertyDefinition, QgsPropertyDefinition)
-        assert self.mDefinition is None, 'property definition is immutable and already set'
+        if not (isinstance(propertyDefinition, QgsPropertyDefinition)):
+            raise AssertionError
+        if not (self.mDefinition is None):
+            raise AssertionError('property definition is immutable and already set')
         self.mDefinition = propertyDefinition
         self.label().setText(propertyDefinition.name())
         self.label().setToolTip(propertyDefinition.description())
@@ -1442,7 +1455,8 @@ class ProfileColorPropertyItem(QgsPropertyItem):
         self.emitDataChanged()
 
     def setColorExpression(self, expression: str):
-        assert isinstance(expression, str)
+        if not (isinstance(expression, str)):
+            raise AssertionError
         p = self.property()
         p.setExpressionString(expression)
         self.emitDataChanged()
@@ -1575,7 +1589,8 @@ class RasterRendererGroup(PropertyItemGroup):
     def connectPlotModel(self, model):
 
         from .spectralprofileplotmodel import SpectralProfilePlotModel
-        assert isinstance(model, SpectralProfilePlotModel)
+        if not (isinstance(model, SpectralProfilePlotModel)):
+            raise AssertionError
 
         model.sigXUnitChanged.connect(self.setXUnit)
         self.setXUnit(model.xUnit().unit)
@@ -1592,7 +1607,8 @@ class RasterRendererGroup(PropertyItemGroup):
         return item
 
     def setXUnit(self, xUnit: str):
-        assert xUnit is None or isinstance(xUnit, str)
+        if not (xUnit is None or isinstance(xUnit, str)):
+            raise AssertionError
         if xUnit is None:
             xUnit = BAND_NUMBER
         self.mXUnit = xUnit
@@ -1615,7 +1631,8 @@ class RasterRendererGroup(PropertyItemGroup):
         return lyr
 
     def setLayer(self, layer: QgsRasterLayer):
-        assert isinstance(layer, QgsRasterLayer) and layer.isValid()
+        if not (isinstance(layer, QgsRasterLayer) and layer.isValid()):
+            raise AssertionError
 
         lid = layer.id()
         if lid == self.mLayerID:
@@ -2091,7 +2108,8 @@ class ProfileVisualizationGroup(PropertyItemGroup):
                 kwds['f'] = feature
                 lists_to_numpy_array(kwds)
                 exec(compiled_code, kwds, kwds)
-                assert 'y' in kwds, 'Missing y in kwds'
+                if not ('y' in kwds):
+                    raise AssertionError('Missing y in kwds')
 
             except Exception as ex:
                 error = str(ex)
@@ -2205,7 +2223,8 @@ class ProfileVisualizationGroup(PropertyItemGroup):
         :param style:
         :return:
         """
-        assert isinstance(style, PlotWidgetStyle)
+        if not (isinstance(style, PlotWidgetStyle)):
+            raise AssertionError
         if style != self.mPlotWidgetStyle:
             self.mPlotWidgetStyle = style
             self.setColor(style.foregroundColor)
@@ -2250,7 +2269,8 @@ class ProfileVisualizationGroup(PropertyItemGroup):
     def setFilterExpression(self, expression):
         if isinstance(expression, QgsExpression):
             expression = expression.expression()
-        assert isinstance(expression, str)
+        if not (isinstance(expression, str)):
+            raise AssertionError
         p = self.mPFilter.property()
         p.setExpressionString(expression)
         self.mPFilter.setProperty(p)
@@ -2268,7 +2288,8 @@ class ProfileVisualizationGroup(PropertyItemGroup):
     def setLabelExpression(self, expression):
         if isinstance(expression, QgsExpression):
             expression = expression.expression()
-        assert isinstance(expression, str)
+        if not (isinstance(expression, str)):
+            raise AssertionError
         p = self.mPLabel.property()
         p.setExpressionString(expression)
         self.mPLabel.setProperty(p)

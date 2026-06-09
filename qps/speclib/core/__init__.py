@@ -83,7 +83,7 @@ def is_spectral_feature(feature: QgsFeature) -> bool:
     return contains_profile_field(feature)
 
 
-def profile_fields(fields: Union[QgsFeature, QgsVectorLayer, QgsFields]) -> QgsFields:
+def profile_fields(fields: Union[QgsFeature, QgsVectorLayer, QgsFields, List[QgsField]]) -> QgsFields:
     """
     Returns the spectral profile fields
     :param fields: fields to check
@@ -98,7 +98,8 @@ def profile_fields(fields: Union[QgsFeature, QgsVectorLayer, QgsFields]) -> QgsF
     elif isinstance(fields, list):
         fds = QgsFields()
         for f in fields:
-            assert isinstance(f, QgsField)
+            if not (isinstance(f, QgsField)):
+                raise AssertionError('List item is not a QgsField')
             fds.append(f)
         fields = fds
     elif isinstance(fields, QgsFields):
@@ -184,9 +185,14 @@ def field_index(source: Union[QgsFields, QgsFeature, QgsVectorLayer],
         return field
 
     idx = -1
-    if isinstance(source, (QgsVectorLayer, QgsFeature)):
+    if not isinstance(source, (QgsVectorLayer, QgsFeature)):
+        raise AssertionError(f'Wrong source type: {source}')
+
+    if isinstance(source, QgsFields):
+        fields = source
+    else:
         fields = source.fields()
-    assert isinstance(fields, QgsFields)
+
     if isinstance(field, QgsField):
         idx = fields.lookupField(field.name())
     elif isinstance(field, str):

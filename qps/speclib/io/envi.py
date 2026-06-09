@@ -210,10 +210,14 @@ def writeCSVMetadata(pathCSV: str, profiles: List[QgsFeature], profile_names: Li
     :param profile_names:
     :return:
     """
-    assert isinstance(profiles, list)
+    if not (isinstance(profiles, list)):
+        raise AssertionError
     if len(profiles) == 0:
         return
-    assert len(profiles) == len(profile_names)
+    if not (len(profiles) == len(profile_names)):
+        raise AssertionError(f'Number of profiles ({len(profiles)}) '
+                             f'differs from number of profile names '
+                             f'({len(profile_names)})')
     refProfile = profiles[0]
     excludedNames = CSV_PROFILE_NAME_COLUMN_NAMES + [CSV_GEOMETRY_COLUMN, FIELD_FID]
     for n in profile_field_names(refProfile):
@@ -225,7 +229,8 @@ def writeCSVMetadata(pathCSV: str, profiles: List[QgsFeature], profile_names: Li
         writer = csv.DictWriter(f, fieldnames=allFieldNames)
         writer.writeheader()
         for p, spectrumName in zip(profiles, profile_names):
-            assert isinstance(p, QgsFeature)
+            if not (isinstance(p, QgsFeature)):
+                raise AssertionError
             d = {}
 
             if spectrumName in [None, NULL]:
@@ -289,7 +294,8 @@ class EnviSpectralLibraryWriter(SpectralProfileFileWriter):
         os.makedirs(dn, exist_ok=True)
 
         drv: gdal.Driver = gdal.GetDriverByName('ENVI')
-        assert isinstance(drv, gdal.Driver)
+        if not (isinstance(drv, gdal.Driver)):
+            raise AssertionError('Unable to load ENVI gdal driver')
 
         iGrp = -1
         field = self.mField
@@ -349,12 +355,9 @@ class EnviSpectralLibraryWriter(SpectralProfileFileWriter):
             Create(utf8_path, int xsize, int ysize, int bands=1, GDALDataType eType, char ** options=None) -> Dataset
             """
 
-            ds = drv.Create(pathDst.as_posix(), pData.shape[1], pData.shape[0], 1, eType)
-            band = ds.GetRasterBand(1)
-            assert isinstance(band, gdal.Band)
+            ds: gdal.Dataset = drv.Create(pathDst.as_posix(), pData.shape[1], pData.shape[0], 1, eType)
+            band: gdal.Band = ds.GetRasterBand(1)
             band.WriteArray(pData)
-
-            assert isinstance(ds, gdal.Dataset)
 
             # write ENVI header metadata
             # ds.SetDescription(speclib.name())
@@ -575,7 +578,8 @@ def esl2vrt(pathESL, pathVrt=None) -> gdal.Dataset:
     """
 
     hdr = readENVIHeader(pathESL, typeConversion=False)
-    assert hdr is not None and RX_SUPPORTED_ENVI_FILETYPES.match(hdr['file type'])
+    if not (hdr is not None and RX_SUPPORTED_ENVI_FILETYPES.match(hdr['file type'])):
+        raise AssertionError
 
     if hdr.get('file compression') == '1':
         raise Exception('Can not read compressed spectral libraries')
@@ -663,12 +667,14 @@ def readENVIHeader(pathESL: Union[str, Path], typeConversion: bool = False) -> O
     return md
 
 
-def describeRawFile(pathRaw, pathVrt, xsize, ysize,
-                    bands=1,
+def describeRawFile(pathRaw, pathVrt,
+                    xsize: int,
+                    ysize: int,
+                    bands: int = 1,
                     eType=gdal.GDT_Byte,
-                    interleave='bsq',
-                    byteOrder='LSB',
-                    headerOffset=0) -> gdal.Dataset:
+                    interleave: str = 'bsq',
+                    byteOrder: str = 'LSB',
+                    headerOffset: int = 0) -> gdal.Dataset:
     """
     Creates a VRT to describe a raw binary file
     :param pathRaw: path of raw image
@@ -682,22 +688,31 @@ def describeRawFile(pathRaw, pathVrt, xsize, ysize,
     :param headerOffset: header offset in bytes, default = 0
     :return: gdal.Dataset of created VRT
     """
-    assert xsize > 0
-    assert ysize > 0
-    assert bands > 0
-    assert eType > 0
+    if not (xsize > 0):
+        raise AssertionError
+    if not (ysize > 0):
+        raise AssertionError
+    if not (bands > 0):
+        raise AssertionError
+    if not (eType > 0):
+        raise AssertionError
 
-    assert eType in LUT_GDT_SIZE.keys(), 'dataType "{}" is not a valid gdal datatype'.format(eType)
+    if not (eType in LUT_GDT_SIZE.keys()):
+        raise AssertionError('dataType "{}" is not a valid gdal datatype'.format(eType))
     interleave = interleave.lower()
 
-    assert interleave in ['bsq', 'bil', 'bip']
-    assert byteOrder in ['LSB', 'MSB']
+    if not (interleave in ['bsq', 'bil', 'bip']):
+        raise AssertionError
+    if not (byteOrder in ['LSB', 'MSB']):
+        raise AssertionError
 
     drvVRT = gdal.GetDriverByName('VRT')
-    assert isinstance(drvVRT, gdal.Driver)
+    if not (isinstance(drvVRT, gdal.Driver)):
+        raise AssertionError
 
     dsVRT = drvVRT.Create(pathVrt, xsize, ysize, bands=0, eType=eType)
-    assert isinstance(dsVRT, gdal.Dataset)
+    if not (isinstance(dsVRT, gdal.Dataset)):
+        raise AssertionError
 
     # vrt = ['<VRTDataset rasterXSize="{xsize}" rasterYSize="{ysize}">'.format(xsize=xsize,ysize=ysize)]
 
@@ -732,10 +747,12 @@ def describeRawFile(pathRaw, pathVrt, xsize, ysize,
         # md = {}
         # md['source_0'] = xml
         # vrtBand = dsVRT.GetRasterBand(b + 1)
-        assert dsVRT.AddBand(eType, options=options) == 0
+        if not (dsVRT.AddBand(eType, options=options) == 0):
+            raise AssertionError
 
         vrtBand = dsVRT.GetRasterBand(b + 1)
-        assert isinstance(vrtBand, gdal.Band)
+        if not (isinstance(vrtBand, gdal.Band)):
+            raise AssertionError
         # vrtBand.SetMetadata(md, 'vrt_sources')
         # vrt.append('  <VRTRasterBand dataType="{dataType}" band="{band}"
         # subClass="VRTRawRasterBand">'.format(dataType=LUT_GDT_NAME[eType], band=b+1))

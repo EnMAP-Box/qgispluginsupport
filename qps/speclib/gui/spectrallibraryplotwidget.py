@@ -192,7 +192,8 @@ class SpectralProfilePlotViewDelegate(QStyledItemDelegate):
     """
 
     def __init__(self, treeView: SpectralProfilePlotView, parent=None):
-        assert isinstance(treeView, SpectralProfilePlotView)
+        if not (isinstance(treeView, SpectralProfilePlotView)):
+            raise AssertionError
         super(SpectralProfilePlotViewDelegate, self).__init__(parent=parent)
         self.mTreeView: SpectralProfilePlotView = treeView
 
@@ -378,13 +379,17 @@ class SpectralLibraryPlotWidget(QWidget):
         super().__init__(*args, **kwds)
         loadUi(speclibUiPath('spectrallibraryplotwidget.ui'), self)
 
-        assert isinstance(self.panelVisualization, QFrame)
+        if not (isinstance(self.panelVisualization, QFrame)):
+            raise AssertionError
 
-        assert isinstance(self.mPlotWidget, SpectralProfilePlotWidget)
-        assert isinstance(self.treeView, SpectralProfilePlotView)
+        if not (isinstance(self.mPlotWidget, SpectralProfilePlotWidget)):
+            raise AssertionError
+        if not (isinstance(self.treeView, SpectralProfilePlotView)):
+            raise AssertionError
 
         self.mPlotWidget: SpectralProfilePlotWidget
-        assert isinstance(self.mPlotWidget, SpectralProfilePlotWidget)
+        if not (isinstance(self.mPlotWidget, SpectralProfilePlotWidget)):
+            raise AssertionError
         # self.plotWidget.sigPopulateContextMenuItems.connect(self.onPopulatePlotContextMenu)
 
         self.mPlotModel = SpectralProfilePlotModel(parent=self)

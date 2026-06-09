@@ -63,7 +63,8 @@ class HelpStringMaker(object):
         helpDir = pathlib.Path(__file__).parent / 'function_help'
         self.mHELP = dict()
 
-        assert helpDir.is_dir()
+        if not (helpDir.is_dir()):
+            raise AssertionError
 
         for e in os.scandir(helpDir):
             if e.is_file() and e.name.endswith('.json'):
@@ -124,7 +125,8 @@ class HelpStringMaker(object):
                 delim = ''
                 syntaxParameters = set()
                 for P in parameters:
-                    assert isinstance(P, QgsExpressionFunction.Parameter)
+                    if not (isinstance(P, QgsExpressionFunction.Parameter)):
+                        raise AssertionError
                     syntaxParameters.add(P.name())
                     optional: bool = P.optional()
                     if optional:
@@ -159,7 +161,8 @@ class HelpStringMaker(object):
                 html.append('<div class="arguments"><table>')
 
                 for P in parameters:
-                    assert isinstance(P, QgsExpressionFunction.Parameter)
+                    if not (isinstance(P, QgsExpressionFunction.Parameter)):
+                        raise AssertionError
 
                     description = ARGUMENT_DESCRIPTIONS.get(P.name(), '')
                     html.append(f'<tr><td class="argument">{P.name()}</td><td>{description}</td></tr>')
@@ -214,7 +217,8 @@ class Format_Py(QgsExpressionFunction):
     def func(self, values, context: QgsExpressionContext, parent: QgsExpression, node):
         if len(values) == 0 or values[0] in (None, NULL):
             return None
-        assert isinstance(values[0], str)
+        if not (isinstance(values[0], str)):
+            raise AssertionError
         fmt: str = values[0]
         fmtArgs = values[1:]
         try:
@@ -322,7 +326,8 @@ class ReadSpectralProfile(QgsExpressionFunction):
         try:
             path = values[0]
             filetype = values[1]
-            assert os.path.isfile(path), f'File does not exists: {path}'
+            if not (os.path.isfile(path)):
+                raise AssertionError(f'File does not exists: {path}')
 
             if not filetype:
                 filetype = self.findFileType(path)
@@ -1051,7 +1056,8 @@ class SpectralMath(QgsExpressionFunction):
                         k2 = f'{k}{n}'
                         DATA[k2] = v
 
-            assert context.fields()
+            if not (context.fields()):
+                raise AssertionError
             exec(pyExpression, DATA)
 
             # collect output profile values
@@ -1106,7 +1112,8 @@ def registerQgsExpressionFunctions():
 
 def unregisterQgsExpressionFunctions():
     for name, func in QGIS_FUNCTION_INSTANCES.items():
-        assert name == func.name()
+        if not (name == func.name()):
+            raise AssertionError
         if QgsExpression.isFunctionName(name):
             if QgsExpression.unregisterFunction(name):
                 QgsMessageLog.logMessage(f'Unregistered {name}', level=Qgis.Info)

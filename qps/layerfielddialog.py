@@ -78,7 +78,8 @@ class FilteredProjectFieldsModel(QAbstractListModel):
         self.endResetModel()
 
     def setProject(self, project: QgsProject):
-        assert isinstance(project, QgsProject)
+        if not (isinstance(project, QgsProject)):
+            raise AssertionError
         if self.mProject != project:
 
             if isinstance(self.mProject, QgsProject):
@@ -326,7 +327,8 @@ class LayerFieldDialog(QDialog):
         return False
 
     def setProject(self, project):
-        assert isinstance(project, QgsProject)
+        if not (isinstance(project, QgsProject)):
+            raise AssertionError
         self.mLayerModel.setProject(project)
 
     def setLayerFilter(self, func: Optional[Callable]):
@@ -436,7 +438,8 @@ class LayerFieldWidget(QWidget):
             self.setLayerField(d.layer(), d.field())
 
     def setLayerField(self, layer: QgsMapLayer, field: Union[None, str, QgsField] = None):
-        assert isinstance(layer, QgsMapLayer)
+        if not (isinstance(layer, QgsMapLayer)):
+            raise AssertionError
         if isinstance(field, QgsField):
             field = field.name()
         changed = self.mLayer != layer or self.mField != field
@@ -471,6 +474,7 @@ class LayerFieldWidget(QWidget):
         return self.mProject
 
     def setProject(self, project):
-        assert isinstance(project, QgsProject)
+        if not (isinstance(project, QgsProject)):
+            raise AssertionError
         self.mProject = project
         self.mComboBoxModel.setProject(project)

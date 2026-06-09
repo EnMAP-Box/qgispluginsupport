@@ -53,7 +53,8 @@ class CSVWriterFieldValueConverter(QgsVectorFileWriter.FieldValueConverter):
         """
         if isinstance(charactersToReplace, str):
             charactersToReplace = [charactersToReplace]
-        assert replacement not in charactersToReplace
+        if replacement in charactersToReplace:
+            raise AssertionError('replacement is part of characters to replace')
         self.mCharactersToReplace = charactersToReplace
         self.mReplacement = replacement
 

@@ -79,8 +79,10 @@ class ARTMOSpectralLibraryIO(SpectralLibraryIO):
 
         pathMeta = os.path.splitext(path)[0] + '_meta.txt'
 
-        assert os.path.isfile(path)
-        assert os.path.isfile(pathMeta)
+        if not (os.path.isfile(path)):
+            raise AssertionError(f'File does not exists: {path}')
+        if not (os.path.isfile(pathMeta)):
+            raise AssertionError(f'Metadata file does not exists: {path}')
 
         with open(pathMeta, 'r', encoding='utf-8') as f:
 

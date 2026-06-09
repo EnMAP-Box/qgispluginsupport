@@ -73,9 +73,9 @@ def getFirst(input):
         return input
 
 
-def pens_equal(p1, p2):
-    assert isinstance(p1, QPen)
-    assert isinstance(p2, QPen)
+def pens_equal(p1: QPen, p2: QPen):
+    if not (isinstance(p1, QPen) and isinstance(p2, QPen)):
+        raise AssertionError
     if p1 == p2:
         return True
     elif p1.brush() != p2.brush():
@@ -154,7 +154,8 @@ class MarkerSymbol(enum.Enum):
     @staticmethod
     def icon(symbol):
         symbol = MarkerSymbol.decode(symbol)
-        assert isinstance(symbol, MarkerSymbol)
+        if not (isinstance(symbol, MarkerSymbol)):
+            raise AssertionError
         # print('render {}'.format(symbol.value))
         pen = QPen(Qt.PenStyle.SolidLine)
         pen.setColor(QColor('black'))
@@ -169,7 +170,8 @@ class MarkerSymbol(enum.Enum):
         :param value: bool, if True, returns a string like '---' instead 'Line'
         :return: str
         """
-        assert isinstance(symbol, MarkerSymbol)
+        if not (isinstance(symbol, MarkerSymbol)):
+            raise AssertionError
         if symbol in [None, 'None']:
             symbol = MarkerSymbol.No_Symbol
         elif isinstance(symbol, str):
@@ -178,7 +180,8 @@ class MarkerSymbol(enum.Enum):
                     symbol = s
                     break
 
-        assert isinstance(symbol, MarkerSymbol), 'cannot encode {} into MarkerSymbol'.format(symbol)
+        if not (isinstance(symbol, MarkerSymbol)):
+            raise AssertionError('cannot encode {} into MarkerSymbol'.format(symbol))
         return symbol.name.replace('_', ' ')
 
 
@@ -222,7 +225,8 @@ def brush2list(brush: QBrush) -> list:
 
 def list2brush(t: list) -> QBrush:
     # log('tuple2brush')
-    assert len(t) == 2
+    if not (len(t) == 2):
+        raise AssertionError
     brush = QBrush()
     brush.setColor(QgsSymbolLayerUtils.decodeColor(t[0]))
     brush.setStyle(QgsSymbolLayerUtils.decodeBrushStyle(t[1]))
@@ -246,7 +250,8 @@ def pen2list(pen: QPen) -> list:
 
 
 def list2pen(t: list) -> QPen:
-    assert len(t) == 10
+    if not (len(t) == 10):
+        raise AssertionError
     pen = QPen()
     pen.setWidth(t[0])
     pen.setBrush(list2brush(t[1]))
@@ -310,8 +315,10 @@ def createSetPlotStyleAction(field, mapLayerStore='QgsProject.instance()'):
     :param mapLayerStore: str, code handle to access the relevant QgsMapLayer store
     :return: QgsAction
     """
-    assert isinstance(field, QgsField)
-    assert field.type() == QMetaType.QString
+    if not (isinstance(field, QgsField)):
+        raise AssertionError
+    if not (field.type() == QMetaType.QString):
+        raise AssertionError
 
     iconPath = ':/qt-project.org/styles/commonstyle/images/standardbutton-clear-128.png'
     pythonCode = """
@@ -545,7 +552,8 @@ class PlotStyle(QObject):
             return None
 
         cdata = node.firstChild()
-        assert cdata.isCDATASection()
+        if not (cdata.isCDATASection()):
+            raise AssertionError
         return PlotStyle.fromJSON(cdata.nodeValue())
 
     @classmethod
@@ -589,7 +597,8 @@ class PlotStyle(QObject):
             return None
         try:
             obj = json.loads(jsonString)
-            assert isinstance(obj, dict)
+            if not (isinstance(obj, dict)):
+                raise AssertionError
             return PlotStyle.fromMap(obj)
         except Exception:
             return None
@@ -670,7 +679,8 @@ class PlotStyle(QObject):
         :param b:
         :return:
         """
-        assert isinstance(b, bool)
+        if not (isinstance(b, bool)):
+            raise AssertionError
         self.antialias = b
 
     def setVisibility(self, b: bool):
@@ -680,7 +690,8 @@ class PlotStyle(QObject):
         """
         # log('setVisibility')
         b = bool(b)
-        assert isinstance(b, bool)
+        if not (isinstance(b, bool)):
+            raise AssertionError
         old = self.mIsVisible
         self.mIsVisible = b
 
@@ -715,7 +726,8 @@ class PlotStyle(QObject):
         :param plotStyle: PlotStyle
         """
         # log('copyFrom')
-        assert isinstance(plotStyle, PlotStyle)
+        if not (isinstance(plotStyle, PlotStyle)):
+            raise AssertionError
 
         self.mCosmeticPens = plotStyle.mCosmeticPens
 
@@ -853,10 +865,12 @@ class PlotStyleWidget(QWidget):
         super(PlotStyleWidget, self).__init__(parent)
 
         ui_file = Path(__file__).parent / 'plotstylewidget.ui'
-        assert ui_file.is_file()
+        if not (ui_file.is_file()):
+            raise AssertionError
         loadUi(ui_file, self)
 
-        assert isinstance(self.plotWidget, pg.PlotWidget)
+        if not (isinstance(self.plotWidget, pg.PlotWidget)):
+            raise AssertionError
 
         self.mBlockUpdates = False
         # self.plotWidget.disableAutoRange()
@@ -875,16 +889,20 @@ class PlotStyleWidget(QWidget):
             # some arbitrary values
             x = [0.10, 0.5, 0.9]
             y = [0.25, 0.9, 0.5]
-        assert len(x) == len(y), 'x and y need to be lists of same length.'
+        if not (len(x) == len(y)):
+            raise AssertionError('x and y need to be lists of same length.')
 
         self.plotDataItem = self.plotWidget.plot(x=x, y=y)
         self.legend = pg.LegendItem((100, 60), offset=(70, 30))  # args are (size, offset)
         self.legend.setParentItem(self.plotDataItem.topLevelItem())  # Note we do NOT call plt.addItem in this case
         self.legend.hide()
 
-        assert isinstance(self.cbSymbol, MarkerSymbolComboBox)
-        assert isinstance(self.cbSymbolPen, QgsPenStyleComboBox)
-        assert isinstance(self.cbLinePen, QgsPenStyleComboBox)
+        if not (isinstance(self.cbSymbol, MarkerSymbolComboBox)):
+            raise AssertionError
+        if not (isinstance(self.cbSymbolPen, QgsPenStyleComboBox)):
+            raise AssertionError
+        if not (isinstance(self.cbLinePen, QgsPenStyleComboBox)):
+            raise AssertionError
 
         # connect signals
         for cb in [self.cbSymbol, self.cbSymbolPen, self.cbLinePen]:
@@ -963,12 +981,6 @@ class PlotStyleWidget(QWidget):
     def visibilityFlags(self) -> 'PlotStyleWidget.VVisibilityFlags':
         return self.mVisibility
 
-    def setColorWidgetVisibility(self, b: bool):
-        assert isinstance(b, bool)
-        warnings.warn('Use .setVisibilitFlag', DeprecationWarning, stacklevel=2)
-        F = self.VisibilityFlags
-        self.setVisibilityFlag(F.Color, b)
-
     def toggleWidgetEnabled(self):
         """
         Toggles if widgets are enabled according to the QComboBox text values
@@ -1008,7 +1020,8 @@ class PlotStyleWidget(QWidget):
         :param b:
         :type b:
         """
-        assert isinstance(b, bool)
+        if not (isinstance(b, bool)):
+            raise AssertionError
         warnings.warn('Use .setVisibilityFlag', DeprecationWarning, stacklevel=2)
 
         self.plotWidget.setVisible(b)
@@ -1016,7 +1029,8 @@ class PlotStyleWidget(QWidget):
     def refreshPreview(self, *args):
         if not self.mBlockUpdates:
             style = self.plotStyle()
-            assert isinstance(style, PlotStyle)
+            if not (isinstance(style, PlotStyle)):
+                raise AssertionError
             # todo: set style to style preview
             pi = self.plotDataItem
             pi.setSymbol(style.markerSymbol)
@@ -1029,7 +1043,8 @@ class PlotStyleWidget(QWidget):
             self.plotWidget.update()
 
     def setPlotStyle(self, style: PlotStyle):
-        assert isinstance(style, PlotStyle)
+        if not (isinstance(style, PlotStyle)):
+            raise AssertionError
         # set widget values
         self.mLastPlotStyle = style
         self.mBlockUpdates = True
@@ -1037,9 +1052,12 @@ class PlotStyleWidget(QWidget):
         self.cbSymbol.setMarkerSymbol(style.markerSymbol)
         self.mAntialias = style.antialias
 
-        assert isinstance(style.markerPen, QPen)
-        assert isinstance(style.markerBrush, QBrush)
-        assert isinstance(style.linePen, QPen)
+        if not (isinstance(style.markerPen, QPen)):
+            raise AssertionError
+        if not (isinstance(style.markerBrush, QBrush)):
+            raise AssertionError
+        if not (isinstance(style.linePen, QPen)):
+            raise AssertionError
 
         self.btnSymbolPenColor.setColor(style.markerPen.color())
         self.cbSymbolPen.setPenStyle(style.markerPen.style())
@@ -1063,9 +1081,12 @@ class PlotStyleWidget(QWidget):
         F = self.VisibilityFlags
         visFlags = self.visibilityFlags()
 
-        assert isinstance(style.markerPen, QPen)
-        assert isinstance(style.markerBrush, QBrush)
-        assert isinstance(style.linePen, QPen)
+        if not (isinstance(style.markerPen, QPen)):
+            raise AssertionError
+        if not (isinstance(style.markerBrush, QBrush)):
+            raise AssertionError
+        if not (isinstance(style.linePen, QPen)):
+            raise AssertionError
 
         if F.Symbol in visFlags:
             if F.Type in visFlags:
@@ -1315,16 +1336,13 @@ class PlotStyleDialog(QgsDialog):
         return self.w.plotStyle()
 
     def setPlotStyle(self, plotStyle: PlotStyle):
-        assert isinstance(plotStyle, PlotStyle)
+        if not (isinstance(plotStyle, PlotStyle)):
+            raise AssertionError
         last = self.w.mLastPlotStyle
         self.w.setPlotStyle(plotStyle)
         ps = self.plotStyle()
         if ps != last:
             self.sigPlotStyleChanged.emit(ps)
-
-    def setPreviewVisible(self, b: bool):
-        warnings.warn(DeprecationWarning('Use setVisibilityFlags'))
-        self.w.setPreviewVisible(b)
 
 
 class PlotStyleEditorWidgetWrapper(QgsEditorWidgetWrapper):
@@ -1463,7 +1481,8 @@ class PlotStyleEditorWidgetFactory(QgsEditorWidgetFactory):
         """
         # log(' fieldScore()')
         field = vl.fields().at(fieldIdx)
-        assert isinstance(field, QgsField)
+        if not (isinstance(field, QgsField)):
+            raise AssertionError
         if field.type() == QMetaType.QString and field.length() > 400 and field.name().upper() == 'STYLE':
             return 20
         elif field.type() == QMetaType.QString:
@@ -1511,7 +1530,8 @@ class PlotWidgetStyle(object):
 
     @staticmethod
     def registerPlotWidgetStyle(style: 'PlotWidgetStyle', overwrite: bool = False):
-        assert isinstance(style, PlotWidgetStyle)
+        if not (isinstance(style, PlotWidgetStyle)):
+            raise AssertionError
         key = style.name.lower()
         if overwrite or key not in PlotWidgetStyle.PLOT_WIDGET_STYLES.keys():
             PlotWidgetStyle.PLOT_WIDGET_STYLES[key] = style
@@ -1568,7 +1588,8 @@ class PlotWidgetStyle(object):
                  tc: QColor = QColor('#aaff00'),
                  icon: str = ':/images/themes/default/propertyicons/stylepreset.svg',
                  ):
-        assert isinstance(icon, str)
+        if not (isinstance(icon, str)):
+            raise AssertionError
         self.icon: str = str(icon)
         self.name: str = str(name)
         self.foregroundColor: QColor = QColor(fg)
@@ -1682,7 +1703,8 @@ class PlotWidgetStyle(object):
 
         JSON = []
         for s in styles:
-            assert isinstance(s, PlotWidgetStyle)
+            if not (isinstance(s, PlotWidgetStyle)):
+                raise AssertionError
             JSON.append(s.toVariantMap())
         if len(JSON) > 0:
             with open(path, 'w', encoding='utf-8') as fp:

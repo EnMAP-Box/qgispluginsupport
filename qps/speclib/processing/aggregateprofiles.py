@@ -395,7 +395,8 @@ Please not that not each aggregate function might be available for each field ty
                                                      self.mSource.sourceCrs())
 
                 layer = QgsProcessingUtils.mapLayerFromString(path, context)
-                assert isinstance(layer, QgsMapLayer)
+                if not (isinstance(layer, QgsMapLayer)):
+                    raise AssertionError(f'Failed to load layer from {path}')
                 group = Group()
                 group.sink = sink
                 group.layer = layer
@@ -605,7 +606,8 @@ class SpectralAggregation(QgsExpressionFunction):
                         k2 = f'{k}{n}'
                         DATA[k2] = v
 
-            assert context.fields()
+            if not (context.fields()):
+                raise AssertionError('context has no fields')
             exec(pyExpression, DATA)
 
             # collect output profile values
@@ -631,12 +633,12 @@ class SpectralAggregation(QgsExpressionFunction):
 
 
 def spfcnAggregateGeneric(
-    aggregate: QgsAggregateCalculator.Aggregate,
-    values: list,
-    parameters: QgsAggregateCalculator.AggregateParameters,
-    context: QgsExpressionContext,
-    parent: QgsExpression,
-    orderByPos: int = -1
+        aggregate: QgsAggregateCalculator.Aggregate,
+        values: list,
+        parameters: QgsAggregateCalculator.AggregateParameters,
+        context: QgsExpressionContext,
+        parent: QgsExpression,
+        orderByPos: int = -1
 ):
     if not isinstance(context, QgsExpressionContext):
         parent.setEvalErrorString('Cannot use aggregate function in this context')

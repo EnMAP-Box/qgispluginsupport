@@ -99,7 +99,8 @@ class SpectralProfileCandidates(object):
         :param candidates: Dictionary with profile candidates as {layer id:[List of QgsFeatures]}.
         :param add_automatically: If True, the features will be added to the vector layer and not marked as candidates.
         """
-        assert isinstance(candidates, dict)
+        if not (isinstance(candidates, dict)):
+            raise AssertionError
 
         candidates = {k: list(c) if not isinstance(c, list) else c for k, c in candidates.items()}
 

@@ -84,13 +84,17 @@ def prepareProfileValueDict(x: Union[np.ndarray, List[Any], Tuple] = None,
 
     x = d.get('x', None)
     if x:
-        assert isinstance(x, list)
-        assert len(x) == len(y), f'x has length {len(x)} instead of {len(y)}'
+        if not (isinstance(x, list)):
+            raise AssertionError
+        if not (len(x) == len(y)):
+            raise AssertionError(f'x has length {len(x)} instead of {len(y)}')
 
     bbl = d.get('bbl', None)
     if bbl:
-        assert isinstance(bbl, list)
-        assert len(bbl) == len(y), f'bbl has length {len(bbl)} instead of {len(y)}'
+        if not (isinstance(bbl, list)):
+            raise AssertionError
+        if not (len(bbl) == len(y)):
+            raise AssertionError(f'bbl has length {len(bbl)} instead of {len(y)}')
 
     return d
 
@@ -109,40 +113,53 @@ def validateProfileValueDict(d: dict, allowEmpty: bool = False) -> Tuple[bool, s
     if allowEmpty and d in [dict(), None]:
         return True, '', d
     try:
-        assert isinstance(d, dict), 'Input is not a profile dictionary'
+        if not (isinstance(d, dict)):
+            raise AssertionError('Input is not a profile dictionary')
 
         # enhanced consistency checks
         y = d.get('y', None)
-        assert isinstance(y, (list, np.ndarray)), f'Unsupported type to store y values: {y}'
-        assert len(y) > 0, 'Missing y values'
+        if not (isinstance(y, (list, np.ndarray))):
+            raise AssertionError(f'Unsupported type to store y values: {y}')
+        if not (len(y) > 0):
+            raise AssertionError('Missing y values')
         arr = np.asarray(y)
-        assert np.issubdtype(arr.dtype, np.number), f'data type of y values in not numeric: {arr.dtype.name}'
+        if not (np.issubdtype(arr.dtype, np.number)):
+            raise AssertionError(f'data type of y values in not numeric: {arr.dtype.name}')
 
         x = d.get('x', None)
         if x is not None:
-            assert isinstance(x, (list, np.ndarray)), f'Unsupported type to store x values: {x}'
-            assert len(x) == len(y), f'Unequal number of y ({len(y)}) and x ({len(x)}) values.'
+            if not (isinstance(x, (list, np.ndarray))):
+                raise AssertionError(f'Unsupported type to store x values: {x}')
+            if not (len(x) == len(y)):
+                raise AssertionError(f'Unequal number of y ({len(y)}) and x ({len(x)}) values.')
             arr = np.asarray(x)
             if np.issubdtype(arr.dtype, str):
                 # allow date-time strings
                 arr = np.asarray(arr, dtype=np.datetime64)
             else:
-                assert np.issubdtype(arr.dtype, np.number), f'None-numeric data type of y values: {arr.dtype.name}'
+                if not (np.issubdtype(arr.dtype, np.number)):
+                    raise AssertionError(f'None-numeric data type of y values: {arr.dtype.name}')
 
         xUnit = d.get('xUnit', None)
         if xUnit:
-            assert x is not None, 'xUnit defined but missing x values'
-            assert isinstance(xUnit, str), f'Unsupported type to store xUnit: {xUnit} ({type(xUnit)})'
+            if not (x is not None):
+                raise AssertionError('xUnit defined but missing x values')
+            if not (isinstance(xUnit, str)):
+                raise AssertionError(f'Unsupported type to store xUnit: {xUnit} ({type(xUnit)})')
         yUnit = d.get('yUnit', None)
         if yUnit:
-            assert isinstance(yUnit, str), f'Unsupported type to store yUnit: {yUnit} ({type(yUnit)})'
+            if not (isinstance(yUnit, str)):
+                raise AssertionError(f'Unsupported type to store yUnit: {yUnit} ({type(yUnit)})')
 
         bbl = d.get('bbl', None)
         if bbl is not None:
-            assert isinstance(bbl, (list, np.ndarray)), f'Unsupported type to bbl values: {bbl}'
-            assert len(y) == len(bbl), f'Unequal number of y ({len(y)}) and bbl ({len(bbl)}) values.'
+            if not (isinstance(bbl, (list, np.ndarray))):
+                raise AssertionError(f'Unsupported type to bbl values: {bbl}')
+            if not (len(y) == len(bbl)):
+                raise AssertionError(f'Unequal number of y ({len(y)}) and bbl ({len(bbl)}) values.')
             arr = np.asarray(bbl)
-            assert np.issubdtype(arr.dtype, np.number), f'None-numeric bbl value data type: {arr.dtype.name}'
+            if not (np.issubdtype(arr.dtype, np.number)):
+                raise AssertionError(f'None-numeric bbl value data type: {arr.dtype.name}')
 
     except Exception as ex:
         return False, str(ex), dict()
@@ -361,7 +378,8 @@ def groupBySpectralProperties(features: Union[QgsVectorLayer, List[QgsFeature]],
 
     :return: {dict:[list-of-profiles]}
     """
-    assert mode in ['features', 'data']
+    if not (mode in ['features', 'data']):
+        raise AssertionError
     if isinstance(features, QgsVectorLayer):
         features = features.getFeatures()
     if isinstance(features, QgsFeature):
@@ -480,7 +498,8 @@ class SpectralProfileFileReader(object):
                  path: Union[str, Path],
                  dtg_fmt: Optional[str] = None, **kwds):
         path = Path(path)
-        assert path.is_file()
+        if not (path.is_file()):
+            raise AssertionError
 
         # member attributes each profile should be able to describe
 

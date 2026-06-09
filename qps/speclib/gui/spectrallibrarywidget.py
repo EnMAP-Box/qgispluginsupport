@@ -57,7 +57,8 @@ class SpectralLibraryWidget(QWidget):
 
         if project is None:
             project = QgsProject.instance()
-        assert isinstance(self.mSpeclibPlotWidget, SpectralLibraryPlotWidget)
+        if not (isinstance(self.mSpeclibPlotWidget, SpectralLibraryPlotWidget)):
+            raise AssertionError
         self.setProject(project)
         # self.mSpeclibPlotWidget.plotModel().setProject(project)
         model = self.plotModel()
@@ -180,7 +181,8 @@ class SpectralLibraryWidget(QWidget):
             self.sigWindowIsClosing.emit()
 
     def setProject(self, project: QgsProject):
-        assert isinstance(project, QgsProject)
+        if not (isinstance(project, QgsProject)):
+            raise AssertionError
         self.mSpeclibPlotWidget.setProject(project)
 
     def project(self) -> QgsProject:
@@ -403,7 +405,8 @@ class SpectralLibraryWidget(QWidget):
             currentProfiles = list(currentProfiles)
         if isinstance(currentProfiles, list):
             currentProfiles = {self.speclib().id(): currentProfiles}
-        assert isinstance(currentProfiles, dict)
+        if not (isinstance(currentProfiles, dict)):
+            raise AssertionError
 
         plotModel: SpectralProfilePlotModel = self.plotModel()
         plotModel.addProfileCandidates(currentProfiles)
@@ -448,7 +451,8 @@ class SpectralLibraryWidget(QWidget):
         results = {}
 
         def onFinished(ok, res):
-            assert ok
+            if not (ok):
+                raise AssertionError
             results.update(res)
 
         alg = ExtractSpectralProfiles()
@@ -477,7 +481,8 @@ class SpectralLibraryWidget(QWidget):
         results = {}
 
         def onFinished(ok, res):
-            assert ok
+            if not (ok):
+                raise AssertionError
             results.update(res)
 
         alg = ImportSpectralProfiles()
@@ -541,7 +546,8 @@ class SpectralLibraryWidget(QWidget):
             results = dict()
 
             def onFinished(ok, res):
-                assert ok
+                if not (ok):
+                    raise AssertionError
                 results.update(res)
 
             alg = ExportSpectralProfiles()

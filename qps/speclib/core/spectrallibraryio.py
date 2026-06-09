@@ -24,7 +24,8 @@ class SpectralLibraryImportFeatureSink(QgsRemappingProxyFeatureSink):
 
         if dstFields is None and isinstance(speclib, QgsVectorLayer):
             dstFields = speclib.fields()
-        assert isinstance(dstFields, QgsFields), 'Destination Fields (dstFields) not specified'
+        if not (isinstance(dstFields, QgsFields)):
+            raise AssertionError('Destination Fields (dstFields) not specified')
 
         for k, srcProp in fieldMap.items():
             srcProp: QgsProperty

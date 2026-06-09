@@ -221,7 +221,8 @@ class CopyAttributesDialog(QDialog):
         self.setWindowIcon(QIcon(r':/images/themes/default/mActionNewAttribute.svg'))
         self.setWindowFlag(Qt.WindowContextHelpButtonHint, False)
         fields = qgsFields(fields)
-        assert isinstance(fields, QgsFields)
+        if not (isinstance(fields, QgsFields)):
+            raise AssertionError
 
         self.mLabel = QLabel('Select attributes to copy')
         self.mTableView = QTableView()
@@ -278,14 +279,16 @@ class AddAttributeDialog(QDialog):
     """
 
     def __init__(self, layer, parent=None, case_sensitive: bool = False):
-        assert isinstance(layer, QgsVectorLayer)
+        if not (isinstance(layer, QgsVectorLayer)):
+            raise AssertionError
         super(AddAttributeDialog, self).__init__(parent)
 
         self.setWindowTitle('Add attribute')
         self.setWindowIcon(QIcon(r':/images/themes/default/mActionNewAttribute.svg'))
         self.setWindowFlag(Qt.WindowContextHelpButtonHint, False)
 
-        assert isinstance(layer, QgsVectorLayer)
+        if not (isinstance(layer, QgsVectorLayer)):
+            raise AssertionError
         self.mLayer = layer
         self.mCaseSensitive = case_sensitive
         self.setWindowTitle('Add Field')
@@ -308,7 +311,8 @@ class AddAttributeDialog(QDialog):
 
         nativeTypes: List[QgsVectorDataProvider.NativeType] = self.mLayer.dataProvider().nativeTypes()
         for ntype in nativeTypes:
-            assert isinstance(ntype, QgsVectorDataProvider.NativeType)
+            if not (isinstance(ntype, QgsVectorDataProvider.NativeType)):
+                raise AssertionError
 
             o = Option(ntype,
                        name=ntype.mTypeName,
@@ -358,7 +362,8 @@ class AddAttributeDialog(QDialog):
         self.validate()
 
     def setCaseSensitive(self, is_sensitive: bool):
-        assert isinstance(is_sensitive, bool)
+        if not (isinstance(is_sensitive, bool)):
+            raise AssertionError
         self.mCaseSensitive = is_sensitive
         self.validate()
 
@@ -403,9 +408,9 @@ class AddAttributeDialog(QDialog):
         """
         field = self.privateField()
         if (
-            can_store_spectral_profiles(field)
-            and self.cbSpectralProfile.isEnabled()
-            and self.cbSpectralProfile.isChecked()
+                can_store_spectral_profiles(field)
+                and self.cbSpectralProfile.isEnabled()
+                and self.cbSpectralProfile.isChecked()
         ):
             # field.setComment('Spectral Profile Field')
             setup = QgsEditorWidgetSetup(EDITOR_WIDGET_REGISTRY_KEY, {})
@@ -419,7 +424,8 @@ class AddAttributeDialog(QDialog):
         ntype = self.currentNativeType()
 
         vMin, vMax = ntype.mMinLen, ntype.mMaxLen
-        assert isinstance(ntype, QgsVectorDataProvider.NativeType)
+        if not (isinstance(ntype, QgsVectorDataProvider.NativeType)):
+            raise AssertionError
 
         isVisible = vMin < vMax
         self.sbLength.setVisible(isVisible)
@@ -441,7 +447,8 @@ class AddAttributeDialog(QDialog):
         self.setSpinBoxMinMax(self.sbPrecision, vMin, vMax)
 
     def setSpinBoxMinMax(self, sb, vMin, vMax):
-        assert isinstance(sb, QSpinBox)
+        if not (isinstance(sb, QSpinBox)):
+            raise AssertionError
         value = sb.value()
         sb.setRange(vMin, vMax)
 
@@ -459,8 +466,8 @@ class AddAttributeDialog(QDialog):
         name = self.tbName.text()
         existing_names = self.mLayer.fields().names()
         if (
-            self.mCaseSensitive and name in existing_names
-            or not self.mCaseSensitive and name.lower() in [n.lower() for n in existing_names]
+                self.mCaseSensitive and name in existing_names
+                or not self.mCaseSensitive and name.lower() in [n.lower() for n in existing_names]
         ):
             errors.append('Field name "{}" already exists.'.format(name))
         elif name == '':
@@ -478,7 +485,8 @@ class RemoveAttributeDialog(QDialog):
 
     def __init__(self, layer: QgsVectorLayer, *args, fieldNames=None, **kwds):
         super().__init__(*args, **kwds)
-        assert isinstance(layer, QgsVectorLayer)
+        if not (isinstance(layer, QgsVectorLayer)):
+            raise AssertionError
         self.mLayer = layer
         self.setWindowTitle('Remove Fields')
         self.setWindowIcon(QIcon(r':/images/themes/default/mActionDeleteAttribute.svg'))
@@ -561,7 +569,8 @@ def rendererFromXml(xml):
         dom.setContent(xml)
         return rendererFromXml(dom)
 
-    assert isinstance(xml, QDomDocument)
+    if not (isinstance(xml, QDomDocument)):
+        raise AssertionError
     root = xml.documentElement()
     for baseClass, renderClasses in RENDER_CLASSES.items():
         elements = root.elementsByTagName(baseClass)
@@ -602,7 +611,8 @@ def defaultRasterRenderer(layer: QgsRasterLayer,
     :rtype:
     """
 
-    assert isinstance(sampleSize, int) and sampleSize > 0
+    if not (isinstance(sampleSize, int) and sampleSize > 0):
+        raise AssertionError
     renderer = None
 
     if not isinstance(layer, QgsRasterLayer):
@@ -651,11 +661,13 @@ def defaultRasterRenderer(layer: QgsRasterLayer,
         else:
             bandIndices = [0]
 
-    assert isinstance(bandIndices, list)
+    if not (isinstance(bandIndices, list)):
+        raise AssertionError
 
     # get band stats
     dp: QgsRasterDataProvider = layer.dataProvider()
-    assert isinstance(dp, QgsRasterDataProvider)
+    if not (isinstance(dp, QgsRasterDataProvider)):
+        raise AssertionError
 
     stats = QGIS_RASTERBANDSTATISTIC.Min | QGIS_RASTERBANDSTATISTIC.Max
 
@@ -674,11 +686,13 @@ def defaultRasterRenderer(layer: QgsRasterLayer,
     if len(bandStats) < 3:
         b = bandIndices[0] + 1
         stats = bandStats[0]
-        assert isinstance(stats, QgsRasterBandStats)
+        if not (isinstance(stats, QgsRasterBandStats)):
+            raise AssertionError
         dt = dp.dataType(b)
         ce = QgsContrastEnhancement(dt)
 
-        assert isinstance(ce, QgsContrastEnhancement)
+        if not (isinstance(ce, QgsContrastEnhancement)):
+            raise AssertionError
         ce.setContrastEnhancementAlgorithm(QgsContrastEnhancement.StretchToMinimumMaximum, True)
 
         if dt == Qgis.Byte:
@@ -708,7 +722,8 @@ def defaultRasterRenderer(layer: QgsRasterLayer,
             dt = dp.dataType(b)
             ce = contrastEnhancements[i]
 
-            assert isinstance(ce, QgsContrastEnhancement)
+            if not (isinstance(ce, QgsContrastEnhancement)):
+                raise AssertionError
             ce.setContrastEnhancementAlgorithm(QgsContrastEnhancement.StretchToMinimumMaximum, True)
             vmin, vmax = layer.dataProvider().cumulativeCut(b, 0.02, 0.98, sampleSize=sampleSize)
             if dt == Qgis.Byte:
@@ -833,7 +848,8 @@ def subLayerDefinitions(mapLayer: QgsMapLayer) -> List[QgsSublayersDialog.LayerD
 
     for i, sub in enumerate(subLayers):
         ldef = QgsSublayersDialog.LayerDefinition()
-        assert isinstance(ldef, QgsSublayersDialog.LayerDefinition)
+        if not (isinstance(ldef, QgsSublayersDialog.LayerDefinition)):
+            raise AssertionError
         elements = sub.split(dp.sublayerSeparator())
 
         if dp.name() == 'ogr':
@@ -903,16 +919,19 @@ def showLayerPropertiesDialog(layer: QgsMapLayer,
         # try to use the QGIS vector layer properties dialog
         try:
             root = iface.layerTreeView().layerTreeModel().rootGroup()
-            assert isinstance(root, QgsLayerTreeGroup)
+            if not (isinstance(root, QgsLayerTreeGroup)):
+                raise AssertionError
             temporaryGroup = None
             lastActiveLayer = iface.activeLayer()
 
             if root.findLayer(layer) is None:
                 temporaryGroup = root.addGroup('.')
-                assert isinstance(temporaryGroup, QgsLayerTreeGroup)
+                if not (isinstance(temporaryGroup, QgsLayerTreeGroup)):
+                    raise AssertionError
                 temporaryGroup.setItemVisibilityChecked(False)
                 lyrNode = temporaryGroup.addLayer(layer)
-                assert isinstance(lyrNode, QgsLayerTreeLayer)
+                if not (isinstance(lyrNode, QgsLayerTreeLayer)):
+                    raise AssertionError
             iface.setActiveLayer(layer)
             iface.showLayerProperties(layer)
 
@@ -1040,7 +1059,6 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
         self.mActionExpressionSelect.triggered.connect(self.mActionExpressionSelect_triggered)
         self.mMainView.showContextMenuExternally.connect(self.showContextMenu)
 
-        assert isinstance(self.mMainView, QgsDualView)
         pal = self.mMainView.tableView().palette()
         css = r"""QTableView {{
                        selection-background-color: {};
@@ -1074,8 +1092,8 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
         r = QgsFeatureRequest()
         needsGeom = False
         if (
-            mLayer.geometryType() != QgsWkbTypes.NullGeometry
-            and initialMode == QgsAttributeTableFilterModel.ShowVisible
+                mLayer.geometryType() != QgsWkbTypes.NullGeometry
+                and initialMode == QgsAttributeTableFilterModel.ShowVisible
         ):
             mc = self.mMapCanvas
             extent = QgsRectangle(mc.mapSettings().mapToLayerCoordinates(mLayer, mc.extent()))
@@ -1207,7 +1225,7 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
             self.mToolbar.removeAction(self.mActionAddFeature)
             self.mToolbar.removeAction(self.mActionPasteFeatures)
 
-        assert isinstance(self.mMainViewButtonGroup, QButtonGroup)
+        self.mMainViewButtonGroup: QButtonGroup
         self.mMainViewButtonGroup.setId(self.mTableViewButton, QgsDualView.AttributeTable)
         self.mMainViewButtonGroup.setId(self.mAttributeViewButton, QgsDualView.AttributeEditor)
         self.mTableViewButton.clicked.connect(lambda: self.setViewMode(QgsDualView.AttributeTable))
@@ -1294,7 +1312,8 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
             self.sigWindowIsClosing.emit()
 
     def setVectorLayerTools(self, tools: VectorLayerTools):
-        assert isinstance(tools, VectorLayerTools)
+        if not (isinstance(tools, VectorLayerTools)):
+            raise AssertionError
         self.mVectorLayerTools = tools
 
         self.mEditorContext.setVectorLayerTools(tools)
@@ -1321,16 +1340,16 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
 
     def updateMultiEditButtonState(self):
         if (
-            not isinstance(self.mLayer, QgsVectorLayer)
-            or (self.mLayer.editFormConfig().layout() == QgsEditFormConfig.UiFileLayout)
+                not isinstance(self.mLayer, QgsVectorLayer)
+                or (self.mLayer.editFormConfig().layout() == QgsEditFormConfig.UiFileLayout)
         ):
             return
 
         self.mActionToggleMultiEdit.setEnabled(self.mLayer.isEditable())
 
         if (
-            not self.mLayer.isEditable()
-            or (self.mLayer.isEditable() and self.mMainView.view() != QgsDualView.AttributeEditor)
+                not self.mLayer.isEditable()
+                or (self.mLayer.isEditable() and self.mMainView.view() != QgsDualView.AttributeEditor)
         ):
             self.mActionToggleMultiEdit.setChecked(False)
 
@@ -1516,7 +1535,8 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
 
         messageBar: QgsMessageBar = self.mainMessageBar()
 
-        assert isinstance(self.mFilterQuery, QgsFilterLineEdit)
+        if not (isinstance(self.mFilterQuery, QgsFilterLineEdit)):
+            raise AssertionError
         filter = self.mFilterQuery.text()
         if filter != '' and filterString != '':
             if filterType == QgsAttributeForm.ReplaceFilter:
@@ -1771,7 +1791,8 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
                     viewMode = m
                     break
 
-        assert isinstance(viewMode, QgsDualView.ViewMode)
+        if not (isinstance(viewMode, QgsDualView.ViewMode)):
+            raise AssertionError
         self.mMainViewButtonGroup.button(viewMode).click()
         self.updateMultiEditButtonState()
 
@@ -1798,8 +1819,8 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
         masterModel = self.mMainView.masterModel()
         f = QgsFeature(self.mLayer.fields())
         if self.vectorLayerTools().addFeature(
-            self.mLayer,
-            f=f
+                self.mLayer,
+                f=f
         ):
             masterModel.reload(masterModel.index(0, 0), masterModel.index(
                 masterModel.rowCount() - 1, masterModel.columnCount() - 1))
@@ -1818,9 +1839,9 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
         # would not be added to the mEditBuffer. By disabling, it looses focus and the change will be stored.
         s = ""
         if (
-            self.mLayer.isEditable()
-            and self.mMainView.tableView().indexWidget(self.mMainView.tableView().currentIndex()
-                                                       ) is not None
+                self.mLayer.isEditable()
+                and self.mMainView.tableView().indexWidget(self.mMainView.tableView().currentIndex()
+                                                           ) is not None
         ):
             self.mMainView.tableView().indexWidget(self.mMainView.tableView().currentIndex()).setEnabled(False)
 
@@ -1831,7 +1852,8 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
         self.vectorLayerTools().saveEdits(self.mLayer, leave_editable=True, trigger_repaint=True)
 
     def setViewMode(self, mode: QgsDualView.ViewMode):
-        assert isinstance(mode, QgsDualView.ViewMode)
+        if not (isinstance(mode, QgsDualView.ViewMode)):
+            raise AssertionError
         self.mMainView.setView(mode)
         for m in [QgsDualView.AttributeEditor, QgsDualView.AttributeTable]:
             self.mMainViewButtonGroup.button(m).setChecked(m == mode)

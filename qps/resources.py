@@ -50,7 +50,8 @@ REGEX_QGIS_IMAGES_QRC = re.compile(r'.*QGIS[^\/]*[\/]images[\/]images\.qrc$')
 
 
 def getDOMAttributes(elem):
-    assert isinstance(elem, QDomElement)
+    if not (isinstance(elem, QDomElement)):
+        raise AssertionError
     values = dict()
     attributes = elem.attributes()
     for a in range(attributes.count()):
@@ -79,7 +80,8 @@ def compileResourceFiles(dirRoot: Union[str, Path],
     """
     # find ui files
     dirRoot = Path(dirRoot)
-    assert dirRoot.is_dir(), '"dirRoot" is not a directory: {}'.format(dirRoot)
+    if not (dirRoot.is_dir()):
+        raise AssertionError('"dirRoot" is not a directory: {}'.format(dirRoot))
     dirRoot = dirRoot.resolve()
 
     ui_files = list(file_search(dirRoot, '*.ui', recursive=True))
@@ -126,7 +128,8 @@ def compileResourceFiles(dirRoot: Union[str, Path],
     print('Compile {} *.qrc files:'.format(len(qrc_files)))
     targetDirOutputNames = []
     for qrcFile in qrc_files:
-        assert isinstance(qrcFile, Path)
+        if not (isinstance(qrcFile, Path)):
+            raise AssertionError
         # in case of similar base names, use different output names
         # e.g. make
         #  src/images.qrc
@@ -166,15 +169,18 @@ def compileResourceFile(pathQrc, targetDir=None, suffix: str = '_rc.py', compres
     if not isinstance(pathQrc, Path):
         pathQrc = Path(pathQrc)
 
-    assert isinstance(pathQrc, Path)
-    assert pathQrc.name.endswith('.qrc')
+    if not (isinstance(pathQrc, Path)):
+        raise AssertionError
+    if not (pathQrc.name.endswith('.qrc')):
+        raise AssertionError
     print('Compile {}...'.format(pathQrc))
     if targetDir is None:
         targetDir = pathQrc.parent
     elif not isinstance(targetDir, Path):
         targetDir = Path(targetDir)
 
-    assert isinstance(targetDir, Path)
+    if not (isinstance(targetDir, Path)):
+        raise AssertionError
     targetDir = targetDir.resolve()
 
     cwd = Path(pathQrc).parent
@@ -192,7 +198,8 @@ def compileResourceFile(pathQrc, targetDir=None, suffix: str = '_rc.py', compres
         PyQt5.pyrcc_main.compressLevel = compressLevel
         PyQt5.pyrcc_main.compressThreshold = compressThreshold
 
-        assert PyQt5.pyrcc_main.processResourceFile([pathQrc.name], pathPy.as_posix(), False)
+        if not (PyQt5.pyrcc_main.processResourceFile([pathQrc.name], pathPy.as_posix(), False)):
+            raise AssertionError
 
         # restore previous settings
         PyQt5.pyrcc_main.compressLevel = last_level
@@ -229,10 +236,13 @@ def compileQGISResourceFiles(qgis_repo: Union[str, Path, None], target: str = No
 
     if not isinstance(qgis_repo, Path):
         qgis_repo = Path(qgis_repo)
-    assert isinstance(qgis_repo, Path)
-    assert qgis_repo.is_dir()
-    assert (qgis_repo / 'images' / 'images.qrc').is_file(), '{} is not the QGIS repository root'.format(
-        qgis_repo.as_posix())
+    if not (isinstance(qgis_repo, Path)):
+        raise AssertionError
+    if not (qgis_repo.is_dir()):
+        raise AssertionError
+    if not ((qgis_repo / 'images' / 'images.qrc').is_file()):
+        raise AssertionError('{} is not the QGIS repository root'.format(
+            qgis_repo.as_posix()))
 
     if target is None:
         DIR_REPO = findUpwardPath(__file__, '.git')
@@ -511,7 +521,8 @@ class ResourceBrowser(QWidget):
             self.updatePreview(None)
         else:
             idx1 = selectedIdx[0]
-            assert isinstance(idx1, QModelIndex)
+            if not (isinstance(idx1, QModelIndex)):
+                raise AssertionError
 
             uri = idx1.data(Qt.UserRole)
             self.updatePreview(uri)

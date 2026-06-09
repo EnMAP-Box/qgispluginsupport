@@ -16,7 +16,8 @@ class SelectProjectLayersDialog(QDialog):
         if project is None:
             project = QgsProject.instance()
         else:
-            assert isinstance(project, QgsProject)
+            if not (isinstance(project, QgsProject)):
+                raise AssertionError
         self.mModel = ProjectLayerTableModel()
         self.mProxyModel = QSortFilterProxyModel()
         self.mProxyModel.setSourceModel(self.mModel)
@@ -122,7 +123,8 @@ class ProjectLayerTableModel(QAbstractTableModel):
         if project is None:
             project = QgsProject.instance()
         else:
-            assert isinstance(project, QgsProject)
+            if not (isinstance(project, QgsProject)):
+                raise AssertionError
 
         if self.mProject == project:
             return

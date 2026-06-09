@@ -162,8 +162,10 @@ class ProfileSamplingMode(object):
 
         elif isinstance(x, QSize):
             size = x
-        assert isinstance(size, QSize)
-        assert size.width() > 0 and size.height() > 0
+        if not (isinstance(size, QSize)):
+            raise AssertionError
+        if not (size.width() > 0 and size.height() > 0):
+            raise AssertionError
 
         self.mKernelSize = size
 
@@ -188,7 +190,8 @@ class ProfileSamplingMode(object):
 
     def setAggregation(self, aggregation: str):
 
-        assert aggregation in self.aggregationModes()
+        if not (aggregation in self.aggregationModes()):
+            raise AssertionError
         self.mAggregation = aggregation
 
     def aggregation(self) -> str:
@@ -264,8 +267,10 @@ class StandardLayerProfileSource(SpectralProfileSource):
         if not isinstance(layer, QgsRasterLayer):
             layer = QgsRasterLayer(str(layer))
         else:
-            assert isinstance(layer, QgsRasterLayer)
-        assert layer.isValid()
+            if not (isinstance(layer, QgsRasterLayer)):
+                raise AssertionError
+        if not (layer.isValid()):
+            raise AssertionError
 
         super().__init__(name=layer.name())
         self.mLayer: QgsRasterLayer = layer
@@ -289,7 +294,8 @@ class StandardLayerProfileSource(SpectralProfileSource):
         else:
             if isinstance(point, SpatialPoint):
                 point = point.toCrs(self.mLayer.crs())
-        assert isinstance(point, QgsPointXY)
+        if not (isinstance(point, QgsPointXY)):
+            raise AssertionError
 
         context = QgsExpressionContext()
         source_scope: QgsExpressionContextScope = QgsExpressionContextUtils.layerScope(self.mLayer)
@@ -412,7 +418,8 @@ class MapCanvasLayerProfileSource(SpectralProfileSource):
         if mode is None:
             mode = self.MODE_FIRST_LAYER
         else:
-            assert mode in self.MODE_TOOLTIP.keys(), f'Unknown mode: {mode}'
+            if not (mode in self.MODE_TOOLTIP.keys()):
+                raise AssertionError(f'Unknown mode: {mode}')
         self.mMode = mode
 
         if self.mMode == self.MODE_LAST_LAYER:
@@ -558,7 +565,8 @@ class SpectralProfileSourceModel(QAbstractListModel):
         """
         Sets a default SpectralProfileSource that is used for SpectralProfileGenerator Nodes
         """
-        assert isinstance(source, SpectralProfileSource)
+        if not (isinstance(source, SpectralProfileSource)):
+            raise AssertionError
         self.addSources(source)
         self.mDefaultSource = source
 
@@ -608,7 +616,8 @@ class SpectralProfileSourceModel(QAbstractListModel):
                 # already in model
                 continue
 
-            assert isinstance(source, SpectralProfileSource), f'Got {source} instead SpectralProfileSource'
+            if not (isinstance(source, SpectralProfileSource)):
+                raise AssertionError(f'Got {source} instead SpectralProfileSource')
             if (
                 source not in self.mSources
                 and source not in to_insert
@@ -744,7 +753,8 @@ class SpectralProfileSourceNode(ValidateNode):
         elif isinstance(source, QgsMapCanvas):
             source = MapCanvasLayerProfileSource('top')
 
-        assert source is None or isinstance(source, SpectralProfileSource)
+        if not (source is None or isinstance(source, SpectralProfileSource)):
+            raise AssertionError
         self.mProfileSource = source
 
         if isinstance(source, SpectralProfileSource):
@@ -772,17 +782,22 @@ class SamplingBlockDescription(object):
         :param rect: QRect in pixel coordinates. Upper-Left image coordinate = (0,0)
         :param meta: dict with other information to be used in the SpectralProfileSamplingMode's .
         """
-        assert isinstance(layer, QgsRasterLayer) and layer.isValid()
+        if not (isinstance(layer, QgsRasterLayer) and layer.isValid()):
+            raise AssertionError
         if not isinstance(point, SpatialPoint):
-            assert isinstance(point, QgsPointXY)
+            if not (isinstance(point, QgsPointXY)):
+                raise AssertionError
             point = SpatialPoint(layer.crs(), point.x(), point.y())
 
-        assert isinstance(point, SpatialPoint)
+        if not (isinstance(point, SpatialPoint)):
+            raise AssertionError
 
         self.mPoint: SpatialPoint = point.toCrs(layer.crs())
         self.mLayer: QgsRasterLayer = layer
-        assert rect.width() > 0
-        assert rect.height() > 0
+        if not (rect.width() > 0):
+            raise AssertionError
+        if not (rect.height() > 0):
+            raise AssertionError
         self.mRect: HashableRect = HashableRect(rect)
         if not isinstance(meta, dict):
             meta = dict()
@@ -913,7 +928,8 @@ class SpectralProfileSamplingModeNode(TreeNode):
         return self.mProfileSamplingMode
 
     def setProfileSamplingMode(self, mode: ProfileSamplingMode) -> ProfileSamplingMode:
-        assert isinstance(mode, ProfileSamplingMode)
+        if not (isinstance(mode, ProfileSamplingMode)):
+            raise AssertionError
 
         if mode != self.profileSamplingMode():
             self.mProfileSamplingMode = mode
@@ -944,7 +960,8 @@ class PlotStyleNode(TreeNode):
         self.setValue(PlotStyle())
 
     def setValue(self, plotStyle: PlotStyle):
-        assert isinstance(plotStyle, PlotStyle)
+        if not (isinstance(plotStyle, PlotStyle)):
+            raise AssertionError
         super().setValue(plotStyle)
 
     def value(self) -> PlotStyle:
@@ -990,7 +1007,8 @@ class FieldGeneratorNode(ValidateNode):
         :return:
         :rtype:
         """
-        assert isinstance(field, QgsField)
+        if not (isinstance(field, QgsField)):
+            raise AssertionError
         # todo: evaluate constraints. if field has to be present -> make uncheckable
         self.mField = field
         self.setIcon(iconForFieldType(field))
@@ -1026,7 +1044,8 @@ class GeometryGeneratorNode(TreeNode):
         return None
 
     def setWkbType(self, wkbType: QgsWkbTypes.Type):
-        assert isinstance(wkbType, QgsWkbTypes.Type)
+        if not (isinstance(wkbType, QgsWkbTypes.Type)):
+            raise AssertionError
 
         icon = QgsLayerItem.iconForWkbType(wkbType)
         name = QgsWkbTypes.displayString(wkbType)
@@ -1089,7 +1108,8 @@ class SpectralProfileGeneratorNode(FieldGeneratorNode):
         return self.mSamplingNode.profileSamplingMode()
 
     def setSampling(self, mode: ProfileSamplingMode) -> ProfileSamplingMode:
-        assert isinstance(mode, ProfileSamplingMode)
+        if not (isinstance(mode, ProfileSamplingMode)):
+            raise AssertionError
         return self.mSamplingNode.setProfileSamplingMode(mode)
 
     # def profileStyle(self) -> PlotStyle:
@@ -1256,7 +1276,8 @@ class SpectralFeatureGeneratorNode(ValidateNode):
 
     def setSpeclib(self, speclib: QgsVectorLayer):
 
-        assert speclib is None or isinstance(speclib, QgsVectorLayer)
+        if not (speclib is None or isinstance(speclib, QgsVectorLayer)):
+            raise AssertionError
 
         oldSpeclib = self.speclib()
         if isinstance(oldSpeclib, QgsVectorLayer):
@@ -1338,7 +1359,8 @@ class SpectralFeatureGeneratorNode(ValidateNode):
             fieldnames = [fieldnames]
 
         for fieldname in fieldnames:
-            assert isinstance(fieldname, str)
+            if not (isinstance(fieldname, str)):
+                raise AssertionError
 
         fieldnames = [n for n in fieldnames
                       if n not in self.fieldNodeNames()
@@ -1570,7 +1592,8 @@ class SpectralProfileBridge(TreeModel):
                 fgnode.speclibWidget().addCurrentProfilesToSpeclib()
 
     def setMinimumSourceNameSimilarity(self, threshold: float):
-        assert 0 <= threshold <= 1.0
+        if not (0 <= threshold <= 1.0):
+            raise AssertionError
         self.mMinimumSourceNameSimilarity = threshold
 
     def minimumSourceNameSimilarity(self) -> float:
@@ -1851,8 +1874,10 @@ class SpectralProfileBridge(TreeModel):
         if isinstance(generators, SpectralFeatureGeneratorNode):
             generators = [generators]
         for g in generators:
-            assert isinstance(g, SpectralFeatureGeneratorNode)
-            assert g in self.rootNode().childNodes()
+            if not (isinstance(g, SpectralFeatureGeneratorNode)):
+                raise AssertionError
+            if not (g in self.rootNode().childNodes()):
+                raise AssertionError
         self.rootNode().removeChildNodes(generators)
 
     def flags(self, index: QModelIndex):
@@ -2087,7 +2112,8 @@ class SpectralProfileBridge(TreeModel):
                 changed = False
 
         elif isinstance(node, SpectralProfileSourceNode):
-            assert value is None or isinstance(value, SpectralProfileSource)
+            if not (value is None or isinstance(value, SpectralProfileSource)):
+                raise AssertionError
             node.setSpectralProfileSource(value)
             update_parent = True
 
@@ -2172,11 +2198,13 @@ class SpectralProfileBridge(TreeModel):
             slws = [slws]
 
         for slw in slws:
-            assert isinstance(slw, SpectralLibraryWidget)
+            if not (isinstance(slw, SpectralLibraryWidget)):
+                raise AssertionError
 
         added_targets = []
         for slw in slws:
-            assert isinstance(slw, SpectralLibraryWidget)
+            if not (isinstance(slw, SpectralLibraryWidget)):
+                raise AssertionError
             if slw not in self.mSLWs:
                 added_targets.append(slw)
                 slw.sigWindowIsClosing.connect(lambda *args, s=slw: self.removeSpectralLibraryWidgets(slw))
@@ -2208,7 +2236,8 @@ class SpectralProfileBridge(TreeModel):
                     break
 
     def setDefaultDestination(self, generator: SpectralFeatureGeneratorNode):
-        assert isinstance(generator, SpectralFeatureGeneratorNode)
+        if not (isinstance(generator, SpectralFeatureGeneratorNode)):
+            raise AssertionError
 
         destinations = self.destinations()
         if len(destinations) == 0:
@@ -2217,11 +2246,13 @@ class SpectralProfileBridge(TreeModel):
         generator.setSpeclib(destinations[-1])
 
     def setSnapToPixelCenter(self, b: bool):
-        assert isinstance(b, bool)
+        if not (isinstance(b, bool)):
+            raise AssertionError
         self.mSnapToPixelCenter = b
 
     def setDefaultSources(self, generator: SpectralFeatureGeneratorNode):
-        assert isinstance(generator, SpectralFeatureGeneratorNode)
+        if not (isinstance(generator, SpectralFeatureGeneratorNode)):
+            raise AssertionError
 
         existing_sources = self.sources()
         if len(existing_sources) == 0:
@@ -2261,7 +2292,8 @@ class SpectralProfileBridge(TreeModel):
         if not isinstance(slws, Iterable):
             slws = [slws]
         for slw in slws:
-            assert isinstance(slw, SpectralLibraryWidget)
+            if not (isinstance(slw, SpectralLibraryWidget)):
+                raise AssertionError
             if slw in self.mSLWs:
                 self.mSLWs.remove(slw)
             # self.mDstModel.removeSpectralLibraryWidget(slw)
@@ -2274,7 +2306,8 @@ class SpectralProfileBridgeViewDelegate(QStyledItemDelegate):
 
     def __init__(self, treeView: QTreeView, parent=None):
         super(SpectralProfileBridgeViewDelegate, self).__init__(parent=parent)
-        assert isinstance(treeView, QTreeView)
+        if not (isinstance(treeView, QTreeView)):
+            raise AssertionError
         self.mTreeView: QTreeView = treeView
         self.mSpectralProfileBridge: Optional[SpectralProfileBridge] = None
 
@@ -2343,7 +2376,8 @@ class SpectralProfileBridgeViewDelegate(QStyledItemDelegate):
             super().paint(painter, option, index)
 
     def setBridge(self, bridge: SpectralProfileBridge):
-        assert isinstance(bridge, SpectralProfileBridge)
+        if not (isinstance(bridge, SpectralProfileBridge)):
+            raise AssertionError
         self.mSpectralProfileBridge = bridge
 
     def bridge(self) -> SpectralProfileBridge:
@@ -2362,7 +2396,8 @@ class SpectralProfileBridgeViewDelegate(QStyledItemDelegate):
             if isinstance(node, SpectralFeatureGeneratorNode) and index.column() in [0, 1]:
                 w = HTMLComboBox(parent=parent)
                 model = bridge.spectralLibraryModel()
-                assert isinstance(model, SpectralLibraryListModel)
+                if not (isinstance(model, SpectralLibraryListModel)):
+                    raise AssertionError
                 w.setModel(model)
                 s = ""
             elif isinstance(node, (SpectralProfileGeneratorNode, SpectralProfileSourceNode)) and index.column() == 1:
@@ -2414,7 +2449,8 @@ class SpectralProfileBridgeViewDelegate(QStyledItemDelegate):
         bridge = self.bridge()
         node = index.data(Qt.UserRole)
         if isinstance(node, SpectralFeatureGeneratorNode) and index.column() in [0, 1]:
-            assert isinstance(editor, QComboBox)
+            if not (isinstance(editor, QComboBox)):
+                raise AssertionError
             model: SpectralLibraryListModel = editor.model()
             sl = node.speclib()
             if isinstance(sl, QgsVectorLayer):
@@ -2425,19 +2461,23 @@ class SpectralProfileBridgeViewDelegate(QStyledItemDelegate):
                         break
 
         if isinstance(node, (SpectralProfileGeneratorNode, SpectralProfileSourceNode)) and index.column() == 1:
-            assert isinstance(editor, QComboBox)
+            if not (isinstance(editor, QComboBox)):
+                raise AssertionError
             setCurrentComboBoxValue(editor, node.profileSource())
 
         elif isinstance(node, SpectralProfileSamplingModeNode) and index.column() == 1:
-            assert isinstance(editor, QComboBox)
+            if not (isinstance(editor, QComboBox)):
+                raise AssertionError
             setCurrentComboBoxValue(editor, node.profileSamplingMode().kernelSize())
 
         elif isinstance(node, OptionTreeNode) and index.column() == 1:
-            assert isinstance(editor, QComboBox)
+            if not (isinstance(editor, QComboBox)):
+                raise AssertionError
             setCurrentComboBoxValue(editor, node.option())
 
         elif isinstance(node, StandardFieldGeneratorNode) and index.column() == 1:
-            assert isinstance(editor, QgsFieldExpressionWidget)
+            if not (isinstance(editor, QgsFieldExpressionWidget)):
+                raise AssertionError
             # editor.setField(node.field())
             genNode: SpectralFeatureGeneratorNode = node.parentNode()
             if isinstance(genNode, SpectralFeatureGeneratorNode) and isinstance(genNode.speclib(), QgsVectorLayer):
@@ -2465,16 +2505,19 @@ class SpectralProfileBridgeViewDelegate(QStyledItemDelegate):
         node = index.data(Qt.UserRole)
         if isinstance(node, SpectralFeatureGeneratorNode):
             if index.column() in [0, 1]:
-                assert isinstance(w, QComboBox)
+                if not (isinstance(w, QComboBox)):
+                    raise AssertionError
                 bridge.setData(index, w.currentData(QgsMapLayerModel.CustomRole.Layer), Qt.EditRole)
         elif isinstance(node, (SpectralProfileGeneratorNode, SpectralProfileSourceNode,
                                SpectralProfileSamplingModeNode, OptionTreeNode)):
             if index.column() in [1]:
-                assert isinstance(w, QComboBox)
+                if not (isinstance(w, QComboBox)):
+                    raise AssertionError
                 bridge.setData(index, w.currentData(Qt.UserRole), Qt.EditRole)
 
         elif isinstance(node, StandardFieldGeneratorNode) and index.column() == 1:
-            assert isinstance(w, QgsFieldExpressionWidget)
+            if not (isinstance(w, QgsFieldExpressionWidget)):
+                raise AssertionError
             expr = w.expression()
             bridge.setData(index, expr, Qt.EditRole)
         elif isinstance(node, FloatValueNode) and index.column() == 1:

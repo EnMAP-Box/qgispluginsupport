@@ -82,7 +82,8 @@ class SpectralXAxis(pg.AxisItem):
         """
         if isinstance(unit, UnitWrapper):
             unit = unit.unit
-        assert unit is None or isinstance(unit, str)
+        if not (unit is None or isinstance(unit, str)):
+            raise AssertionError
         self.mUnit = unit
 
         if isinstance(labelName, str):
@@ -387,7 +388,8 @@ class SpectralProfilePlotDataItem(PlotDataItem):
                 selectedStyle = self.mSelectedStyle(self.mDefaultStyle)
             else:
                 selectedStyle = self.mSelectedStyle
-            assert isinstance(selectedStyle, PlotStyle)
+            if not (isinstance(selectedStyle, PlotStyle)):
+                raise AssertionError
             self.setPlotStyle(selectedStyle)
         else:
             self.setPlotStyle(self.mDefaultStyle)
@@ -468,8 +470,11 @@ class SpectralProfilePlotDataItem(PlotDataItem):
                      symbolSize=symbolSize)
 
     def setPlotStyle(self, plotStyle: PlotStyle):
-        assert isinstance(plotStyle, PlotStyle)
+        """
 
+        :param plotStyle:
+        :return:
+        """
         self.opts['pen'] = pg.mkPen(plotStyle.linePen)
         self.opts['symbol'] = plotStyle.markerSymbol
         self.opts['symbolPen'] = pg.mkPen(plotStyle.markerPen)
@@ -527,7 +532,8 @@ class SpectralProfilePlotDataItem(PlotDataItem):
         :param width:
         :return:
         """
-        assert isinstance(b, bool)
+        if not (isinstance(b, bool)):
+            raise AssertionError
         self.curve.setClickable(b, width=width)
 
     def populateContextMenu(self, menu: QMenu):
@@ -705,7 +711,8 @@ class SpectralProfilePlotWidget(pg.GraphicsLayoutWidget):
         return [HashablePointF(p.pos()) for p in self.mInfoScatterPoints.points()]
 
     def setShowCrosshair(self, b: bool):
-        assert isinstance(b, bool)
+        if not (isinstance(b, bool)):
+            raise AssertionError
         self.mShowCrosshair = b
 
     def setBackgroundColor(self, color: Union[str, QColor]):
@@ -754,7 +761,8 @@ class SpectralProfilePlotWidget(pg.GraphicsLayoutWidget):
         self.mInfoLabelCursor.setColor(QColor(color))
 
     def setShowCursorInfo(self, b: bool):
-        assert isinstance(b, bool)
+        if not (isinstance(b, bool)):
+            raise AssertionError
         self.mShowCursorInfo = b
 
     def xAxis(self) -> SpectralXAxis:
@@ -813,9 +821,11 @@ class SpectralProfilePlotWidget(pg.GraphicsLayoutWidget):
         pos = evt[0]  # using signal proxy turns original arguments into a tuple
 
         plotItem = self.plotItem1
-        assert isinstance(plotItem, SpectralProfilePlotItem)
+        if not (isinstance(plotItem, SpectralProfilePlotItem)):
+            raise AssertionError
         vb = plotItem.vb
-        assert isinstance(vb, SpectralViewBox)
+        if not (isinstance(vb, SpectralViewBox)):
+            raise AssertionError
 
         if plotItem.sceneBoundingRect().contains(pos) and self.underMouse():
             mousePoint = vb.mapSceneToView(pos)
