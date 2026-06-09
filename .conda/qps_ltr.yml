@@ -27,3 +27,4 @@ dependencies:
 
 variables:
   QT_MAC_WANTS_LAYER: 1
+  PYQTGRAPH_QT_LIB: PyQt5
