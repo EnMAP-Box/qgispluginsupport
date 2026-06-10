@@ -19,10 +19,10 @@ import random
 import re
 import unittest
 import warnings
-import defusedxml.ElementTree as ET  # nosec B405 - defusedxml used to safely parse XML
 from math import nan
 from typing import Dict
 
+import defusedxml.ElementTree as ET  # B405 - defusedxml used to safely parse XML
 import numpy as np
 from osgeo import gdal, gdal_array, ogr, osr
 

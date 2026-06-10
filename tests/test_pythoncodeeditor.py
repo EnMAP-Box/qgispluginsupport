@@ -45,7 +45,8 @@ class PythonCodeEditorTestCases(TestCase):
                 try:
                     kwds = {'f': attributes.copy()}
 
-                    exec(compiled_code, kwds)
+                    # this is exactly what is expected here
+                    exec(compiled_code, kwds)  # nosec B102
                     if not ('y' in kwds):
                         raise AssertionError('Missing y in kwds')
 

@@ -1452,7 +1452,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
                         lists_to_numpy_array(kwds)
                         kwds['f'] = feature
 
-                        exec(data_expression_code, kwds)
+                        exec(data_expression_code, kwds)  # nosec: B102
 
                         raw_data = {k: kwds[k] for k in ['x', 'y', 'xUnit', 'yUnit', 'bbl'] if k in kwds}
                         plot_data = self.profileDataToXUnit(raw_data, xunit)

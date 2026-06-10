@@ -12,6 +12,7 @@ createExpressionContext - original: processing/tools/dataobjects.py
 
 
 """
+import ast
 import codecs
 import datetime
 import json
@@ -1435,7 +1436,9 @@ class BatchPanel(QgsPanelWidget, WIDGET):
                         continue
                     if param.name() in params:
                         column = self.parameter_to_column[param.name()]
-                        value = eval(params[param.name()])
+                        # value = eval(params[param.name()])
+                        value = ast.literal_eval(params[param.name()])
+                        # see processing/gui/BatchPanel.py
                         wrapper = self.wrappers[row][column]
                         wrapper.setParameterValue(value, context)
 

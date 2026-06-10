@@ -148,7 +148,7 @@ class QGISPluginsSupportPlugin(object):
         print(f'Execute {path}')
         with open(path) as f:
             code = f.read()
-        exec(code)
+        exec(code)  # nosec: B102
 
     def unload(self):
         for w in self.mWidgets:

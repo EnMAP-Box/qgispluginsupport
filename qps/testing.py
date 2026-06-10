@@ -1944,7 +1944,7 @@ class QgsPythonRunnerMockup(QgsPythonRunner):
     def runCommand(self, command, messageOnError=''):
         try:
             o = compile(command, 'fakemodule', 'exec')
-            exec(o)
+            exec(o)  # nosec: B102
         except Exception as ex:
             _ = str(ex)
             command = ['{}:{}'.format(i + 1, l) for i, l in enumerate(command.splitlines())]

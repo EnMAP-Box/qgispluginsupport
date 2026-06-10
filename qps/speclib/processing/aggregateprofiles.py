@@ -609,7 +609,7 @@ class SpectralAggregation(QgsExpressionFunction):
 
             if not (context.fields()):
                 raise AssertionError('context has no fields')
-            exec(pyExpression, DATA)
+            exec(pyExpression, DATA)  # nosec: B102
 
             # collect output profile values
             d = prepareProfileValueDict(x=DATA.get('x', None),

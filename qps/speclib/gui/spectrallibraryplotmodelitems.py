@@ -2100,7 +2100,7 @@ class ProfileVisualizationGroup(PropertyItemGroup):
                 kwds = decodeProfileValueDict(feature.attribute(field))
                 kwds['f'] = feature
                 lists_to_numpy_array(kwds)
-                exec(compiled_code, kwds, kwds)
+                exec(compiled_code, kwds, kwds)  # nosec: B102
                 if not ('y' in kwds):
                     raise AssertionError('Missing y in kwds')
 

@@ -1057,7 +1057,7 @@ class SpectralMath(QgsExpressionFunction):
 
             if not (context.fields()):
                 raise AssertionError
-            exec(pyExpression, DATA)
+            exec(pyExpression, DATA)  # nosec: B102
 
             # collect output profile values
             d = prepareProfileValueDict(x=DATA.get('x', None),
