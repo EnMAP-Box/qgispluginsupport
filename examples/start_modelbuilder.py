@@ -17,7 +17,6 @@ class TestProcessingAlgorithm(QgsProcessingAlgorithm):
 
     def __init__(self):
         super(TestProcessingAlgorithm, self).__init__()
-        s = ""
 
     def createInstance(self):
         return TestProcessingAlgorithm()

@@ -72,7 +72,7 @@ class LayerPropertyTests(TestCase):
 
     def test_enmapboxbug_452(self):
         lyr = TestObjects.createVectorLayer()
-        rlr = TestObjects.createRasterLayer()
+        # rlr = TestObjects.createRasterLayer()
         style = QgsStyle()
         d = QgsRendererPropertiesDialog(lyr, style, embedded=True)
         self.showGui(d)
@@ -137,8 +137,6 @@ class LayerPropertyTests(TestCase):
 
     @unittest.skip
     def test_LayerPropertiesDialog_Raster(self):
-
-        s = ""
 
         lyr = TestObjects.createRasterLayer(nb=255, eType=gdal.GDT_UInt16)
         QgsProject.instance().addMapLayer(lyr)
@@ -257,7 +255,7 @@ class LayerPropertyTests(TestCase):
         vl.startEditing()
 
         def onAction(*args):
-            s = ""
+            pass
 
         w.mActionZoomMapToSelectedRows.triggered.connect(onAction)
         w.mUpdateExpressionText.setField("'dummy'")

@@ -11,19 +11,25 @@ from typing import Any, Dict, Iterable, Iterator, List, Set, Tuple, Union, Optio
 import numpy as np
 from numpy import nan
 
-from qgis.PyQt.QtCore import NULL, QAbstractListModel, QItemSelection, QModelIndex, QObject, QRect, QRectF, QSize, \
-    QSortFilterProxyModel, Qt, pyqtSignal, QMetaType
+from qgis.PyQt.QtCore import (
+    NULL, QAbstractListModel, QItemSelection, QModelIndex, QObject, QRect, QRectF, QSize,
+    QSortFilterProxyModel, Qt, pyqtSignal, QMetaType)
 from qgis.PyQt.QtGui import QAbstractTextDocumentLayout, QColor, QFont, QIcon, QPainter, QTextDocument
 from qgis.PyQt.QtGui import QPalette
-from qgis.PyQt.QtWidgets import QComboBox, QDoubleSpinBox, QSpinBox, QStyle, QStyleOptionViewItem, \
+from qgis.PyQt.QtWidgets import (
+    QComboBox, QDoubleSpinBox, QSpinBox, QStyle, QStyleOptionViewItem,
     QStyledItemDelegate, QTableView, QTreeView, QWidget
-from qgis.core import Qgis, QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsExpression, QgsExpressionContext, \
-    QgsExpressionContextGenerator, QgsExpressionContextScope, QgsExpressionContextUtils, QgsFeature, QgsField, \
-    QgsFieldConstraints, QgsFields, QgsGeometry, QgsLayerItem, QgsMapToPixel, QgsPointXY, QgsProperty, QgsRasterLayer, \
+)
+from qgis.core import (
+    Qgis, QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsExpression, QgsExpressionContext,
+    QgsExpressionContextGenerator, QgsExpressionContextScope, QgsExpressionContextUtils, QgsFeature, QgsField,
+    QgsFields, QgsGeometry, QgsLayerItem, QgsMapToPixel, QgsPointXY, QgsProperty, QgsRasterLayer,
     QgsRectangle, QgsVector, QgsVectorLayer, QgsWkbTypes
+)
 from qgis.core import QgsProject, QgsMapLayerModel
-from qgis.gui import QgsColorButton, QgsDockWidget, QgsDoubleSpinBox, QgsFieldExpressionWidget, QgsFilterLineEdit, \
-    QgsMapCanvas
+from qgis.gui import (
+    QgsColorButton, QgsDockWidget, QgsDoubleSpinBox, QgsFieldExpressionWidget, QgsFilterLineEdit,
+    QgsMapCanvas)
 from .spectrallibrarylistmodel import SpectralLibraryListModel
 from .spectrallibrarywidget import SpectralLibraryWidget
 from .spectralprofilecandidates import SpectralProfileCandidates
@@ -36,7 +42,6 @@ from ...externals.htmlwidgets import HTMLComboBox
 from ...models import Option, OptionListModel, OptionTreeNode, TreeModel, TreeNode, TreeView, setCurrentComboBoxValue
 from ...plotstyling.plotstyling import PlotStyle, PlotStyleButton
 from ...qgsfunctions import RasterProfile
-from ...qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from ...utils import HashableRect, SpatialPoint, aggregateArray, iconForFieldType, loadUi, rasterLayerMapToPixel
 
 logger = logging.getLogger(__name__)
@@ -71,11 +76,11 @@ class SpectralProfileSource(QObject):
         self.mToolTip = toolTip
 
     def collectProfiles(
-        self,
-        point: SpatialPoint,
-        kernel_size: QSize = QSize(1, 1),
-        snap: bool = False,
-        **kwargs
+            self,
+            point: SpatialPoint,
+            kernel_size: QSize = QSize(1, 1),
+            snap: bool = False,
+            **kwargs
     ) -> List[Tuple[Dict, QgsExpressionContext]]:
         """
         A function to collect profiles.
@@ -198,16 +203,16 @@ class ProfileSamplingMode(object):
         return self.mAggregation
 
     def profiles(
-        self,
-        point: SpatialPoint,
-        profiles: List[Tuple[Dict, QgsExpressionContext]]
+            self,
+            point: SpatialPoint,
+            profiles: List[Tuple[Dict, QgsExpressionContext]]
     ) -> List[Tuple[Dict, QgsExpressionContext]]:
         """
         Aggregates the profiles collected from a profile source
         in the way as described
         """
 
-        ksize = self.kernelSize()
+        _ = self.kernelSize()
 
         aggregation = self.aggregation()
 
@@ -328,12 +333,12 @@ class StandardLayerProfileSource(SpectralProfileSource):
         return context
 
     def collectProfiles(
-        self,
-        point: SpatialPoint,
-        kernel_size: QSize = QSize(1, 1),
-        snap: bool = False,
-        suffix: str = '',
-        **kwargs
+            self,
+            point: SpatialPoint,
+            kernel_size: QSize = QSize(1, 1),
+            snap: bool = False,
+            suffix: str = '',
+            **kwargs
     ) -> List[Tuple[Dict, QgsExpressionContext]]:
 
         point = point.toCrs(self.mLayer.crs())
@@ -359,7 +364,7 @@ class StandardLayerProfileSource(SpectralProfileSource):
         context = QgsExpressionContext()
         context.appendScope(QgsExpressionContextUtils.layerScope(self.mLayer))
 
-        sp = QgsRasterLayerSpectralProperties.fromRasterLayer(self.mLayer)
+        # sp = QgsRasterLayerSpectralProperties.fromRasterLayer(self.mLayer)
 
         rect = QRectF(0, 0,
                       resX * kernel_size.width(),
@@ -448,11 +453,11 @@ class MapCanvasLayerProfileSource(SpectralProfileSource):
         return QgsExpressionContext()
 
     def collectProfiles(
-        self, point: SpatialPoint,
-        kernel_size: QSize = QSize(1, 1),
-        canvas: QgsMapCanvas = None,
-        snap: bool = False,
-        **kwargs
+            self, point: SpatialPoint,
+            kernel_size: QSize = QSize(1, 1),
+            canvas: QgsMapCanvas = None,
+            snap: bool = False,
+            **kwargs
     ) -> List[Tuple[Dict, QgsExpressionContext]]:
         if isinstance(canvas, QgsMapCanvas):
             self.mMapCanvas = canvas
@@ -546,7 +551,6 @@ class ValidateNode(TreeNode):
                     continue
                 for e in c.errors(recursive=recursive):
                     yield f'{self.name()}:{e}'
-        s = ""
 
 
 class SpectralProfileSourceModel(QAbstractListModel):
@@ -619,8 +623,8 @@ class SpectralProfileSourceModel(QAbstractListModel):
             if not (isinstance(source, SpectralProfileSource)):
                 raise AssertionError(f'Got {source} instead SpectralProfileSource')
             if (
-                source not in self.mSources
-                and source not in to_insert
+                    source not in self.mSources
+                    and source not in to_insert
             ):
                 to_insert.append(source)
 
@@ -662,8 +666,8 @@ class SpectralProfileSourceModel(QAbstractListModel):
         return None
 
     def removeSources(
-        self,
-        sources: Union[SpectralProfileSource, List[SpectralProfileSource]]
+            self,
+            sources: Union[SpectralProfileSource, List[SpectralProfileSource]]
     ) -> List[SpectralProfileSource]:
         if not isinstance(sources, Iterable):
             sources = [sources]
@@ -1383,7 +1387,7 @@ class SpectralFeatureGeneratorNode(ValidateNode):
             if field.isReadOnly():
                 continue
 
-            constraints: QgsFieldConstraints = field.constraints()
+            # constraints: QgsFieldConstraints = field.constraints()
 
             if fname in pfield_names:
                 new_node = SpectralProfileGeneratorNode(fname)
@@ -1607,7 +1611,6 @@ class SpectralProfileBridge(TreeModel):
                 if node.profileSource() not in sources:
                     # remove reference on removed source
                     node.setProfileSource(None)
-                    s = ""
 
     def updateDestinationReferences(self):
         to_remove = []
@@ -1859,7 +1862,7 @@ class SpectralProfileBridge(TreeModel):
         generator.validate()
 
     def featureGenerators(
-        self, speclib: bool = True, checked: bool = True
+            self, speclib: bool = True, checked: bool = True
     ) -> List[SpectralFeatureGeneratorNode]:
 
         for n in self.rootNode().childNodes():
@@ -1888,8 +1891,7 @@ class SpectralProfileBridge(TreeModel):
 
         flags = Qt.ItemIsSelectable | Qt.ItemIsEnabled
         node = index.data(Qt.UserRole)
-        if not isinstance(node, TreeNode):
-            s = ""
+
         if col == 0:
             if isinstance(node, TreeNode) and node.isCheckable():
                 flags = flags | Qt.ItemIsUserCheckable
@@ -1909,7 +1911,7 @@ class SpectralProfileBridge(TreeModel):
     def data(self, index: QModelIndex, role=Qt.DisplayRole):
 
         cError = 'red'
-        cValid = 'black'
+        # cValid = 'black'
         cNotUsed = 'grey'
 
         # handle missing data appearances
@@ -1982,8 +1984,8 @@ class SpectralProfileBridge(TreeModel):
                         return node.toolTip()
 
             if isinstance(node, SpectralProfileSourceNode):
-                has_source = isinstance(node.profileSource(), SpectralProfileSource)
-                p = node.parentNode()
+                # has_source = isinstance(node.profileSource(), SpectralProfileSource)
+                # p = node.parentNode()
 
                 # if False and role == Qt.ForegroundRole:
                 #     if isinstance(p, SpectralProfileGeneratorNode):
@@ -2012,16 +2014,6 @@ class SpectralProfileBridge(TreeModel):
                 field: QgsField = node.field()
                 editor = field.editorWidgetSetup().type()
                 has_errors = node.hasErrors(recursive=True)
-                is_checked = node.checked()
-                is_required = not node.isCheckable()
-
-                if is_checked or is_required:
-                    if has_errors:
-                        cstring = cError
-                    else:
-                        cstring = cValid
-                else:
-                    cstring = cNotUsed
 
                 if c == 0:
                     if role == Qt.DisplayRole:
@@ -2079,10 +2071,10 @@ class SpectralProfileBridge(TreeModel):
         update_parent = None
 
         if (
-            role == Qt.CheckStateRole
-            and isinstance(node, TreeNode)
-            and node.isCheckable()
-            and value in [Qt.Checked, Qt.Unchecked]
+                role == Qt.CheckStateRole
+                and isinstance(node, TreeNode)
+                and node.isCheckable()
+                and value in [Qt.Checked, Qt.Unchecked]
         ):
             changed = node.checkState() != value
             if changed:
@@ -2157,8 +2149,8 @@ class SpectralProfileBridge(TreeModel):
                                   self.index(r1, c1, parent=index.parent()),
                                   roles)
         if update_parent:
-            r = index.parent().row()
-            c = index.parent().column()
+            # r = index.parent().row()
+            # c = index.parent().column()
 
             fnode = node.findParentNode(SpectralFeatureGeneratorNode)
             if isinstance(fnode, SpectralFeatureGeneratorNode):
@@ -2399,7 +2391,7 @@ class SpectralProfileBridgeViewDelegate(QStyledItemDelegate):
                 if not (isinstance(model, SpectralLibraryListModel)):
                     raise AssertionError
                 w.setModel(model)
-                s = ""
+
             elif isinstance(node, (SpectralProfileGeneratorNode, SpectralProfileSourceNode)) and index.column() == 1:
                 w = HTMLComboBox(parent=parent)
                 model = bridge.dataSourceModel()
@@ -2446,7 +2438,7 @@ class SpectralProfileBridgeViewDelegate(QStyledItemDelegate):
     def setEditorData(self, editor: QWidget, index: QModelIndex):
         if not index.isValid():
             return
-        bridge = self.bridge()
+        # bridge = self.bridge()
         node = index.data(Qt.UserRole)
         if isinstance(node, SpectralFeatureGeneratorNode) and index.column() in [0, 1]:
             if not (isinstance(editor, QComboBox)):

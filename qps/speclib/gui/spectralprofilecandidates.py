@@ -35,7 +35,7 @@ class SpectralProfileCandidates(object):
         changed = set()
         for lyr in layers:
             if (isinstance(lyr,
-                           QgsVectorLayer) and lyr.isValid() and CUSTOM_PROPERTY_CANDIDATE_FIDs in lyr.customPropertyKeys()):
+                           QgsVectorLayer) and lyr.isValid() and CUSTOM_PROPERTY_CANDIDATE_FIDs in lyr.customPropertyKeys()):  # noqa: E501
                 lyr.removeCustomProperty(CUSTOM_PROPERTY_CANDIDATE_FIDs)
                 changed.add(lyr.id())
 
@@ -136,6 +136,6 @@ class SpectralProfileCandidates(object):
             changed_layers.add(lyr.id())
 
         if len(changed_layers) > 0 and not block_signal:
-            s = ""
             cls.SHARED_SIGNALS.candidatesChanged.emit(list(changed_layers))
+
         return changed_layers

@@ -57,18 +57,25 @@ from qgis.PyQt import uic
 from qgis.PyQt.QtCore import NULL, QByteArray, QDirIterator, QObject, QPoint, QPointF, QRect, Qt, QUrl, \
     QVariant, QMetaType
 from qgis.PyQt.QtGui import QColor, QIcon
-from qgis.PyQt.QtWidgets import QAction, QComboBox, QDialogButtonBox, QGridLayout, QHBoxLayout, QLabel, QMainWindow, \
-    QMenu, QToolButton, QWidget
+from qgis.PyQt.QtWidgets import (
+    QAction, QComboBox, QDialogButtonBox, QGridLayout, QHBoxLayout, QLabel, QMainWindow,
+    QMenu, QToolButton, QWidget)
 from qgis.PyQt.QtXml import QDomDocument, QDomElement, QDomNode
-from qgis.core import Qgis, QgsApplication, QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsEditorWidgetSetup, \
-    QgsFeature, QgsFeatureRequest, QgsFeatureSource, QgsFeedback, QgsField, QgsFields, QgsGeometry, QgsMapLayer, \
-    QgsMapLayerProxyModel, QgsMapLayerStore, QgsMapLayerStyle, QgsMapToPixel, QgsMessageOutput, QgsPointXY, \
-    QgsProcessingAlgorithm, QgsProcessingContext, QgsProcessingFeedback, QgsProject, QgsRaster, \
-    QgsRasterBlock, QgsRasterBlockFeedback, QgsRasterDataProvider, QgsRasterIdentifyResult, QgsRasterInterface, \
-    QgsRasterLayer, QgsRasterRenderer, QgsRectangle, QgsTask, QgsVector, QgsVectorDataProvider, QgsVectorFileWriter, \
-    QgsVectorLayer, QgsWkbTypes
-from qgis.core import QgsExpressionContextScope, QgsExpressionContext, QgsFeatureRenderer, QgsSingleSymbolRenderer, \
-    QgsMarkerSymbol, QgsExpressionContextUtils, QgsRenderContext, QgsSymbol, QgsProcessing
+from qgis.core import (Qgis, QgsApplication, QgsCoordinateReferenceSystem,
+                       QgsCoordinateTransform, QgsEditorWidgetSetup,
+                       QgsFeature, QgsFeatureRequest, QgsFeatureSource, QgsFeedback, QgsField, QgsFields, QgsGeometry,
+                       QgsMapLayer,
+                       QgsMapLayerProxyModel, QgsMapLayerStore, QgsMapLayerStyle, QgsMapToPixel, QgsMessageOutput,
+                       QgsPointXY,
+                       QgsProcessingAlgorithm, QgsProcessingContext, QgsProcessingFeedback, QgsProject, QgsRaster,
+                       QgsRasterBlock, QgsRasterBlockFeedback, QgsRasterDataProvider, QgsRasterIdentifyResult,
+                       QgsRasterInterface,
+                       QgsRasterLayer, QgsRasterRenderer, QgsRectangle, QgsTask, QgsVector, QgsVectorDataProvider,
+                       QgsVectorFileWriter,
+                       QgsVectorLayer, QgsWkbTypes)
+from qgis.core import (QgsExpressionContextScope, QgsExpressionContext,
+                       QgsFeatureRenderer, QgsSingleSymbolRenderer,
+                       QgsMarkerSymbol, QgsExpressionContextUtils, QgsRenderContext, QgsSymbol, QgsProcessing)
 from qgis.gui import QgisInterface, QgsDialog, QgsGui, QgsMapCanvas, QgsMapLayerComboBox, QgsMessageViewer
 from .qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from .unitmodel import datetime64, UnitLookup
@@ -237,7 +244,6 @@ class TemporaryGlobalLayerContext(object):
                     instance.takeMapLayer(lyr)
                     lyr.removeCustomProperty(self.LAYER_PROPERTY_KEY)
 
-        s = ""
         pass
 
 
@@ -482,7 +488,7 @@ def nextColor(color: QColor, mode: str = 'cat') -> QColor:
         sat = 255
         value = 128
         alpha = 255
-        s = ""
+
     while hue >= 360:
         hue -= 360
 
@@ -1198,7 +1204,7 @@ def setComboboxValue(cb: QComboBox, text: Optional[str] = None):
     :param text:
     :return:
     """
-    currentIndex = cb.currentIndex()
+    _ = cb.currentIndex()
     idx = -1
     if text is None:
         text = ''
@@ -1357,7 +1363,7 @@ def loadUi(uifile: Union[str, Path],
 
             cClass = child.firstChildElement('class').firstChild()
             cHeader = child.firstChildElement('header').firstChild()
-            cExtends = child.firstChildElement('extends').firstChild()
+            _ = child.firstChildElement('extends').firstChild()
 
             sClass = str(cClass.nodeValue())
             sExtends = str(cHeader.nodeValue())
@@ -1556,14 +1562,15 @@ def appendItemsToMenu(menu: QMenu, itemsToAdd: List[Union[QMenu, QAction]]):
         if isinstance(item, QAction):
             item.setParent(menu)
             menu.addAction(item)
-            s = ""
+
         elif isinstance(item, QMenu):
             # item.setParent(menu)
             sub = menu.addMenu(item.title())
             sub.setIcon(item.icon())
             appendItemsToMenu(sub, item.children()[1:])
         else:
-            s = ""
+            pass
+
     return menu
 
 
@@ -1602,7 +1609,8 @@ def copyEditorWidgetSetup(vectorLayer: QgsVectorLayer, fields: Union[QgsFields, 
         if QgsGui.instance().editorWidgetRegistry().factory(setup.type()).supportsField(vectorLayer, idx):
             vectorLayer.setEditorWidgetSetup(idx, setup)
         else:
-            s = ""
+            pass
+
     vectorLayer.updatedFields.emit()
 
 
@@ -1642,7 +1650,7 @@ def compare_dicts(d1, d2, path=""):
 def check_package(name, package=None, stop_on_error=False):
     try:
         importlib.import_module(name, package)
-    except Exception as e:
+    except Exception:
         if stop_on_error:
             raise Exception('Unable to import package/module "{}"'.format(name))
         return False
@@ -1670,7 +1678,7 @@ def qgsFields2str(qgsFields: QgsFields) -> str:
                     subType=field.subType(),
                     editorWidget=field.editorWidgetSetup().type())
         infos.append(info)
-    return json.dumps(infos)
+    return json.dumps(infos, ensure_ascii=False)
 
 
 def str2QgsFields(fieldString: str) -> QgsFields:
@@ -1907,7 +1915,7 @@ def stringToByteArray(text: Union[str, QDomDocument]):
     if isinstance(text, QDomDocument):
         text = text.toString()
     data = QByteArray()
-    data.append(text)
+    data.append(text.encode())
     return data
 
 
@@ -1985,9 +1993,9 @@ def checkWavelength(key: str, values: str, expected: int = 1) -> Optional[np.nda
             if len(wl) != expected:
                 wl = None
             # wl = np.fromstring(values, count=expected, sep=sep)
-        except ValueError as exV:
+        except ValueError:
             return wl
-        except Exception as ex:
+        except Exception:
             return wl
     return wl
 
@@ -2308,7 +2316,7 @@ def check_vsimem() -> bool:
         del layer
         drv.Delete(path)
 
-    except Exception as ex:
+    except Exception:
         return False
     return result
 
@@ -2685,7 +2693,7 @@ class SpatialPoint(QgsPointXY):
 
     def json(self) -> str:
         d = {'x': self.x(), 'y': self.y(), 'crs': self.crs().toWkt()}
-        return json.dumps(d)
+        return json.dumps(d, ensure_ascii=False)
 
     def __reduce_ex__(self, protocol):
         return self.__class__, (self.crs().toWkt(), self.x(), self.y()), {}
@@ -2902,7 +2910,7 @@ def saveTransform(geom: Union[QgsPointXY, QgsRectangle, Tuple[np.ndarray, np.nda
         shape = xcoords.shape
         if xcoords.shape != ycoords.shape:
             raise AssertionError(f'Differing shapes: {xcoords.shape} vs. {ycoords.shape}')
-        n = np.prod(xcoords.shape)
+        _ = np.prod(xcoords.shape)
         results = [transform.transform(QgsPointXY(x, y))
                    for x, y in zip(xcoords.flatten(), ycoords.flatten())]
         xresults = np.asarray([r.x() for r in results])
@@ -2916,11 +2924,11 @@ def snapGeoCoordinates(coordinates: List[Union[QgsPointXY, QPointF]],
                        m2p: Union[QgsRasterLayer, QgsMapToPixel]) -> List[QgsPointXY]:
     if isinstance(m2p, QgsRasterLayer):
         c = m2p.extent().center()
-        raster = QgsMapToPixel(m2p.rasterUnitsPerPixelX(),
-                               c.x(), c.y(),
-                               m2p.width(), m2p.height(),
-                               0,
-                               )
+        _ = QgsMapToPixel(m2p.rasterUnitsPerPixelX(),
+                          c.x(), c.y(),
+                          m2p.width(), m2p.height(),
+                          0,
+                          )
 
     d = QgsVector(0.5 * m2p.mapUnitsPerPixel(),
                   -0.5 * m2p.mapUnitsPerPixel())
@@ -3009,8 +3017,7 @@ class SpatialExtent(QgsRectangle):
 
         d = json.loads(json_str)
         return cls(QgsCoordinateReferenceSystem(d['crs']),
-                   d['xmin'], d['ymin'],
-                   d['xmax'], d['ymax'])
+                   QgsRectangle.fromWkt(d['extent']))
 
     @staticmethod
     def fromLayer(mapLayer: QgsMapLayer):
@@ -3029,8 +3036,8 @@ class SpatialExtent(QgsRectangle):
         self.mCrs: QgsCoordinateReferenceSystem = crs
 
     def json(self) -> str:
-        d = {'crs': self.crs().toWkt(), 'extent': self.asWkt()}
-        return json.dumps(d)
+        d = {'crs': self.crs().toWkt(), 'extent': self.asWktPolygon()}
+        return json.dumps(d, ensure_ascii=False)
 
     def setCrs(self, crs: QgsCoordinateReferenceSystem):
         self.mCrs = crs
@@ -3092,7 +3099,6 @@ class SpatialExtent(QgsRectangle):
     def __cmp__(self, other):
         if other is None:
             return 1
-        s = ""
 
     def upperRightPt(self) -> QgsPointXY:
         """
@@ -3355,7 +3361,7 @@ class MapGeometryToPixel(object):
                     px_x.append(x)
                     px_y.append(y)
                 else:
-                    s = ""
+                    pass
             if len(px_x) > 0:
                 return np.asarray(px_y), np.asarray(px_x)
             else:
@@ -3492,7 +3498,7 @@ def rasterizeFeatures(
     # snap to raster grid
 
     if extI.isEmpty():
-        s = ""
+        pass
     dp: QgsRasterDataProvider = rasterLayer.dataProvider()
 
     c: QgsPointXY = rasterLayer.extent().center()
@@ -3658,7 +3664,8 @@ def rasterArray(rasterInterface: Union[QgsRasterInterface, str, QgsRasterLayer],
                 lr: Union[SpatialPoint, QPoint] = None,
                 bands: Union[str, int, List[int]] = None) -> Optional[np.ndarray]:
     """
-    Returns the raster values of a QgsRasterLayer or QgsRasterInterface as 3D numpy array of shape (bands, height, width)
+    Returns the raster values of a QgsRasterLayer or QgsRasterInterface as 3D numpy array of
+    shape (bands, height, width)
     :param rasterInterface: QgsRasterLayer, QgsRasterInterface or str to load a QgsRasterLayer from
     :param rect: Subset to be returned.
                  QRect for subset in pixel coordinates,
@@ -3979,7 +3986,7 @@ def printCaller(prefix: str = None,
     FOI = outerFrames[1]
     stack = inspect.stack()
     stack_class = stack[1][0].f_locals["self"].__class__.__name__
-    stack_method = stack[1][0].f_code.co_name
+    _ = stack[1][0].f_code.co_name
     info = f'{stack_class}.{FOI.function}: {os.path.basename(FOI.filename)}:{FOI.lineno}'
 
     prefix = f'{prefix}:' if prefix else ''

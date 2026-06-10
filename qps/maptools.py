@@ -681,7 +681,7 @@ class QgsFeatureAction(QAction):
         if not self.mLayer or not self.mFeature:
             return False
 
-        name = "featureactiondlg:{}:{}".format(self.mLayer.id(), self.mFeature.id())
+        _ = "featureactiondlg:{}:{}".format(self.mLayer.id(), self.mFeature.id())
 
         dialog = self.newDialog(True)
         dialog.setHighlight(h)
@@ -709,7 +709,7 @@ class QgsFeatureAction(QAction):
 
         else:
 
-            name = "featureactiondlg:{}:{}".format(self.mLayer.id(), self.mFeatureid())
+            _ = "featureactiondlg:{}:{}".format(self.mLayer.id(), self.mFeatureid())
 
             # QgsAttributeDialog *dialog = QgisApp::instance() -> findChild<QgsAttributeDialog *>( name );
             # if ( dialog )
@@ -750,9 +750,9 @@ class QgsFeatureAction(QAction):
             if idx in defaultAttributeValues.keys():
                 initialAttributeValues[idx] = defaultAttributeValues[idx]
             elif (
-                (reuseLastValues or lyr.editFormConfig().reuseLastValue(idx))
-                and self.mLayer.id() in self.sLastUsedValues.keys()
-                and idx in self.sLastUsedValues[lyr.id()].keys()
+                    (reuseLastValues or lyr.editFormConfig().reuseLastValue(idx))
+                    and self.mLayer.id() in self.sLastUsedValues.keys()
+                    and idx in self.sLastUsedValues[lyr.id()].keys()
             ):
 
                 lastUsed = self.sLastUsedValues[lyr.id()][idx]
@@ -972,7 +972,7 @@ class QgsMapToolDigitizeFeature(QgsMapToolCapture):
                         savePoint = QgsPoint(QgsWkbTypes.PointZ, layerPoint.x(), layerPoint.y(), fetchPoint.z())
                     else:
                         savePoint = QgsPoint(layerPoint.x(), layerPoint.y())
-            except QgsCsException as cse:
+            except QgsCsException:
                 self.messageEmitted.emit("Cannot transform the point to the layers coordinate system", Qgis.Warning)
                 return
 
@@ -1026,9 +1026,9 @@ class QgsMapToolDigitizeFeature(QgsMapToolCapture):
 
             # //check we only use the line tool for line/multiline layers
             if (
-                self.mode() == self.CaptureLine
-                and vlayer.geometryType() != QgsWkbTypes.LineGeometry
-                and self.mCheckGeometryType
+                    self.mode() == self.CaptureLine
+                    and vlayer.geometryType() != QgsWkbTypes.LineGeometry
+                    and self.mCheckGeometryType
             ):
                 self.messageEmitted.emit(
                     tr("Wrong editing tool, cannot apply the 'capture line' tool on this vector layer"), Qgis.Warning)
@@ -1036,9 +1036,9 @@ class QgsMapToolDigitizeFeature(QgsMapToolCapture):
 
             # //check we only use the polygon tool for polygon/multipolygon layers
             if (
-                self.mode() == self.CapturePolygon
-                and vlayer.geometryType() != QgsWkbTypes.PolygonGeometry
-                and self.mCheckGeometryType
+                    self.mode() == self.CapturePolygon
+                    and vlayer.geometryType() != QgsWkbTypes.PolygonGeometry
+                    and self.mCheckGeometryType
             ):
                 self.messageEmitted.emit(
                     tr("Wrong editing tool, cannot apply the 'capture polygon' tool on this vector layer"),
@@ -1089,7 +1089,7 @@ class QgsMapToolDigitizeFeature(QgsMapToolCapture):
                 providerSupportsCurvedSegments = \
                     vlayer.dataProvider().capabilities() & QgsVectorDataProvider.CircularGeometries
 
-                snappingMatchesList = []
+                _ = []
                 curveToAdd = None
                 if hasCurvedSegments and providerSupportsCurvedSegments:
 
@@ -1405,7 +1405,7 @@ class QgsMapToolSelectUtils(object):
 
             selectGeomTrans.transform(ct)
 
-        except QgsCsException as cse:
+        except QgsCsException:
             # catch exception for 'invalid' point and leave existing selection unchanged
             return newSelectedFeatures
 
@@ -1516,7 +1516,6 @@ class QgsMapToolSelectionHandler(QObject):
             self.selectFreehandReleaseEvent(e)
         elif self.mSelectionMode == QgsMapToolSelectionHandler.SelectionMode.SelectRadius:
             self.selectRadiusReleaseEvent(e)
-        s = ""
 
     def canvasMoveEvent(self, e: QgsMapMouseEvent):
         if self.mSelectionMode == QgsMapToolSelectionHandler.SelectionMode.SelectSimple:
@@ -1837,8 +1836,8 @@ class QgsMapToolSelect(QgsMapTool):
     def selectFeatures(self, modifiers: Qt.KeyboardModifiers):
 
         if (
-            self.mSelectionHandler.selectionMode() == QgsMapToolSelectionHandler.SelectionMode.SelectSimple
-            and self.mSelectionHandler.selectedGeometry().type() == QgsWkbTypes.PointGeometry
+                self.mSelectionHandler.selectionMode() == QgsMapToolSelectionHandler.SelectionMode.SelectSimple
+                and self.mSelectionHandler.selectedGeometry().type() == QgsWkbTypes.PointGeometry
         ):
 
             vlayer = QgsMapToolSelectUtils.getCurrentVectorLayer(self.canvas())

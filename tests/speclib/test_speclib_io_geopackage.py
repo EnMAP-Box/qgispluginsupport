@@ -34,7 +34,6 @@ class TestSpeclibIO_GPKG(TestCase):
 
                 for n in sl.fields().names():
                     self.assertEqual(d1[n], d2[n])
-                s = ""
 
     def test_write_profiles(self):
         sl: QgsVectorLayer = TestObjects.createSpectralLibrary()

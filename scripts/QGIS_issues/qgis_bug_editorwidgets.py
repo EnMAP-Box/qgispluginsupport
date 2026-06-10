@@ -5,8 +5,7 @@ import xml.etree.ElementTree as ElementTree
 
 from qgis.core import QgsMapLayer, QgsVectorLayerExporter, QgsVectorLayer, QgsEditorWidgetSetup
 from qgis.gui import QgsEditorWidgetFactory, QgsEditorConfigWidget, QgsGui
-from qgis.gui import QgsEditorWidgetWrapper, QgsVectorLayerProperties, QgsMapCanvas, \
-    QgsMessageBar
+from qgis.gui import QgsVectorLayerProperties, QgsMapCanvas, QgsMessageBar
 from qgis.testing import start_app, TestCase
 
 qgis_app = start_app()
@@ -80,9 +79,9 @@ class TestQgsRangeWidgetSetup(TestCase):
         self.assertEqual(configA['Max'], 256)
         self.assertEqual(configA['Min'], 1)
 
-        wr: QgsEditorWidgetWrapper = QgsGui.editorWidgetRegistry().createConfigWidget('sdsd', lyr2,
-                                                                                      lyr2.fields().lookupField(
-                                                                                          'number'), None)
+        _ = QgsGui.editorWidgetRegistry().createConfigWidget('sdsd', lyr2,
+                                                             lyr2.fields().lookupField(
+                                                                 'number'), None)
 
         # test loaded QgsEditorConfigWidget
         cw: QgsEditorConfigWidget = factory.configWidget(lyr2, lyr2.fields().lookupField('number'), None)

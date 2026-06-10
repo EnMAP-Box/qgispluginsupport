@@ -47,7 +47,7 @@ class SpectralProfilePlotView(QTreeView):
             visualizations = [visualizations]
 
         model = self.model()
-        rows = []
+
         for r in range(model.rowCount()):
             idx = model.index(r, 0)
             vis = model.data(idx, Qt.UserRole)
@@ -86,7 +86,6 @@ class SpectralProfilePlotView(QTreeView):
             # item = idx.data(Qt.UserRole)
             # if isinstance(item, PropertyItemBase) and item.firstColumnSpanned():
             #    self.setFirstColumnSpanned(r, idx.parent(), True)
-        s = ""
 
     def contextMenuEvent(self, event: QContextMenuEvent) -> None:
         """
@@ -281,8 +280,8 @@ class SpectralProfilePlotViewDelegate(QStyledItemDelegate):
                             palette.setCurrentColorGroup(QPalette.Disabled)
 
                         # Use highlighted text color if an item is selected
-                        text_role = QPalette.HighlightedText if (
-                            option.state & QStyle.State_Selected) else QPalette.Text
+                        text_role = QPalette.HighlightedText \
+                            if (option.state & QStyle.State_Selected) else QPalette.Text
                         style.drawItemText(painter, rect, Qt.AlignLeft | Qt.AlignVCenter, palette, enabled, p,
                                            textRole=text_role)
                         x0 = rect.x() + rect.width() + margin
@@ -326,7 +325,7 @@ class SpectralProfilePlotViewDelegate(QStyledItemDelegate):
         return self.mTreeView.model().sourceModel()
 
     def createEditor(self, parent, option, index):
-        w = None
+
         editor = None
         if index.isValid():
             item = index.data(Qt.UserRole)
@@ -499,7 +498,6 @@ class SpectralLibraryPlotWidget(QWidget):
         return self.mPlotModel.plotWidgetStyle()
 
     def populateProfilePlotContextMenu(self, menu_list: list):
-        s = ""
 
         items = list(self.plotWidget().spectralProfilePlotDataItems(is_selected=True))
         n = len(items)
@@ -565,12 +563,14 @@ class SpectralLibraryPlotWidget(QWidget):
             self.treeView.setExpanded(idx2, True)
             self.treeView.scrollTo(idx2, QAbstractItemView.PositionAtCenter)
 
-            result = QMessageBox.information(self,
-                                             'Maximum number of profiles',
-                                             f'Reached maximum number of profiles to display ({n}).\n'
-                                             'Increase this value to display more profiles at same time.\n'
-                                             'Showing a large numbers of profiles (and bands) can reduce '
-                                             'visualization speed')
+            _ = QMessageBox.information(
+                self,
+                'Maximum number of profiles',
+                f'Reached maximum number of profiles to display ({n}).\n'
+                'Increase this value to display more profiles at same time.\n'
+                'Showing a large numbers of profiles (and bands) can reduce '
+                'visualization speed'
+            )
 
     def createLayerBandVisualization(self, *args):
 

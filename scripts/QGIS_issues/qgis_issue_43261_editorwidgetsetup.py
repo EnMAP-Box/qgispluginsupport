@@ -64,4 +64,4 @@ class PyQgsOGRProvider(unittest.TestCase):
         # editor widget should not change by commitChanges
         self.assertEqual(layer.editorWidgetSetup(i).type(),
                          editor_widget_type,
-                         msg=f'QgsVectorLayer::commitChanged() changed QgsEditorWidgetSetup \nDriver: {layer.dataProvider().name()}')
+                         msg=f'QgsVectorLayer::commitChanged() changed QgsEditorWidgetSetup \nDriver: {layer.dataProvider().name()}')  # noqa: E501

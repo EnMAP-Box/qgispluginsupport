@@ -91,7 +91,7 @@ class TestSpeclibWidgets(TestCase):
     def test_toolbarStackedActions(self):
 
         tb = QToolBar()
-        a1 = tb.addAction('Action1')
+        _ = tb.addAction('Action1')
         a2 = tb.addAction('ActionA2')
 
         a21 = QAction('A2.1')
@@ -157,7 +157,6 @@ class TestSpeclibWidgets(TestCase):
             slw.speclib().startEditing()
             slw.speclib().deleteFeatures(slw.speclib().allFeatureIds())
             slw.speclib().commitChanges()
-            s = ""
 
         self.showGui(slw)
 
@@ -180,8 +179,6 @@ class TestSpeclibWidgets(TestCase):
         self.showGui(w2)
         slw.project().removeAllMapLayers()
         QgsProject.instance().removeAllMapLayers()
-
-        s = ""
 
     def test_SpectralLibraryWidget_empty_vectorlayer(self):
 
@@ -247,7 +244,7 @@ class TestSpeclibWidgets(TestCase):
 
         profiles = TestObjects.spectralProfiles(4, fields=sl1.fields(), n_bands=[7, 12])
         slw.plotModel().addProfileCandidates({sl1.id(): profiles})
-        fids_a = sl1.allFeatureIds()
+        # fids_a = sl1.allFeatureIds()
         # sl1.commitChanges()
         # fids_b = sl1.allFeatureIds()
 
@@ -272,7 +269,7 @@ class TestSpeclibWidgets(TestCase):
         lyr = QgsRasterLayer(enmap.as_posix())
         lyr.setName('ExampleLayer')
         lyr.renderer().setGreenBand(10)
-        h, w = lyr.height(), lyr.width()
+        # h, w = lyr.height(), lyr.width()
         speclib = TestObjects.createSpectralLibrary()
 
         project = QgsProject()

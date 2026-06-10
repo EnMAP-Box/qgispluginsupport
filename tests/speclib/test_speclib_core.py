@@ -148,7 +148,7 @@ class SpeclibCoreTests(TestCase):
         xUnit = 'μm'
         yUnit = 'reflectance ä$32{}'  # special characters to test UTF-8 compatibility
 
-        vector_keys = ['x', 'y', 'bbl']
+        # vector_keys = ['x', 'y', 'bbl']
 
         d = prepareProfileValueDict(x=x, y=y, bbl=bbl, xUnit=xUnit, yUnit=yUnit)
         self.assertIsInstance(d, dict)
@@ -226,20 +226,21 @@ class SpeclibCoreTests(TestCase):
 
         # decode valid inputs
         valid_inputs = {  # 'str(d)': str(d),  #  missed double quotes
-            "bytes(json.dumps(d), 'utf-8')": bytes(re.sub('(NaN|Infinity)', 'null', json.dumps(d)), 'utf-8'),
-
+            'QByteArray from JSON': stringToByteArray(json.dumps(d, ensure_ascii=False)),
+            "bytes(json.dumps(d), 'utf-8')": bytes(re.sub('(NaN|Infinity)', 'null', json.dumps(d, ensure_ascii=False)),
+                                                   'utf-8'),
             'dictionary': d,
             'json dump': json.dumps(d, default=nanToNone),
-            'QByteArray from pickle dump': stringToByteArray(json.dumps(d)),
+
             'QJsonDocument': QJsonDocument.fromVariant(d),
             'QJsonDocument->toJson': QJsonDocument.fromVariant(d).toJson(),
             'QJsonDocument->toBinaryData': QJsonDocument.fromVariant(d).toBinaryData(),
 
         }
-        for info, v in valid_inputs.items():
+        for i, (info, v) in enumerate(valid_inputs.items()):
             d2 = decodeProfileValueDict(v)
             self.assertIsInstance(d2, dict)
-            self.assertTrue(isProfileValueDict(d2))
+            self.assertTrue(isProfileValueDict(d2), msg=f'Unable to decode input {i} "{info}": {d2}')
 
         # decode invalid inputs
         invalid_inputs = ['{invalid',
@@ -362,8 +363,6 @@ class SpeclibCoreTests(TestCase):
                         self.assertEqual(value1, value2)
                         profile2 = decodeProfileValueDict(value2)
                         self.assertEqual(profile1, profile2)
-                s = ""
-        s = ""
 
     # @unittest.skip('')
     def test_FeatureReferenceIterator(self):
@@ -581,7 +580,6 @@ class SpeclibCoreTests(TestCase):
             d1 = decodeProfileValueDict(f1['profiles'])
             d2 = decodeProfileValueDict(fDst['profiles'])
             self.assertDictEqual(d1, d2)
-        s = ""
 
     def test_save_gpkg_crs(self):
         crs = QgsCoordinateReferenceSystem('EPSG:32632')

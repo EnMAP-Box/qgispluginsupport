@@ -154,7 +154,7 @@ def featuresToArrays(speclib: QgsVectorLayer,
                 y = data['y']
                 key = spectralSettingsDict(data)
                 key['field_name'] = field_name
-                key = json.dumps(key)
+                key = json.dumps(key, ensure_ascii=False)
                 pdata = PROFILE_DATA.get(key, {'profiles': [], 'fids': []})
                 pdata['profiles'].append(y)
                 pdata['fids'].append(fid)
@@ -304,7 +304,7 @@ class FieldToRasterValueConverter(QObject):
         return self.mNoData
 
     def rasterDataTypeSize(self, band: int):
-        s = ""
+        pass
 
     def generateBandName(self, band: int):
         digits = int(math.log10(self.bandCount())) + 1
@@ -454,14 +454,14 @@ class SpectralProfileValueConverter(FieldToRasterValueConverter):
 
         for i, v in enumerate(fieldValues):
             if isinstance(v, (QByteArray, str, dict)):
-                d = s = None
+
                 try:
                     d = decodeProfileValueDict(v)
-
                     s = spectralSettingsDict(d)
                     s['field_name'] = self.field().name()
-                except Exception as ex:
-                    _test = ""
+                except Exception:
+                    s = None
+
                 if isinstance(s, dict):
                     self.mSpectralSetting.update(s)
                     nb = s['band_count']
@@ -536,7 +536,7 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
 
         layerID: Optional[str] = None
         layer: Optional[QgsVectorLayer] = None
-        cacheSize: int = 2048
+        # cacheSize: int = 2048
 
         if query.hasQueryItem('lid'):
             layerID = query.queryItemValue('lid')
@@ -551,7 +551,7 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
                 cs = int(query.queryItemValue('cachesize'))
                 if not (cs > 0):
                     raise AssertionError('cachesize needs to be > 0')
-                cacheSize = cs
+                # cacheSize = cs
 
             if layer.featureCount() > 0:
                 self.setActiveFeatures(layer.getFeatures())

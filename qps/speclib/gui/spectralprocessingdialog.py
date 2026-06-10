@@ -12,19 +12,22 @@ from processing.gui.AlgorithmDialogBase import AlgorithmDialogBase
 from processing.gui.wrappers import WidgetWrapper, WidgetWrapperFactory
 from qgis.PyQt.QtCore import pyqtSignal, QModelIndex, QObject, Qt, QTimer, QMetaType
 from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.QtWidgets import QCheckBox, QComboBox, QDialog, QGridLayout, QLabel, QLineEdit, QPushButton, QSizePolicy, \
-    QVBoxLayout, QWidget
-from qgis.core import Qgis, QgsApplication, QgsCoordinateTransformContext, QgsEditorWidgetSetup, QgsFeature, QgsField, \
-    QgsFields, QgsMapLayer, QgsMapLayerModel, QgsPalettedRasterRenderer, QgsProcessing, QgsProcessingAlgorithm, \
-    QgsProcessingContext, QgsProcessingFeedback, QgsProcessingModelAlgorithm, QgsProcessingOutputDefinition, \
-    QgsProcessingOutputLayerDefinition, QgsProcessingOutputRasterLayer, QgsProcessingOutputVectorLayer, \
-    QgsProcessingParameterDefinition, QgsProcessingParameterMultipleLayers, QgsProcessingParameterRasterDestination, \
-    QgsProcessingParameterRasterLayer, QgsProcessingRegistry, QgsProcessingUtils, QgsProject, QgsRasterBlockFeedback, \
-    QgsRasterDataProvider, QgsRasterFileWriter, QgsRasterLayer, QgsRasterPipe, QgsVectorLayer
-from qgis.gui import QgsAbstractProcessingParameterWidgetWrapper, QgsGui, QgsMessageBar, QgsPanelWidget, \
-    QgsProcessingAlgorithmDialogBase, QgsProcessingContextGenerator, QgsProcessingGui, QgsProcessingHiddenWidgetWrapper, \
-    QgsProcessingParametersGenerator, QgsProcessingParametersWidget, QgsProcessingParameterWidgetContext, \
-    QgsProcessingRecentAlgorithmLog, QgsProcessingToolboxProxyModel
+from qgis.PyQt.QtWidgets import (
+    QCheckBox, QComboBox, QDialog, QGridLayout, QLabel, QLineEdit, QPushButton, QSizePolicy,
+    QVBoxLayout, QWidget)
+from qgis.core import (
+    Qgis, QgsApplication, QgsCoordinateTransformContext, QgsEditorWidgetSetup, QgsFeature, QgsField,
+    QgsFields, QgsMapLayer, QgsMapLayerModel, QgsPalettedRasterRenderer, QgsProcessing, QgsProcessingAlgorithm,
+    QgsProcessingContext, QgsProcessingFeedback, QgsProcessingModelAlgorithm, QgsProcessingOutputDefinition,
+    QgsProcessingOutputLayerDefinition, QgsProcessingOutputRasterLayer, QgsProcessingOutputVectorLayer,
+    QgsProcessingParameterDefinition, QgsProcessingParameterMultipleLayers, QgsProcessingParameterRasterDestination,
+    QgsProcessingParameterRasterLayer, QgsProcessingRegistry, QgsProcessingUtils, QgsProject, QgsRasterBlockFeedback,
+    QgsRasterDataProvider, QgsRasterFileWriter, QgsRasterLayer, QgsRasterPipe, QgsVectorLayer)
+from qgis.gui import (
+    QgsAbstractProcessingParameterWidgetWrapper, QgsGui, QgsMessageBar, QgsPanelWidget,
+    QgsProcessingAlgorithmDialogBase, QgsProcessingContextGenerator, QgsProcessingGui, QgsProcessingHiddenWidgetWrapper,
+    QgsProcessingParametersGenerator, QgsProcessingParametersWidget, QgsProcessingParameterWidgetContext,
+    QgsProcessingRecentAlgorithmLog, QgsProcessingToolboxProxyModel)
 from .. import EDITOR_WIDGET_REGISTRY_KEY, speclibSettings
 from ..core import can_store_spectral_profiles, is_profile_field
 from ..core.spectrallibrary import SpectralLibraryUtils
@@ -431,8 +434,7 @@ class SpectralProcessingModelCreatorAlgorithmWrapper(QgsProcessingParametersWidg
         widget_context.setProject(self.mProject)
         self.mProcessingParameterWidgetContext = widget_context
         for param in self.algorithm().parameterDefinitions():
-            if self.parameterWidget(param.name()):
-                s = ""
+
             if param.flags() & QgsProcessingParameterDefinition.FlagHidden:
                 continue
             # if isinstance(param, (SpectralProcessingProfiles, SpectralProcessingProfilesSink)):
@@ -664,7 +666,7 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
                         try:
                             parJson = settings.value(f'{K}/algorithmParameters', '')
                             parameters = json.loads(parJson)
-                        except (JSONDecodeError, Exception) as ex:
+                        except (JSONDecodeError, Exception):
                             parameters = None
 
                     if isinstance(parameters, dict):
@@ -701,7 +703,7 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
                         v = v.name()
                     if isinstance(v, (str, int, float, list)):
                         parameters2[k] = v
-                settings.setValue(f'{K}/algorithmParameters', json.dumps(parameters2))
+                settings.setValue(f'{K}/algorithmParameters', json.dumps(parameters2, ensure_ascii=False))
             except Exception as ex:
                 print(f'Unable to save last settings: {ex}', file=sys.stderr)
 
@@ -819,7 +821,7 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
                 elif isinstance(param, QgsProcessingParameterRasterDestination):
                     file_name = TEMP_FOLDER + f'{v}'
                     parametersHard[k] = file_name
-                    s = ""
+
             from processing.gui.AlgorithmExecutor import execute as executeAlg
 
             self.log(f'Execute algorithm: {alg.id()} ...')
@@ -899,7 +901,7 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
                         pass
 
                 if len(OUT_RASTERS) > 0:
-                    available_fids = speclib.allFeatureIds()
+                    # available_fids = speclib.allFeatureIds()
                     speclib.beginEditCommand('Add raster processing results')
                     # reload active features to include new fields
                     activeFeatures = list(speclib.getFeatures(activeFeatureIDs))
@@ -1032,7 +1034,7 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
         # write additional metadata
         if isinstance(dp, VectorLayerFieldRasterDataProvider):
             fieldConverter: FieldToRasterValueConverter = dp.fieldConverter()
-            field: QgsField = fieldConverter.field()
+            # field: QgsField = fieldConverter.field()
             if isinstance(fieldConverter, SpectralProfileValueConverter):
                 # write spectral properties like wavelength per band
                 spectral_settings = fieldConverter.spectralSetting().copy()

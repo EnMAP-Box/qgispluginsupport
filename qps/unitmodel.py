@@ -716,7 +716,7 @@ class UnitLookup(object):
                 '{:04}-01-01T00:00:00'.format(year))
             spy2 = int(spy2.astype(int))
             if spy != spy2:
-                s = ""
+                pass
             return float(year + soy / spy)
         else:
             raise NotImplementedError()

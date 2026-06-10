@@ -283,7 +283,7 @@ class RasterBandConfigWidget(QpsMapLayerConfigWidget):
         elif isinstance(newRenderer, QgsPalettedRasterRenderer):
             newRenderer = QgsPalettedRasterRenderer(oldRenderer.input(), self.cbSingleBand.currentBand(),
                                                     oldRenderer.classes())
-            s = ""  # setBand ?
+            # setBand ?
         elif isinstance(oldRenderer, QgsSingleBandColorDataRenderer):
             newRenderer = QgsSingleBandColorDataRenderer(oldRenderer.input(), self.cbSingleBand.currentBand())
 
@@ -361,7 +361,7 @@ class RasterBandConfigWidget(QpsMapLayerConfigWidget):
         if isinstance(newRenderer, QgsRasterRenderer) and isinstance(self.mLayer, QgsRasterLayer):
             newRenderer.setInput(self.mLayer.dataProvider())
             printCaller(prefix=id(self))
-            with SignalBlocker(self.mLayer) as blocker:
+            with SignalBlocker(self.mLayer) as _:
                 # update on renderer will be triggered by other widgets that react on styleChanged signal
                 self.mLayer.setRenderer(newRenderer)
             self.mLayer.styleManager().currentStyleChanged.emit('')
@@ -385,7 +385,7 @@ class RasterBandConfigWidget(QpsMapLayerConfigWidget):
 
     def setWL(self, wlRegions: tuple):
         renderer = self.renderer().clone()
-        with SignalBlocker(*self.blockableWidgets()) as blocker:
+        with SignalBlocker(*self.blockableWidgets()) as _:
             if isinstance(renderer, (QgsSingleBandGrayRenderer, QgsSingleBandPseudoColorRenderer,
                                      QgsSingleBandColorDataRenderer)):
                 band = self.wlBand(wlRegions[0])

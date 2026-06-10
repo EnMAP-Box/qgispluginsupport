@@ -34,8 +34,8 @@ def file_writer(path: Union[str, Path], **kwds) -> Optional[SpectralProfileFileW
         if writer.canWriteFile(path):
             try:
                 return writer(path, **kwds)
-            except Exception as e:
-                s = ""
+            except Exception:
+                continue
     return None
 
 
@@ -131,7 +131,7 @@ class ExportSpectralProfiles(QgsProcessingAlgorithm):
                                          description='Writer Options',
                                          optional=True)
         p.setHelp(
-            'Additional writer options. Can be defined as JSON dictionary, e.g. <code>{ "key1": "value", "key2", 42}</code>')
+            'Additional writer options. Can be defined as JSON dictionary, e.g. <code>{ "key1": "value", "key2", 42}</code>')  # noqa: E501
         p.setFlags(p.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
 
         filters = []

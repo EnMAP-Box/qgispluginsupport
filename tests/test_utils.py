@@ -12,6 +12,7 @@ __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 __date__ = '2017-07-17'
 __copyright__ = 'Copyright 2017, Benjamin Jakimow'
 
+import json
 import os
 import pathlib
 import random
@@ -40,14 +41,15 @@ from qps.speclib.core import is_spectral_library
 from qps.speclib.core.spectralprofile import decodeProfileValueDict
 from qps.testing import start_app, TestCase, TestObjects
 from qps.unitmodel import UnitLookup
-from qps.utils import aggregateArray, appendItemsToMenu, createQgsField, defaultBands, displayBandNames, dn, \
-    ExtentTileIterator, fid2pixelindices, file_search, filenameFromString, findMapLayerStores, findParent, gdalDataset, \
-    gdalFileSize, geo2px, layerGeoTransform, loadUi, MapGeometryToPixel, nextColor, nodeXmlString, optimize_block_size, \
-    osrSpatialReference, parseFWHM, parseWavelength, px2geo, px2geocoordinates, px2spatialPoint, qgsField, \
-    qgsRasterLayer, qgsRasterLayers, rasterArray, rasterBlockArray, rasterizeFeatures, \
-    relativePath, SelectMapLayerDialog, SelectMapLayersDialog, snapGeoCoordinates, SpatialExtent, SpatialPoint, \
-    spatialPoint2px, value2str, writeAsVectorFormat, create_picture_viewer_config, xy_pair_matrix, featureSymbolScope, \
-    TemporaryGlobalLayerContext
+from qps.utils import (
+    aggregateArray, appendItemsToMenu, createQgsField, defaultBands, displayBandNames, dn,
+    ExtentTileIterator, fid2pixelindices, file_search, filenameFromString, findMapLayerStores, findParent, gdalDataset,
+    gdalFileSize, geo2px, layerGeoTransform, loadUi, MapGeometryToPixel, nextColor, nodeXmlString, optimize_block_size,
+    osrSpatialReference, parseFWHM, parseWavelength, px2geo, px2geocoordinates, px2spatialPoint, qgsField,
+    qgsRasterLayer, qgsRasterLayers, rasterArray, rasterBlockArray, rasterizeFeatures,
+    relativePath, SelectMapLayerDialog, SelectMapLayersDialog, snapGeoCoordinates, SpatialExtent, SpatialPoint,
+    spatialPoint2px, value2str, writeAsVectorFormat, create_picture_viewer_config, xy_pair_matrix, featureSymbolScope,
+    TemporaryGlobalLayerContext, stringToByteArray, stringFromByteArray)
 from qpstestdata import enmap, enmap_multipoint, enmap_multipolygon, enmap_pixel, hymap, landcover
 
 start_app()
@@ -150,10 +152,9 @@ class TestUtils(TestCase):
                 warnings.warn('BaseClass {} not implemented\nto test {}'.format(baseClass, pathUi), Warning)
                 continue
 
-            w = None
+            _ = None
             try:
-                w = TestWidget()
-                s = ""
+                _ = TestWidget()
 
             except Exception as ex:
                 info = 'Failed to load {}'.format(pathUi)
@@ -218,7 +219,7 @@ class TestUtils(TestCase):
 
             if isinstance(ds, gdal.Dataset):
                 wl, wlu = parseWavelength(ds)
-                fwhm = parseFWHM(ds)
+                _ = parseFWHM(ds)
                 self.assertIsInstance(wl, np.ndarray)
                 self.assertTrue(len(wl), ds.RasterCount)
                 self.assertIsInstance(wlu, str)
@@ -344,6 +345,19 @@ class TestUtils(TestCase):
         # ESRI Shapefile does not support string fields with unlimited length
         self.assertIsInstance(writeAsVectorFormat(lyr, DIR / 'exampleX.shp'), QgsVectorLayer)
 
+    def test_stringToByteArray(self):
+
+        info = {'int': 42,
+                'float': 3.14,
+                'xUnit': 'μm',
+                'yUnit': 'reflectance ä$32{}'  # special characters to test UTF-8 compatibility}
+                }
+
+        ba = stringToByteArray(json.dumps(info, ensure_ascii=False))
+        info2 = json.loads(stringFromByteArray(ba))
+
+        self.assertDictEqual(info, info2)
+
     def test_profile_matrix(self):
         # index   :  0    2   3   4    5
         # x values:  1    2   3   4    7
@@ -424,8 +438,7 @@ class TestUtils(TestCase):
         n1.appendChild(n3)
         root.appendChild(n0)
 
-        xml1 = nodeXmlString(n1)
-        s = ""
+        _ = nodeXmlString(n1)
 
     def test_raster_block_interator(self):
 
@@ -454,10 +467,10 @@ class TestUtils(TestCase):
 
         uA = np.unique(ARRAY)
 
-        M2P = QgsMapToPixel(lyr.rasterUnitsPerPixelX(),
-                            lyr.extent().center().x(),
-                            lyr.extent().center().y(),
-                            lyr.width(), lyr.height(), 0)
+        _ = QgsMapToPixel(lyr.rasterUnitsPerPixelX(),
+                          lyr.extent().center().x(),
+                          lyr.extent().center().y(),
+                          lyr.width(), lyr.height(), 0)
         # regardless of the tile size, i.e. sampling rate, we should be able to
         # reconstruct all pixels of a raster image
         for i, tileSize in enumerate([26, 29,  # sub-pixel size
@@ -490,7 +503,7 @@ class TestUtils(TestCase):
 
             ds: gdal.Dataset = gdal.Open(path.as_posix())
 
-            gt = ds.GetGeoTransform()
+            _ = ds.GetGeoTransform()
 
             array = rasterArray(rl)
             mg2p = MapGeometryToPixel.fromRaster(rl)
@@ -500,7 +513,6 @@ class TestUtils(TestCase):
             ay, ax = mg2p.geometryPixelPositions(g)
             all_profiles = array[:, ay, ax]
             self.assertEqual(all_profiles.shape, (rl.bandCount(), rl.width() * rl.height()))
-            s = ""
 
     def test_MapGeometryToPixel(self):
         rl = QgsRasterLayer(enmap.as_posix())
@@ -600,9 +612,9 @@ class TestUtils(TestCase):
         dp: QgsRasterDataProvider = rl.dataProvider()
         vlPoly = QgsVectorLayer(enmap_multipolygon.as_posix())
         c = rl.extent().center()
-        M2P = QgsMapToPixel(rl.rasterUnitsPerPixelX(),
-                            c.x(), c.y(),
-                            rl.width(), rl.height(), 0)
+        _ = QgsMapToPixel(rl.rasterUnitsPerPixelX(),
+                          c.x(), c.y(),
+                          rl.width(), rl.height(), 0)
 
         ARRAY = rasterArray(rl)
 
@@ -627,7 +639,7 @@ class TestUtils(TestCase):
                 arr3 = np.asarray(list(ires.values()))
 
                 if not np.array_equal(arr1, arr2):
-                    s = ""
+                    pass
                 self.assertTrue(np.array_equal(arr1, arr2))
                 self.assertTrue(np.array_equal(arr1, arr3))
 
@@ -684,7 +696,6 @@ class TestUtils(TestCase):
             self.assertTrue(len(bs) == 2)
             self.assertTrue(0 < bs[0] <= ds.RasterXSize)
             self.assertTrue(0 < bs[1] <= ds.RasterYSize)
-            s = ""
 
     def test_osrSpatialReference(self):
 
@@ -715,7 +726,6 @@ class TestUtils(TestCase):
         self.assertIsInstance(upperLeftPx, QPoint)
         self.assertEqual(upperLeftPx, QPoint(0, 0))
         self.assertEqual(lowerRightPx, QPoint(lyrR.width() - 1, lyrR.height() - 1))
-        s = ""
 
     def test_SpatialPoint_pixel_positions(self):
 
@@ -733,7 +743,7 @@ class TestUtils(TestCase):
         self.assertEqual(pixelA.y(), int(layer.height() * 0.5))
 
         pointB = pointA.toCrs(QgsCoordinateReferenceSystem('EPSG:4326'))
-        pointA2 = pointB.toCrs(pointA.crs())
+        _ = pointB.toCrs(pointA.crs())
 
         # check raster corners
         e = layer.extent()
@@ -772,8 +782,6 @@ class TestUtils(TestCase):
         self.assertFalse(layer.extent().contains(pt))
         px = pt.toPixel(layer)
         self.assertEqual(px, QPoint(-1, -1))
-        s = ""
-        s = ""
 
     def test_feature_symbol_scope(self):
 
@@ -790,10 +798,10 @@ class TestUtils(TestCase):
 
             for f in lyr.getFeatures():
                 context = QgsExpressionContextUtils.createFeatureBasedContext(f, f.fields())
-                scope1 = featureSymbolScope(f)
-                scope2 = featureSymbolScope(f, renderer=renderer)
-                scope3 = featureSymbolScope(f, context=context)
-                scope4 = featureSymbolScope(f, renderer=renderer, context=context)
+                _ = featureSymbolScope(f)
+                _ = featureSymbolScope(f, renderer=renderer)
+                _ = featureSymbolScope(f, context=context)
+                _ = featureSymbolScope(f, renderer=renderer, context=context)
 
                 break
 
@@ -868,7 +876,6 @@ class TestUtils(TestCase):
 
         arr3 = rasterArray(lyr, rect=e.center())
         self.assertTrue(np.array_equal(arr2, arr3))
-        s = ""
 
         lyrR = TestObjects.createRasterLayer(nb=12)
 
@@ -937,7 +944,6 @@ class TestUtils(TestCase):
 
         gx1, gy1 = px2geocoordinates(lyrR)
         gx2, gy2 = px2geocoordinates(lyrR, 'EPSG:4326')
-        s = ""
 
     def test_gdalDataset(self):
 
@@ -1067,7 +1073,8 @@ class TestUtils(TestCase):
         valueSet = ['dsdsds.png',
                     'foo\\\\\\?<>bar',
                     None,
-                    r"_bound method TimeSeriesDatum.date of TimeSeriesDatum(2014-01-15,_class 'timeseriesviewer.timeseries.SensorInstrument'_ LS)_.Map View 1.png"
+                    r"_bound (2014-01-15,_class 'timeseriesviewer.timeseries.SensorInstrument'_ LS)_.Map View 1.png"
+                    # noqa: E501
                     ]
 
         for i, text in enumerate(valueSet):

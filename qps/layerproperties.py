@@ -585,8 +585,9 @@ def rendererFromXml(xml):
                     context = QgsReadWriteContext()
                     return rClass.load(elem, context)
             else:
-                # print(typeName)
-                s = ""
+                pass
+        # print(typeName)
+
     return None
 
 
@@ -612,7 +613,7 @@ def defaultRasterRenderer(layer: QgsRasterLayer,
 
     if not (isinstance(sampleSize, int) and sampleSize > 0):
         raise AssertionError
-    renderer = None
+    _ = None
 
     if not isinstance(layer, QgsRasterLayer):
         return None
@@ -758,7 +759,7 @@ def rendererToXml(layerOrRenderer, geomType: QgsWkbTypes = None):
     :return: QDomDocument
     """
     doc = QDomDocument()
-    err = ''
+    _ = ''
     if isinstance(layerOrRenderer, QgsRasterLayer):
         return rendererToXml(layerOrRenderer.renderer())
     elif isinstance(layerOrRenderer, QgsVectorLayer):
@@ -775,7 +776,7 @@ def rendererToXml(layerOrRenderer, geomType: QgsWkbTypes = None):
         typeName = QgsWkbTypes.geometryDisplayString(geomType)
         lyr = QgsVectorLayer('{}?crs=epsg:4326&field=id:integer'.format(typeName), 'dummy', 'memory')
         lyr.setRenderer(layerOrRenderer.clone())
-        err = lyr.exportNamedStyle(doc)
+        _ = lyr.exportNamedStyle(doc)
         lyr = None
     else:
         raise NotImplementedError()
@@ -784,7 +785,7 @@ def rendererToXml(layerOrRenderer, geomType: QgsWkbTypes = None):
 
 
 def pasteStyleToClipboard(layer: QgsMapLayer,
-                          categories: QgsMapLayer.StyleCategory = QgsMapLayer.StyleCategory.Symbology | QgsMapLayer.StyleCategory.Rendering):
+                          categories: QgsMapLayer.StyleCategory = QgsMapLayer.StyleCategory.Symbology | QgsMapLayer.StyleCategory.Rendering):  # noqa: E501
     doc = QDomDocument()
     err = layer.exportNamedStyle(doc, categories=categories)
     if err == '':
@@ -877,8 +878,7 @@ def subLayerDefinitions(mapLayer: QgsMapLayer) -> List[QgsSublayersDialog.LayerD
             definitions.append(ldef)
 
         else:
-            s = ""
-
+            pass
     return definitions
 
 
@@ -910,10 +910,10 @@ def showLayerPropertiesDialog(layer: QgsMapLayer,
     :return: QDialog.DialogCode
     """
     dialog = None
-    result = QDialog.Rejected
+    _ = QDialog.Rejected
     from .utils import qgisAppQgisInterface
     iface = qgisAppQgisInterface()
-    qgisUsed = False
+    _ = False
     if useQGISDialog and isinstance(iface, QgisInterface):
         # try to use the QGIS vector layer properties dialog
         try:
@@ -1005,14 +1005,12 @@ class AttributeTableMapCanvas(QgsMapCanvas):
 
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
-        s = ""
 
     def panToFeatureIds(self, layer, QgsVectorLayer=None, *args, **kwargs):
-        s = ""
-        s = ""
+        pass
 
     def zoomToFeatureIds(self, layer, QgsVectorLayer=None, *args, **kwargs):
-        s = ""
+        pass
 
 
 class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
@@ -1372,14 +1370,14 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
         filtered = self.mMainView.filterMode() != QgsAttributeTableFilterModel.ShowAll
         filteredIds = self.mMainView.filteredFeatures() if filtered else []
 
-        with TemporaryGlobalLayerContext(self.mLayer.project()) as c:
+        with TemporaryGlobalLayerContext(self.mLayer.project()) as _:
             self.runFieldCalculation(self.mLayer, self.mFieldCombo.currentField(),
                                      self.mUpdateExpressionText.asExpression(), filteredIds)
 
     def updateFieldFromExpressionSelected(self):
 
         filteredIds = self.mLayer.selectedFeatureIds()
-        with TemporaryGlobalLayerContext(self.mLayer.project()) as c:
+        with TemporaryGlobalLayerContext(self.mLayer.project()) as _:
             self.runFieldCalculation(self.mLayer, self.mFieldCombo.currentField(),
                                      self.mUpdateExpressionText.asExpression(), filteredIds)
 
@@ -1472,10 +1470,10 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
             context.lastScope().addVariable(QgsExpressionContextScope.StaticVariable("row_number", rownum, True))
 
             value = exp.evaluate(context)
-            convertError = None
+            _ = None
             try:
                 value = fld.convertCompatible(value)
-            except (SystemError, ValueError) as ex:
+            except (SystemError, ValueError):
                 error = 'Unable to convert "{}" to type {}'.format(value, fld.typeName())
             # Bail if we have a update error
             if exp.hasEvalError():
@@ -1749,7 +1747,7 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
 
         masterModel: QgsAttributeTableModel = self.mMainView.masterModel()
         if FIELD_CALCULATOR:
-            with TemporaryGlobalLayerContext(self.mLayer.project()) as c:
+            with TemporaryGlobalLayerContext(self.mLayer.project()) as _:
                 calc: QgsFieldCalculator = QgsFieldCalculator(self.mLayer, self)
                 if calc.exec() == QDialog.Accepted:
                     col = masterModel.fieldCol(calc.changedAttributeId())
@@ -1836,7 +1834,7 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
 
         # this has to be done, because in case only one cell has been changed and is still enabled, the change
         # would not be added to the mEditBuffer. By disabling, it looses focus and the change will be stored.
-        s = ""
+
         if (
                 self.mLayer.isEditable()
                 and self.mMainView.tableView().indexWidget(self.mMainView.tableView().currentIndex()

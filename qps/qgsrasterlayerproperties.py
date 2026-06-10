@@ -193,7 +193,7 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
 
     @classmethod
     def fromGDALDataset(
-        cls, ds: Union[str, Path, gdal.Dataset]
+            cls, ds: Union[str, Path, gdal.Dataset]
     ) -> Optional['QgsRasterLayerSpectralProperties']:
         """Returns the QgsRasterLayerSpectralProperties for a gdal.Dataset.
            Does not read any QgsRasterLayer properties
@@ -209,8 +209,8 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
 
     @classmethod
     def fromRasterLayer(
-        cls,
-        layer: Union[QgsRasterLayer, gdal.Dataset, str, Path]
+            cls,
+            layer: Union[QgsRasterLayer, gdal.Dataset, str, Path]
     ) -> Optional['QgsRasterLayerSpectralProperties']:
         """
         Returns the QgsRasterLayerSpectralProperties for a raster layer
@@ -250,7 +250,8 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
 
     def equalBandValues(self, other: 'QgsRasterLayerSpectralProperties') -> bool:
         """
-        Compares the spectral properties of two layers based on the values retrieved for each band, except the origin info.
+        Compares the spectral properties of two layers based on the values
+        retrieved for each band, except the origin info.
         :param other: QgsRasterLayerSpectralProperties
         :return: bool
         """
@@ -722,7 +723,7 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
         band_ref_scale = []
         band_ref_offset = []
 
-        o_wl = o_wlu = o_fwhm = o_bbl = o_offset = o_scale = o_ref_scale = o_ref_offset = SpectralPropertyOrigin.GDALBand
+        o_wl = o_wlu = o_fwhm = o_bbl = o_offset = o_scale = o_ref_scale = o_ref_offset = SpectralPropertyOrigin.GDALBand  # noqa: E501
         for b in range(ds.RasterCount):
             band: Band = ds.GetRasterBand(b + 1)
 
@@ -821,7 +822,6 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
                                        origin=SpectralPropertyOrigin.Deduced)
         if canWrite(band_bbl, SpectralPropertyKeys.BadBand):
             self.setBandValues(None, SpectralPropertyKeys.BadBand, stringsToInts(band_bbl), origin=o_bbl)
-            s = ""
 
         # set other keys
         for values, origin, key in [
@@ -833,8 +833,6 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
         ]:
             if canWrite(values, key):
                 self.setBandValues(None, key, stringsToNums(values), origin=origin)
-
-        s = ""
 
     def asMap(self) -> dict:
         """

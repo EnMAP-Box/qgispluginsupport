@@ -274,7 +274,7 @@ def read_stac():
     path = Path(__file__).parent / 'stac.json'
     # ds: Dataset = gdal.Open(path.as_posix())
     ds1: Dataset = gdal.Open(f'STACIT:"{path.as_posix()}":asset=image')
-    s = ""
+    print(ds1)
 
 
 if __name__ == '__main__':

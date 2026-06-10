@@ -105,7 +105,7 @@ class TestsGdalMetadata(TestCase):
 
         aux_xml1 = read_aux_xml(img_path)
         self.assertNotIn('MYNAME_1', aux_xml1)
-        s = ""
+
         lyr = QgsRasterLayer(img_path)
         model = GDALBandMetadataModel()
         c = QgsMapCanvas()
@@ -130,7 +130,7 @@ class TestsGdalMetadata(TestCase):
         self.assertTrue(model.hasEdits)
         model.applyToLayer()
         del model, lyr
-        aux_xml2 = read_aux_xml(img_path)
+        # aux_xml2 = read_aux_xml(img_path)
 
         ds: gdal.Dataset = gdal.Open(img_path)
         for b in range(ds.RasterCount):
@@ -152,13 +152,13 @@ class TestsGdalMetadata(TestCase):
         1,
         0}""", 'ENVI')
         ds.FlushCache()
-        files = ds.GetFileList()
+        # files = ds.GetFileList()
         del ds
 
         # print ENVI hdr
         path_hdr = '/vsimem/test.hdr'
         fp = gdal.VSIFOpenL(path_hdr, "rb")
-        content: str = gdal.VSIFReadL(1, gdal.VSIStatL(path_hdr).size, fp).decode("utf-8")
+        _ = gdal.VSIFReadL(1, gdal.VSIStatL(path_hdr).size, fp).decode("utf-8")
         gdal.VSIFCloseL(fp)
 
         # read BBL
@@ -166,7 +166,7 @@ class TestsGdalMetadata(TestCase):
         bbl = ds.GetMetadataItem('bbl', 'ENVI')
         print(bbl)
 
-        bbl2 = ds.GetMetadata_Dict('ENVI')['bbl']
+        _ = ds.GetMetadata_Dict('ENVI')['bbl']
 
     def test_QgsRasterLayer_GDAL_interaction(self):
 
@@ -281,7 +281,7 @@ class TestsGdalMetadata(TestCase):
         bandModel = GDALBandMetadataModel()
         bandModel.setLayer(lyr)
 
-        map1 = bandModel.asMap()
+        # map1 = bandModel.asMap()
         # this model is a vector layer with fields for each supported band property
         self.assertIsInstance(bandModel, QgsVectorLayer)
 
@@ -327,6 +327,7 @@ class TestsGdalMetadata(TestCase):
         lyr = QgsRasterLayer(path.as_posix())
         lyr2 = lyr.clone()
         self.assertTrue(lyr.isValid())
+        self.assertTrue(lyr2.isValid())
         ds: gdal.Dataset = gdal.Open(path.as_posix(), gdal.GA_Update)
         self.assertIsInstance(ds, gdal.Dataset)
         ds.SetMetadataItem('Example', 'foobar', 'MyDomain')
@@ -347,7 +348,7 @@ class TestsGdalMetadata(TestCase):
         mdm = GDALBandMetadataModel()
         mdm.setLayer(lyr)
 
-        w = QWidget()
+        # w = QWidget()
 
         calc = BandPropertyCalculator(mdm)
 
@@ -514,7 +515,7 @@ class TestsGdalMetadata(TestCase):
 
         md4: QMimeData = QMimeData()
         md4.setUrls([QUrl.fromLocalFile(
-            r'Q:\EnMAP\Rohdaten\EnmapBoxExternalSensorProducts\planet\Valencia_psscene_analytic_8b_sr_udm2\PSScene\20240403_105501_25_24cd.json')])
+            r'Q:\EnMAP\Rohdaten\EnmapBoxExternalSensorProducts\planet\Valencia_psscene_analytic_8b_sr_udm2\PSScene\20240403_105501_25_24cd.json')])  # noqa: E501
 
         for mimeData in [md1, md2, md3]:
             QApplication.clipboard().setMimeData(mimeData)
@@ -563,11 +564,9 @@ class TestsGdalMetadata(TestCase):
                 items.append(item)
                 model.appendMetadataItem(item)
 
-            try:
-                model.applyToLayer()
-                model.syncToLayer()
-            except Exception as ex:
-                s = ""
+            model.applyToLayer()
+            model.syncToLayer()
+
             if isinstance(lyr, QgsRasterLayer):
                 existing = [str(f) for f in model.mFeatures]
                 for f in items:

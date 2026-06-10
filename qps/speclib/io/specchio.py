@@ -60,7 +60,7 @@ class SPECCHIOSpectralLibraryIO(SpectralLibraryIO):
                 for line in f:
                     if re.search(r'^\d+(\.\d+)?.+', line):
                         return True
-        except Exception as ex:
+        except Exception:
             return False
         return False
 

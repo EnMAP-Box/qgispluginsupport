@@ -44,7 +44,7 @@ class TestSpeclibIOGeoJSON(TestCase):
         path2 = DIR / 'test_GeoJSON2008.geojson'
 
         drv: ogr.Driver = ogr.GetDriverByName('GeoJSON')
-        md = drv.GetMetadata_Dict()
+        _ = drv.GetMetadata_Dict()
 
         filesRFCYes = SpectralLibraryUtils.writeToSource(sl1, path1, rfc7946=True, crs=sl1.crs())
         filesRFCNo = SpectralLibraryUtils.writeToSource(sl1, path2, rfc7946=False, crs=sl1.crs())

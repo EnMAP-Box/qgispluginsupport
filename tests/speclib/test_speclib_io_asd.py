@@ -48,7 +48,6 @@ class TestSpeclibIO_ASD(TestCase):
                     raise Exception(f'Error when creating feature: {exporter.errorMessage()}')
 
         exporter.flushBuffer()
-        s = ""
 
     def test_read_asd_files(self):
 

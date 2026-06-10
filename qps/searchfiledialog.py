@@ -52,10 +52,8 @@ class SearchFilesDialog(QDialog):
         self.fileWidget.setStorageMode(QgsFileWidget.GetDirectory)
         self.fileWidget.fileChanged.connect(self.reloadFiles)
 
-        s = ""
-
     def validate(self):
-        s = ""
+        pass
 
     def reloadFiles(self, *args):
         print('#RELOAD FILES')

@@ -185,7 +185,7 @@ class DatasetTableModel(QAbstractTableModel):
         """
         Returns a unique set of subset details
         """
-        all_details = self.allSublayerDetails()
+        # all_details = self.allSublayerDetails()
 
         RESULTS = dict()
         for d in self.allSublayerDetails():

@@ -54,7 +54,6 @@ class TestSpeclibIO_SpectralProfileReaders(TestCase):
         context, feedback = self.createProcessingContextFeedback()
         results, success = alg.run(par, context, feedback)
         self.assertTrue(success, msg=feedback.textLog())
-        s = ""
 
     def test_import_files(self):
         from processing import run
@@ -111,7 +110,7 @@ class TestSpeclibIO_SpectralProfileReaders(TestCase):
         path_gpkg = TEST_DIR / 'example.gpkg'
         vl = TestObjects.createVectorLayer(path=path_gpkg)
 
-        nt = collect_native_types()
+        _ = collect_native_types()
         with edit(vl):
             self.assertTrue(vl.addAttribute(QgsField('datetime', QMetaType.QDateTime)))
             self.assertTrue(vl.addAttribute(QgsField('date', QMetaType.QDate)))
@@ -125,8 +124,6 @@ class TestSpeclibIO_SpectralProfileReaders(TestCase):
 
         with edit(vl):
             self.assertTrue(vl.addFeature(f))
-
-        s = ""
 
 
 if __name__ == '__main__':

@@ -9,11 +9,14 @@ import numpy as np
 from qgis.PyQt.QtCore import QModelIndex, QSettings, QSortFilterProxyModel, Qt
 from qgis.PyQt.QtGui import QColor
 from qgis.PyQt.QtTest import QAbstractItemModelTester
-from qgis.PyQt.QtWidgets import QComboBox, QGridLayout, QHBoxLayout, QLabel, QMenu, QPushButton, QTreeView, QVBoxLayout, \
-    QWidget
+from qgis.PyQt.QtWidgets import (
+    QComboBox, QGridLayout, QHBoxLayout, QLabel, QMenu, QPushButton,
+    QTreeView, QVBoxLayout, QWidget)
 from qgis.gui import QgsMapCanvas
-from qps.models import Option, OptionListModel, PyObjectTreeNode, SettingsModel, SettingsNode, SettingsTreeView, \
-    TreeModel, TreeNode, TreeView
+from qps.models import (
+    Option, OptionListModel, PyObjectTreeNode,
+    SettingsModel, SettingsNode, SettingsTreeView,
+    TreeModel, TreeNode, TreeView)
 from qps.plotstyling.plotstyling import MarkerSymbol
 from qps.testing import start_app, TestCase
 
@@ -39,7 +42,7 @@ def findNode(view, path: Union[str, List[str]], parent: QModelIndex = QModelInde
 
     CHILD_NAMES = {}
     row = 0
-    last_row = None
+    # last_row = None
     while True:
         if row == model.rowCount(parent):
             if model.canFetchMore(parent):
@@ -59,13 +62,6 @@ def findNode(view, path: Union[str, List[str]], parent: QModelIndex = QModelInde
         child: QModelIndex = model.index(row, 0, parent)
         child_name = child.data(Qt.DisplayRole)
 
-        if child_name == 'dtype':
-            s = ""
-            if child_name in child_names:
-                s = ""
-            else:
-                s = ""
-
         child_names.append(child_name)
         if fnmatch.fnmatch(child_name, expression):
             if len(path) == 1:
@@ -74,7 +70,7 @@ def findNode(view, path: Union[str, List[str]], parent: QModelIndex = QModelInde
                 node = findNode(view, path[1:], parent=child)
                 if isinstance(node, QModelIndex):
                     return node
-        last_row = row
+        # last_row = row
         row += 1
 
     return None
@@ -156,7 +152,7 @@ class ModelTests(TestCase):
     def test_pyObjectNodes(self):
 
         m = TreeModel()
-        tester = QAbstractItemModelTester(m, QAbstractItemModelTester.FailureReportingMode.Fatal)
+        _ = QAbstractItemModelTester(m, QAbstractItemModelTester.FailureReportingMode.Fatal)
         if True:
             tv = TreeView()
             tv.setUniformRowHeights(True)
@@ -225,14 +221,14 @@ class ModelTests(TestCase):
         TM = TreeModel()
         TM.rootNode().appendChildNodes([TreeNode('Node1')])
         TM.rootNode().appendChildNodes([TreeNode('Node2')])
-        tester = QAbstractItemModelTester(TM, QAbstractItemModelTester.FailureReportingMode.Fatal)
+        _ = QAbstractItemModelTester(TM, QAbstractItemModelTester.FailureReportingMode.Fatal)
 
     def test_treeModel(self):
 
         TM = TreeModel()
 
         self.assertIsInstance(TM, TreeModel)
-        tester = QAbstractItemModelTester(TM, QAbstractItemModelTester.FailureReportingMode.Fatal)
+        _ = QAbstractItemModelTester(TM, QAbstractItemModelTester.FailureReportingMode.Fatal)
         self.assertIsInstance(TM.rootNode(), TreeNode)
         parent = TM.rootNode()
 
@@ -259,13 +255,11 @@ class ModelTests(TestCase):
         view.setModel(TM)
         self.showGui(view)
 
-        s = ""
-
     def test_treeViewSpan(self):
 
         TV = TreeView()
         TM = TreeModel()
-        tester = QAbstractItemModelTester(TM, QAbstractItemModelTester.FailureReportingMode.Fatal)
+        _ = QAbstractItemModelTester(TM, QAbstractItemModelTester.FailureReportingMode.Fatal)
 
         def onRowsInserted(p, first, last):
             print(f'ROWS INSERTED {p.data(Qt.UserRole).name()} {first} to {last}')
@@ -319,7 +313,7 @@ class ModelTests(TestCase):
         TM = TreeModel()
         TV.setModel(TM)
         tester = QAbstractItemModelTester(TM, QAbstractItemModelTester.FailureReportingMode.Fatal)
-
+        self.assertIsInstance(tester, QAbstractItemModelTester)
         self.assertEqual(TV.model(), TM)
 
         class TestNodeA(TreeNode):
@@ -334,7 +328,7 @@ class ModelTests(TestCase):
 
             def contextMenu(self) -> QMenu:
                 m = QMenu()
-                m2 = m.addMenu('SubMenu')
+                _ = m.addMenu('SubMenu')
                 return m
 
         nodes = []
@@ -379,6 +373,7 @@ class ModelTests(TestCase):
         TM = TreeModel()
         TV.setModel(TM)
         tester = QAbstractItemModelTester(TM, QAbstractItemModelTester.FailureReportingMode.Fatal)
+        self.assertIsInstance(tester, QAbstractItemModelTester)
         TM.rootNode()
         if True:
             n1 = TreeNode(name='Node1 looooong text')

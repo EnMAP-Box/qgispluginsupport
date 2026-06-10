@@ -36,15 +36,17 @@ from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union
 import numpy as np
 
 from qgis.PyQt.QtCore import NULL, QByteArray, QCoreApplication
-from qgis.core import Qgis, QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsExpression, QgsExpressionContext, \
-    QgsExpressionContextScope, QgsExpressionFunction, QgsExpressionNode, QgsExpressionNodeFunction, QgsFeature, \
-    QgsFeatureRequest, QgsField, QgsGeometry, QgsMapLayer, QgsMapToPixel, QgsMessageLog, QgsPointXY, QgsProject, \
-    QgsRasterDataProvider, QgsRasterLayer
+from qgis.core import (
+    Qgis, QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsExpression, QgsExpressionContext,
+    QgsExpressionContextScope, QgsExpressionFunction, QgsExpressionNode, QgsExpressionNodeFunction, QgsFeature,
+    QgsFeatureRequest, QgsGeometry, QgsMapLayer, QgsMapToPixel, QgsMessageLog, QgsPointXY, QgsProject,
+    QgsRasterDataProvider, QgsRasterLayer)
 from .qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from .speclib.core import is_profile_field
 from .speclib.core.spectrallibrary import FIELD_VALUES
-from .speclib.core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict, prepareProfileValueDict, \
-    ProfileEncoding, SpectralProfileFileReader
+from .speclib.core.spectralprofile import (
+    decodeProfileValueDict, encodeProfileValueDict, prepareProfileValueDict,
+    ProfileEncoding, SpectralProfileFileReader)
 from .speclib.io.asd import ASDBinaryFile
 from .speclib.io.spectralevolution import SEDFile
 from .speclib.io.svc import SVCSigFile
@@ -351,8 +353,6 @@ class ReadSpectralProfile(QgsExpressionFunction):
             parent.setEvalErrorString(str(ex))
             return None
 
-        s = ""
-
 
 class StaticExpressionFunction(QgsExpressionFunction):
     """
@@ -479,7 +479,7 @@ class ExpressionFunctionUtils(object):
         dump = context.cachedValue(k)
         if dump is None:
             NODATA: Dict = noDataValues(rasterLayer)
-            dump = json.dumps(NODATA)
+            dump = json.dumps(NODATA, ensure_ascii=False)
             context.setCachedValue(k, dump)
             return NODATA
         else:
@@ -498,7 +498,7 @@ class ExpressionFunctionUtils(object):
             dp: QgsRasterDataProvider = rasterLayer.dataProvider()
             for b in range(1, rasterLayer.bandCount() + 1):
                 SCALEVALUES[b] = (dp.bandOffset(b), dp.bandScale(b))
-            dump = json.dumps(SCALEVALUES)
+            dump = json.dumps(SCALEVALUES, ensure_ascii=False)
             context.setCachedValue(k, dump)
             return SCALEVALUES
         else:
@@ -528,7 +528,7 @@ class ExpressionFunctionUtils(object):
             if wlu.count(None) == len(wlu):
                 wlu = None
 
-            dump = json.dumps(dict(bbl=bbl, wl=wl, wlu=wlu))
+            dump = json.dumps(dict(bbl=bbl, wl=wl, wlu=wlu), ensure_ascii=False)
             context.setCachedValue(k, dump)
 
         spectral_properties = json.loads(dump)
@@ -885,7 +885,7 @@ class RasterProfile(QgsExpressionFunction):
         if results is None or len(results) == 0:
             return None
 
-        aggr = str(values[2]).lower()
+        _ = str(values[2]).lower()
         has_multiple_profiles = isinstance(results[0], list)
 
         lyrR: QgsRasterLayer = ExpressionFunctionUtils.extractRasterLayer(self.parameters()[0], values[0], context)
@@ -962,7 +962,7 @@ class SpectralData(QgsExpressionFunction):
                         feat = context.feature()
                         value = feat.attribute(field.name())
                         break
-                s = ""
+
             else:
                 value = values[0]
             if value is not None:
@@ -1031,7 +1031,7 @@ class SpectralMath(QgsExpressionFunction):
         try:
             profilesData = values[0:-1]
             DATA = dict()
-            fieldType: QgsField = None
+            _ = None
             for i, dump in enumerate(profilesData):
                 d = decodeProfileValueDict(dump, numpy_arrays=True)
                 if len(d) == 0:

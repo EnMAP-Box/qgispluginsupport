@@ -26,6 +26,7 @@
 """
 
 import datetime
+import json
 import os
 import re
 import sys
@@ -51,7 +52,7 @@ from .spectralprofile import decodeProfileValueDict, encodeProfileValueDict, pre
     groupBySpectralProperties, SpectralProfileFileWriter, SpectralProfileFileReader
 from .. import EDITOR_WIDGET_REGISTRY_KEY, FIELD_NAME, FIELD_VALUES, SPECLIB_EPSG_CODE
 from ...plotstyling.plotstyling import PlotStyle
-from ...utils import copyEditorWidgetSetup, findMapLayer, qgsField, SpatialPoint
+from ...utils import copyEditorWidgetSetup, findMapLayer, qgsField, SpatialPoint, stringToByteArray, stringFromByteArray
 
 # get to now how we can import this module
 MODULE_IMPORT_PATH = None
@@ -62,7 +63,6 @@ for name, module in sys.modules.items():
         MODULE_IMPORT_PATH = name
         break
 
-MIMEDATA_SPECLIB = 'application/hub-spectrallibrary'
 MIMEDATA_SPECLIB_LINK = 'application/hub-spectrallibrary-link'
 MIMEDATA_XQT_WINDOWS_CSV = 'application/x-qt-windows-mime;value="Csv"'
 
@@ -78,7 +78,6 @@ OGR_EXTENSION2DRIVER[''] = []  # list all drivers without specific extension
 
 FILTERS = 'Geopackage (*.gpkg);;ENVI Spectral Library (*.sli *.esl);;CSV Table (*.csv);;GeoJSON (*.geojson)'
 
-PICKLE_PROTOCOL = pickle.HIGHEST_PROTOCOL
 # CURRENT_SPECTRUM_STYLE = PlotStyle()
 # CURRENT_SPECTRUM_STYLE.markerSymbol = None
 # CURRENT_SPECTRUM_STYLE.linePen.setStyle(Qt.SolidLine)
@@ -124,7 +123,7 @@ def containsSpeclib(mimeData: QMimeData) -> bool:
     if mimeData.hasUrls():
         return True
 
-    for f in [MIMEDATA_SPECLIB, MIMEDATA_SPECLIB_LINK]:
+    for f in [MIMEDATA_SPECLIB_LINK]:
         if f in mimeData.formats():
             return True
 
@@ -303,9 +302,8 @@ class SpectralLibraryUtils:
                         profileDict = decodeProfileValueDict(dump)
                         if isinstance(profileDict, dict) and len(profileDict) > 0:
                             SpectralLibraryUtils.makeToProfileField(layer, f)
-                    except Exception:
-                        s = ""
-                        pass
+                    except Exception as ex:
+                        print(f'Failed to make {f} a spectral profile field:\n', ex, file=sys.stderr)
 
     @classmethod
     def writeToSource(cls,
@@ -335,7 +333,7 @@ class SpectralLibraryUtils:
         if len(profiles) == 0:
             return []
 
-        fields = profile_field_list(profiles[0])
+        _ = profile_field_list(profiles[0])
 
         if isinstance(uri, QUrl):
             uri = uri.toString(QUrl.UrlFormattingOption.PreferLocalFile | QUrl.UrlFormattingOption.RemoveQuery)
@@ -479,7 +477,8 @@ class SpectralLibraryUtils:
     @staticmethod
     def setAttributeMap(feature: QgsFeature, attributes: Dict):
         """
-        Sets the attribute values. Spectral profile dictionaries are transformed into the QgsFeature specific field types.
+        Sets the attribute values. Spectral profile dictionaries are transformed
+        into the QgsFeature specific field types.
         :param feature: The QgsFeature to set values for
         :param attributes: value dictionary.
         :return:
@@ -504,18 +503,30 @@ class SpectralLibraryUtils:
                 feature.setAttribute(n, v)
 
     @staticmethod
-    def readFromMimeData(mimeData: QMimeData) -> Optional[QgsVectorLayer]:
+    def readFromMimeData(mimeData: QMimeData, project: Optional[QgsProject] = None) -> Optional[QgsVectorLayer]:
         """
         Reads a SpectraLibrary from mime data.
         :param mimeData: QMimeData
-        :return: SpectralLibrary
+        :param project: QgsProject. Defaults to QgsProject.instance() if None.
+        :return: QgsVectorLayer with at least one SpectralProfile field.
         """
+
+        if project is None:
+            project = QgsProject.instance()
+
         if MIMEDATA_SPECLIB_LINK in mimeData.formats():
             # extract from link
-            sid = pickle.loads(mimeData.data(MIMEDATA_SPECLIB_LINK))
+            info = json.loads(stringFromByteArray(mimeData.data(MIMEDATA_SPECLIB_LINK)))
+            oid = info['object_id']
+            lid = info['layer_id']
+
+            sl = project.mapLayer(lid)
+            if is_spectral_library(sl):
+                return sl
+
             # global SPECLIB_CLIPBOARD
-            sl = SPECLIB_CLIPBOARD.get(sid)
-            if is_spectral_library(sl) and id(sl) == sid:
+            sl = SPECLIB_CLIPBOARD.get(oid)
+            if is_spectral_library(sl):
                 return sl
 
         if mimeData.hasUrls():
@@ -667,7 +678,7 @@ class SpectralLibraryUtils:
 
     @staticmethod
     def canReadFromMimeData(mimeData: QMimeData) -> bool:
-        formats = [MIMEDATA_SPECLIB_LINK, MIMEDATA_SPECLIB, MIMEDATA_URL]
+        formats = [MIMEDATA_SPECLIB_LINK, MIMEDATA_URL]
         for format in formats:
             if format in mimeData.formats():
                 if format == MIMEDATA_URL:
@@ -679,13 +690,13 @@ class SpectralLibraryUtils:
         return False
 
     @staticmethod
-    def mimeData(speclib: QgsVectorLayer, formats: list = None) -> QMimeData:
+    def mimeData(speclib: QgsVectorLayer, formats: Optional[List[str]] = None) -> QMimeData:
         """
         Wraps this Speclib into a QMimeData object
         :return: QMimeData
         """
         if not (isinstance(speclib, QgsVectorLayer)):
-            raise AssertionError
+            raise AssertionError(f'speclib must be a QgsVectorLayer: {speclib}')
         if isinstance(formats, str):
             formats = [formats]
         elif formats is None:
@@ -694,16 +705,19 @@ class SpectralLibraryUtils:
         mimeData = QMimeData()
 
         for format in formats:
-            if not (format in [MIMEDATA_SPECLIB_LINK, MIMEDATA_SPECLIB, MIMEDATA_TEXT, MIMEDATA_URL]):
+            if not (format in [MIMEDATA_SPECLIB_LINK, MIMEDATA_TEXT, MIMEDATA_URL]):
                 raise AssertionError(f'format is not supported: {format}')
             if format == MIMEDATA_SPECLIB_LINK:
                 # global SPECLIB_CLIPBOARD
                 thisID = id(speclib)
+                info = {'object_id': thisID,
+                        'layer_id': speclib.id(),
+                        'layer_name': speclib.name(),
+                        'layer_source': speclib.source(), }
                 SPECLIB_CLIPBOARD[thisID] = speclib
 
-                mimeData.setData(MIMEDATA_SPECLIB_LINK, pickle.dumps(thisID))
-            elif format == MIMEDATA_SPECLIB:
-                mimeData.setData(MIMEDATA_SPECLIB, pickle.dumps(speclib))
+                mimeData.setData(MIMEDATA_SPECLIB_LINK,
+                                 stringToByteArray(json.dumps(info, ensure_ascii=False)))
 
             elif format == MIMEDATA_URL:
                 mimeData.setUrls([QUrl(speclib.source())])
@@ -764,7 +778,7 @@ class SpectralLibraryUtils:
         if not (is_spectral_library(speclibDst)):
             raise AssertionError
 
-        fids_old = sorted(speclibSrc.allFeatureIds(), key=lambda i: abs(i))
+        _ = sorted(speclibSrc.allFeatureIds(), key=lambda i: abs(i))
         fids_new = SpectralLibraryUtils.addProfiles(
             speclibDst,
             speclibSrc.getFeatures(),
@@ -826,8 +840,8 @@ class SpectralLibraryUtils:
 
         keysBefore = set(speclib.editBuffer().addedFeatures().keys())
 
-        lastTime = datetime.datetime.now()
-        dt = datetime.timedelta(seconds=2)
+        _ = datetime.datetime.now()
+        _ = datetime.timedelta(seconds=2)
         nTotal = len(profiles)
         feedback.setProgressText(f'Add {nTotal} profiles')
         feedback.setProgress(0)

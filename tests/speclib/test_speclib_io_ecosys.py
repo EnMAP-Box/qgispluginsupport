@@ -25,9 +25,7 @@ class TestSpeclibIO_EcoSIS(TestCase):
             return
 
         reader = EcoSISSpectralLibraryReader(path)
-        features = reader.asFeatures()
-
-        s = ""
+        _ = reader.asFeatures()
 
     def test_EcoSIS_Reader(self):
         ecosysFiles = list(file_search(DIR_ECOSIS, '*.csv', recursive=True))
@@ -43,7 +41,6 @@ class TestSpeclibIO_EcoSIS(TestCase):
             self.assertEqual(len(features), n_lines - 1)
             for f in features:
                 self.assertTrue(is_spectral_feature(f))
-            s = ""
 
     def test_read_EcoSIS_processing_alg(self):
 
@@ -77,7 +74,6 @@ class TestSpeclibIO_EcoSIS(TestCase):
 
                 for a in f.attributes():
                     self.assertTrue(a is not None)
-                s = ""
 
     def test_read_EcoSIS(self):
 

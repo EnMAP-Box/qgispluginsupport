@@ -20,7 +20,7 @@ from qgis.core import QgsExpression, QgsExpressionContext, QgsExpressionContextS
 from .spectrallibraryplotitems import SpectralProfilePlotItem, SpectralViewBox
 from .spectrallibraryplotmodelitems import lists_to_numpy_array
 from .spectralprofilecandidates import CUSTOM_PROPERTY_CANDIDATE_FIDs, SpectralProfileCandidates
-from ..core import profile_field_indices, profile_field_list, profile_fields, is_profile_field
+from ..core import profile_field_indices, profile_field_list, profile_fields
 from ..core.spectralprofile import decodeProfileValueDict
 from ..gui.spectrallibraryplotitems import PlotUpdateBlocker, SpectralProfilePlotDataItem, SpectralProfilePlotWidget
 from ..gui.spectrallibraryplotmodelitems import GeneralSettingsGroup, ProfileColorPropertyItem, \
@@ -280,7 +280,6 @@ class SpectralProfilePlotModel(QStandardItemModel):
         return list(self.mErrors)
 
     def onCandidatesChanged(self, layer_ids: List[str]):
-        s = ""
 
         # QApplication.processEvents()
         # import gc
@@ -356,8 +355,6 @@ class SpectralProfilePlotModel(QStandardItemModel):
         settings['visualizations'] = [v.asMap() for v in self.visualizations()
                                       if v.isVisible() and v.isComplete()]
 
-        if True:
-            dumps = json.dumps(settings, indent=4, ensure_ascii=False)
         return settings
 
     def updatePlotIfChanged(self, *args):
@@ -612,7 +609,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
             if raw_data in [SpectralProfilePlotModel.NOT_INITIALIZED, None]:
                 return None
             return self.profileDataToXUnit(raw_data, xUnit)
-        except Exception as e:
+        except Exception:
             return None
 
     def plotData1(self, layer_id: str, fieldIndex: int, feature: QgsFeature, xUnit: str) -> Optional[dict]:
@@ -624,7 +621,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
         NI = SpectralProfilePlotModel.NOT_INITIALIZED
         # NA = not initialized
         # None = not available
-        id_raw_data = feature.id()
+        # id_raw_data = feature.id()
         id_unit_data = (feature.id(), xUnit)
 
         FIELD_DATA = self.mCACHE_PROFILE_DATA[layer_id][fieldIndex]
@@ -694,7 +691,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
         self.mXUnitInitialized = False
 
         vb1: SpectralViewBox = plotWidget.plotItem1.getViewBox()
-        vb2: SpectralViewBox = plotWidget.plotItem1.getViewBox()
+        # vb2: SpectralViewBox = plotWidget.plotItem1.getViewBox()
 
         vb1.sigRectDrawn.connect(self.onRectDrawn)
 
@@ -776,7 +773,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
         # map to model index within a group of same zValues
         if isinstance(items, PropertyItemGroup):
             items = [items]
-        _index = None
+        # _index = None
 
         if isinstance(index, QModelIndex):
             index = index.row()
@@ -859,12 +856,6 @@ class SpectralProfilePlotModel(QStandardItemModel):
         return result
 
     def onPointsHovered(self, item: ScatterPlotItem, points: List[SpotItem], event: HoverEvent, **kwarg):
-        s = ""
-        # print(item)
-        # print(event)
-        # info = f'{event.enter} {event.exit} {len(points)}'
-        # self.mPlotWidget.mInfoHover.setHtml(info)
-        # return
 
         if event.isExit():
             self.mHoverHTML.clear()
@@ -873,7 +864,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
             parent = item.parentItem()
             if isinstance(parent, SpectralProfilePlotDataItem):
                 if len(points) > 0:
-                    xu = self.xUnit().unit
+                    # xu = self.xUnit().unit
                     self.mPlotWidget.xAxis().unit()
                     for spot in points:
                         txt = f'<i>{parent.name()}</i><br>[{spot.index()}] {spot.pos().x()}, {spot.pos().y()}'
@@ -1036,39 +1027,19 @@ class SpectralProfilePlotModel(QStandardItemModel):
             if old_selection != new_selection and not self.showSelectedFeaturesOnly():
                 self._updateFeatureSelectionFromCurves()
 
-                if False:
-                    layers = set(old_selection.keys()) | set(new_selection.keys())
-
-                    # 1. select layer features that have a selected curve
-                    for layerID in layers:
-                        layer = self.project().mapLayer(layerID)
-                        if isinstance(layer, QgsVectorLayer):
-                            new_ids = new_selection.get(layerID, set())
-                            old_ids = old_selection.get(layerID, set())
-
-                            layer.selectByIds(list(new_ids))
-
-                    # 2. select curves that have a selected layer feature
-                    self._updateCurveSelectionFromFeatures()
-
     def _updateSpotSelection(self, old_selection: dict):
 
         for item in self.plotWidget().spectralProfilePlotDataItems():
             lid = item.layerID()
-            fid = item.featureID()
+            # fid = item.featureID()
             if lid in self.mSELECTED_SPOTS or lid in old_selection:
-
-                new_pts = self.mSELECTED_SPOTS.get(lid, set())
-                old_pts = old_selection.get(lid, set())
+                # new_pts = self.mSELECTED_SPOTS.get(lid, set())
+                # old_pts = old_selection.get(lid, set())
                 # item.scatter.setPointsVisible()
 
-                to_unset = old_pts.difference(new_pts)
-                to_set = new_pts.difference(old_pts)
-                for pt in to_unset:
-                    pass
-                for pt in to_set:
-                    pass
-            s = ""
+                # to_unset = old_pts.difference(new_pts)
+                # to_set = new_pts.difference(old_pts)
+                pass
 
     def _updateFeatureSelectionFromCurves(self):
         """
@@ -1131,7 +1102,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
         show_stats = g_stats.get('show', False)
         show_normalized = g_stats.get('normalized', True)
-        sort_bands = g_settings.get('sort_bands', False)
+        # sort_bands = g_settings.get('sort_bands', False)
         antialias = g_settings.get('antialiasing', False)
 
         DT = dict()
@@ -1161,7 +1132,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
         ITEMS_PI2 = []
 
         DATA_PAIRS = dict()
-        VIS_STATS = dict()
+        # VIS_STATS = dict()
 
         # collect data from plottes SpectraProfilePlotDataItems
         vis_with_stats = []
@@ -1406,8 +1377,6 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
             self.mLastReferencedColumns[layer_id] = set(referenced_aids)
 
-            s = ""
-
             request = QgsFeatureRequest()
             request.setLimit(max_profiles)
             request.setFlags(QgsFeatureRequest.NoGeometry)
@@ -1606,7 +1575,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
             return scatter_tooltip
 
-        with PlotUpdateBlocker(self.mPlotWidget) as blocker:
+        with PlotUpdateBlocker(self.mPlotWidget) as _:
             hoverPen = mkPen(self.mCurrentSelectionColor)
             hoverBrush = mkBrush(self.mCurrentSelectionColor)
             for p in PLOT_ITEMS:
@@ -1848,23 +1817,20 @@ class SpectralProfilePlotModel(QStandardItemModel):
                     self.updatePlot()
 
         def _attribute_added(lid, aid):
-            s = ""
             lyr = self.project().mapLayer(lid)
             if isinstance(lyr, QgsVectorLayer):
                 if isinstance(aid, tuple):
                     aid = aid[0]
-                field = lyr.fields().field(aid)
-                if is_profile_field(field):
-                    s = ""
+                # field = lyr.fields().field(aid)
 
-        def _attribute_removed(lid, *args, **kwargs):
-            s = ""
+        # def _attribute_removed(lid, *args, **kwargs):
+        #
 
-        def _dev_on_features_added(*args, **kwargs):
-            s = ""
+        # def _dev_on_features_added(*args, **kwargs):
+        #
 
         if speclib.id() not in self.mSignalProxies:
-            speclib.committedFeaturesAdded.connect(_dev_on_features_added)
+            # speclib.committedFeaturesAdded.connect(_dev_on_features_added)
             # speclib.attributeAdded.connect(_attribute_added)
             proxies = [
                 SignalProxyUndecorated(speclib.selectionChanged, rateLimit=rl, slot=self.onSpeclibSelectionChanged),
@@ -1932,8 +1898,8 @@ class SpectralProfilePlotModel(QStandardItemModel):
                 grp.mPColor.emitDataChanged()
                 self.sigLayersChanged.emit()
 
-        if isinstance(item, RasterRendererGroup):
-            s = ""
+        # if isinstance(item, RasterRendererGroup):
+        #
         elif isinstance(item, ProfileColorPropertyItem):
             if isinstance(grp, ProfileVisualizationGroup):
                 style = grp.mPStyle.plotStyle()
@@ -1957,7 +1923,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
         profilefields = profile_fields(self.speclib())
         to_remove = []
-        to_add = []
+        # to_add = []
 
         # remove visualizations for removed fields
         for vis in self.profileVisualizations():
@@ -2003,7 +1969,6 @@ class SpectralProfilePlotModel(QStandardItemModel):
         # self.updatePlot()
 
     def onDualViewSelectionChanged(self, *args):
-        s = ""
         pass
 
     def onPlotSelectionRequest(self, pdi, modifiers):
@@ -2053,7 +2018,7 @@ def copy_items(items: List[SpectralProfilePlotDataItem],
 
     txt = None
     if mode == 'json':
-        s = ""
+
         data = []
         for item in items:
             item: SpectralProfilePlotDataItem
@@ -2063,7 +2028,7 @@ def copy_items(items: List[SpectralProfilePlotDataItem],
 
                  }
             data.append(d)
-            s = ""
+
         if xUnit is not None:
             for item in data:
                 item['xUnit'] = xUnit

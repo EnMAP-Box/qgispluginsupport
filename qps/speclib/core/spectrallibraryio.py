@@ -51,12 +51,11 @@ class SpectralLibraryImportFeatureSink(QgsRemappingProxyFeatureSink):
         self.mContext = context
 
     def remapFeature(self, feature: QgsFeature) -> List[QgsFeature]:
-        s = ""
+
         try:
-            features = super().remapFeature(feature)
-        except Exception as ex:
-            s = ""
-        return features
+            return super().remapFeature(feature)
+        except Exception:
+            return []
 
 
 class ProfileProperty(QgsProperty, QObject):
@@ -68,7 +67,6 @@ class ProfileProperty(QgsProperty, QObject):
     def value(self, *args, **kwds) -> Tuple[Any, bool]:
         v = super().value(*args, **kwds)
 
-        s = ""
         return v
 
     def __repr__(self):

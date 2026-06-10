@@ -335,8 +335,6 @@ class EnviSpectralLibraryWriter(SpectralProfileFileWriter):
             # stack profiles
             pData = np.vstack(pData)
 
-            if bbl and len(bbl) != len(pData[0]):
-                s = ""
             # convert array to a data type GDAL is able to write
             if pData.dtype == np.int64:
                 pData = pData.astype(np.int32)
@@ -457,7 +455,6 @@ class EnviSpectralLibraryReader(SpectralProfileFileReader):
         to_exclude = SINGLE_VALUE_TAGS
         for k, v in md.items():
             if isinstance(v, list) and k not in to_exclude and len(v) == n_profiles:
-                field = None
                 if isinstance(v[0], float):
                     fields.append(QgsField(k, QMetaType.Double))
                 elif isinstance(v[0], int):
@@ -484,11 +481,11 @@ class EnviSpectralLibraryReader(SpectralProfileFileReader):
         config_changes = {'GDAL_VRT_ENABLE_RAWRASTERBAND': 'YES',
                           'GDAL_VRT_RAWRASTERBAND_ALLOWED_SOURCE': 'ALL'}
 
-        with GDALConfigChanges(config_changes) as cs:
+        with GDALConfigChanges(config_changes) as _:
             tmpVrt = os.path.join(VSI_DIR, 'ENVIIO', f'tmpESLVrt_{uuid.uuid4()}.esl.vrt')
             try:
                 ds = esl2vrt(pathESL, tmpVrt)
-            except AssertionError as ex:
+            except AssertionError:
                 # feedback.reportError(str(ex))
                 return []
 
@@ -717,10 +714,8 @@ def describeRawFile(pathRaw, pathVrt,
 
     vrtDir = os.path.dirname(pathVrt)
     if pathRaw.startswith(vrtDir):
-        relativeToVRT = 1
         srcFilename = os.path.relpath(pathRaw, vrtDir)
     else:
-        relativeToVRT = 0
         srcFilename = pathRaw
 
     for b in range(bands):

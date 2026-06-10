@@ -287,7 +287,7 @@ class OptionListModel(QAbstractListModel):
             return None
         option = self.idx2option(index)
         if not isinstance(option, Option):
-            s = ""
+            pass
         result = None
         if role == Qt.DisplayRole:
             result = '{}'.format(option.mName)
@@ -524,7 +524,6 @@ class TreeNode(QObject):
             self.mChildren.insert(index + i, node)
 
         self.endAddChildNodes.emit(self, index, idxLast)
-        s = ""
 
     def removeAllChildNodes(self):
         self.removeChildNodes(self.childNodes())
@@ -579,7 +578,6 @@ class TreeNode(QObject):
                 removed.append(node)
 
             self.endRemoveChildNodes.emit(self, first, last)
-            s = ""
 
     def setToolTip(self, toolTip: str):
         """
@@ -950,11 +948,11 @@ class TreeModel(QAbstractItemModel):
         if node == self.mRootNode or parent.isValid():
             self.beginInsertRows(parent, first, last)
         else:
-            s = ""
+            pass
 
     def endInsertNodes(self, node: TreeNode, first: int, last: int):
         self.endInsertRows()
-        s = ""
+
         # self.mCNT_INSERT -= 1
         # parent = self.node2idx(node)
         # idx1 = self.index(first, 0, parent)
@@ -994,7 +992,6 @@ class TreeModel(QAbstractItemModel):
         idx = self.node2idx(node)
         idx2 = self.index(idx.row(), node.columnCount() - 1, parent=idx.parent())
         self.dataChanged.emit(idx, idx2)
-        s = ""
 
     def headerData(self, section, orientation, role):
         if not (isinstance(section, int)):
@@ -1024,9 +1021,8 @@ class TreeModel(QAbstractItemModel):
         else:
             idx = self.node2idx(parentNode)
             if idx.column() != 0:
-                s = ""
+                pass
             return self.createIndex(idx.row(), idx.column(), parentNode)
-        s = ""
 
     def rowCount(self, parent: QModelIndex = None) -> int:
         """
@@ -1045,7 +1041,7 @@ class TreeModel(QAbstractItemModel):
             else:
                 node: TreeNode = parent.internalPointer()
                 if isinstance(node, PyObjectTreeNode):
-                    s = ""
+                    pass
                 return node.childCount()
 
     def hasChildren(self, parent: QModelIndex = None) -> bool:
@@ -1106,7 +1102,8 @@ class TreeModel(QAbstractItemModel):
         node = parent.internalPointer()
 
         if isinstance(node, PyObjectTreeNode):
-            s = ""
+            pass
+
         if isinstance(node, TreeNode):
             return node.canFetchMore()
         else:
@@ -1448,7 +1445,8 @@ class TreeView(QTreeView):
         if self.mAutoFirstColumnSpan:
             self.setColumnSpan(parent, first, last)
         else:
-            s = ""
+            pass
+
         if True:
             level = self.nodeDepth(parent)
             if level < self.mAutoExpansionDepth:
@@ -1737,9 +1735,9 @@ class SettingsTreeViewDelegate(QStyledItemDelegate):
 
     def paint(self, painter: QPainter, option: QStyleOptionViewItem, index: QModelIndex):
         # cName = self.mTableView.model().headerData(index.column(), Qt.Horizontal)
-        c = index.column()
+        _ = index.column()
 
-        value = index.data(Qt.UserRole)
+        _ = index.data(Qt.UserRole)
 
         super().paint(painter, option, index)
 
@@ -1767,7 +1765,7 @@ class SettingsTreeViewDelegate(QStyledItemDelegate):
                 w.setModel(model)
 
             elif isinstance(range, tuple):
-                v_min, v_max = range[0], range[1]
+                v_min, _ = range[0], range[1]
                 if isinstance(v_min, int):
                     w = QgsSpinBox(parent=parent)
                     w.setRange(range[0], range[1])
@@ -1796,8 +1794,8 @@ class SettingsTreeViewDelegate(QStyledItemDelegate):
     def setModelData(self, w, model, index):
 
         if index.isValid():
-            value_old = index.data(Qt.EditRole)
-            value_new = None
+            _ = index.data(Qt.EditRole)
+            _ = None
             if isinstance(w, QgsColorButton):
                 model.setData(index, w.color())
             elif isinstance(w, (QgsSpinBox, QgsDoubleSpinBox)):

@@ -288,13 +288,13 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
 
                     extent = self.mCanvas.extent()
 
-                    orientation = Qt.AlignmentFlag.AlignLeft
+                    # orientation = Qt.AlignmentFlag.AlignLeft
                     if centerGeo.x() - extent.xMinimum() > 0.2 * extent.width():
-                        orientation = Qt.AlignmentFlag.AlignLeft
+                        # orientation = Qt.AlignmentFlag.AlignLeft
                         x0_thickmark = QgsPointXY(centerGeo.x() - 0.5 * (centerGeo.x() - extent.xMinimum()),
                                                   centerGeo.y())
                     else:
-                        orientation = Qt.AlignmentFlag.AlignRight
+                        # orientation = Qt.AlignmentFlag.AlignRight
                         x0_thickmark = QgsPointXY(centerGeo.x() + 0.5 * (extent.xMaximum() - centerGeo.x()),
                                                   centerGeo.y())
 
@@ -311,9 +311,9 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
                     # print(f'{rad}\n{bearing}')
                     x0 = None
                     if (
-                        crs.isValid()
-                        and distanceArea.lengthUnits() == QgsUnitTypes.DistanceUnit.DistanceMeters
-                        and math.isfinite(bearing)
+                            crs.isValid()
+                            and distanceArea.lengthUnits() == QgsUnitTypes.DistanceUnit.DistanceMeters
+                            and math.isfinite(bearing)
                     ):
                         transE = QgsCoordinateTransform(crs, crsLL, transformContext)
                         try:
@@ -327,8 +327,8 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
                             else:
                                 e0 = distanceArea.computeSpheroidProject(e1, nice_distance, bearing)
                             x0 = transE.transform(e0, Qgis.TransformDirection.Reverse)
-                        except QgsCsException as ex:
-                            s = ""
+                        except QgsCsException:
+
                             pass
 
                     if isinstance(x0, QgsPointXY):
@@ -405,9 +405,9 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
                     if 0 <= pxX < ns and 0 <= pxY < nl:
                         # get pixel edges in map canvas coordinates
 
-                        lyrGeo = px2LayerGeo(pxX, pxY)
-                        mapGeo = ms.layerToMapCoordinates(lyr, lyrGeo)
-                        canCor = self.toCanvasCoordinates(mapGeo)
+                        # lyrGeo = px2LayerGeo(pxX, pxY)
+                        # mapGeo = ms.layerToMapCoordinates(lyr, lyrGeo)
+                        # canCor = self.toCanvasCoordinates(mapGeo)
 
                         ul = lyrCoord2CanvasPx(pxX, pxY)
                         ur = lyrCoord2CanvasPx(pxX + 1, pxY)
@@ -573,9 +573,15 @@ class CrosshairDialog(QgsDialog):
 
             return None
 
-    def __init__(self, parent=None, crosshairStyle=None, mapCanvas=None, title='Specify Crosshair'):
-        super(CrosshairDialog, self).__init__(parent=parent,
-                                              buttons=QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+    def __init__(self,
+                 parent: Optional[QWidget] = None,
+                 crosshairStyle: Optional[CrosshairStyle] = None,
+                 mapCanvas: Optional[QgsMapCanvas] = None,
+                 title: str = 'Specify Crosshair'):
+        super(CrosshairDialog, self).__init__(
+            parent=parent,
+            buttons=QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
         self.w = CrosshairWidget(parent=self)
         self.setWindowTitle(title)
         self.btOk = QPushButton('Ok')

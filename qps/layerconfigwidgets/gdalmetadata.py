@@ -33,15 +33,20 @@ from typing import Any, Dict, List, Match, Pattern, Tuple, Union
 
 from osgeo import gdal, ogr
 
-from qgis.PyQt.QtCore import NULL, QAbstractTableModel, QMimeData, QModelIndex, QSortFilterProxyModel, Qt, QTimer, QUrl, \
-    QMetaType, QT_VERSION_STR
+from qgis.PyQt.QtCore import (
+    NULL, QAbstractTableModel, QMimeData, QModelIndex, QSortFilterProxyModel, Qt, QTimer, QUrl,
+    QMetaType, QT_VERSION_STR)
 from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.QtWidgets import QAction, QApplication, QCheckBox, QComboBox, QDialog, QDialogButtonBox, QGridLayout, \
-    QGroupBox, QHBoxLayout, QLabel, QLineEdit, QMenu, QSizePolicy, QTableView, QWidget
-from qgis.core import edit, Qgis, QgsAttributeTableConfig, QgsDefaultValue, QgsEditorWidgetSetup, QgsFeature, \
-    QgsFeatureRequest, QgsField, QgsFieldConstraints, QgsMapLayer, QgsRasterDataProvider, QgsRasterLayer, QgsVectorLayer
-from qgis.gui import QgsAttributeEditorContext, QgsAttributeTableModel, QgsDualView, QgsFieldCalculator, QgsGui, \
-    QgsMapCanvas, QgsMapLayerConfigWidgetFactory, QgsMessageBar
+from qgis.PyQt.QtWidgets import (
+    QAction, QApplication, QCheckBox, QComboBox, QDialog, QDialogButtonBox, QGridLayout,
+    QGroupBox, QHBoxLayout, QLabel, QLineEdit, QMenu, QSizePolicy, QTableView, QWidget)
+from qgis.core import (
+    edit, Qgis, QgsAttributeTableConfig, QgsDefaultValue, QgsEditorWidgetSetup, QgsFeature,
+    QgsFeatureRequest, QgsField, QgsFieldConstraints,
+    QgsMapLayer, QgsRasterDataProvider, QgsRasterLayer, QgsVectorLayer)
+from qgis.gui import (
+    QgsAttributeEditorContext, QgsAttributeTableModel, QgsDualView, QgsFieldCalculator, QgsGui,
+    QgsMapCanvas, QgsMapLayerConfigWidgetFactory, QgsMessageBar)
 
 if QT_VERSION_STR[0] == '5':
     from qgis.PyQt.QtCore import QRegExp as QRegularExpression  # noqa: QGS406
@@ -310,7 +315,7 @@ class GDALBandMetadataModel(QgsVectorLayer):
 
     def createDomainField(self) -> QgsField:
         DOMAIN = QgsField(BandFieldNames.Domain, type=QMetaType.QString)
-        constraint = QgsFieldConstraints()
+        _ = QgsFieldConstraints()
         DOMAIN.setReadOnly(True)
         DOMAIN.setDefaultValueDefinition(QgsDefaultValue(''))
         return DOMAIN
@@ -319,8 +324,8 @@ class GDALBandMetadataModel(QgsVectorLayer):
         if not bandNo > 0:
             raise AssertionError('bandNo must be greater than 0')
         if (
-            isinstance(self.mMapLayer, QgsRasterLayer)
-            and isinstance(self.mMapLayer.dataProvider(), QgsRasterDataProvider)
+                isinstance(self.mMapLayer, QgsRasterLayer)
+                and isinstance(self.mMapLayer.dataProvider(), QgsRasterDataProvider)
         ):
             self.mMapLayer: QgsRasterLayer
             z = math.floor(math.log10(self.mMapLayer.bandCount())) + 1
@@ -585,7 +590,7 @@ class GDALBandMetadataModel(QgsVectorLayer):
                 if v == NULL:
                     v = None
                 MD[f].append(v)
-        data = json.dumps(MD)
+        data = json.dumps(MD, ensure_ascii=False)
         mimeData = QMimeData()
         mimeData.setData(MDF_GDAL_BANDMETADATA, data.encode('utf-8'))
         mimeData.setText(data)
@@ -682,7 +687,7 @@ class GDALBandMetadataModel(QgsVectorLayer):
                     # BandFieldNames.ENVIDataGain: lambda i: ENVIDataGain[i],
                 }
 
-                domain = ''
+                _ = ''
 
                 for i in range(gdal_cnt):
                     b = i + 1
@@ -1081,7 +1086,6 @@ class GDALMetadataModel(QAbstractTableModel):
 
         ds.FlushCache()
         del ds
-        s = ""
 
     def applyToLayer(self):
 
@@ -1282,10 +1286,10 @@ class BandPropertyCalculator(QgsFieldCalculator):
         gbUpdate: QGroupBox = self.findChild(QGroupBox, name='mUpdateExistingGroupBox')
 
         if (
-            isinstance(cbOnlyUpdate, QCheckBox)
-            and isinstance(gbNewField, QGroupBox)
-            and isinstance(cbFields, QComboBox)
-            and isinstance(gbUpdate, QGroupBox)
+                isinstance(cbOnlyUpdate, QCheckBox)
+                and isinstance(gbNewField, QGroupBox)
+                and isinstance(cbFields, QComboBox)
+                and isinstance(gbUpdate, QGroupBox)
         ):
 
             gridLayout: QGridLayout = self.layout()
@@ -1311,7 +1315,7 @@ class BandPropertyCalculator(QgsFieldCalculator):
                 label = pw.findChild(QLabel, name='label_2')
                 if isinstance(label, QLabel):
                     label.setText('Band')
-            s = ""
+
             # re-add
             vl = QHBoxLayout()
             vl.setSpacing(4)
@@ -1328,7 +1332,7 @@ class BandPropertyCalculator(QgsFieldCalculator):
             policy.setHorizontalStretch(2)
             cbFields.setSizePolicy(policy)
             gridLayout.addItem(vl, 0, 0, 1, 2)
-            s = ""
+
             return
 
 
@@ -1452,7 +1456,7 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
         self.setEditable(False)
 
     def onCustomBandContextMenuRequested(self, *args):
-        s = ""
+        pass
 
     def setBandModelView(self, viewMode: QgsDualView.ViewMode):
         self.bandDualView.setView(viewMode)
@@ -1491,7 +1495,6 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
     def onBandFormModeChanged(self, *args):
         self.actionBandTableView.setChecked(self.bandDualView.view() == QgsDualView.ViewMode.AttributeTable)
         self.actionBandFormView.setChecked(self.bandDualView.view() == QgsDualView.ViewMode.AttributeEditor)
-        s = ""
 
     def onFormModeChanged(self, index: int):
         self.actionTableView.setChecked(self.dualView.view() == QgsDualView.ViewMode.AttributeTable)
@@ -1624,7 +1627,7 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
                 self.mMapLayer.reload()
                 self.bandMetadataModel.applyToLayer()
                 self.metadataModel.applyToLayer()
-            except (RuntimeError,) as ex:
+            except (RuntimeError,):
 
                 info = f'Cannot write to: {self.mapLayer().source()}'
                 self.messageBar().pushMessage(info, Qgis.MessageLevel.Info)
@@ -1665,9 +1668,9 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
     def updateGroupVisibilities(self):
 
         if (
-            self.supportsGDALClassification
-            and isinstance(self.mClassificationScheme, ClassificationScheme)
-            and len(self.mClassificationScheme) > 0
+                self.supportsGDALClassification
+                and isinstance(self.mClassificationScheme, ClassificationScheme)
+                and len(self.mClassificationScheme) > 0
         ):
             self.gbClassificationScheme.setVisible(True)
             self.classificationSchemeWidget.setClassificationScheme(self.mClassificationScheme)

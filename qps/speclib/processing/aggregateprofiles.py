@@ -3,28 +3,30 @@ from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 
 from qgis.PyQt.QtCore import NULL, QByteArray, QMetaType
-from qgis.core import edit, QgsAggregateCalculator, QgsCoordinateReferenceSystem, QgsCoordinateTransformContext, \
-    QgsDistanceArea, QgsEditorWidgetSetup, QgsExpression, QgsExpressionContext, QgsExpressionContextScope, \
-    QgsExpressionContextUtils, QgsExpressionFunction, QgsExpressionNode, QgsExpressionNodeColumnRef, \
-    QgsExpressionNodeFunction, QgsFeature, QgsFeatureRequest, QgsFeatureSink, QgsFeedback, QgsField, QgsFields, \
-    QgsGeometry, QgsMapLayer, QgsProcessing, QgsProcessingAlgorithm, QgsProcessingContext, QgsProcessingException, \
-    QgsProcessingFeatureSource, QgsProcessingFeedback, QgsProcessingParameterAggregate, \
-    QgsProcessingParameterExpression, QgsProcessingParameterFeatureSink, QgsProcessingParameterFeatureSource, \
-    QgsProcessingUtils, QgsVectorLayer, QgsWkbTypes
+from qgis.core import (
+    edit, QgsAggregateCalculator, QgsCoordinateReferenceSystem, QgsCoordinateTransformContext,
+    QgsDistanceArea, QgsEditorWidgetSetup, QgsExpression, QgsExpressionContext, QgsExpressionContextScope,
+    QgsExpressionContextUtils, QgsExpressionFunction, QgsExpressionNode, QgsExpressionNodeColumnRef,
+    QgsExpressionNodeFunction, QgsFeature, QgsFeatureRequest, QgsFeatureSink, QgsFeedback, QgsField, QgsFields,
+    QgsGeometry, QgsMapLayer, QgsProcessing, QgsProcessingAlgorithm, QgsProcessingContext, QgsProcessingException,
+    QgsProcessingFeatureSource, QgsProcessingFeedback, QgsProcessingParameterAggregate,
+    QgsProcessingParameterExpression, QgsProcessingParameterFeatureSink, QgsProcessingParameterFeatureSource,
+    QgsProcessingUtils, QgsVectorLayer, QgsWkbTypes)
 from .. import EDITOR_WIDGET_REGISTRY_KEY
 from ..core import is_profile_field
-from ..core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict, prepareProfileValueDict, \
-    ProfileEncoding
+from ..core.spectralprofile import (
+    decodeProfileValueDict, encodeProfileValueDict,
+    prepareProfileValueDict, ProfileEncoding)
 from ...qgsfunctions import HM, SPECLIB_FUNCTION_GROUP, SpectralMath, StaticExpressionFunction
 
 
 class Group(object):
     def __init__(self):
         super().__init__()
-        sink: QgsFeatureSink = None
-        layer: QgsMapLayer = None
-        firstFeature: QgsFeature = None
-        lastFeature: QgsFeature = None
+        self.sink: Optional[QgsFeatureSink] = None
+        self.layer: Optional[QgsMapLayer] = None
+        self.firstFeature: Optional[QgsFeature] = None
+        self.lastFeature: Optional[QgsFeature] = None
 
 
 class AggregateProfilesCalculator(QgsAggregateCalculator):
@@ -45,7 +47,7 @@ class AggregateProfilesCalculator(QgsAggregateCalculator):
 
         if not isinstance(self.layer(), QgsVectorLayer):
             return NULL
-        error = ''
+        _ = ''
         context = context if isinstance(context, QgsExpressionContext) else self.layer().createExpressionContext()
         if not isinstance(feedback, QgsFeedback):
             feedback = context.feedback()
@@ -56,7 +58,7 @@ class AggregateProfilesCalculator(QgsAggregateCalculator):
             context.setFields(self.layer().fields())
             expression = QgsExpression(fieldOrExpression)
             if expression.hasParserError() or not expression.prepare(context):
-                error = expression.parserErrorString() if expression.hasParserError() else expression.evalErrorString()
+                _ = expression.parserErrorString() if expression.hasParserError() else expression.evalErrorString()
                 return NULL
 
         if not expression:
@@ -64,7 +66,7 @@ class AggregateProfilesCalculator(QgsAggregateCalculator):
         else:
             lst = expression.referencedColumns()
 
-        attrField = self.layer().fields().at(attrNum)
+        _ = self.layer().fields().at(attrNum)
 
         request = QgsFeatureRequest()
         request.setFlags(
@@ -206,7 +208,6 @@ class AggregateMemoryLayer(QgsVectorLayer):
                   feedback: Optional[QgsFeedback] = None) -> Tuple[Any, str]:
 
         print('# aggregate')
-        s = ""
 
 
 class AggregateProfiles(QgsProcessingAlgorithm):
@@ -337,7 +338,7 @@ Please not that not each aggregate function might be available for each field ty
                     expression = self.spectralProfileAggregateExpression(aggregateType, source, True, self.mGroupBy)
                     self.mOutputProfileFields.append(fname)
                 else:
-                    expression = f'{aggregateType}({source}, {self.mGroupBy}, TRUE, {QgsExpression.quotedString(delimiter)})'
+                    expression = f'{aggregateType}({source}, {self.mGroupBy}, TRUE, {QgsExpression.quotedString(delimiter)})'  # noqa: E501
             else:
                 if is_profile:
                     expression = self.spectralProfileAggregateExpression(aggregateType, source, False, self.mGroupBy)
@@ -503,7 +504,7 @@ Please not that not each aggregate function might be available for each field ty
                            wkbType: QgsWkbTypes.GeometryType,
                            crs: QgsCoordinateReferenceSystem) -> Tuple[QgsFeatureSink, str]:
 
-        createOptions = dict(encoding='utf-8')
+        _ = dict(encoding='utf-8')
         name = f'AggregationMemoryLayer{len(self._TempLayers)}'
         uri = AggregateMemoryLayer.createInitArguments(crs, [], wkbType)
         # layer = AggregateMemoryLayer(name, fields, wkbType, crs)
@@ -582,7 +583,7 @@ class SpectralAggregation(QgsExpressionFunction):
         try:
             profilesData = values[0:-1]
             DATA = dict()
-            fieldType: QgsField = None
+            _ = None
             for i, dump in enumerate(profilesData):
                 d = decodeProfileValueDict(dump, numpy_arrays=True)
                 if len(d) == 0:
@@ -735,7 +736,7 @@ def spfcnAggregateGeneric(
     if context.hasCachedValue(cacheKey):
         return context.cachedValue(cacheKey)
 
-    ok: bool = False
+    _ = False
 
     subContext: QgsExpressionContext = QgsExpressionContext(context)
     subScope: QgsExpressionContextScope = QgsExpressionContextScope()

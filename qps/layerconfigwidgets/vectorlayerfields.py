@@ -29,11 +29,13 @@ from qgis.PyQt.QtCore import QSortFilterProxyModel, QModelIndex, pyqtSignal
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtGui import QResizeEvent, QStandardItemModel, QStandardItem
-from qgis.PyQt.QtWidgets import QMessageBox, QDialog, QTableView, QStackedWidget, QMenu, QComboBox, QVBoxLayout, QLabel, \
-    QWidget
+from qgis.PyQt.QtWidgets import (
+    QMessageBox, QDialog, QTableView, QStackedWidget, QMenu, QComboBox, QVBoxLayout, QLabel,
+    QWidget)
 from qgis.core import QgsMapLayer, QgsVectorLayer, QgsField, QgsFieldModel, QgsEditorWidgetSetup
-from qgis.gui import QgsEditorWidgetFactory, QgsCollapsibleGroupBox, QgsEditorConfigWidget, QgsGui, \
-    QgsMapLayerConfigWidgetFactory
+from qgis.gui import (
+    QgsEditorWidgetFactory, QgsCollapsibleGroupBox, QgsEditorConfigWidget, QgsGui,
+    QgsMapLayerConfigWidgetFactory)
 from .core import QpsMapLayerConfigWidget
 from ..layerproperties import AddAttributeDialog
 from ..utils import loadUi
@@ -402,7 +404,7 @@ class LayerAttributeFormConfigWidget(QpsMapLayerConfigWidget):
         if isinstance(index1, QModelIndex) and index1.isValid():
             r = index1.row()
             if r < 0 or r >= self.stackedWidget.count():
-                s = ""
+                pass
             self.stackedWidget.setCurrentIndex(r)
 
     def onScrollAreaResize(self, resizeEvent: QResizeEvent):
@@ -411,7 +413,6 @@ class LayerAttributeFormConfigWidget(QpsMapLayerConfigWidget):
         :param resizeEvent: QResizeEvent
         """
         self.stackedWidget.setMaximumWidth(resizeEvent.size().width())
-        s = ""
 
     def onReset(self):
 
@@ -461,11 +462,11 @@ class LayerAttributeFormConfigWidget(QpsMapLayerConfigWidget):
         Enables/disables buttons
         :return:
         """
-        b = False
+        _ = False
         for i in range(self.stackedWidget.count()):
             w: LayerAttributeFormConfigEditorWidget = self.stackedWidget.widget(i)
             if w.changed():
-                b = True
+                _ = True
                 break
 
 
@@ -580,7 +581,7 @@ class LayerFieldsConfigWidget(QpsMapLayerConfigWidget):
                    self.tableView.selectionModel().selectedRows()]
 
         if not lyr.deleteAttributes(indices):
-            errors = lyr.errors()
+            _ = lyr.errors()
         self.validate()
 
     def apply(self):

@@ -160,9 +160,8 @@ class UnitModelTests(TestCase):
         idx = model.unitIndex('')
         cb.setCurrentIndex(idx.row())
 
-        u = cb.currentData(Qt.UserRole)
+        _ = cb.currentData(Qt.UserRole)
 
-        s = ""
         wrappers = model[:]
         for i, w in enumerate(wrappers):
             w2 = model.findUnitWrapper(w.description)
@@ -259,7 +258,7 @@ class UnitModelTests(TestCase):
         for y in leap_years:
             dpy = days_per_year(y)
             if not dpy == 366:
-                s = ""
+                pass
             self.assertEqual(dpy, 366)
 
         for y in non_leap_years:

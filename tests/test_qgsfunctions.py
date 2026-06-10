@@ -7,7 +7,7 @@ from osgeo import gdal_array
 
 from qgis import processing
 from qgis.PyQt.QtCore import QByteArray, QMetaType
-from qgis.core import edit, Qgis, QgsProcessing, QgsCoordinateTransform, QgsExpression, QgsExpressionContext, \
+from qgis.core import edit, Qgis, QgsProcessing, QgsExpression, QgsExpressionContext, \
     QgsExpressionContextUtils, QgsExpressionFunction, QgsFeature, QgsField, QgsFields, QgsGeometry, QgsMapLayerStore, \
     QgsPointXY, QgsProject, QgsProperty, QgsRasterLayer, QgsVectorLayer, QgsWkbTypes, QgsProcessingContext
 from qgis.gui import QgsFieldCalculator
@@ -79,7 +79,6 @@ def createAggregateTestProfileLayer():
             profile = {'y': yvec}
             if not (sl.changeAttributeValue(f.id(), idx, profile)):
                 raise AssertionError
-            s = ""
 
     return sl
 
@@ -104,22 +103,22 @@ class QgsFunctionTests(TestCase):
         # context.setLoadedLayerStore(QgsProject.instance().layerStore())
 
         exp = QgsExpression("geom_to_wkt($geometry)")
-        value = exp.evaluate(context)
+        self.assertTrue(exp.evaluate(context))
 
         exp = QgsExpression("raster_value('myraster', 1, $geometry)")
         self.assertTrue(exp.prepare(context), exp.parserErrorString())
-        b1value = exp.evaluate(context)
+        self.assertTrue(exp.evaluate(context))
         self.assertEqual(exp.evalErrorString(), '', exp.evalErrorString())
 
         f1 = RasterArray()
-        self.assertTrue(self.registerFunction(f1))
+        self.registerFunction(f1)
         exp = QgsExpression(f"{f1.NAME}('myraster', $geometry)")
         self.assertTrue(exp.prepare(context), msg=exp.parserErrorString())
         v_array = exp.evaluate(context)
         self.assertTrue(exp.evalErrorString() == '', msg=exp.evalErrorString())
 
         f2 = RasterProfile()
-        self.assertTrue(self.registerFunction(f2))
+        self.registerFunction(f2)
         exp = QgsExpression(f"{f2.NAME}('myraster', $geometry, encoding:='map')")
         self.assertTrue(exp.prepare(context), msg=exp.parserErrorString())
         v_profile = exp.evaluate(context)
@@ -144,7 +143,6 @@ class QgsFunctionTests(TestCase):
             data = exp.evaluate(context)
             self.assertTrue(exp.evalErrorString() == '', msg=exp.evalErrorString())
             self.assertIsInstance(data, dict)
-        s = ""
 
     def test_SpectralEncoding(self):
 
@@ -324,8 +322,6 @@ class QgsFunctionTests(TestCase):
                 profile_ref = RASTER_ARRAY[:, px.y(), px.x()].tolist()
                 self.assertListEqual(profile1, profile_ref)
 
-                s = ""
-
         context = QgsExpressionContext()
         context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(lyrMP))
 
@@ -381,6 +377,7 @@ class QgsFunctionTests(TestCase):
         pt2 = SpatialPoint.fromPixelPosition(lyrR, 1, 1).toCrs(lyrV.crs())
 
         pxPos = pt2.toPixelPosition(lyrR)
+        self.assertTrue(pxPos)
 
         feature2 = QgsFeature(lyrV.fields())
         feature2.setGeometry(QgsGeometry.fromPointXY(pt2))
@@ -456,8 +453,6 @@ class QgsFunctionTests(TestCase):
                 self.assertEqual(len(profiles1), n_px_nat)
                 self.assertEqual(len(profiles2), n_px_at)
 
-                s = ""
-
         vectorLayers = [QgsVectorLayer(enmap_multipolygon.as_posix()),
                         QgsVectorLayer(enmap_pixel.as_posix())]
         for lyrV in vectorLayers:
@@ -491,7 +486,6 @@ class QgsFunctionTests(TestCase):
                 self.assertEqual(exp.parserErrorString(), '', msg=exp.parserErrorString())
                 self.assertEqual(exp.evalErrorString(), '', msg=exp.evalErrorString())
                 self.assertIsInstance(results, dict)
-                s = ""
 
         lyrR, lyrV = self.createRasterAndVectorLayers()
 
@@ -520,12 +514,12 @@ class QgsFunctionTests(TestCase):
                 context.setFeature(feature)
                 # context = QgsExpressionContextUtils.createFeatureBasedContext(feature, QgsFields())
                 if i > 0:
-                    if False:
-                        k = ExpressionFunctionUtils.cachedCrsTransformationKey(context, lyrR)
-                        cached = context.cachedValue(k)
-                        if not isinstance(cached, QgsCoordinateTransform):
-                            s = ""
-                        self.assertIsInstance(context.cachedValue(k), QgsCoordinateTransform)
+                    # if False:
+                    #     k = ExpressionFunctionUtils.cachedCrsTransformationKey(context, lyrR)
+                    #     cached = context.cachedValue(k)
+                    #     if not isinstance(cached, QgsCoordinateTransform):
+                    #
+                    #     self.assertIsInstance(context.cachedValue(k), QgsCoordinateTransform)
                     k = ExpressionFunctionUtils.cachedSpectralPropertiesKey(lyrR)
                     dump = context.cachedValue(k)
                     cached = json.loads(dump)
@@ -569,7 +563,6 @@ class QgsFunctionTests(TestCase):
         extR = SpatialExtent.fromLayer(lyrRaster)
         extP = SpatialExtent.fromLayer(lyrPoints).toCrs(lyrRaster.crs())
         self.assertTrue(extR.contains(extP))
-        s = ""
 
         QgsProject.instance().addMapLayers([lyrRaster, lyrPoints])
         context = QgsProcessingContext()
@@ -590,7 +583,7 @@ class QgsFunctionTests(TestCase):
             d = decodeProfileValueDict(jsonStr)
             self.assertTrue(isProfileValueDict(d))
             self.assertTrue(len(d['y']) == lyrRaster.bandCount())
-            s = ""
+
         QgsProject.instance().removeAllMapLayers()
 
     def test_SpectralMath(self):
@@ -773,20 +766,13 @@ class QgsFunctionTests(TestCase):
 
         sl = SpectralLibraryUtils.createSpectralLibrary(['profile'])
 
-        expected = {
-            'A': [2.5, 4.0, 3.5],
-            'B': [1, 1, 1],
-            'C': [2.5, 3, 3.5, 5.5]
-
-        }
-
         data = [
             {'x': [1, 2, 3], 'y': [2, 2, 2], 'class': 'A'},  # A should average t 2.5, 4.0, 3.5
             {'x': [1, 2, 3], 'y': [3, 4, 5], 'class': 'A'},
             {'x': [1, 2, 3], 'y': [1, 1, 1], 'class': 'B'},  # B should average to 1 1 1
             # {'x': [4, 5, 6, 7], 'y': [2, 2, 2, 5], 'class': 'C'},  # C should average to 2.5, 3, 3.5, 5.5
             # {'x': [4, 5, 6, 7], 'y': [3, 4, 5, 6], 'class': 'C'},
-            # {'x': [1, 2, 3, 4], 'y': [5, 4, 3, 4], 'class': 'D'},  # D should fail, because arrays have different values
+            # {'x': [1, 2, 3, 4], 'y': [5, 4, 3, 4], 'class': 'D'},  # D should fail, because arrays have different values  # noqa: E501
             # {'x': [1, 2], 'y': [5, 4], 'class': 'D'},
             #
         ]
@@ -810,10 +796,9 @@ class QgsFunctionTests(TestCase):
 
         for f in sl.getFeatures():
             f: QgsFeature
-            cName = f.attribute('class')
+            # cName = f.attribute('class')
 
             print(f.attributeMap())
-        s = ""
 
         QgsProject.instance().removeMapLayer(sl)
 

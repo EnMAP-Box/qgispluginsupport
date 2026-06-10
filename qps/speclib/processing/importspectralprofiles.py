@@ -503,7 +503,7 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
 
         vl = self._results.get(self.P_OUTPUT)
         if isinstance(vl, str):
-            lyr_id = vl
+            _ = vl
             vl = QgsProcessingUtils.mapLayerFromString(vl, context,
                                                        allowLoadingNewLayers=True,
                                                        typeHint=QgsProcessingUtils.LayerHint.Vector)
@@ -523,8 +523,8 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
                     if isinstance(setup, QgsEditorWidgetSetup):
                         vl.setEditorWidgetSetup(idx, setup)
                 else:
-                    s = ""
-                    # setup = QgsEditorWidgetSetup()
+                    pass
+            # setup = QgsEditorWidgetSetup()
             # for fieldName in self._profile_field_names:
             #    idx = vl.fields().lookupField(fieldName)
             #    if idx > -1:

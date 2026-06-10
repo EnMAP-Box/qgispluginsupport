@@ -26,7 +26,7 @@ class RasterDataProviderTests(TestCase):
         vl = TestObjects.createVectorLayer()
         QgsProject.instance().addMapLayer(vl)
 
-        fids = vl.allFeatureIds()
+        _ = vl.allFeatureIds()
         features = vl.getFeatures()
         layers = []
         dpList = []

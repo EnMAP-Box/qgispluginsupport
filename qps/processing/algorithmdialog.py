@@ -35,18 +35,20 @@ from processing.tools import dataobjects
 from qgis.PyQt.QtCore import QCoreApplication, QDir, QFileInfo
 from qgis.PyQt.QtGui import QColor, QPalette
 from qgis.PyQt.QtWidgets import QDialogButtonBox, QFileDialog, QHeaderView, QMessageBox, QPushButton, QTableWidgetItem
-from qgis.core import Qgis, QgsApplication, QgsExpressionContext, QgsExpressionContextScope, QgsExpressionContextUtils, \
-    QgsFeatureRequest, QgsFileUtils, QgsLayerTreeGroup, QgsMapLayer, QgsMessageLog, \
-    QgsProcessingAlgorithm, QgsProcessingAlgRunnerTask, QgsProcessingContext, \
-    QgsProcessingFeatureSourceDefinition, QgsProcessingFeedback, QgsProcessingModelAlgorithm, \
-    QgsProcessingOutputBoolean, QgsProcessingOutputHtml, QgsProcessingOutputLayerDefinition, QgsProcessingOutputNumber, \
-    QgsProcessingOutputString, QgsProcessingParameterDefinition, QgsProcessingParameterExtent, \
-    QgsProcessingParameterFeatureSink, QgsProcessingParameterRasterDestination, QgsProcessingParameterVectorDestination, \
-    QgsProcessingUtils, QgsProject, QgsProxyProgressTask, QgsSettings
-from qgis.gui import QgisInterface, QgsGui, QgsPanelWidget, QgsProcessingAlgorithmDialogBase, \
-    QgsProcessingBatchAlgorithmDialogBase, QgsProcessingContextGenerator, QgsProcessingGui, \
-    QgsProcessingHiddenWidgetWrapper, QgsProcessingParametersGenerator, QgsProcessingParametersWidget, \
-    QgsProcessingParameterWidgetContext
+from qgis.core import (
+    Qgis, QgsApplication, QgsExpressionContext, QgsExpressionContextScope, QgsExpressionContextUtils,
+    QgsFeatureRequest, QgsFileUtils, QgsLayerTreeGroup, QgsMapLayer, QgsMessageLog,
+    QgsProcessingAlgorithm, QgsProcessingAlgRunnerTask, QgsProcessingContext,
+    QgsProcessingFeatureSourceDefinition, QgsProcessingFeedback, QgsProcessingModelAlgorithm,
+    QgsProcessingOutputBoolean, QgsProcessingOutputHtml, QgsProcessingOutputLayerDefinition, QgsProcessingOutputNumber,
+    QgsProcessingOutputString, QgsProcessingParameterDefinition, QgsProcessingParameterExtent,
+    QgsProcessingParameterFeatureSink, QgsProcessingParameterRasterDestination, QgsProcessingParameterVectorDestination,
+    QgsProcessingUtils, QgsProject, QgsProxyProgressTask, QgsSettings)
+from qgis.gui import (
+    QgisInterface, QgsGui, QgsPanelWidget, QgsProcessingAlgorithmDialogBase,
+    QgsProcessingBatchAlgorithmDialogBase, QgsProcessingContextGenerator, QgsProcessingGui,
+    QgsProcessingHiddenWidgetWrapper, QgsProcessingParametersGenerator, QgsProcessingParametersWidget,
+    QgsProcessingParameterWidgetContext)
 from qgis.gui import QgsMapTool
 
 
@@ -59,12 +61,14 @@ def layerTreeResultsGroup(
     if there is no target project available.
     """
 
-    new_api = False
     try:
         from qgis.gui import QgsProcessingGuiUtils
-        return QgsProcessingGuiUtils.layerTreeResultsGroup(layer_details, context)
-    except Exception as ex:
-        new_api = True
+        results = QgsProcessingGuiUtils.layerTreeResultsGroup(layer_details, context)
+    except Exception:
+        results = None
+
+    if isinstance(results, QgsLayerTreeGroup):
+        return results
 
     destination_project: Optional[QgsProject] = layer_details.project or context.project()
     if destination_project is None:
@@ -722,7 +726,6 @@ class AlgorithmDialog(QgsProcessingAlgorithmDialogBase):
                 p1.takeMapLayer(lyr)
         self._context_layers.clear()
         super().closeEvent(e)
-        s = ""
 
     def finish(self, successful, result, context, feedback, in_place=False):
         keepOpen = not successful or ProcessingConfig.getSetting(
@@ -1322,7 +1325,9 @@ class BatchPanel(QgsPanelWidget, WIDGET):
             message_box.setWindowTitle(self.tr("Security warning"))
             message_box.setText(
                 self.tr(
-                    "This algorithm is a potential security risk if executed with unchecked inputs, and may result in system damage or data leaks. Only continue if you trust the source of the file. Continue?"
+                    "This algorithm is a potential security risk if executed with unchecked inputs, "
+                    "and may result in system damage or data leaks. "
+                    "Only continue if you trust the source of the file. Continue?"
                 )
             )
             message_box.setIcon(QMessageBox.Icon.Warning)
@@ -1405,7 +1410,8 @@ class BatchPanel(QgsPanelWidget, WIDGET):
         message_box.setWindowTitle(self.tr("Security warning"))
         message_box.setText(
             self.tr(
-                "Opening older QGIS batch Processing files from an untrusted source can harm your computer. Only continue if you trust the source of the file. Continue?"
+                "Opening older QGIS batch Processing files from an untrusted source can harm your computer. "
+                "Only continue if you trust the source of the file. Continue?"
             )
         )
         message_box.setIcon(QMessageBox.Icon.Warning)
@@ -1742,8 +1748,6 @@ def executeAlgorithm(alg_id, parent, in_place=False, as_batch=False,
     if in_place:
         config["IN_PLACE"] = True
 
-    ok_result_list = []
-
     if isinstance(alg_id, str):
         alg = (
             QgsApplication.instance()
@@ -1763,16 +1767,16 @@ def executeAlgorithm(alg_id, parent, in_place=False, as_batch=False,
             dlg.setTitle("Error executing algorithm")
             dlg.setMessage("<h3>This algorithm cannot " "be run :-( </h3>\n{0}".format(message))
             dlg.exec()
-            return
+            return False, {}
 
         if as_batch:
             dlg = BatchAlgorithmDialog(alg, iface.mainWindow(), context=context)
             dlg.show()
 
-            def onFinished(*args, **kwds):
-                s = ""
+            # def onFinished(*args, **kwds):
+            #     s = ""
 
-            dlg.algorithmFinished.connect(onFinished)
+            # dlg.algorithmFinished.connect(onFinished)
             dlg.exec()
         else:
             in_place_input_parameter_name = "INPUT"

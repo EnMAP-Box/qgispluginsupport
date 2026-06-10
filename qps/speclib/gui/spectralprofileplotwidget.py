@@ -18,7 +18,7 @@ class SpectralProfilePlotWidget(PlotWidget):
         self.addItem(self.mPDI)
         self.mPlotStyle = PlotStyle()
         fg = self.palette().color(QPalette.Foreground)
-        bg = self.palette().color(QPalette.Background)
+        # bg = self.palette().color(QPalette.Background)
         ax_pen = self.plotItem.axes['bottom']['item'].pen()
         ax_pen.setColor(fg)
         self.plotItem.axes['bottom']['item'].setPen(ax_pen)
@@ -36,6 +36,4 @@ class SpectralProfilePlotWidget(PlotWidget):
             self.mPDI.setPlotStyle(style)
 
     def setProfile(self, data: dict):
-        s = ""
-
         self.mPDI.setProfileData(data, self.mPlotStyle)

@@ -8,8 +8,8 @@ from pathlib import Path
 
 import numpy as np
 from osgeo import gdal
-from qgis.core import QgsMapLayer, QgsRasterLayer
 
+from qgis.core import QgsMapLayer, QgsRasterLayer
 from qps import DIR_REPO
 from qps.qgsrasterlayerproperties import QgsRasterLayerSpectralProperties, QgsRasterLayerSpectralPropertiesTable, \
     QgsRasterLayerSpectralPropertiesTableWidget, SpectralPropertyKeys, SpectralPropertyOrigin, stringToType, GCI_WL_WLU
@@ -237,7 +237,7 @@ class TestQgsRasterLayerProperties(TestCase):
             for k in p1.keys():
                 self.assertEqual(p1.bandValues('*', k), p2.bandValues('*', k))
 
-        dump = json.dumps(data)
+        dump = json.dumps(data, ensure_ascii=False)
         prop2 = QgsRasterLayerSpectralProperties.fromMap(json.loads(dump))
 
         equalProps(prop, prop2)
@@ -399,8 +399,6 @@ class TestQgsRasterLayerProperties(TestCase):
         self.assertEqual(prop4.wavelengthUnits(), ['cm', 'cm'])
         prop4.setWavelengthUnits('um')
         self.assertEqual(prop4.wavelengthUnits(), ['um', 'um'])
-
-        s = ""
 
     def test_QgsRasterLayerSpectralPropertiesTable(self):
         rasterLayer = TestObjects.createRasterLayer()

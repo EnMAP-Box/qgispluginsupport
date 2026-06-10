@@ -184,7 +184,7 @@ class TestsClassificationScheme(TestCase):
         self.assertIsInstance(data, dict)
 
         cs2 = ClassificationScheme.fromMap(data)
-        data2 = cs2.asMap()
+        # data2 = cs2.asMap()
         self.assertEqual(cs, cs2)
 
         prop = QgsObjectCustomProperties()
@@ -254,7 +254,6 @@ class TestsClassificationScheme(TestCase):
         # print(vl.fields().names())
         look = vl.fields().lookupField
 
-        parent = QWidget()
         configWidget = factory.configWidget(vl, look('field1'), None)
         self.assertIsInstance(configWidget, ClassificationSchemeEditorConfigWidget)
 

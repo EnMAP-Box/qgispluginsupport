@@ -31,7 +31,7 @@ def loadProfile(crs: QgsCoordinateReferenceSystem, pt: QgsPointXY):
     for layer in canvas.layers():
         if isinstance(layer, QgsRasterLayer):
             d = SpectralLibraryUtils.readProfileDict(layer, spatialPoint)
-            s = ""
+            print(d)
     slw.setCurrentProfiles(profiles)
 
 

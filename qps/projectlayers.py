@@ -79,7 +79,6 @@ class SelectProjectLayersDialog(QDialog):
             if isinstance(lyr, QgsMapLayer) and lyr in layers:
                 to_select.select(idx0, m.index(r, m.columnCount() - 1))
         self.tableView.selectionModel().select(to_select, QItemSelectionModel.SelectionFlag.ClearAndSelect)
-        s = ""
 
     def selectedLayers(self) -> List[QgsMapLayer]:
         """

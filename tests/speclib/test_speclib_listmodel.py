@@ -41,7 +41,7 @@ class MyTestCase(TestCase):
 
         p.addMapLayer(sl1)
 
-        tester = QAbstractItemModelTester(model, QAbstractItemModelTester.FailureReportingMode.Fatal)
+        _ = QAbstractItemModelTester(model, QAbstractItemModelTester.FailureReportingMode.Fatal)
         view = QListView()
         view.setModel(model)
 

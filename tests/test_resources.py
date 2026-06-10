@@ -23,19 +23,17 @@ class ResourceTests(TestCase):
         self.assertEqual(root.tag, 'RCC')
         for child in root:
             if child.tag == 'qresource':
-                prefix = child.attrib['prefix']
+                # prefix = child.attrib['prefix']
                 for fileTag in child:
                     if fileTag.tag == 'file':
                         resource_path = qrcDir / pathlib.Path(fileTag.text)
-                        resource_uri = ':{}/{}'.format(prefix, fileTag.text)
+                        # resource_uri = ':{}/{}'.format(prefix, fileTag.text)
                         self.assertTrue(resource_path.is_file(), msg='File does not exist: {}'.format(resource_path))
 
     @unittest.skipIf(not QPS_RESOURCE_FILE.is_file(), '{} does not exist'.format(QPS_RESOURCE_FILE))
     def test_rc(self):
         from qgis.PyQt.QtWidgets import QWidget
         from qgis.PyQt.QtGui import QIcon
-
-        app = start_app(resources=[QPS_RESOURCE_FILE])
 
         r = ':/qps/ui/icons/speclib.svg'
         self.assertIsInstance(r, str)
@@ -47,9 +45,6 @@ class ResourceTests(TestCase):
         w.show()
 
     def test_resource_browser(self):
-
-        import qps.testing
-        app = qps.testing.start_app()
 
         B = ResourceBrowser()
         self.assertIsInstance(B, QWidget)

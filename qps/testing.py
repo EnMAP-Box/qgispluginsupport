@@ -48,17 +48,21 @@ import qgis.utils
 from qgis.PyQt import sip
 from qgis.PyQt.QtCore import pyqtSignal, QMimeData, QObject, QPoint, QPointF, QSize, Qt
 from qgis.PyQt.QtGui import QDropEvent, QIcon, QImage, QStandardItemModel
-from qgis.PyQt.QtWidgets import QAction, QApplication, QDialogButtonBox, QDockWidget, QFrame, QHBoxLayout, QListWidget, \
-    QMainWindow, QMenu, QSplitter, QStackedWidget, QToolBar, QTreeView, QVBoxLayout, QWidget
-from qgis.core import edit, Qgis, QgsApplication, QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsFeature, \
-    QgsFeatureStore, QgsField, QgsFields, QgsGeometry, QgsLayerTree, QgsLayerTreeLayer, QgsLayerTreeModel, \
-    QgsLayerTreeRegistryBridge, QgsMapLayer, QgsProcessingAlgorithm, QgsProcessingContext, QgsProcessingFeedback, \
-    QgsProcessingModelAlgorithm, QgsProcessingParameterNumber, QgsProcessingParameterRasterDestination, \
-    QgsProcessingParameterRasterLayer, QgsProcessingProvider, QgsProcessingRegistry, QgsProject, QgsProviderRegistry, \
-    QgsPythonRunner, QgsRasterLayer, QgsTemporalController, QgsVectorLayer, QgsVectorLayerUtils, QgsWkbTypes
-from qgis.gui import QgisInterface, QgsAbstractMapToolHandler, QgsBrowserGuiModel, QgsFilterLineEdit, QgsGui, \
-    QgsLayerTreeMapCanvasBridge, QgsLayerTreeView, QgsMapCanvas, QgsMapLayerConfigWidgetFactory, QgsMapTool, \
+from qgis.PyQt.QtWidgets import (
+    QAction, QApplication, QDialogButtonBox, QDockWidget, QFrame, QHBoxLayout, QListWidget,
+    QMainWindow, QMenu, QSplitter, QStackedWidget, QToolBar, QTreeView, QVBoxLayout, QWidget)
+from qgis.core import (
+    edit, Qgis, QgsApplication, QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsFeature,
+    QgsFeatureStore, QgsField, QgsFields, QgsGeometry, QgsLayerTree, QgsLayerTreeLayer, QgsLayerTreeModel,
+    QgsLayerTreeRegistryBridge, QgsMapLayer, QgsProcessingAlgorithm, QgsProcessingContext, QgsProcessingFeedback,
+    QgsProcessingModelAlgorithm, QgsProcessingParameterNumber, QgsProcessingParameterRasterDestination,
+    QgsProcessingParameterRasterLayer, QgsProcessingProvider, QgsProcessingRegistry, QgsProject, QgsProviderRegistry,
+    QgsPythonRunner, QgsRasterLayer, QgsTemporalController, QgsVectorLayer, QgsVectorLayerUtils, QgsWkbTypes)
+from qgis.gui import (
+    QgisInterface, QgsAbstractMapToolHandler, QgsBrowserGuiModel, QgsFilterLineEdit, QgsGui,
+    QgsLayerTreeMapCanvasBridge, QgsLayerTreeView, QgsMapCanvas, QgsMapLayerConfigWidgetFactory, QgsMapTool,
     QgsMessageBar, QgsOptionsDialogBase, QgsOptionsPageWidget, QgsOptionsWidgetFactory, QgsPluginManagerInterface
+)
 from qgis.testing import QgisTestCase
 from .qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from .resources import initResourceFile
@@ -135,11 +139,13 @@ QGroupBox{ font-weight: 600; }
 QListWidget#mOptionsListWidget { background-color: rgba(69, 69, 69, 0); outline: 0;}
 QFrame#mOptionsListFrame { background-color: rgba(69, 69, 69, 220);}
 QListWidget#mOptionsListWidget::item { color: white; padding: 3px;}
-QListWidget#mOptionsListWidget::item::selected { color: palette(window-text); background-color:palette(window); padding-right: 0px;}
+QListWidget#mOptionsListWidget::item::selected {
+color: palette(window-text); background-color:palette(window); padding-right: 0px;}
 QTreeView#mOptionsTreeView { background-color: rgba(69, 69, 69, 0); outline: 0;}
 QFrame#mOptionsListFrame { background-color: rgba(69, 69, 69, 220);}
 QTreeView#mOptionsTreeView::item { color: white; padding: 3px;}
-QTreeView#mOptionsTreeView::item::selected, QTreeView#mOptionsTreeView::branch::selected { color: palette(window-text); background-color:palette(window); padding-right: 0px;}
+QTreeView#mOptionsTreeView::item::selected, QTreeView#mOptionsTreeView::branch::selected {
+color: palette(window-text); background-color:palette(window); padding-right: 0px;}
 QTableView { selection-background-color: #0078d7; selection-color: #ffffff;}
 QgsPropertyOverrideButton { background: none; border: 1px solid rgba(0, 0, 0, 0%); }
 QgsPropertyOverrideButton:focus { border: 1px solid palette(highlight); }'
@@ -234,7 +240,6 @@ class QgisMockup(QgisInterface):
         for lyr in layers:
             if lyr.id() not in existing:
                 grp.addLayer(lyr)
-        s = ""
 
     def _onRemoveLayers(self, layerIDs: List[str]):
         to_remove: List[QgsLayerTreeLayer] = []
@@ -405,8 +410,8 @@ class QgisMockup(QgisInterface):
         return lyr
 
     def createActions(self):
-        m = self.ui.menuBar().addAction('Add Vector')
-        m = self.ui.menuBar().addAction('Add Raster')
+        _ = self.ui.menuBar().addAction('Add Vector')
+        _ = self.ui.menuBar().addAction('Add Raster')
 
     def mapCanvas(self) -> QgsMapCanvas:
         return self.mCanvas
@@ -487,8 +492,6 @@ def _set_iface(ifaceMock: QgisInterface):
 
     for m in modules:
         m.iface = ifaceMock
-
-    s = ""
 
 
 # APP = None
@@ -637,7 +640,7 @@ class TestCase(QgisTestCase):
                     try:
                         drv2.Delete(path2)
                         deleted = True
-                    except RuntimeError as ex:
+                    except RuntimeError:
                         sleep(1)
                         n_tries -= 1
 
@@ -986,8 +989,8 @@ class TestObjects(object):
         coredata = CD['data']
         wl = CD['wl']
         wlu = CD['wlu']
-        gt = CD['gt']
-        wkt = CD['wkt']
+        _ = CD['gt']
+        _ = CD['wkt']
 
         cnb, cnl, cns = coredata.shape
         if not (n > 0):
@@ -1671,7 +1674,6 @@ class TestObjects(object):
                 crs2 = QgsCoordinateReferenceSystem(srs_wkt)
                 if not (crs2.isValid()):
                     raise AssertionError
-                s = ""
 
             if not (vl.crs().isValid()):
                 raise AssertionError
@@ -1698,7 +1700,6 @@ class TestObjects(object):
 
             def __init__(self):
                 super(TestProcessingAlgorithm, self).__init__()
-                s = ""
 
             def createInstance(self):
                 return TestProcessingAlgorithm()
@@ -1934,9 +1935,9 @@ class QgsPythonRunnerMockup(QgsPythonRunner):
 
     def evalCommand(self, cmd: str, result: str):
         try:
-            o = compile(cmd)
+            _ = compile(cmd)
         except Exception as ex:
-            result = str(ex)
+            _ = str(ex)
             return False
         return True
 
@@ -1945,7 +1946,7 @@ class QgsPythonRunnerMockup(QgsPythonRunner):
             o = compile(command, 'fakemodule', 'exec')
             exec(o)
         except Exception as ex:
-            messageOnError = str(ex)
+            _ = str(ex)
             command = ['{}:{}'.format(i + 1, l) for i, l in enumerate(command.splitlines())]
             print('\n'.join(command), file=sys.stderr)
             raise ex

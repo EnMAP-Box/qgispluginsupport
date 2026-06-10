@@ -46,7 +46,6 @@ class SpectralXAxis(pg.AxisItem):
                     rng = v_max.astype(scale_type) - v_min.astype(scale_type)
                     nscale_units = rng.astype(int)
                     if nscale_units > 0:
-                        s = ""
                         break
 
                 if tscale == 'Y':
@@ -395,8 +394,7 @@ class SpectralProfilePlotDataItem(PlotDataItem):
             self.setPlotStyle(self.mDefaultStyle)
 
     def selectPoints(self, point_indices):
-
-        s = ""
+        pass
 
     def selectedPoints(self) -> list:
 
@@ -495,7 +493,7 @@ class SpectralProfilePlotDataItem(PlotDataItem):
         y = pos.y()
         pw = self.pixelWidth()
         ph = self.pixelHeight()
-        pts = []
+        _ = []
         dataX, dataY = self.getData()
         distX = np.abs(dataX - x) / pw
         distY = np.abs(dataY - y) / ph
@@ -517,14 +515,10 @@ class SpectralProfilePlotDataItem(PlotDataItem):
     def updateItems(self, *args, **kwds):
         if not self.signalsBlocked():
             super().updateItems(*args, **kwds)
-        else:
-            s = ""
 
     def viewRangeChanged(self, *args, **kwds):
         if not self.signalsBlocked():
             super().viewRangeChanged()
-        else:
-            s = ""
 
     def setClickable(self, b: bool, width=None):
         """
@@ -537,8 +531,7 @@ class SpectralProfilePlotDataItem(PlotDataItem):
         self.curve.setClickable(b, width=width)
 
     def populateContextMenu(self, menu: QMenu):
-
-        s = ""
+        pass
 
     def raiseContextMenu(self, ev):
         menu = self.contextMenu()
@@ -831,9 +824,9 @@ class SpectralProfilePlotWidget(pg.GraphicsLayoutWidget):
             mousePoint = vb.mapSceneToView(pos)
             self.mCurrentMousePosition = mousePoint
 
-            nearest_item = None
-            nearest_index = -1
-            nearest_distance = sys.float_info.max
+            _ = None
+            _ = -1
+            _ = sys.float_info.max
             # sx, sy = self.mInfoScatterPoints.getData()
 
             self.updatePositionInfo()

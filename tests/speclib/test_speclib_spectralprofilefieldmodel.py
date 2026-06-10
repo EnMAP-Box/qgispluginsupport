@@ -4,7 +4,7 @@ from qgis.PyQt.QtCore import QMetaType
 from qgis.PyQt.QtWidgets import QComboBox, QHBoxLayout, QPushButton, QTableView, QWidget
 from qgis.core import QgsProject
 from qgis.core import edit, QgsField
-from qgis.gui import QgsEditorWidgetFactory, QgsGui
+from qgis.gui import QgsGui
 from qps.speclib.core import profile_fields
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
@@ -26,10 +26,10 @@ class TestSpectralProfileFieldModel(TestCase):
             vl.addAttribute(QgsField('nofield1', QMetaType.Int))
             vl.addAttribute(QgsField('nofield2', QMetaType.Double))
             vl.addAttribute(QgsField('nofield3', QMetaType.QString, len=255))
-            b1 = SpectralLibraryUtils.addSpectralProfileField(vl, 'profile1')
-            b2 = SpectralLibraryUtils.addSpectralProfileField(vl, 'profile2')
+            _ = SpectralLibraryUtils.addSpectralProfileField(vl, 'profile1')
+            _ = SpectralLibraryUtils.addSpectralProfileField(vl, 'profile2')
 
-        reg: QgsEditorWidgetFactory = QgsGui.editorWidgetRegistry()
+        _ = QgsGui.editorWidgetRegistry()
 
         self.assertTrue(SpectralLibraryUtils.makeToProfileField(vl, 'profile1'))
         self.assertTrue(SpectralLibraryUtils.makeToProfileField(vl, 'profile2'))

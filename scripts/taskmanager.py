@@ -62,9 +62,10 @@ class MyTaskDialog(QDialog):
         mgr.statusChanged.connect(self.onStatusChanged)
 
     def onProgressChanged(self, taskId, progress):
-        mgr: QgsTaskManager = QgsApplication.taskManager()
+        # mgr: QgsTaskManager = QgsApplication.taskManager()
         # print('{}:{}%'.format(taskId, progress))
         # self.pbar.setValue(int(progress))
+        pass
 
     def onFinished(self, task: MyTask):
 

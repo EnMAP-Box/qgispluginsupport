@@ -207,7 +207,6 @@ class MarkerSymbolComboBox(QComboBox):
             if self.itemData(i, role=Qt.ItemDataRole.UserRole) == symbol:
                 self.setCurrentIndex(i)
                 return symbol
-        s = ""
 
     def iconForMarkerSymbol(self) -> QIcon():
         return MarkerSymbol.icon(self.markerSymbol())
@@ -843,7 +842,7 @@ class PlotStyle(QObject):
         self.__dict__.update(state)
 
     def __str__(self):
-        return f'{self.markerSymbol}{self.markerPen.width()}{self.markerPen.color()};{self.linePen.style()}{self.lineWidth()}'
+        return f'{self.markerSymbol}{self.markerPen.width()}{self.markerPen.color()};{self.linePen.style()}{self.lineWidth()}'  # noqa: E501
 
 
 class PlotStyleWidget(QWidget):
@@ -987,7 +986,7 @@ class PlotStyleWidget(QWidget):
         :param cb: QComboBox
         :param widgets: [list-of-QWidgets]
         """
-        cb: QComboBox = self.cbSymbol
+        _ = self.cbSymbol
         has_symbol = self.cbSymbol.currentData() != MarkerSymbol.No_Symbol
         has_symbol_pen = self.cbSymbolPen.currentData() != Qt.PenStyle.NoPen
         has_line = self.cbLinePen.currentData() != Qt.PenStyle.NoPen
@@ -1237,7 +1236,7 @@ class PlotStyleButton(QToolButton):
         oldStyle = self.plotStyle()
 
         if isinstance(plotStyle, PlotStyle):
-            with SignalBlocker(self.mDialog) as block:
+            with SignalBlocker(self.mDialog) as _:
                 self.mDialog.setPlotStyle(plotStyle)
             self.updateIcon()
 
@@ -1281,9 +1280,11 @@ class PlotStyleDialog(QgsDialog):
                  plotStyle: PlotStyle = PlotStyle(),
                  title: str = 'Specify Plot Style',
                  **kwds):
-        super(PlotStyleDialog, self).__init__(parent=parent,
-                                              buttons=QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel,
-                                              **kwds)
+        super(PlotStyleDialog, self).__init__(
+            parent=parent,
+            buttons=QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel,
+            **kwds)
+
         self.w: PlotStyleWidget = PlotStyleWidget(parent=self, plotStyle=plotStyle)
         self.w.sigPlotStyleChanged.connect(self.onPlotStyleChanged)
         self.setWindowTitle(title)
@@ -1370,7 +1371,7 @@ class PlotStyleEditorWidgetWrapper(QgsEditorWidgetWrapper):
         if isinstance(editor, PlotStyleWidget):
             self.mEditorWidget = editor
             self.mEditorWidget.sigPlotStyleChanged.connect(self.onValueChanged)
-            s = ""
+
         if isinstance(editor, PlotStyleButton):
             self.mEditorButton = editor
             self.mEditorButton.sigPlotStyleChanged.connect(self.onValueChanged)
@@ -1393,7 +1394,6 @@ class PlotStyleEditorWidgetWrapper(QgsEditorWidgetWrapper):
         # log(' onValueChangedFORM')
 
         self.valueChanged.emit(self.value())
-        s = ""
 
     def valid(self, *args, **kwargs) -> bool:
         return any([isinstance(w, QWidget) for w in [self.mLabel, self.mEditorButton, self.mEditorWidget]])
@@ -1453,7 +1453,6 @@ class PlotStyleEditorWidgetFactory(QgsEditorWidgetFactory):
 
         super(PlotStyleEditorWidgetFactory, self).__init__(name)
         self._wrappers = []
-        s = ""
 
     def configWidget(self, vl: QgsVectorLayer, fieldIdx: int, parent=QWidget) -> QgsEditorConfigWidget:
         # print('configWidget()')
@@ -1495,8 +1494,7 @@ class PlotStyleEditorWidgetFactory(QgsEditorWidgetFactory):
         return super(PlotStyleEditorWidgetFactory, self).createSearchWidget(vl, fieldIdx, parent)
 
     def writeConfig(self, config, configElement, doc, layer, fieldIdx):
-
-        s = ""
+        pass
 
     def readConfig(self, configElement, layer, fieldIdx):
 

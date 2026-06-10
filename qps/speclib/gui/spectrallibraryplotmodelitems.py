@@ -31,7 +31,7 @@ import numpy as np
 
 from qgis.PyQt.QtCore import QAbstractItemModel, QMimeData, QModelIndex, QSize, Qt
 from qgis.PyQt.QtCore import QObject, pyqtSignal
-from qgis.PyQt.QtGui import QColor, QIcon, QPen, QPixmap, QStandardItem, QStandardItemModel
+from qgis.PyQt.QtGui import QColor, QIcon, QPixmap, QStandardItem, QStandardItemModel
 from qgis.PyQt.QtWidgets import QCheckBox, QComboBox, QDoubleSpinBox, QHBoxLayout, QLineEdit, QMenu, QSizePolicy, \
     QSpinBox, QWidget
 from qgis.PyQt.QtXml import QDomDocument, QDomElement
@@ -366,7 +366,7 @@ class PropertyItemGroup(PropertyItemBase):
         return self.mProject
 
     def __eq__(self, other):
-        s = ""
+
         if not (isinstance(other, PropertyItemGroup) and self.__class__.__name__ == other.__class__.__name__):
             return False
 
@@ -496,7 +496,7 @@ class PropertyItemGroup(PropertyItemBase):
                 raise AssertionError
 
         md = QMimeData()
-        context = QgsReadWriteContext()
+        # context = QgsReadWriteContext()
         doc = QDomDocument()
         root = doc.createElement('PropertyItemGroups')
         doc.appendChild(root)
@@ -505,7 +505,7 @@ class PropertyItemGroup(PropertyItemBase):
                 data = grp.asMap()
                 node = doc.createElement('PropertyItemGroup')
                 node.setAttribute('type', grp.__class__.__name__)
-                tn = doc.createTextNode(json.dumps(data))
+                tn = doc.createTextNode(json.dumps(data, ensure_ascii=False))
                 node.appendChild(tn)
                 root.appendChild(node)
         md.setData(PropertyItemGroup.MIME_TYPE, doc.toByteArray())
@@ -514,7 +514,7 @@ class PropertyItemGroup(PropertyItemBase):
     @staticmethod
     def fromMimeData(mimeData: QMimeData) -> List['ProfileVisualizationGroup']:
 
-        context = QgsReadWriteContext()
+        # context = QgsReadWriteContext()
 
         groups = []
         if mimeData.hasFormat(PropertyItemGroup.MIME_TYPE):
@@ -539,9 +539,7 @@ class PropertyItemGroup(PropertyItemBase):
                         if grp:
                             groups.append(grp)
                         else:
-                            s = ""
-                        s = ""
-
+                            pass
                     grpNode = grpNode.nextSibling()
         return groups
 
@@ -782,7 +780,6 @@ class GeneralSettingsGroup(PropertyItemGroup):
         if isinstance(model, SpectralProfilePlotModel):
             model.mDefaultSymbolRenderer.symbol().setColor(style.foregroundColor)
 
-            b = False
             for vis in model.visualizations():
                 vis.setPlotWidgetStyle(style)
         self.emitDataChanged()
@@ -1567,9 +1564,6 @@ class RasterRendererGroup(PropertyItemGroup):
 
             if isinstance(layer, QgsRasterLayer):
                 editor.setLayer(layer)
-                for i in range(editor.count()):
-                    s = ""
-        s = ""
 
     def setModelData(self, editor: QWidget, model: QAbstractItemModel, index: QModelIndex):
 
@@ -1669,7 +1663,6 @@ class RasterRendererGroup(PropertyItemGroup):
             for bar in self.bandPlotItems():
                 if bar not in pw.items():
                     pw.addItem(bar)
-                    s = ""
 
     def disconnectGroup(self):
         pw = self.plotWidget()
@@ -1819,13 +1812,13 @@ class RasterRendererGroup(PropertyItemGroup):
         if renderer.alphaBand() > 0:
             bandA = renderer.alphaBand()
 
-        is_rgb = False
+        # is_rgb = False
         if isinstance(renderer, QgsMultiBandColorRenderer):
             # rendererName = 'Multi Band Color'
             bandR = renderer.redBand()
             bandG = renderer.greenBand()
             bandB = renderer.blueBand()
-            is_rgb = True
+            # is_rgb = True
         elif isinstance(renderer, (QgsSingleBandGrayRenderer,
                                    QgsPalettedRasterRenderer,
                                    QgsHillshadeRenderer,
@@ -1842,7 +1835,7 @@ class RasterRendererGroup(PropertyItemGroup):
             elif hasattr(renderer, 'grayBand'):
                 bandR = renderer.grayBand()
 
-        emptyPen = QPen()
+        # emptyPen = QPen()
 
         self.mItemRenderer.setText(rendererName)
 
@@ -2127,16 +2120,11 @@ class ProfileVisualizationGroup(PropertyItemGroup):
             data[PythonCodeDialog.VALKEY_PREVIEW_TOOLTIP] = f"Results:\n{'<br>'.join(results)}"
             pass
 
-        # 2. run expression on feature data
-
-        s = ""
-
     def fromMap(self, data: dict):
 
         self.setLayerField(data.get('field', None))
         if name := data.get('name', None):
             self.setText(name)
-        s = ""
 
     def asMap(self) -> dict:
 

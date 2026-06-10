@@ -16,6 +16,7 @@ from qgis.core import QgsExpressionContext, QgsFeature, QgsField, QgsFields, Qgs
     QgsPointXY, QgsProcessingFeedback, QgsPropertyTransformer, QgsVectorLayer
 from . import create_profile_field, profile_fields
 from .. import EMPTY_VALUES
+from ...utils import stringFromByteArray
 
 # The values that describe a spectral profiles
 # y in 1st position ot show profile values in string representations first
@@ -297,18 +298,16 @@ def decodeProfileValueDict(dump: Union[QByteArray, str, dict], numpy_arrays: boo
     if isinstance(dump, bytes):
         dump = QByteArray(dump)
     if isinstance(dump, QByteArray):
+        # json_str = stringFromByteArray(dump)
         if dump.count() > 0 and dump.at(0) == b'{':
             jsonDoc = QJsonDocument.fromJson(dump)
         else:
             jsonDoc = QJsonDocument.fromBinaryData(dump)
-        if jsonDoc.isNull():
-            try:
-                dump = pickle.loads(dump)
 
-            except EOFError as ex:
-                pass
-            except pickle.UnpicklingError as ex:
-                pass
+        if jsonDoc.isNull():
+            dump = stringFromByteArray(dump)
+        else:
+            dump = jsonDoc.toVariant()
 
     if isinstance(dump, str):
         try:
@@ -415,7 +414,7 @@ def groupBySpectralProperties(features: Union[QgsVectorLayer, List[QgsFeature]],
             d = decodeProfileValueDict(dump)
             if len(d) > 0:
                 key = spectralSettingsDict(d, bbl=bbl, fwhm=fwhm)
-                key = json.dumps(key, indent=0, sort_keys=True)
+                key = json.dumps(key, ensure_ascii=False, indent=0, sort_keys=True)
                 if mode == 'features':
                     results[key] = results.get(key, []) + [f]
                 elif mode == 'data':

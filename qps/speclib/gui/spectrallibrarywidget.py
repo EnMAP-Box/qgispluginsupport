@@ -18,7 +18,7 @@ from .spectrallibraryplotwidget import SpectralLibraryPlotWidget
 from .spectralprocessingdialog import SpectralProcessingDialog
 from .spectralprofilefieldmodel import SpectralProfileFieldActivatorDialog
 from .spectralprofileplotmodel import SpectralProfilePlotModel
-from ..core import is_spectral_library, profile_field_names
+from ..core import is_spectral_library
 from ..core.spectrallibrary import SpectralLibraryUtils
 from ..processing.exportspectralprofiles import ExportSpectralProfiles
 from ..processing.extractspectralprofiles import ExtractSpectralProfiles
@@ -335,7 +335,7 @@ class SpectralLibraryWidget(QWidget):
                 if not lyr.isEditable():
                     lyr.startEditing()
 
-                profile_fields_before = profile_field_names(lyr)
+                # profile_fields_before = profile_field_names(lyr)
                 dialog = SpectralProcessingDialog(
                     speclib=lyr,
                     algorithmId=algorithmId,
@@ -358,7 +358,7 @@ class SpectralLibraryWidget(QWidget):
 
     def createProfileVisualization(self, layer, field=None):
 
-        vis = self.mSpeclibPlotWidget.createProfileVisualization(layer_id=layer, field_name=field)
+        self.mSpeclibPlotWidget.createProfileVisualization(layer_id=layer, field_name=field)
         # m = self.plotModel()
         # vis = ProfileVisualizationGroup()
         # vis.setProject(self.project())

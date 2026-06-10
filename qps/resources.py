@@ -299,7 +299,6 @@ def initResourceFile(path: Union[str, Path]):
         # spec.loader.exec_module(rcModule)
         # rcModule.qInitResources()
         rcModule.qInitResources()
-        s = ""
 
     except Exception as ex:
         print(ex, file=sys.stderr)
@@ -568,7 +567,7 @@ def showResources() -> ResourceBrowser:
     """
     needQApp = not isinstance(QApplication.instance(), QApplication)
     if needQApp:
-        app = QApplication([])
+        _ = QApplication([])
     browser = ResourceBrowser()
     browser.show()
     if needQApp:

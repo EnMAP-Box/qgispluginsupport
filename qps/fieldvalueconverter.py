@@ -92,8 +92,8 @@ def collect_native_types() -> Dict[str, List[QgsVectorDataProvider.NativeType]]:
             __NATIVE_TYPES[drvName] = dp.nativeTypes()
 
             del vl
-            r = gdal.Unlink(tmpPath.as_posix())
-            s = ""
+            _ = gdal.Unlink(tmpPath.as_posix())
+
         # add in-memory vector types
 
         vl = QgsVectorLayer("point?crs=epsg:4326&field=id:integer", "Scratch point layer", "memory")
@@ -151,9 +151,8 @@ class GenericPropertyTransformer(QgsPropertyTransformer):
                 data = json.loads(value)
                 if isinstance(data, dict):
                     return data
-                else:
-                    s = ""
-            except Exception as ex:
+
+            except Exception:
                 return None
         else:
             return None
@@ -196,7 +195,7 @@ class GenericPropertyTransformer(QgsPropertyTransformer):
         if isinstance(v, str):
             return v
         elif isinstance(v, (list, dict)):
-            return json.dumps(v)
+            return json.dumps(v, ensure_ascii=False)
         else:
             return str(v)
 
@@ -258,8 +257,8 @@ class GenericFieldValueConverter(QgsVectorFileWriter.FieldValueConverter):
             fSrc: QgsField
             fDst: QgsField
 
-            idxSrc = self.mSrcFields.lookupField(fSrc.name())
-            idxDst = self.mDstFields.lookupField(fDst.name())
+            _ = self.mSrcFields.lookupField(fSrc.name())
+            _ = self.mDstFields.lookupField(fDst.name())
 
             func = self.conversionFunction(fDst, fSrc)
 
@@ -269,7 +268,7 @@ class GenericFieldValueConverter(QgsVectorFileWriter.FieldValueConverter):
         if is_profile_field(fSrc):
             if fDst.type() in [QMetaType.QVariantMap, QMetaType.QString]:
                 return lambda value, f=fDst: self.convertProfileField(value, f)
-            s = ""
+
         elif fDst.type() == QMetaType.QString:
             if fDst.typeName() == 'JSON':
                 return lambda value: GenericPropertyTransformer.toJson(value)
@@ -299,7 +298,7 @@ class GenericFieldValueConverter(QgsVectorFileWriter.FieldValueConverter):
         if targetDriver not in NATIVE_TYPES:
             warnings.warn(f'Unknown native types for driver: {targetDriver}')
             return QgsFields(srcFields)
-        md = QgsVectorFileWriter.MetaData()
+        _ = QgsVectorFileWriter.MetaData()
 
         native_types = NATIVE_TYPES[targetDriver]
 
@@ -422,4 +421,3 @@ class GenericRemappingSinkDefinition(QgsRemappingSinkDefinition):
             transformer = GenericFieldValueConverter()
             property.setTransformer(GenericFieldValueConverter)
             self.mFieldMappropertyMap[dstField] = property
-        s = ""

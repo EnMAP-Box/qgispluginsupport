@@ -326,7 +326,6 @@ class ProcessingToolsTest(TestCase):
             self.assertIsInstance(lyr, QgsVectorLayer)
             self.assertTrue(is_spectral_library(lyr))
             self.assertGreater(lyr.featureCount(), 0)
-        s = ""
 
     @unittest.skipIf(TestCase.runsInCI(), 'blocking dialog')
     def test_spectralprofile_export_dialog(self):
@@ -359,7 +358,6 @@ class ProcessingToolsTest(TestCase):
             self.assertIsInstance(lyr, QgsVectorLayer)
             self.assertTrue(is_spectral_library(lyr))
             self.assertGreater(lyr.featureCount(), 0)
-        s = ""
 
     def test_spectralprofile_import(self):
 

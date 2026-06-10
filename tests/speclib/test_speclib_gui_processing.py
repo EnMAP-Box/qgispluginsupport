@@ -10,13 +10,11 @@ from qgis.core import QgsApplication, QgsProcessingAlgorithm, QgsProcessingConte
     QgsProcessingOutputRasterLayer, QgsProcessingRegistry, QgsProject, \
     QgsVectorLayer, edit, QgsProcessingException
 from qgis.core import (QgsProcessingParameterRasterLayer,
-                       QgsProcessingParameterNumber, QgsRasterFileWriter,
-                       QgsProcessingParameterRasterDestination)
+                       QgsProcessingParameterNumber, QgsProcessingParameterRasterDestination)
 from qgis.gui import QgsProcessingAlgorithmDialogBase, QgsProcessingContextGenerator, \
     QgsProcessingGui, QgsProcessingParameterWidgetContext
 from qps import initAll
 from qps.qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
-from qps.speclib.core import profile_field_list
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
 from qps.speclib.gui.spectralprocessingdialog import SpectralProcessingDialog, \
     SpectralProcessingRasterLayerWidgetWrapper
@@ -77,8 +75,6 @@ class ExampleRasterProcessing(QgsProcessingAlgorithm):
         )
 
         self.addParameter(p)
-
-        s = ""
 
     def processAlgorithm(self, parameters, context, feedback):
 
@@ -243,8 +239,9 @@ class SpectralProcessingTests(TestCase):
     def test_example_algo(self):
 
         alg = ExampleRasterProcessing()
+
         # alg.initAlgorithm({})
-        ext_ref = QgsRasterFileWriter.supportedFormatExtensions()
+        # ext_ref = QgsRasterFileWriter.supportedFormatExtensions()
 
         # ext0 = alg.parameterDefinitions()[-1].supportedOutputRasterLayerExtensions()
         def ext(a: QgsProcessingAlgorithm):
@@ -253,13 +250,13 @@ class SpectralProcessingTests(TestCase):
                 return p.supportedOutputRasterLayerExtensions()
             return None
 
-        a1 = alg.createInstance()
+        # a1 = alg.createInstance()
         a2 = alg.create({})
-        e0 = ext(alg)
-        e1 = ext(a1)
-        e2 = ext(a2)
+        # e0 = ext(alg)
+        # e1 = ext(a1)
+        # e2 = ext(a2)
         a2.initAlgorithm({})
-        e2b = ext(a2)
+        # e2b = ext(a2)
 
         aid = alg.id()
 
@@ -267,13 +264,12 @@ class SpectralProcessingTests(TestCase):
 
         provider = ExampleAlgorithmProvider.instance()
         provider.addAlgorithm(alg)
-        e0b = ext(alg)
+        # e0b = ext(alg)
 
         a3 = provider.algorithm(aid)
-        e3 = ext(a3)
+        # e3 = ext(a3)
         a3.initAlgorithm({})
-        e3b = ext(a3)
-        s = ""
+        # e3b = ext(a3)
 
     def test_resampling(self):
 
@@ -283,7 +279,6 @@ class SpectralProcessingTests(TestCase):
 
         algorithmId = [a.id() for a in provider.algorithms()
                        if a.id().endswith('examplerasterprocessing')][0]
-        s = ""
 
         speclib = TestObjects.createSpectralLibrary(2)
 
@@ -295,8 +290,8 @@ class SpectralProcessingTests(TestCase):
             spd.runAlgorithm(fail_fast=True)
             # slw.showSpectralProcessingWidget(algorithmId=algorithmId)
             # wrapper = spd.processingModelWrapper()
-            s = ""
-            feedback = spd.processingFeedback()
+
+            # feedback = spd.processingFeedback()
 
             self.showGui([spd, slw])
 
@@ -315,7 +310,6 @@ class SpectralProcessingTests(TestCase):
         provider = ExampleAlgorithmProvider.instance()
         provider.addAlgorithm(AlgorithmLogging(logs))
         algorithmId = provider.algorithms()[0].id()
-        s = ""
 
         speclib = TestObjects.createSpectralLibrary(2)
 
@@ -327,7 +321,7 @@ class SpectralProcessingTests(TestCase):
             spd.runAlgorithm(fail_fast=True)
             # slw.showSpectralProcessingWidget(algorithmId=algorithmId)
             # wrapper = spd.processingModelWrapper()
-            s = ""
+
             feedback = spd.processingFeedback()
             html = feedback.htmlLog()
             for funcName, value in logs.items():
@@ -352,8 +346,9 @@ class SpectralProcessingTests(TestCase):
         # procw.setSpeclib(speclib)
         reg: QgsProcessingRegistry = QgsApplication.instance().processingRegistry()
         alg1 = reg.algorithmById('gdal:rearrange_bands')
+        self.assertIsInstance(alg1, QgsProcessingAlgorithm)
         alg2 = reg.algorithmById('native:rescaleraster')
-
+        self.assertIsInstance(alg2, QgsProcessingAlgorithm)
         procw.setAlgorithm(alg2)
         self.showGui(procw)
 
@@ -368,19 +363,21 @@ class SpectralProcessingTests(TestCase):
         speclib: QgsVectorLayer
 
         slw = SpectralLibraryWidget(speclib=speclib)
-        pFields = profile_field_list(speclib)
+        # pFields = profile_field_list(speclib)
 
         speclib.startEditing()
         procw = SpectralProcessingDialog()
         procw.setSpeclib(speclib)
         reg: QgsProcessingRegistry = QgsApplication.instance().processingRegistry()
         alg1 = reg.algorithmById('gdal:rearrange_bands')
+        self.assertIsInstance(alg1, QgsProcessingAlgorithm)
         alg2 = reg.algorithmById('native:rescaleraster')
+
         procw.setAlgorithm(alg2)
         wrapper = procw.processingModelWrapper()
         cbInputField = wrapper.parameterWidget('INPUT')
         cbInputField.setCurrentIndex(1)
-        currentInputFieldName = cbInputField.currentText()
+        _ = cbInputField.currentText()
 
         cb2 = wrapper.outputWidget('OUTPUT')
         cb2.setCurrentText('newfield')

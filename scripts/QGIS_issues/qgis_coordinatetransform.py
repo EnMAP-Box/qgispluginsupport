@@ -23,7 +23,7 @@ transform.transformCoords(1, ([12.0, ], [52.0, ], [0.0, ]))
 
 
 # How can I transform multiple coordinates with one call?
-# from QGIS API docs: https://qgis.org/pyqgis/master/core/QgsCoordinateTransform.html#qgis.core.QgsCoordinateTransform.transformCoords
+# from QGIS API docs: https://qgis.org/pyqgis/master/core/QgsCoordinateTransform.html#qgis.core.QgsCoordinateTransform.transformCoords  # noqa: E501
 """
 transformCoords(self,
                 numPoint: int,

@@ -12,7 +12,7 @@ class TestCasesVectorLayerTools(TestCase):
         lyr0 = TestObjects.createVectorLayer()
         lyr = TestObjects.createVectorLayer()
 
-        f0 = lyr0.getFeature(0)
+        _ = lyr0.getFeature(0)
         tools = VectorLayerTools()
 
         self.cntEdits = 0

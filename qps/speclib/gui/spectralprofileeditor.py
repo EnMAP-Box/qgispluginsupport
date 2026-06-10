@@ -244,7 +244,10 @@ class InlineListEncoder(JSONEncoder):
         if isinstance(obj, dict):
             items = []
             for k, v in obj.items():
-                key = json.dumps(k)
+                key = json.dumps(k,
+                                 ensure_ascii=self.ensure_ascii,
+                                 allow_nan=self.allow_nan,
+                                 separators=(self.item_separator, self.key_separator))
                 indent = ' ' * self.indent
                 if isinstance(v, list):
                     value = json.dumps(v,
@@ -505,7 +508,6 @@ class SpectralProfileEditorWidget(QGroupBox):
         self._vbox = vbox
         self.setLayout(vbox)
         self.setViewMode(self.VIEW_JSON_EDITOR)
-        s = ""
 
     def setReadOnly(self, read_only: bool):
         """
@@ -627,7 +629,7 @@ class SpectralProfileEditorWidget(QGroupBox):
 
         if isinstance(self.mCurrentWidget,
                       (SpectralProfileJsonEditor, SpectralProfileTableEditor, SpectralProfilePlotWidget)):
-            with SignalBlocker(self.mCurrentWidget) as blocker:
+            with SignalBlocker(self.mCurrentWidget) as _:
                 self.mCurrentWidget.setProfile(self.mCurrentProfile)
 
         # w = self.stackedWidget.currentWidget()

@@ -197,7 +197,6 @@ class EcoSISSpectralLibraryReader(SpectralProfileFileReader):
 
         del csvLyr
         return profiles
-        s = ""
 
     def loadCSVLayer(self, **kwargs) -> QgsVectorLayer:
         cLat = cLon = None

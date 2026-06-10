@@ -11,8 +11,8 @@ import numpy as np
 from osgeo import gdal, ogr
 
 from qgis.PyQt.QtCore import QMetaType
-from qgis.core import Qgis, QgsCoordinateReferenceSystem, QgsFeature, QgsField, QgsFields, QgsGeometry, QgsVectorLayer, \
-    QgsWkbTypes
+from qgis.core import (Qgis, QgsCoordinateReferenceSystem,
+                       QgsFeature, QgsField, QgsFields, QgsGeometry, QgsVectorLayer, QgsWkbTypes)
 from qps.speclib.core import create_profile_field
 from qps.testing import start_app, TestCase, TestObjects
 
