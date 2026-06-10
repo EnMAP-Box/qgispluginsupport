@@ -23,7 +23,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
-          python-version: 3.9
+          python-version: 3.12
       - name: Run flake8
         uses: julianwachholz/flake8-action@v2
         with:
@@ -32,3 +32,9 @@ jobs:
           config: tox.ini
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Run bandit
+        uses: PyCQA/bandit-action@v1
+        with:
+          ini: tox.ini
+          targets: "."
+          python-version: 3.12
