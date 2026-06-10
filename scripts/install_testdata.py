@@ -24,7 +24,7 @@ def install_zipfile(url: str,
 
     print('Download {} \nto {}'.format(url, localPath))
 
-    response = requests.get(url, stream=True)
+    response = requests.get(url, stream=True, timeout=30)
 
     z = zipfile.ZipFile(io.BytesIO(response.content))
     os.makedirs(localPath, exist_ok=True)

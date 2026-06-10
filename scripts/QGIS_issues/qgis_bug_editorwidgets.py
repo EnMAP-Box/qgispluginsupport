@@ -1,7 +1,8 @@
 import os
 import pathlib
 import re
-import xml.etree.ElementTree as ElementTree
+
+import defusedxml.ElementTree as ET
 
 from qgis.core import QgsMapLayer, QgsVectorLayerExporter, QgsVectorLayer, QgsEditorWidgetSetup
 from qgis.gui import QgsEditorWidgetFactory, QgsEditorConfigWidget, QgsGui
@@ -58,14 +59,14 @@ class TestQgsRangeWidgetSetup(TestCase):
         # check QML
         self.assertTrue(path_qml.is_file(), msg=f'{path_qml} has not been written')
 
-        tree = ElementTree.parse(path_qml)
+        tree = ET.parse(path_qml)
         root = tree.getroot()
         nodeMax = root.find(
             'fieldConfiguration/field[@name="number"]/editWidget[@type="range"]/config/Option/Option[@name="Max"]')
         nodeMin = root.find(
             'fieldConfiguration/field[@name="number"]/editWidget[@type="range"]/config/Option/Option[@name="Min"]')
-        self.assertIsInstance(nodeMax, ElementTree.Element)
-        self.assertIsInstance(nodeMin, ElementTree.Element)
+        self.assertIsInstance(nodeMax, ET.Element)
+        self.assertIsInstance(nodeMin, ET.Element)
         self.assertEqual(int(nodeMax.attrib['value']), 256)
         self.assertEqual(int(nodeMin.attrib['value']), 1)
 

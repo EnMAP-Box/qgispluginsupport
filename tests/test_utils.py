@@ -19,7 +19,7 @@ import random
 import re
 import unittest
 import warnings
-import xml.etree.ElementTree as ET
+import defusedxml.ElementTree as ET  # nosec B405 - defusedxml used to safely parse XML
 from math import nan
 from typing import Dict
 

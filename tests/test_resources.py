@@ -1,13 +1,17 @@
 import pathlib
 import unittest
-import xml.etree.ElementTree as ET
 
+import defusedxml.ElementTree as ET
+
+from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QWidget
 from qps import QPS_RESOURCE_FILE
+from qps import initResources
 from qps.resources import ResourceBrowser, ResourceTableModel, scanResources
 from qps.testing import start_app, TestCase
 
 start_app()
+initResources()
 
 
 class ResourceTests(TestCase):
@@ -32,8 +36,6 @@ class ResourceTests(TestCase):
 
     @unittest.skipIf(not QPS_RESOURCE_FILE.is_file(), '{} does not exist'.format(QPS_RESOURCE_FILE))
     def test_rc(self):
-        from qgis.PyQt.QtWidgets import QWidget
-        from qgis.PyQt.QtGui import QIcon
 
         r = ':/qps/ui/icons/speclib.svg'
         self.assertIsInstance(r, str)

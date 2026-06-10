@@ -34,7 +34,7 @@ def file_writer(path: Union[str, Path], **kwds) -> Optional[SpectralProfileFileW
         if writer.canWriteFile(path):
             try:
                 return writer(path, **kwds)
-            except Exception:
+            except Exception:  # nosec: B112
                 continue
     return None
 
