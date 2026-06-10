@@ -32,7 +32,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        mamba_env: [ qps_latest, qps_ltr, qps_minimum ]
+        conda_env: [ qps_latest, qps_ltr, qps_minimum ]
       # python_version : [3.9, 3.10, 3.11]
       # mamba_env: [enmapbox_light_latest, enmapbox_light_longterm, enmapbox_full_latest, enmapbox_full_longterm]
     steps:
@@ -47,19 +47,19 @@ jobs:
 
       - name: Conda environment file
         run: |
-          echo "conda environment file: ${{matrix.mamba_env}}.yml"
-          cat .conda/${{matrix.mamba_env}}.yml
+          echo "conda environment file: ${{matrix.conda_env}}.yml"
+          cat .conda/${{matrix.conda_env}}.yml
 
       - name: Setup Mambaforge
-        uses: conda-incubator/setup-miniconda@v3
+        uses: conda-incubator/setup-miniconda@v4
         with:
           # miniforge-variant: Mambaforge
           # miniforge-version: latest
           # mamba-version: "*"
           channels: conda-forge,defaults
           channel-priority: true
-          activate-environment: ${{matrix.mamba_env}}
-          environment-file: .conda/${{matrix.mamba_env}}.yml
+          activate-environment: ${{matrix.conda_env}}
+          environment-file: .conda/${{matrix.conda_env}}.yml
           clean-patched-environment-file: false
           # use-mamba: false
           # auto-activate-base: false
