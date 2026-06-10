@@ -2,6 +2,7 @@
 set QT_QPA_PLATFORM=offscreen
 set CI=True
 set QGIS_CONTINUOUS_INTEGRATION_RUN=true
+set PYQTGRAPH_QT_LIB=PyQt5
 rmdir /s /q test-outputs
 rmdir /s /q test-reports
 pytest --no-cov-on-fail --cov-config=.coveragec %*

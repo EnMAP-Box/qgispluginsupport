@@ -20,6 +20,9 @@ import json
 import os
 import unittest
 
+from pyqtgraph import mkBrush
+from pyqtgraph.graphicsItems.ScatterPlotItem import Symbols as pgSymbols
+
 from qgis.PyQt.QtCore import QByteArray, QDataStream, QIODevice, QSize, Qt, QMetaType
 from qgis.PyQt.QtGui import QColor, QPen
 from qgis.PyQt.QtWidgets import QCheckBox, QComboBox, QGridLayout, QHBoxLayout, QLabel, QVBoxLayout, QWidget
@@ -32,8 +35,6 @@ from qps.plotstyling.plotstyling import (
     createSetPlotStyleAction, list2pen, MarkerSymbol, MarkerSymbolComboBox,
     pen2list, PlotStyle, PlotStyleButton, PlotStyleEditorConfigWidget, PlotStyleEditorWidgetFactory,
     plotStyleEditorWidgetFactory, PlotStyleEditorWidgetWrapper, PlotStyleWidget, PlotWidgetStyle, XMLTAG_PLOTSTYLENODE)
-from qps.pyqtgraph.pyqtgraph import mkBrush
-from qps.pyqtgraph.pyqtgraph.graphicsItems.ScatterPlotItem import Symbols as pgSymbols
 from qps.testing import start_app, TestCase
 
 start_app()

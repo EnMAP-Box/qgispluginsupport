@@ -33,6 +33,9 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
+import pyqtgraph as pg
+from pyqtgraph import mkBrush, mkPen
+from pyqtgraph.graphicsItems.ScatterPlotItem import drawSymbol, renderSymbol
 
 from qgis.PyQt.QtCore import pyqtSignal, QByteArray, QDataStream, QIODevice, QMimeData, QObject, QSize, Qt, QMetaType
 from qgis.PyQt.QtGui import QBrush, QClipboard, QColor, QIcon, QPainter, QPainterPath, QPen, QPixmap
@@ -42,9 +45,6 @@ from qgis.PyQt.QtXml import QDomDocument, QDomElement
 from qgis.core import QgsAction, QgsField, QgsMessageLog, QgsSymbolLayerUtils, QgsVectorLayer
 from qgis.gui import QgsColorButton, QgsDialog, QgsEditorConfigWidget, QgsEditorWidgetFactory, QgsEditorWidgetWrapper, \
     QgsGui, QgsPenStyleComboBox, QgsSearchWidgetWrapper
-from ..pyqtgraph import pyqtgraph as pg
-from ..pyqtgraph.pyqtgraph import mkBrush, mkPen
-from ..pyqtgraph.pyqtgraph.graphicsItems.ScatterPlotItem import drawSymbol, renderSymbol
 from ..utils import findMapLayer, loadUi, SignalBlocker
 
 DEBUG = False

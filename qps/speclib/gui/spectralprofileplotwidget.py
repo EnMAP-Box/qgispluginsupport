@@ -1,8 +1,8 @@
-from qgis.PyQt.QtGui import QPalette, QPen
+from pyqtgraph import PlotWidget
 
+from qgis.PyQt.QtGui import QPalette, QPen
 from .spectrallibraryplotitems import SpectralProfilePlotItem, SpectralProfilePlotDataItem
 from ...plotstyling.plotstyling import PlotStyle
-from ...pyqtgraph.pyqtgraph import PlotWidget
 
 
 class SpectralProfilePlotWidget(PlotWidget):

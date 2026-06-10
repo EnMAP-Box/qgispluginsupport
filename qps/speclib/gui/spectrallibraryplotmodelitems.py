@@ -28,6 +28,8 @@ import sys
 from typing import Any, List, Optional, Union
 
 import numpy as np
+from pyqtgraph import InfiniteLine, PlotDataItem
+from pyqtgraph.widgets.PlotWidget import PlotWidget
 
 from qgis.PyQt.QtCore import QAbstractItemModel, QMimeData, QModelIndex, QSize, Qt
 from qgis.PyQt.QtCore import QObject, pyqtSignal
@@ -48,8 +50,6 @@ from ..core.spectralprofile import decodeProfileValueDict
 from ...editors.pythoncodeeditor import PythonCodeWidget, PythonCodeDialog
 from ...layerfielddialog import LayerFieldWidget
 from ...plotstyling.plotstyling import PlotStyle, PlotStyleButton, PlotWidgetStyle, PlotStyleWidget
-from ...pyqtgraph.pyqtgraph import InfiniteLine, PlotDataItem
-from ...pyqtgraph.pyqtgraph.widgets.PlotWidget import PlotWidget
 from ...qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from ...unitmodel import BAND_INDEX, BAND_NUMBER, UnitConverterFunctionModel
 from ...utils import featureSymbolScope

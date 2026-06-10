@@ -9,6 +9,7 @@ dependencies:
   - qgis=3.44
   - pip
   - matplotlib
+  - pyqtgraph
 
   # Development
   - bandit

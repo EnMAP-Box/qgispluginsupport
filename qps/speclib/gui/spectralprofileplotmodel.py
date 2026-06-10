@@ -8,6 +8,9 @@ import warnings
 from typing import Dict, Iterator, List, Optional, Set, Tuple, Union
 
 import numpy as np
+from pyqtgraph import (LegendItem, mkBrush, mkPen, PlotCurveItem, PlotDataItem, ScatterPlotItem,
+                       SpotItem, FillBetweenItem, SignalProxy)
+from pyqtgraph.GraphicsScene.mouseEvents import HoverEvent, MouseClickEvent
 
 from qgis.PyQt.QtCore import QRectF
 from qgis.PyQt.QtCore import pyqtSignal, QMimeData, QModelIndex, QSortFilterProxyModel, Qt
@@ -28,9 +31,6 @@ from ..gui.spectrallibraryplotmodelitems import GeneralSettingsGroup, ProfileCol
 from ..gui.spectrallibraryplotunitmodels import SpectralProfilePlotXAxisUnitModel
 from ..gui.spectralprofilefieldmodel import SpectralProfileFieldListModel
 from ...plotstyling.plotstyling import PlotStyle
-from ...pyqtgraph.pyqtgraph import (LegendItem, mkBrush, mkPen, PlotCurveItem, PlotDataItem, ScatterPlotItem,
-                                    SpotItem, FillBetweenItem, SignalProxy)
-from ...pyqtgraph.pyqtgraph.GraphicsScene.mouseEvents import HoverEvent, MouseClickEvent
 from ...signalproxy import SignalProxyUndecorated
 from ...unitmodel import BAND_INDEX, BAND_NUMBER, datetime64, UnitConverterFunctionModel, UnitWrapper, UNKNOWN_UNIT
 from ...utils import convertDateUnit, xy_pair_matrix

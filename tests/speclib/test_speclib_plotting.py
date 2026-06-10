@@ -5,6 +5,7 @@ import unittest
 
 import numpy as np
 from osgeo import gdal
+from pyqtgraph import InfiniteLine
 
 from qgis.PyQt.QtCore import QEvent, QPointF, Qt, QMetaType
 from qgis.PyQt.QtGui import QColor, QMouseEvent, QPen
@@ -18,7 +19,6 @@ from qgis.core import (
 from qgis.gui import QgsMapCanvas
 from qps import DIR_REPO, initAll
 from qps.plotstyling.plotstyling import MarkerSymbol, PlotStyle
-from qps.pyqtgraph.pyqtgraph import InfiniteLine
 from qps.speclib.core import create_profile_field, profile_field_list, profile_field_names, profile_fields
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
 from qps.speclib.core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict, prepareProfileValueDict

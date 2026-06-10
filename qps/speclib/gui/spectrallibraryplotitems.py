@@ -5,6 +5,9 @@ import warnings
 from typing import Any, Generator, List, Optional, Tuple, Union
 
 import numpy as np
+import pyqtgraph as pg
+from pyqtgraph import mkBrush, mkPen
+from pyqtgraph.graphicsItems.PlotDataItem import PlotDataItem
 
 from qgis.PyQt.QtCore import QRectF
 from qgis.PyQt.QtCore import pyqtSignal, QPoint, QPointF, Qt
@@ -13,9 +16,6 @@ from qgis.PyQt.QtWidgets import QAction, QMenu, QSlider, QWidgetAction
 from qgis.PyQt.QtWidgets import QApplication
 from qgis.PyQt.QtWidgets import QGraphicsRectItem, QGraphicsSceneMouseEvent
 from ...plotstyling.plotstyling import PlotStyle, PlotWidgetStyle
-from ...pyqtgraph import pyqtgraph as pg
-from ...pyqtgraph.pyqtgraph import mkBrush, mkPen
-from ...pyqtgraph.pyqtgraph.graphicsItems.PlotDataItem import PlotDataItem
 from ...unitmodel import datetime64, UnitWrapper
 from ...utils import HashablePointF
 
