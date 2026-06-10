@@ -29,7 +29,7 @@ import enum
 import inspect
 import re
 import types
-from typing import List, Iterator, Type, Union, Tuple, Dict, Pattern
+from typing import List, Iterator, Type, Union, Tuple, Dict, Pattern, Optional
 
 import numpy as np
 
@@ -98,7 +98,7 @@ class Option(object):
     Represents an option
     """
 
-    def __init__(self, value, name=None, toolTip='', icon=QIcon()):
+    def __init__(self, value, name: Optional[str] = None, toolTip: str = '', icon: QIcon = QIcon()):
         self.mValue = value
         if name is None:
             name = str(value)
@@ -874,13 +874,13 @@ class PyObjectTreeNode(TreeNode):
                 if isinstance(k, str) and k.startswith('__'):
                     continue
                 if (
-                    isinstance(v, (types.BuiltinFunctionType,
-                                   pyqtSignal,
-                                   pyqtBoundSignal,
-                                   sip.wrappertype)
-                               )
-                    or inspect.isfunction(v)
-                    or inspect.ismethod(v)
+                        isinstance(v, (types.BuiltinFunctionType,
+                                       pyqtSignal,
+                                       pyqtBoundSignal,
+                                       sip.wrappertype)
+                                   )
+                        or inspect.isfunction(v)
+                        or inspect.ismethod(v)
                 ):
                     continue
 
@@ -1600,11 +1600,12 @@ class SettingsModel(TreeModel):
             olist2 = []
             for o in olist:
                 if isinstance(o, enum.Enum):
-                    icon = None
+
                     try:
                         icon = o.icon(o.value)
                     except Exception:
-                        pass
+                        icon = None
+
                     o = Option(value=o.value, name=o.name, toolTip=str(o), icon=icon)
                 if not isinstance(o, Option):
                     o = Option(o)

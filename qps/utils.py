@@ -2559,6 +2559,13 @@ class SpatialPoint(QgsPointXY):
         crs = spatialExtent.crs()
         return SpatialPoint(crs, spatialExtent.center())
 
+    @classmethod
+    def fromJson(cls, json_str: str):
+        d = json.loads(json_str)
+        crs = QgsCoordinateReferenceSystem(d['crs'])
+        pt = QgsPointXY(d['x'], d['y'])
+        return SpatialPoint(crs, pt)
+
     @staticmethod
     def fromPixelPosition(rasterLayer: QgsRasterLayer,
                           x: Union[int, float, QPoint, QPointF], y: Optional[Union[int, float]] = None):
@@ -2628,7 +2635,7 @@ class SpatialPoint(QgsPointXY):
 
         return QPoint(math.floor(px.x()), math.floor(px.y()))
 
-    def toPixelPosition(self, rasterDataSource, allowOutOfRaster=False) -> QPoint:
+    def toPixelPosition(self, rasterDataSource, allowOutOfRaster: bool = False) -> Optional[QPoint]:
         """
         Returns the pixel position of this SpatialPoint within the rasterDataSource
         :param rasterDataSource: gdal.Dataset
@@ -2675,6 +2682,10 @@ class SpatialPoint(QgsPointXY):
             pt = saveTransform(pt, self.mCrs, crs)
 
         return SpatialPoint(crs, pt) if pt else None
+
+    def json(self) -> str:
+        d = {'x': self.x(), 'y': self.y(), 'crs': self.crs().toWkt()}
+        return json.dumps(d)
 
     def __reduce_ex__(self, protocol):
         return self.__class__, (self.crs().toWkt(), self.x(), self.y()), {}
@@ -2993,6 +3004,14 @@ class SpatialExtent(QgsRectangle):
         return SpatialExtent(crs, min(xValues), min(yValues),
                              max(xValues), max(yValues))
 
+    @classmethod
+    def fromJson(cls, json_str: str):
+
+        d = json.loads(json_str)
+        return cls(QgsCoordinateReferenceSystem(d['crs']),
+                   d['xmin'], d['ymin'],
+                   d['xmax'], d['ymax'])
+
     @staticmethod
     def fromLayer(mapLayer: QgsMapLayer):
         extent = mapLayer.extent()
@@ -3008,6 +3027,10 @@ class SpatialExtent(QgsRectangle):
 
         super(SpatialExtent, self).__init__(*args)
         self.mCrs: QgsCoordinateReferenceSystem = crs
+
+    def json(self) -> str:
+        d = {'crs': self.crs().toWkt(), 'extent': self.asWkt()}
+        return json.dumps(d)
 
     def setCrs(self, crs: QgsCoordinateReferenceSystem):
         self.mCrs = crs

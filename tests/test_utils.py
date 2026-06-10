@@ -14,7 +14,6 @@ __copyright__ = 'Copyright 2017, Benjamin Jakimow'
 
 import os
 import pathlib
-import pickle
 import random
 import re
 import unittest
@@ -26,7 +25,7 @@ from typing import Dict
 import numpy as np
 from osgeo import gdal, gdal_array, ogr, osr
 
-from qgis.PyQt.QtCore import NULL, QByteArray, QObject, QPoint, QRect, QUrl, QVariant
+from qgis.PyQt.QtCore import NULL, QByteArray, QObject, QPoint, QRect, QUrl
 from qgis.PyQt.QtGui import QColor
 from qgis.PyQt.QtWidgets import QDialog, QDockWidget, QGroupBox, QMainWindow, QMenu, QWidget
 from qgis.PyQt.QtXml import QDomDocument, QDomElement
@@ -45,7 +44,7 @@ from qps.utils import aggregateArray, appendItemsToMenu, createQgsField, default
     ExtentTileIterator, fid2pixelindices, file_search, filenameFromString, findMapLayerStores, findParent, gdalDataset, \
     gdalFileSize, geo2px, layerGeoTransform, loadUi, MapGeometryToPixel, nextColor, nodeXmlString, optimize_block_size, \
     osrSpatialReference, parseFWHM, parseWavelength, px2geo, px2geocoordinates, px2spatialPoint, qgsField, \
-    qgsFieldAttributes2List, qgsRasterLayer, qgsRasterLayers, rasterArray, rasterBlockArray, rasterizeFeatures, \
+    qgsRasterLayer, qgsRasterLayers, rasterArray, rasterBlockArray, rasterizeFeatures, \
     relativePath, SelectMapLayerDialog, SelectMapLayersDialog, snapGeoCoordinates, SpatialExtent, SpatialPoint, \
     spatialPoint2px, value2str, writeAsVectorFormat, create_picture_viewer_config, xy_pair_matrix, featureSymbolScope, \
     TemporaryGlobalLayerContext
@@ -170,26 +169,6 @@ class TestUtils(TestCase):
                 size = gdalFileSize(path)
                 self.assertTrue(size > 0)
 
-    def test_qgsFieldAttributes2List(self):
-
-        bstr = b'\x80\x04\x95^\x00\x00\x00\x00\x00\x00\x00}\x94(\x8c\x01x\x94]\x94(M,\x01M' \
-               b'\x90\x01MX\x02M\xb0\x04M\xc4\te\x8c\x01y\x94]\x94(G?\xcdp\xa3\xd7\n=qG?' \
-               b'\xd9\x99\x99\x99\x99\x99\x9aG?\xd3333333G?\xe9\x99\x99\x99\x99\x99\x9aG?' \
-               b'\xe6ffffffe\x8c\x05xUnit\x94\x8c\x02nm\x94u.'
-        attributes = [None,
-                      NULL,
-                      QVariant(None),
-                      '',
-                      'None',
-                      QByteArray(bstr),
-                      bstr,
-                      bytes(bstr)
-                      ]
-
-        a2 = qgsFieldAttributes2List(attributes)
-        dump = pickle.dumps(a2, protocol=pickle.HIGHEST_PROTOCOL)
-        self.assertIsInstance(dump, bytes)
-
     def test_findParents(self):
 
         class ClassA(QObject):
@@ -309,8 +288,8 @@ class TestUtils(TestCase):
         self.assertTrue(crs.isValid())
         pt1 = SpatialPoint(wkt, 300, 300)
         self.assertIsInstance(pt1, SpatialPoint)
-        d = pickle.dumps(pt1)
-        pt2 = pickle.loads(d)
+        d = pt1.json()
+        pt2 = SpatialPoint.fromJson(d)
         self.assertEqual(pt1, pt2)
 
         doc = QDomDocument('qps')
@@ -321,8 +300,8 @@ class TestUtils(TestCase):
         self.assertEqual(pt1, pt3)
 
         ext1 = SpatialExtent(wkt, QgsPointXY(0, 0), QgsPointXY(10, 20))
-        d = pickle.dumps(ext1)
-        ext2 = pickle.loads(d)
+        d = ext1.json()
+        ext2 = SpatialExtent.fromJson(d)
         self.assertEqual(ext1, ext2)
 
         node = doc.createElement('EXTENT_NODE')

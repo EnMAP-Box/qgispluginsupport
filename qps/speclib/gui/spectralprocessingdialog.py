@@ -2,6 +2,7 @@ import datetime
 import json
 import os
 import pathlib
+import sys
 from difflib import SequenceMatcher
 from json import JSONDecodeError
 from typing import Any, Dict, List, Optional, Tuple, Union
@@ -702,7 +703,7 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
                         parameters2[k] = v
                 settings.setValue(f'{K}/algorithmParameters', json.dumps(parameters2))
             except Exception as ex:
-                pass
+                print(f'Unable to save last settings: {ex}', file=sys.stderr)
 
         self.sigAboutToBeClosed.emit()
         super().close()
@@ -883,9 +884,9 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
                                 # if necessary, change editor widget type to SpectralProfile
                                 target_field: QgsField = speclib.fields().at(target_field_index)
                                 if (
-                                    nb > 0
-                                    and can_store_spectral_profiles(target_field)
-                                    and not is_profile_field(target_field)
+                                        nb > 0
+                                        and can_store_spectral_profiles(target_field)
+                                        and not is_profile_field(target_field)
                                 ):
                                     setup = QgsEditorWidgetSetup(EDITOR_WIDGET_REGISTRY_KEY, {})
                                     speclib.setEditorWidgetSetup(target_field_index, setup)

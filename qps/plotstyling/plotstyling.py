@@ -646,6 +646,8 @@ class PlotStyle(QObject):
         """
         cb: QClipboard = QApplication.instance().clipboard()
         md = cb.mimeData()
+
+        plot_style = None
         if isinstance(md, QMimeData):
 
             try:
@@ -654,12 +656,10 @@ class PlotStyle(QObject):
                     dump = bytes(dump).decode('utf-8')
                 else:
                     dump = md.text()
-
-                return PlotStyle.fromJSON(dump)
-
+                plot_style = PlotStyle.fromJSON(dump)
             except Exception:
-                pass
-        return None
+                plot_style = None
+        return plot_style
 
     def toClipboard(self):
 

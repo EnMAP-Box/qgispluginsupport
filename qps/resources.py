@@ -190,26 +190,19 @@ def compileResourceFile(pathQrc, targetDir=None, suffix: str = '_rc.py', compres
     last_cwd = os.getcwd()
     os.chdir(cwd)
 
-    if True:
-        last_level = PyQt5.pyrcc_main.compressLevel
-        last_threshold = PyQt5.pyrcc_main.compressThreshold
+    last_level = PyQt5.pyrcc_main.compressLevel
+    last_threshold = PyQt5.pyrcc_main.compressThreshold
 
-        # increase compression level and move to *.qrc's directory
-        PyQt5.pyrcc_main.compressLevel = compressLevel
-        PyQt5.pyrcc_main.compressThreshold = compressThreshold
+    # increase compression level and move to *.qrc's directory
+    PyQt5.pyrcc_main.compressLevel = compressLevel
+    PyQt5.pyrcc_main.compressThreshold = compressThreshold
 
-        if not (PyQt5.pyrcc_main.processResourceFile([pathQrc.name], pathPy.as_posix(), False)):
-            raise AssertionError
+    if not (PyQt5.pyrcc_main.processResourceFile([pathQrc.name], pathPy.as_posix(), False)):
+        raise AssertionError
 
-        # restore previous settings
-        PyQt5.pyrcc_main.compressLevel = last_level
-        PyQt5.pyrcc_main.compressThreshold = last_threshold
-    else:
-        cmd = 'pyrcc5 -compress {} -o {} {}'.format(compressLevel, pathPy, pathQrc)
-        cmd2 = 'pyrcc5 -no-compress -o {} {}'.format(pathPy.as_posix(), pathQrc.name)
-
-        print(cmd2)
-        os.system(cmd2)  # nosec: B605
+    # restore previous settings
+    PyQt5.pyrcc_main.compressLevel = last_level
+    PyQt5.pyrcc_main.compressThreshold = last_threshold
 
     os.chdir(last_cwd)
 

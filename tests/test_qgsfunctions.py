@@ -112,14 +112,14 @@ class QgsFunctionTests(TestCase):
         self.assertEqual(exp.evalErrorString(), '', exp.evalErrorString())
 
         f1 = RasterArray()
-        self.registerFunction(f1)
+        self.assertTrue(self.registerFunction(f1))
         exp = QgsExpression(f"{f1.NAME}('myraster', $geometry)")
         self.assertTrue(exp.prepare(context), msg=exp.parserErrorString())
         v_array = exp.evaluate(context)
         self.assertTrue(exp.evalErrorString() == '', msg=exp.evalErrorString())
 
         f2 = RasterProfile()
-        self.registerFunction(f2)
+        self.assertTrue(self.registerFunction(f2))
         exp = QgsExpression(f"{f2.NAME}('myraster', $geometry, encoding:='map')")
         self.assertTrue(exp.prepare(context), msg=exp.parserErrorString())
         v_profile = exp.evaluate(context)

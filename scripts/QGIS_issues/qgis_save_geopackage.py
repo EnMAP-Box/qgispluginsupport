@@ -1,11 +1,12 @@
+import json
 import pathlib
-import pickle
 import random
 
 from qgis.PyQt.QtCore import QByteArray
 from qgis.PyQt.QtCore import QMetaType
 from qgis.core import QgsCoordinateReferenceSystem, QgsFeature, QgsField, QgsFields, QgsProcessingFeedback, QgsProject, \
     QgsVectorFileWriter, QgsWkbTypes
+from qps.utils import stringToByteArray
 
 feedback = QgsProcessingFeedback()
 
@@ -30,7 +31,7 @@ for i, n in enumerate(['A', 'B', 'C', 'D']):
     feature = QgsFeature(fields)
     feature.setAttribute('name', n)
     feature.setAttribute('num', random.randint(0, 100))  # nosec B311
-    pkl = QByteArray(pickle.dumps(dict(testdata=f'{i}:{n}')))
+    pkl = QByteArray(stringToByteArray(json.dumps(dict(testdata=f'{i}:{n}'))))
     feature.setAttribute('binary', pkl)
     features.append(feature)
 
@@ -53,3 +54,5 @@ for f in features:
     if not writer.addFeature(f):
         if writer.hasError() != QgsVectorFileWriter.NoError:
             raise Exception(f'Error when creating feature: {writer.errorMessage()}')
+print('Done')
+exit(0)

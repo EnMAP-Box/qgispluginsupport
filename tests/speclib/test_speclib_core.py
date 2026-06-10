@@ -20,7 +20,6 @@
 import datetime
 import json
 import math
-import pickle
 import re
 import unittest
 from typing import List
@@ -42,7 +41,7 @@ from qps.speclib.core.spectralprofile import decodeProfileValueDict, encodeProfi
 from qps.testing import start_app, TestCase, TestObjects
 from qps.unitmodel import BAND_NUMBER
 from qps.utils import createQgsField, FeatureReferenceIterator, findTypeFromString, qgsFields2str, SpatialExtent, \
-    SpatialPoint, str2QgsFields, toType
+    SpatialPoint, str2QgsFields, toType, stringToByteArray
 from qpstestdata import enmap, envi_sli
 
 start_app()
@@ -231,8 +230,7 @@ class SpeclibCoreTests(TestCase):
 
             'dictionary': d,
             'json dump': json.dumps(d, default=nanToNone),
-            'pickle dump': pickle.dumps(d),
-            'QByteArray from pickle dump': QByteArray(pickle.dumps(d)),
+            'QByteArray from pickle dump': stringToByteArray(json.dumps(d)),
             'QJsonDocument': QJsonDocument.fromVariant(d),
             'QJsonDocument->toJson': QJsonDocument.fromVariant(d).toJson(),
             'QJsonDocument->toBinaryData': QJsonDocument.fromVariant(d).toBinaryData(),
