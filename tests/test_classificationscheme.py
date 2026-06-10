@@ -7,7 +7,6 @@ __date__ = '2017-07-17'
 __copyright__ = 'Copyright 2017, Benjamin Jakimow'
 
 import os
-import tempfile
 import unittest
 
 from qgis.PyQt.QtCore import NULL, QMimeData, QModelIndex, QSize, Qt, QMetaType
@@ -481,28 +480,6 @@ class TestsClassificationScheme(TestCase):
         self.assertIsInstance(md, QMimeData)
 
         self.assertEqual(cs, cs2)
-
-    @unittest.skip('Not implemented')
-    def test_io_QML(self):
-
-        from qpstestdata import DIR_TESTDATA
-        pathQML = DIR_TESTDATA / 'landcover.qml'
-
-        pathTmp = tempfile.mktemp(suffix='.qml')
-
-        # read from QML
-        classScheme = ClassificationScheme.fromQml(pathQML)
-        self.assertIsInstance(classScheme, ClassificationScheme)
-        self.assertTrue(len(classScheme) > 0)
-
-        # todo: other QML specific tests
-
-        # write to QML
-        classScheme.saveToQml(pathTmp)
-
-        classScheme2 = ClassificationScheme.fromQml(pathTmp)
-        self.assertIsInstance(classScheme2, ClassificationScheme)
-        self.assertEqual(classScheme, classScheme2)
 
 
 if __name__ == "__main__":

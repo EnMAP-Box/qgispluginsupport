@@ -30,7 +30,6 @@ import json
 import os
 import pathlib
 import re
-import tempfile
 import time
 import uuid
 from pathlib import Path
@@ -486,7 +485,7 @@ class EnviSpectralLibraryReader(SpectralProfileFileReader):
                           'GDAL_VRT_RAWRASTERBAND_ALLOWED_SOURCE': 'ALL'}
 
         with GDALConfigChanges(config_changes) as cs:
-            tmpVrt = tempfile.mktemp(prefix='tmpESLVrt', suffix='.esl.vrt', dir=os.path.join(VSI_DIR, 'ENVIIO'))
+            tmpVrt = os.path.join(VSI_DIR, 'ENVIIO', f'tmpESLVrt_{uuid.uuid4()}.esl.vrt')
             try:
                 ds = esl2vrt(pathESL, tmpVrt)
             except AssertionError as ex:

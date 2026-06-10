@@ -1529,7 +1529,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
                         try:
                             line_color = QColor(line_color)
                         except Exception:
-                            pass
+                            line_color = None
 
                     if isinstance(line_color, QColor):
                         plot_style.setLineColor(line_color)
