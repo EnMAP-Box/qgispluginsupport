@@ -70,7 +70,6 @@ from qgis.core import Qgis, QgsApplication, QgsCoordinateReferenceSystem, QgsCoo
 from qgis.core import QgsExpressionContextScope, QgsExpressionContext, QgsFeatureRenderer, QgsSingleSymbolRenderer, \
     QgsMarkerSymbol, QgsExpressionContextUtils, QgsRenderContext, QgsSymbol, QgsProcessing
 from qgis.gui import QgisInterface, QgsDialog, QgsGui, QgsMapCanvas, QgsMapLayerComboBox, QgsMessageViewer
-from .qgisenums import QGIS_LAYERFILTER, QGIS_WKBTYPE
 from .qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from .unitmodel import datetime64, UnitLookup
 
@@ -148,8 +147,8 @@ def _geometryIsEmpty(g: QgsGeometry) -> bool:
 
 
 def _geometryIsSinglePoint(g: QgsGeometry) -> bool:
-    return g.wkbType() in [QGIS_WKBTYPE.Point, QGIS_WKBTYPE.PointM,
-                           QGIS_WKBTYPE.PointZM, QGIS_WKBTYPE.Point25D, QGIS_WKBTYPE.PointZ]
+    return g.wkbType() in [Qgis.WkbType.Point, Qgis.WkbType.PointM,
+                           Qgis.WkbType.PointZM, Qgis.WkbType.Point25D, Qgis.WkbType.PointZ]
 
 
 def variant_type_to_ogr_field_type(variant_type):
@@ -1971,39 +1970,6 @@ def parseFWHM(dataset) -> Optional[np.ndarray]:
     else:
         return None
 
-    try:
-        dataset = gdalDataset(dataset)
-    except Exception:
-        return None
-
-    key_positions = [('fwhm', None),
-                     ('fwhm', 'ENVI')]
-
-    if isinstance(dataset, gdal.Dataset):
-        for key, domain in key_positions:
-            values = dataset.GetMetadataItem(key, domain)
-            if isinstance(values, str):
-                values = re.sub('[{}]', '', values).strip()
-                try:
-                    values = np.fromstring(values, sep=',', count=dataset.RasterCount)
-                    if len(values) == dataset.RasterCount:
-                        return values
-                except ValueError:
-                    continue
-
-        # search band by band
-        values = []
-        for b in range(dataset.RasterCount):
-            band: gdal.Band = dataset.GetRasterBand(b + 1)
-            for key, domain in key_positions:
-                value = dataset.GetMetadataItem(key, domain)
-                if value not in ['', None]:
-                    values.append(value)
-                    break
-        if len(values) == dataset.RasterCount:
-            return np.asarray(values)
-    return None
-
 
 def checkWavelength(key: str, values: str, expected: int = 1) -> Optional[np.ndarray]:
     wl = None
@@ -3355,7 +3321,7 @@ class MapGeometryToPixel(object):
         if not isinstance(g, QgsGeometry) or _geometryIsEmpty(g):
             return None, None
 
-        if g.wkbType() == QGIS_WKBTYPE.Point and not burn_points:
+        if g.wkbType() == Qgis.WkbType.Point and not burn_points:
             g = QgsGeometry(g)
             g.mapToPixel(self.m2p)
             px_x = []
@@ -3863,7 +3829,7 @@ class SelectMapLayerDialog(QgsDialog):
 class SelectMapLayersDialog(QgsDialog):
     class LayerDescription(object):
 
-        def __init__(self, info: str, filters: QGIS_LAYERFILTER, allowEmptyLayer=False):
+        def __init__(self, info: str, filters: Qgis.LayerFilters, allowEmptyLayer=False):
             self.labelText = info
             self.filters = filters
             self.allowEmptyLayer = allowEmptyLayer
@@ -3891,7 +3857,7 @@ class SelectMapLayersDialog(QgsDialog):
         super(SelectMapLayersDialog, self).exec()
 
     def addLayerDescription(self, info: str,
-                            filters: QGIS_LAYERFILTER,
+                            filters: Qgis.LayerFilters,
                             allowEmptyLayer=False,
                             layerDescription=None) -> QgsMapLayerComboBox:
         """

@@ -60,7 +60,6 @@ from qgis.gui import QgisInterface, QgsAbstractMapToolHandler, QgsBrowserGuiMode
     QgsLayerTreeMapCanvasBridge, QgsLayerTreeView, QgsMapCanvas, QgsMapLayerConfigWidgetFactory, QgsMapTool, \
     QgsMessageBar, QgsOptionsDialogBase, QgsOptionsPageWidget, QgsOptionsWidgetFactory, QgsPluginManagerInterface
 from qgis.testing import QgisTestCase
-from .qgisenums import QGIS_WKBTYPE
 from .qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from .resources import initResourceFile
 from .unitmodel import UnitLookup
@@ -1593,13 +1592,13 @@ class TestObjects(object):
     def createEmptyMemoryLayer(fields: QgsFields,
                                name: str = 'memory layer',
                                crs: QgsCoordinateReferenceSystem = None,
-                               wkbType: QGIS_WKBTYPE = QGIS_WKBTYPE.NoGeometry):
+                               wkbType: Qgis.WkbType = Qgis.WkbType.NoGeometry):
 
         """
             Class with static routines to create test objects
             """
         uri = ''
-        if wkbType != QGIS_WKBTYPE.NoGeometry:
+        if wkbType != Qgis.WkbType.NoGeometry:
             uri += QgsWkbTypes.displayString(wkbType)
         else:
             uri += 'none'

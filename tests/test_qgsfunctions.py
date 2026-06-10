@@ -11,7 +11,6 @@ from qgis.core import edit, Qgis, QgsProcessing, QgsCoordinateTransform, QgsExpr
     QgsExpressionContextUtils, QgsExpressionFunction, QgsFeature, QgsField, QgsFields, QgsGeometry, QgsMapLayerStore, \
     QgsPointXY, QgsProject, QgsProperty, QgsRasterLayer, QgsVectorLayer, QgsWkbTypes, QgsProcessingContext
 from qgis.gui import QgsFieldCalculator
-from qps.qgisenums import QGIS_WKBTYPE
 from qps.qgsfunctions import ExpressionFunctionUtils, Format_Py, HelpStringMaker, RasterArray, RasterProfile, \
     ReadSpectralProfile, SpectralData, SpectralEncoding, SpectralMath
 from qps.speclib.core import profile_fields
@@ -477,7 +476,7 @@ class QgsFunctionTests(TestCase):
 
                 self.assertEqual(exp.parserErrorString(), '', msg=exp.parserErrorString())
                 self.assertEqual(exp.evalErrorString(), '', msg=exp.evalErrorString())
-                if lyrV.wkbType() == QGIS_WKBTYPE.Point:
+                if lyrV.wkbType() == Qgis.WkbType.Point:
                     self.assertIsInstance(results, QByteArray)
                 else:
                     self.assertIsInstance(results, list)

@@ -45,7 +45,6 @@ from qgis.core import (Qgis, QgsAction, QgsApplication, QgsCategorizedSymbolRend
                        QgsSingleBandPseudoColorRenderer, QgsSingleSymbolRenderer, QgsVectorDataProvider, QgsVectorLayer,
                        QgsWkbTypes,
                        QgsCoordinateTransformContext)
-from .qgisenums import QGIS_RASTERBANDSTATISTIC
 from .speclib import EDITOR_WIDGET_REGISTRY_KEY
 
 try:
@@ -669,7 +668,7 @@ def defaultRasterRenderer(layer: QgsRasterLayer,
     if not (isinstance(dp, QgsRasterDataProvider)):
         raise AssertionError
 
-    stats = QGIS_RASTERBANDSTATISTIC.Min | QGIS_RASTERBANDSTATISTIC.Max
+    stats = Qgis.RasterBandStatistic.Min | Qgis.RasterBandStatistic.Max
 
     with warnings.catch_warnings():
         warnings.simplefilter('ignore', category=DeprecationWarning)

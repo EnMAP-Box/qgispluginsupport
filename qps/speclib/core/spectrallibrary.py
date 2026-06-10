@@ -52,7 +52,6 @@ from .spectralprofile import decodeProfileValueDict, encodeProfileValueDict, pre
     groupBySpectralProperties, SpectralProfileFileWriter, SpectralProfileFileReader
 from .. import EDITOR_WIDGET_REGISTRY_KEY, FIELD_NAME, FIELD_VALUES, SPECLIB_EPSG_CODE
 from ...plotstyling.plotstyling import PlotStyle
-from ...qgisenums import QGIS_WKBTYPE
 from ...utils import copyEditorWidgetSetup, findMapLayer, qgsField, SpatialPoint
 
 # get to now how we can import this module
@@ -546,7 +545,7 @@ class SpectralLibraryUtils:
             profile_fields: List[str] = [FIELD_VALUES],
             name: str = DEFAULT_NAME,
             encoding: ProfileEncoding = ProfileEncoding.Json,
-            wkbType: QGIS_WKBTYPE = QGIS_WKBTYPE.Point,
+            wkbType: Qgis.WkbType = Qgis.WkbType.Point,
             crs: Optional[QgsCoordinateReferenceSystem] = None
     ) -> QgsVectorLayer:
         """

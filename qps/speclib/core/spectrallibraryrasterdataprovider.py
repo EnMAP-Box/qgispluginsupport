@@ -15,7 +15,6 @@ from qgis.core import Qgis, QgsColorRampShader, QgsCoordinateReferenceSystem, Qg
 from .spectralprofile import groupBySpectralProperties, spectralSettingsDict
 from ..core import is_profile_field, profile_fields
 from ..core.spectralprofile import decodeProfileValueDict  # , groupBySpectralProperties_depr, SpectralSetting
-from ...qgisenums import QGIS_RASTERBANDSTATISTIC, QGIS_RASTERINTERFACECAPABILITY
 from ...unitmodel import BAND_INDEX
 from ...utils import HashableRectangle, nextColor, numpyToQgisDataType, qgisToNumpyDataType, \
     qgsField
@@ -677,10 +676,11 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
             stats.height = band_data.shape[-2]
             stats.width = band_data.shape[-1]
 
-            statsGathered = (
-                QGIS_RASTERBANDSTATISTIC.Sum | QGIS_RASTERBANDSTATISTIC.Min
-                | QGIS_RASTERBANDSTATISTIC.Max | QGIS_RASTERBANDSTATISTIC.Mean
-            )
+            statsGathered = (Qgis.RasterBandStatistics.Sum
+                             | Qgis.RasterBandStatistics.Min
+                             | Qgis.RasterBandStatistics.Max
+                             | Qgis.RasterBandStatistics.Mean
+                             )
 
             if Qgis.versionInt() >= 33600:
                 stats.statsGathered = Qgis.RasterBandStatistics(statsGathered)
@@ -831,7 +831,9 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
     def capabilities(self):
 
         # scap = super().capabilities()
-        caps = QGIS_RASTERINTERFACECAPABILITY.Size | QGIS_RASTERINTERFACECAPABILITY.IdentifyValue | QGIS_RASTERINTERFACECAPABILITY.Identify
+        caps = (Qgis.RasterInterfaceCapabilities.Size
+                | Qgis.RasterInterfaceCapabilities.IdentifyValue
+                | Qgis.RasterInterfaceCapabilities.Identify)
         if Qgis.versionInt() >= 33800:
             return Qgis.RasterInterfaceCapabilities(caps)  # QgsRasterDataProvider.ProviderCapabilities(caps)
         else:

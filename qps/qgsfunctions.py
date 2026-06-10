@@ -40,7 +40,6 @@ from qgis.core import Qgis, QgsCoordinateReferenceSystem, QgsCoordinateTransform
     QgsExpressionContextScope, QgsExpressionFunction, QgsExpressionNode, QgsExpressionNodeFunction, QgsFeature, \
     QgsFeatureRequest, QgsField, QgsGeometry, QgsMapLayer, QgsMapToPixel, QgsMessageLog, QgsPointXY, QgsProject, \
     QgsRasterDataProvider, QgsRasterLayer
-from .qgisenums import QGIS_WKBTYPE
 from .qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from .speclib.core import is_profile_field
 from .speclib.core.spectrallibrary import FIELD_VALUES
@@ -542,8 +541,8 @@ class ExpressionFunctionUtils(object):
 
     @staticmethod
     def cachedCrsTransformation(
-        context: QgsExpressionContext,
-        layer: QgsMapLayer
+            context: QgsExpressionContext,
+            layer: QgsMapLayer
     ) -> QgsCoordinateTransform:
         """
         Returns a CRS Transformation from the context to the layer CRS
@@ -756,8 +755,8 @@ class RasterArray(QgsExpressionFunction):
             MG2P = MapGeometryToPixel.fromExtent(bbox, ns, nl,
                                                  mapUnitsPerPixel=mapUnitsPerPixel,
                                                  crs=dp.crs())
-            if geom.wkbType() == QGIS_WKBTYPE.PolygonZ:
-                geom = geom.coerceToType(QGIS_WKBTYPE.Polygon)[0]
+            if geom.wkbType() == Qgis.WkbType.PolygonZ:
+                geom = geom.coerceToType(Qgis.WkbType.Polygon)[0]
             i_y, i_x = MG2P.geometryPixelPositions(geom, all_touched=all_touched)
             # print(array.shape)
             if not isinstance(i_x, np.ndarray):
