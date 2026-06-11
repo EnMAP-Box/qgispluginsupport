@@ -7,23 +7,21 @@ __date__ = '2017-07-17'
 __copyright__ = 'Copyright 2017, Benjamin Jakimow'
 
 import os
-import tempfile
 import unittest
 
-from qgis.core import QgsCategorizedSymbolRenderer, QgsEditorWidgetSetup, QgsFeature, QgsFeatureRenderer, QgsField, \
-    QgsFillSymbol, QgsLineSymbol, QgsMarkerSymbol, QgsObjectCustomProperties, QgsPalettedRasterRenderer, QgsProject, \
-    QgsRasterLayer, QgsReadWriteContext, QgsRendererCategory, QgsVectorLayer, QgsWkbTypes
-from qgis.PyQt.QtCore import NULL, QMimeData, QModelIndex, QSize, Qt
+from qgis.PyQt.QtCore import NULL, QMimeData, QModelIndex, QSize, Qt, QMetaType
 from qgis.PyQt.QtGui import QColor
 from qgis.PyQt.QtWidgets import QApplication, QCheckBox, QVBoxLayout, QWidget
 from qgis.PyQt.QtXml import QDomDocument, QDomElement
+from qgis.core import QgsCategorizedSymbolRenderer, QgsEditorWidgetSetup, QgsFeature, QgsFeatureRenderer, QgsField, \
+    QgsFillSymbol, QgsLineSymbol, QgsMarkerSymbol, QgsObjectCustomProperties, QgsPalettedRasterRenderer, QgsProject, \
+    QgsRasterLayer, QgsReadWriteContext, QgsRendererCategory, QgsVectorLayer, QgsWkbTypes
 from qgis.gui import QgsDualView, QgsGui, QgsMapCanvas, QgsMapLayerComboBox, QgsSearchWidgetWrapper
 from qps.classification.classificationscheme import ClassificationMapLayerComboBox, ClassificationScheme, \
     ClassificationSchemeComboBox, ClassificationSchemeComboBoxModel, ClassificationSchemeEditorConfigWidget, \
     classificationSchemeEditorWidgetFactory, ClassificationSchemeEditorWidgetWrapper, ClassificationSchemeWidget, \
     ClassificationSchemeWidgetFactory, ClassInfo, DEFAULT_UNCLASSIFIEDCOLOR, EDITOR_WIDGET_REGISTRY_KEY, MIMEDATA_KEY, \
     MIMEDATA_KEY_QGIS_STYLE
-from qps.qgisenums import QMETATYPE_INT, QMETATYPE_QSTRING
 from qps.testing import start_app, TestCase, TestObjects
 
 start_app()
@@ -57,7 +55,7 @@ class TestsClassificationScheme(TestCase):
         rl = TestObjects.createRasterLayer(nb=3)
 
         renderer = QgsPalettedRasterRenderer(None, 1, {})
-        assert isinstance(renderer, QgsPalettedRasterRenderer)
+        self.assertIsInstance(renderer, QgsPalettedRasterRenderer)
         rl.setRenderer(renderer)
 
         return rl
@@ -67,11 +65,11 @@ class TestsClassificationScheme(TestCase):
         vl = QgsVectorLayer("Point", "temporary_points", "memory")
         vl.startEditing()
         # add fields
-        vl.addAttribute(QgsField("name", QMETATYPE_QSTRING))
+        vl.addAttribute(QgsField("name", QMetaType.QString))
         nameL1 = 'field1'
         nameL2 = 'field2'
-        vl.addAttribute(QgsField(nameL1, QMETATYPE_INT))
-        vl.addAttribute(QgsField(nameL2, QMETATYPE_QSTRING))
+        vl.addAttribute(QgsField(nameL1, QMetaType.Int))
+        vl.addAttribute(QgsField(nameL2, QMetaType.QString))
         f = QgsFeature(vl.fields())
         f.setAttribute('name', 'an example')
         f.setAttribute(nameL1, 2)
@@ -186,7 +184,7 @@ class TestsClassificationScheme(TestCase):
         self.assertIsInstance(data, dict)
 
         cs2 = ClassificationScheme.fromMap(data)
-        data2 = cs2.asMap()
+        # data2 = cs2.asMap()
         self.assertEqual(cs, cs2)
 
         prop = QgsObjectCustomProperties()
@@ -199,13 +197,6 @@ class TestsClassificationScheme(TestCase):
         cs2 = ClassificationScheme.fromJson(j)
         self.assertIsInstance(cs2, ClassificationScheme)
         self.assertEqual(cs, cs2)
-
-        p = cs.pickle()
-        self.assertIsInstance(p, bytes)
-
-        cs3 = ClassificationScheme.fromPickle(p)
-        self.assertIsInstance(cs3, ClassificationScheme)
-        self.assertEqual(cs3, cs)
 
     def test_ClassInfoComboBox(self):
         scheme = self.createClassSchemeA()
@@ -263,7 +254,6 @@ class TestsClassificationScheme(TestCase):
         # print(vl.fields().names())
         look = vl.fields().lookupField
 
-        parent = QWidget()
         configWidget = factory.configWidget(vl, look('field1'), None)
         self.assertIsInstance(configWidget, ClassificationSchemeEditorConfigWidget)
 
@@ -385,8 +375,8 @@ class TestsClassificationScheme(TestCase):
 
     def test_io_CSV(self):
 
-        pathTmp = tempfile.mktemp(suffix='.csv')
-
+        tmpDir = self.createTestOutputDirectory()
+        pathTmp = str(tmpDir / 'test_io_CSV.csv')
         cs = self.createClassSchemeA()
         self.assertIsInstance(cs, ClassificationScheme)
         path = cs.saveToCsv(pathTmp)
@@ -489,28 +479,6 @@ class TestsClassificationScheme(TestCase):
         self.assertIsInstance(md, QMimeData)
 
         self.assertEqual(cs, cs2)
-
-    @unittest.skip('Not implemented')
-    def test_io_QML(self):
-
-        from qpstestdata import DIR_TESTDATA
-        pathQML = DIR_TESTDATA / 'landcover.qml'
-
-        pathTmp = tempfile.mktemp(suffix='.qml')
-
-        # read from QML
-        classScheme = ClassificationScheme.fromQml(pathQML)
-        self.assertIsInstance(classScheme, ClassificationScheme)
-        self.assertTrue(len(classScheme) > 0)
-
-        # todo: other QML specific tests
-
-        # write to QML
-        classScheme.saveToQml(pathTmp)
-
-        classScheme2 = ClassificationScheme.fromQml(pathTmp)
-        self.assertIsInstance(classScheme2, ClassificationScheme)
-        self.assertEqual(classScheme, classScheme2)
 
 
 if __name__ == "__main__":

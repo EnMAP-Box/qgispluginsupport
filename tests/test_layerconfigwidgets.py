@@ -15,13 +15,13 @@ from typing import Match
 
 from osgeo import gdal
 
+from qgis.PyQt.QtCore import QMetaType
 from qgis.PyQt.QtWidgets import QHBoxLayout, QPushButton, QTableView, QVBoxLayout, QWidget
 from qgis.core import QgsField, QgsProject, QgsRasterLayer
 from qgis.gui import QgsMapCanvas, QgsMapLayerComboBox, QgsMapLayerConfigWidget, QgsMapLayerConfigWidgetFactory, \
     QgsRasterTransparencyWidget
 from qps.layerconfigwidgets.gdalmetadata import RX_OGR_URI
 from qps.layerconfigwidgets.rasterbands import RasterBandComboBox
-from qps.qgisenums import QMETATYPE_QSTRING
 from qps.testing import TestCase, TestObjects, start_app
 
 start_app()
@@ -48,20 +48,16 @@ class LayerConfigWidgetsTests(TestCase):
         btnSync = QPushButton('Sync')
 
         def onApply():
-            ndv1 = [n.min() for n in lyr.dataProvider().userNoDataValues(1)]
+            _ = [n.min() for n in lyr.dataProvider().userNoDataValues(1)]
             w1.apply()
-            ndv2 = [n.min() for n in lyr.dataProvider().userNoDataValues(1)]
-
-            s = ""
+            _ = [n.min() for n in lyr.dataProvider().userNoDataValues(1)]
 
         def onSync():
-            ndv1 = [n.min() for n in lyr.dataProvider().userNoDataValues(1)]
+            _ = [n.min() for n in lyr.dataProvider().userNoDataValues(1)]
             w1.apply()
-            ndv2 = [n.min() for n in lyr.dataProvider().userNoDataValues(1)]
+            _ = [n.min() for n in lyr.dataProvider().userNoDataValues(1)]
             w1.syncToLayer()
-            ndv3 = [n.min() for n in lyr.dataProvider().userNoDataValues(1)]
-
-            s = ""
+            _ = [n.min() for n in lyr.dataProvider().userNoDataValues(1)]
 
         btnApply.clicked.connect(onApply)
         btnSync.clicked.connect(onSync)
@@ -147,7 +143,7 @@ class LayerConfigWidgetsTests(TestCase):
         QgsProject.instance().addMapLayers([lyrR, lyrV, lyrE])
         from qps.layerconfigwidgets.gdalmetadata import GDALMetadataModelConfigWidget
         cb = QgsMapLayerComboBox()
-        c = QgsMapCanvas()
+        # c = QgsMapCanvas()
         md = GDALMetadataModelConfigWidget()
         cb.layerChanged.connect(md.setLayer)
         vbLayout = QVBoxLayout()
@@ -175,7 +171,7 @@ class LayerConfigWidgetsTests(TestCase):
         v.setModel(m)
 
         self.assertTrue(lyr.startEditing())
-        f = QgsField('newField', QMETATYPE_QSTRING, 'String')
+        f = QgsField('newField', QMetaType.QString, 'String')
         lyr.addAttribute(f)
         self.assertTrue(lyr.commitChanges())
         self.showGui(v)

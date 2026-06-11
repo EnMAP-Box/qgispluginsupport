@@ -96,7 +96,7 @@ class QGISPluginsSupportPlugin(object):
 
     def initGui(self):
         from qgis.utils import iface
-        assert isinstance(iface, QgisInterface)
+        self.assertIsInstance(iface, QgisInterface)
 
         # init main UI
         action = QAction(self.title, iface)
@@ -121,10 +121,10 @@ class QGISPluginsSupportPlugin(object):
     #    self.loadStartScripts()
 
     def populateMenu(self, menu: QMenu):
-        assert isinstance(menu, QMenu)
+        self.assertIsInstance(menu, QMenu)
 
         folder = Path(__file__).parent / 'startscripts'
-        assert folder.is_dir()
+        self.assertTrue(folder.is_dir())
 
         py_files = []
         for e in os.scandir(folder):
@@ -148,7 +148,7 @@ class QGISPluginsSupportPlugin(object):
         print(f'Execute {path}')
         with open(path) as f:
             code = f.read()
-        exec(code)
+        exec(code)  # nosec: B102
 
     def unload(self):
         for w in self.mWidgets:

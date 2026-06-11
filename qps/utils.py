@@ -54,28 +54,29 @@ from osgeo.ogr import OFSTBoolean, OFSTNone, OFTBinary, OFTDate, OFTDateTime, OF
 from osgeo.osr import SpatialReference
 
 from qgis.PyQt import uic
-from qgis.PyQt.QtCore import NULL, QByteArray, QDirIterator, QMetaType, QObject, QPoint, QPointF, QRect, Qt, QUrl, \
-    QVariant
+from qgis.PyQt.QtCore import NULL, QByteArray, QDirIterator, QObject, QPoint, QPointF, QRect, Qt, QUrl, \
+    QVariant, QMetaType
 from qgis.PyQt.QtGui import QColor, QIcon
-from qgis.PyQt.QtWidgets import QAction, QComboBox, QDialogButtonBox, QGridLayout, QHBoxLayout, QLabel, QMainWindow, \
-    QMenu, QToolButton, QWidget
+from qgis.PyQt.QtWidgets import (
+    QAction, QComboBox, QDialogButtonBox, QGridLayout, QHBoxLayout, QLabel, QMainWindow,
+    QMenu, QToolButton, QWidget)
 from qgis.PyQt.QtXml import QDomDocument, QDomElement, QDomNode
-from qgis.core import Qgis, QgsApplication, QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsEditorWidgetSetup, \
-    QgsFeature, QgsFeatureRequest, QgsFeatureSource, QgsFeedback, QgsField, QgsFields, QgsGeometry, QgsMapLayer, \
-    QgsMapLayerProxyModel, QgsMapLayerStore, QgsMapLayerStyle, QgsMapToPixel, QgsMessageOutput, QgsPointXY, \
-    QgsProcessingAlgorithm, QgsProcessingContext, QgsProcessingFeedback, QgsProject, QgsRaster, \
-    QgsRasterBlock, QgsRasterBlockFeedback, QgsRasterDataProvider, QgsRasterIdentifyResult, QgsRasterInterface, \
-    QgsRasterLayer, QgsRasterRenderer, QgsRectangle, QgsTask, QgsVector, QgsVectorDataProvider, QgsVectorFileWriter, \
-    QgsVectorLayer, QgsWkbTypes
-from qgis.core import QgsExpressionContextScope, QgsExpressionContext, QgsFeatureRenderer, QgsSingleSymbolRenderer, \
-    QgsMarkerSymbol, QgsExpressionContextUtils, QgsRenderContext, QgsSymbol
+from qgis.core import (Qgis, QgsApplication, QgsCoordinateReferenceSystem,
+                       QgsCoordinateTransform, QgsEditorWidgetSetup,
+                       QgsFeature, QgsFeatureRequest, QgsFeatureSource, QgsFeedback, QgsField, QgsFields, QgsGeometry,
+                       QgsMapLayer,
+                       QgsMapLayerProxyModel, QgsMapLayerStore, QgsMapLayerStyle, QgsMapToPixel, QgsMessageOutput,
+                       QgsPointXY,
+                       QgsProcessingAlgorithm, QgsProcessingContext, QgsProcessingFeedback, QgsProject, QgsRaster,
+                       QgsRasterBlock, QgsRasterBlockFeedback, QgsRasterDataProvider, QgsRasterIdentifyResult,
+                       QgsRasterInterface,
+                       QgsRasterLayer, QgsRasterRenderer, QgsRectangle, QgsTask, QgsVector, QgsVectorDataProvider,
+                       QgsVectorFileWriter,
+                       QgsVectorLayer, QgsWkbTypes)
+from qgis.core import (QgsExpressionContextScope, QgsExpressionContext,
+                       QgsFeatureRenderer, QgsSingleSymbolRenderer,
+                       QgsMarkerSymbol, QgsExpressionContextUtils, QgsRenderContext, QgsSymbol, QgsProcessing)
 from qgis.gui import QgisInterface, QgsDialog, QgsGui, QgsMapCanvas, QgsMapLayerComboBox, QgsMessageViewer
-from .qgisenums import QGIS_LAYERFILTER, QGIS_WKBTYPE, QMETATYPE_BOOL, QMETATYPE_DOUBLE, QMETATYPE_INT, \
-    QMETATYPE_QBYTEARRAY, QMETATYPE_QCHAR, QMETATYPE_QDATE, QMETATYPE_QDATETIME, QMETATYPE_QSTRING, \
-    QMETATYPE_QSTRINGLIST, \
-    QMETATYPE_QTIME, \
-    QMETATYPE_QVARIANTLIST, \
-    QMETATYPE_UINT
 from .qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from .unitmodel import datetime64, UnitLookup
 
@@ -153,8 +154,8 @@ def _geometryIsEmpty(g: QgsGeometry) -> bool:
 
 
 def _geometryIsSinglePoint(g: QgsGeometry) -> bool:
-    return g.wkbType() in [QGIS_WKBTYPE.Point, QGIS_WKBTYPE.PointM,
-                           QGIS_WKBTYPE.PointZM, QGIS_WKBTYPE.Point25D, QGIS_WKBTYPE.PointZ]
+    return g.wkbType() in [Qgis.WkbType.Point, Qgis.WkbType.PointM,
+                           Qgis.WkbType.PointZM, Qgis.WkbType.Point25D, Qgis.WkbType.PointZ]
 
 
 def variant_type_to_ogr_field_type(variant_type):
@@ -164,11 +165,11 @@ def variant_type_to_ogr_field_type(variant_type):
     :return:
     """
     ogr_sub_type = OFSTNone
-    if variant_type == QMETATYPE_BOOL:
+    if variant_type == QMetaType.Bool:
         ogr_type = OFTInteger
         ogr_sub_type = OFSTBoolean
 
-    elif variant_type == QMETATYPE_INT:
+    elif variant_type == QMetaType.Int:
         ogr_type = OFTInteger
 
     elif variant_type == QMetaType.LongLong:
@@ -177,22 +178,22 @@ def variant_type_to_ogr_field_type(variant_type):
     elif variant_type == QMetaType.Double:
         ogr_type = OFTReal
 
-    elif variant_type in [QMETATYPE_QCHAR, QMETATYPE_QSTRING]:
+    elif variant_type in [QMetaType.QChar, QMetaType.QString]:
         ogr_type = OFTString
 
-    elif variant_type == QMETATYPE_QSTRINGLIST:
+    elif variant_type == QMetaType.QStringLIST:
         ogr_type = OFTStringList
 
-    elif variant_type == QMETATYPE_QBYTEARRAY:
+    elif variant_type == QMetaType.QByteArray:
         ogr_type = OFTBinary
 
-    elif variant_type == QMETATYPE_QDATE:
+    elif variant_type == QMetaType.QDate:
         ogr_type = OFTDate
 
-    elif variant_type == QMETATYPE_QTIME:
+    elif variant_type == QMetaType.QTime:
         ogr_type = OFTTime
 
-    elif variant_type == QMETATYPE_QDATETIME:
+    elif variant_type == QMetaType.QDateTime:
         ogr_type = OFTDateTime
 
     else:
@@ -243,7 +244,6 @@ class TemporaryGlobalLayerContext(object):
                     instance.takeMapLayer(lyr)
                     lyr.removeCustomProperty(self.LAYER_PROPERTY_KEY)
 
-        s = ""
         pass
 
 
@@ -264,7 +264,8 @@ class SignalBlocker(object):
             obj.blockSignals(wasBlocked)
 
 
-def relativePath(absPath: Path, parentDir: Path) -> Path:
+def relativePath(absPath: Union[str, Path],
+                 parentDir: Union[str, Path]) -> Path:
     """
     Returns the path relative to a parent directory
     :param absPath: absolute path to be converted into a relative path
@@ -277,8 +278,6 @@ def relativePath(absPath: Path, parentDir: Path) -> Path:
     if isinstance(parentDir, str):
         parentDir = Path(parentDir)
 
-    assert isinstance(parentDir, Path)
-    assert isinstance(absPath, Path)
     n = min(len(parentDir.parts), len(absPath.parts))
     i = 0
 
@@ -303,7 +302,8 @@ def cleanDir(d):
     Remove content from directory 'd'
     :param d: directory to be cleaned.
     """
-    assert os.path.isdir(d)
+    if not os.path.isdir(d):
+        raise AssertionError(f'Not a directory: {d}')
     for root, dirs, files in os.walk(d):
         for p in dirs + files:
             rm(jp(root, p))
@@ -362,7 +362,8 @@ def file_search(rootdir,
     :param fullpath: set True if the entire path should be evaluated and not the file name only
     :return: enumerator over file paths
     """
-    assert os.path.isdir(rootdir), "Path is not a directory:{}".format(rootdir)
+    if not os.path.isdir(rootdir):
+        raise AssertionError(f"Path is not a directory:{rootdir}")
     regType = type(re.compile('.*'))
 
     with os.scandir(rootdir) as entry_search:
@@ -377,8 +378,10 @@ def file_search(rootdir,
                         if pattern.search(name):
                             yield entry.path.replace('\\', '/')
 
-                    elif (ignoreCase and fnmatch.fnmatch(name, pattern.lower())) \
-                            or fnmatch.fnmatch(name, pattern):
+                    elif (
+                            (ignoreCase and fnmatch.fnmatch(name, pattern.lower()))
+                            or fnmatch.fnmatch(name, pattern)
+                    ):
                         yield entry.path.replace('\\', '/')
                 elif entry.is_dir() and recursive is True:
                     for r in file_search(entry.path, pattern,
@@ -403,17 +406,18 @@ def file_search(rootdir,
                         if pattern.search(name):
                             yield entry.path.replace('\\', '/')
 
-                    elif (ignoreCase and fnmatch.fnmatch(name, pattern.lower())) \
-                            or fnmatch.fnmatch(name, pattern):
+                    elif (
+                            (ignoreCase and fnmatch.fnmatch(name, pattern.lower()))
+                            or fnmatch.fnmatch(name, pattern)
+                    ):
                         yield entry.path.replace('\\', '/')
 
 
-def registerMapLayerStore(store):
+def registerMapLayerStore(store: Union[QgsProject, QgsMapLayerStore]):
     """
     Registers an QgsMapLayerStore or QgsProject to search QgsMapLayers in
     :param store: QgsProject | QgsMapLayerStore
     """
-    assert isinstance(store, (QgsProject, QgsMapLayerStore))
     if store not in mapLayerStores():
         _MAP_LAYER_STORES.append(store)
 
@@ -458,7 +462,7 @@ NEXT_COLOR_HUE_DELTA_CAT = 100
 NEXT_COLOR_DELTA_VALUE = 50
 
 
-def nextColor(color, mode='cat') -> QColor:
+def nextColor(color: QColor, mode: str = 'cat') -> QColor:
     """
     Returns another color.
     :param color: QColor
@@ -468,8 +472,8 @@ def nextColor(color, mode='cat') -> QColor:
                       'brighter' for increased brightness (if possible)
     :return: QColor
     """
-    assert mode in ['cat', 'con', 'darker', 'brighter']
-    assert isinstance(color, QColor)
+    if not (mode in ['cat', 'con', 'darker', 'brighter']):
+        raise AssertionError(f'Unknown mode: {mode}')
     hue, sat, value, alpha = color.getHsv()
     if mode == 'cat':
         hue += NEXT_COLOR_HUE_DELTA_CAT
@@ -484,7 +488,7 @@ def nextColor(color, mode='cat') -> QColor:
         sat = 255
         value = 128
         alpha = 255
-        s = ""
+
     while hue >= 360:
         hue -= 360
 
@@ -504,7 +508,8 @@ def aggregateArray(aggregation: str, array: np.ndarray, *args, axis: int = None,
             'max': np.nanmax,
             'percentile': np.nanpercentile,
             'quantile': np.nanquantile}
-    assert aggregation in AGGR.keys(), f'Unknown aggregation "{aggregation}"'
+    if aggregation not in AGGR.keys():
+        raise AssertionError(f'Unknown aggregation "{aggregation}"')
 
     with warnings.catch_warnings():
         warnings.simplefilter('ignore', category=RuntimeWarning)
@@ -519,8 +524,6 @@ def noDataValues(dataProvider: Union[QgsRasterLayer, QgsRasterDataProvider]) -> 
     """
     if isinstance(dataProvider, QgsRasterLayer):
         dataProvider = dataProvider.dataProvider()
-
-    assert isinstance(dataProvider, QgsRasterDataProvider)
 
     NODATA: Dict[int, List] = dict()
     for b in range(1, dataProvider.bandCount() + 1):
@@ -541,13 +544,12 @@ def findMapLayerStores() -> List[Union[QgsProject, QgsMapLayerStore]]:
             yield obj
 
 
-def findMapLayer(layer) -> Optional[QgsMapLayer]:
+def findMapLayer(layer: Union[str, QgsMapLayer]) -> Optional[QgsMapLayer]:
     """
     Returns the first QgsMapLayer out of all layers stored in MAP_LAYER_STORES that matches layer
     :param layer: str layer id or layer name or QgsMapLayer
     :return: QgsMapLayer
     """
-    assert isinstance(layer, (QgsMapLayer, str))
     if isinstance(layer, QgsMapLayer):
         return layer
 
@@ -655,28 +657,30 @@ def createQgsField(name: str, exampleValue: Any, comment: str = None) -> QgsFiel
     :return: QgsField
     """
     if isinstance(exampleValue, str):
-        return QgsField(name, QMETATYPE_QSTRING, 'varchar', comment=comment)
+        return QgsField(name, QMetaType.QString, 'varchar', comment=comment)
     elif isinstance(exampleValue, bool):
-        return QgsField(name, QMETATYPE_BOOL, 'int', len=1, comment=comment)
+        return QgsField(name, QMetaType.Bool, 'int', len=1, comment=comment)
     elif isinstance(exampleValue, (int, np.int8, np.int16, np.int32, np.int64)):
-        return QgsField(name, QMETATYPE_INT, 'int', comment=comment)
+        return QgsField(name, QMetaType.Int, 'int', comment=comment)
     elif isinstance(exampleValue, (np.uint, np.uint8, np.uint16, np.uint32, np.uint64)):
-        return QgsField(name, QMETATYPE_UINT, 'uint', comment=comment)
+        return QgsField(name, QMetaType.UInt, 'uint', comment=comment)
     elif isinstance(exampleValue, (float, np.double, np.float16, np.float32, np.float64)):
-        return QgsField(name, QMETATYPE_DOUBLE, 'double', comment=comment)
+        return QgsField(name, QMetaType.Double, 'double', comment=comment)
     elif isinstance(exampleValue, np.ndarray):
-        return QgsField(name, QMETATYPE_QSTRING, 'varchar', comment=comment)
+        return QgsField(name, QMetaType.QString, 'varchar', comment=comment)
     elif isinstance(exampleValue, np.datetime64):
-        return QgsField(name, QMETATYPE_QDATETIME, comment=comment)
+        return QgsField(name, QMetaType.QDateTime, comment=comment)
     elif isinstance(exampleValue, (bytes, QByteArray)):
-        return QgsField(name, QMETATYPE_QBYTEARRAY, 'Binary', comment=comment)
+        return QgsField(name, QMetaType.QByteArray, 'Binary', comment=comment)
     elif isinstance(exampleValue, list):
-        assert len(exampleValue) > 0, 'need at least one value in provided list'
+        if not len(exampleValue) > 0:
+            raise AssertionError('need at least one value in provided list')
+
         v = exampleValue[0]
         prototype = createQgsField(name, v)
         subType = prototype.type()
         typeName = prototype.typeName()
-        return QgsField(name, QMETATYPE_QVARIANTLIST, typeName, comment=comment, subType=subType)
+        return QgsField(name, QMetaType.QVariantList, typeName, comment=comment, subType=subType)
     elif isinstance(exampleValue, type):
         return createQgsField(name, exampleValue(1), comment=comment)
     else:
@@ -737,7 +741,7 @@ def value2str(value,
     return value
 
 
-def setQgsFieldValue(feature: QgsFeature, field, value):
+def setQgsFieldValue(feature: QgsFeature, field: Union[int, str, QgsField], value):
     """
     Wrties the Python value v into a QgsFeature field, taking care of required conversions
     :param feature: QgsFeature
@@ -749,15 +753,14 @@ def setQgsFieldValue(feature: QgsFeature, field, value):
         field = feature.fields().at(field)
     elif isinstance(field, str):
         field = feature.fields().at(feature.fieldNameIndex(field))
-    assert isinstance(field, QgsField)
 
     if value is None:
-        value = QVariant.NULL
-    if field.type() == QMETATYPE_QSTRING:
+        value = QMetaType.NULL
+    if field.type() == QMetaType.QString:
         value = str(value)
-    elif field.type() in [QMETATYPE_INT, QMETATYPE_BOOL]:
+    elif field.type() in [QMetaType.Int, QMetaType.Bool]:
         value = int(value)
-    elif field.type() in [QMETATYPE_DOUBLE]:
+    elif field.type() in [QMetaType.Double]:
         value = float(value)
 
     feature.setAttribute(field.name(), value)
@@ -779,8 +782,10 @@ def showMessage(message: str, title: str, level):
     v.showMessage(True)
 
 
-def gdalDataset(dataset: Union[str, Path, QgsRasterLayer, QgsRasterDataProvider, gdal.Dataset, gdal.Band],
-                eAccess: int = gdal.GA_ReadOnly) -> gdal.Dataset:
+def gdalDataset(
+        dataset: Union[str, Path, QgsRasterLayer, QgsRasterDataProvider, gdal.Dataset, gdal.Band],
+        eAccess: int = gdal.GA_ReadOnly
+) -> gdal.Dataset:
     """
     Returns a gdal.Dataset object instance
     :param dataset:  path | gdal.Dataset | QgsRasterLayer | QgsRasterDataProvider
@@ -798,7 +803,8 @@ def gdalDataset(dataset: Union[str, Path, QgsRasterLayer, QgsRasterDataProvider,
         return gdalDataset(dataset.dataSourceUri(), eAccess=eAccess)
     if isinstance(dataset, str):
         ds = gdal.Open(dataset, eAccess)
-        assert isinstance(ds, gdal.Dataset), f'Can not read {dataset} as gdal.Dataset'
+        if not isinstance(ds, gdal.Dataset):
+            raise AssertionError(f'Can not read {dataset} as gdal.Dataset')
         return ds
     else:
         raise NotImplementedError(f'Can not open {dataset} as gdal.Dataset')
@@ -827,10 +833,11 @@ def ogrDataSource(data_source, update: int = 0) -> ogr.DataSource:
                               INPUT=data_source.source(),
                               LAYER_NAME='',
                               LAYER_OPTIONS='',
-                              OUTPUT='TEMPORARY_OUTPUT'
+                              OUTPUT=QgsProcessing.TEMPORARY_OUTPUT,
                               )
 
-            assert alg.prepareAlgorithm(parameters, context, feedback), feedback.textLog()
+            if not alg.prepareAlgorithm(parameters, context, feedback):
+                raise AssertionError(feedback.textLog())
 
             results = alg.processAlgorithm(parameters, context, feedback)
             print(results)
@@ -850,7 +857,9 @@ def ogrDataSource(data_source, update: int = 0) -> ogr.DataSource:
     if isinstance(data_source, str):
         data_source = ogr.Open(data_source, update=update)
 
-    assert isinstance(data_source, ogr.DataSource), 'Can not read {} as ogr.DataSource'.format(data_source)
+    if not isinstance(data_source, ogr.DataSource):
+        raise AssertionError('Can not read {} as ogr.DataSource'.format(data_source))
+
     return data_source
 
 
@@ -866,7 +875,9 @@ def optimize_block_size(ds: gdal.Dataset,
     :return:
     """
     ds = gdalDataset(ds)
-    assert isinstance(ds, gdal.Dataset)
+    if not isinstance(ds, gdal.Dataset):
+        raise AssertionError('Cannot open gdal.Dataset')
+
     if nb is None:
         nb = ds.RasterCount
     block_size = ds.GetRasterBand(1).GetBlockSize()
@@ -916,11 +927,11 @@ def fid2pixelindices(raster: gdal.Dataset,
         if layer in layernames:
             layer = layernames.index(layer)
         else:
-            raise Exception(f'Invalid layer name "{layer}". Possible values: {",".join(layernames)}')
+            raise AssertionError(f'Invalid layer name "{layer}". Possible values: {",".join(layernames)}')
 
-    assert isinstance(layer, int)
-    assert layer >= 0
-    assert layer < vector.GetLayerCount()
+    if not (isinstance(layer, int) and 0 <= layer < vector.GetLayerCount()):
+        raise AssertionError(f'Wrong layer index: {layer}')
+
     layer: ogr.Layer = vector.GetLayerByIndex(layer)
     all_fids = [f.GetFID() for f in layer]
     if len(all_fids) == 0:
@@ -957,13 +968,17 @@ def fid2pixelindices(raster: gdal.Dataset,
     lyrMem: ogr.Layer = dsMem.CreateLayer(layer.GetName(),
                                           srs=layer.GetSpatialRef(),
                                           geom_type=layer.GetGeomType())
-    assert ogr.OGRERR_NONE == lyrMem.CreateField(ogr.FieldDefn('FID_BURN', ogr.OFTInteger64))
+    if not (
+            ogr.OGRERR_NONE == lyrMem.CreateField(ogr.FieldDefn('FID_BURN', ogr.OFTInteger64))
+    ):
+        raise AssertionError('Unable to create field FID_BURN')
+
     ldef: ogr.FeatureDefn = lyrMem.GetLayerDefn()
     # ldef.AddFieldDefn(ogr.FieldDefn('FID_BURN', ogr.OFTInteger64))
     dsMem.FlushCache()
 
     for f in layer:
-        assert isinstance(f, ogr.Feature)
+        f: ogr.Feature
         # Create the feature and set values
         fMem: ogr.Feature = ogr.Feature(ldef)
         fMem.SetGeometry(f.GetGeometryRef())
@@ -977,7 +992,8 @@ def fid2pixelindices(raster: gdal.Dataset,
     result = gdal.RasterizeLayer(dsMEM, [1], lyrMem,
                                  options=['ALL_TOUCHED={}'.format(all_touched),
                                           'ATTRIBUTE={}'.format('FID_BURN')])
-    assert result == ogr.OGRERR_NONE, f'Failed to rasterize vector layer {vector.GetDescription()}'
+    if not (result == ogr.OGRERR_NONE):
+        raise AssertionError(f'Failed to rasterize vector layer {vector.GetDescription()}')
 
     fidArray: np.ndarray = dsMEM.ReadAsArray()
     if eType == gdal.GDT_Float64:
@@ -1008,7 +1024,7 @@ def qgsVectorLayer(source) -> QgsVectorLayer:
     if isinstance(source, QUrl):
         return qgsVectorLayer(Path(source.toString(QUrl.PreferLocalFile | QUrl.RemoveQuery)).resolve())
 
-    raise Exception('Unable to transform {} into QgsVectorLayer'.format(source))
+    raise ValueError('Unable to transform {} into QgsVectorLayer'.format(source))
 
 
 DEFAULT_RENDERER = QgsSingleSymbolRenderer(QgsMarkerSymbol.createSimple({'name': 'square', 'color': 'white'}))
@@ -1021,8 +1037,7 @@ def featureSymbolScope(feature: QgsFeature,
     """
     Returns a QgsExpressionContextScope with variables 'symbol_color' and 'symbol_angle'.
     """
-    assert isinstance(feature, QgsFeature)
-    feature = QgsFeature(feature)
+    feature: QgsFeature = QgsFeature(feature)
     if not feature.hasGeometry():
         symbolScope = QgsExpressionContextScope()
         default_color = QColor(default_color) if default_color else QColor('grey')
@@ -1076,7 +1091,7 @@ def qgsRasterLayer(source) -> QgsRasterLayer:
     if isinstance(source, QUrl):
         return qgsRasterLayer(Path(source.toString(QUrl.PreferLocalFile | QUrl.RemoveQuery)).resolve())
 
-    raise Exception('Unable to transform {} into QgsRasterLayer'.format(source))
+    raise ValueError('Unable to transform {} into QgsRasterLayer'.format(source))
 
 
 def xy_pair_matrix(pairs: List[Union[Tuple[np.ndarray, np.ndarray], Dict]]) -> Tuple[np.ndarray, np.ndarray]:
@@ -1096,7 +1111,8 @@ def xy_pair_matrix(pairs: List[Union[Tuple[np.ndarray, np.ndarray], Dict]]) -> T
             x, y = np.asarray(pair['x']), np.asarray(pair['y'])
         else:
             x, y = np.asarray(pair[0]), np.asarray(pair[1])
-        assert len(x) == len(y), f'Input arrays must be of the same length: {len(x)} != {len(y)}'
+        if not (len(x) == len(y)):
+            raise AssertionError(f'Input arrays must be of the same length: {len(x)} != {len(y)}')
         pairs2.append((x, y))
 
         # preserve order of first occurrence
@@ -1130,7 +1146,8 @@ def qgsFields(source: Union[List[QgsField], QgsFeature, QgsFields, QgsVectorLaye
     if isinstance(source, list):
         fields = QgsFields()
         for f in source:
-            assert isinstance(f, QgsField)
+            if not isinstance(f, QgsField):
+                raise AssertionError(f'List item is not q QgsField: {f}')
             fields.append(f)
         return fields
 
@@ -1153,8 +1170,6 @@ def qgsField(layer_fields: Union[QgsFields, QgsVectorLayer, QgsFeature],
         layer_fields = layer_fields.fields()
     elif isinstance(layer_fields, QgsFeature):
         layer_fields = layer_fields.fields()
-
-    assert isinstance(layer_fields, QgsFields)
 
     if isinstance(field, QgsField):
         return qgsField(layer_fields, layer_fields.lookupField(field.name()))
@@ -1183,14 +1198,13 @@ def findTypeFromString(value: str):
     return str
 
 
-def setComboboxValue(cb: QComboBox, text: str):
+def setComboboxValue(cb: QComboBox, text: Optional[str] = None):
     """
     :param cb:
     :param text:
     :return:
     """
-    assert isinstance(cb, QComboBox)
-    currentIndex = cb.currentIndex()
+    _ = cb.currentIndex()
     idx = -1
     if text is None:
         text = ''
@@ -1209,7 +1223,7 @@ def setComboboxValue(cb: QComboBox, text: str):
         print('ComboBox index not found for "{}"'.format(text))
 
 
-def qgsRasterLayers(sources) -> Iterator[QgsRasterLayer]:
+def qgsRasterLayers(sources: List) -> Iterator[QgsRasterLayer]:
     """
     Like qgsRasterLayer, but on multiple inputs and with extraction of sub-layers
     :param sources:
@@ -1217,7 +1231,9 @@ def qgsRasterLayers(sources) -> Iterator[QgsRasterLayer]:
     """
     if not isinstance(sources, list):
         sources = [sources]
-    assert isinstance(sources, list)
+
+    if not isinstance(sources, list):
+        raise Exception('source is not a list')
 
     for source in sources:
         lyr: QgsRasterLayer = qgsRasterLayer(source)
@@ -1227,7 +1243,7 @@ def qgsRasterLayers(sources) -> Iterator[QgsRasterLayer]:
             yield lyr
 
 
-def qgsMapLayer(value: Any) -> QgsMapLayer:
+def qgsMapLayer(value: Any) -> Optional[QgsMapLayer]:
     """
     Tries to convert the input into a QgsMapLayer
     :param value: any
@@ -1239,16 +1255,15 @@ def qgsMapLayer(value: Any) -> QgsMapLayer:
         lyr = qgsRasterLayer(value)
         if isinstance(lyr, QgsRasterLayer):
             return lyr
-    except Exception:
+    except ValueError:
         pass
 
     try:
         lyr = qgsVectorLayer(value)
         if isinstance(lyr, QgsVectorLayer):
             return lyr
-    except Exception:
+    except ValueError:
         pass
-
     return None
 
 
@@ -1256,7 +1271,7 @@ UI_STORE: Dict[Path, str] = dict()
 
 
 def loadUi(uifile: Union[str, Path],
-           baseinstance=None,
+           baseinstance: Optional[QWidget] = None,
            resource_suffix: str = '_rc',
            remove_resource_references: bool = True,
            no_caching: bool = False,
@@ -1275,12 +1290,12 @@ def loadUi(uifile: Union[str, Path],
     :param package: argument to `uic.loadUi(...)`
     :return:
     """
-    if baseinstance is not None:
-        assert isinstance(baseinstance, QWidget)
 
     uifile = Path(uifile).resolve()
     # global UI_STORE
-    assert uifile.is_file(), '*.ui file does not exist: {}'.format(uifile)
+    if not uifile.is_file():
+        raise AssertionError(f'*.ui file does not exist: {uifile}')
+
     if no_caching or uifile not in UI_STORE.keys():
         from .resources import REGEX_QGIS_IMAGES_QRC
 
@@ -1348,7 +1363,7 @@ def loadUi(uifile: Union[str, Path],
 
             cClass = child.firstChildElement('class').firstChild()
             cHeader = child.firstChildElement('header').firstChild()
-            cExtends = child.firstChildElement('extends').firstChild()
+            _ = child.firstChildElement('extends').firstChild()
 
             sClass = str(cClass.nodeValue())
             sExtends = str(cHeader.nodeValue())
@@ -1414,7 +1429,8 @@ def typecheck(variable, type_):
         for i in range(len(type_)):
             typecheck(variable[i], type_[i])
     else:
-        assert isinstance(variable, type_)
+        if not isinstance(variable, type_):
+            raise AssertionError(f'Wrong type: {variable}')
 
 
 # thanks to https://gis.stackexchange.com/questions/75533/how-to-apply-band-settings-using-gdal-python-bindings
@@ -1447,8 +1463,6 @@ def writeAsVectorFormat(layer: QgsVectorLayer,
     :return: QgsVectorLayer
     """
     path = Path(path)
-    assert isinstance(layer, QgsVectorLayer)
-    assert layer.isValid()
 
     if not isinstance(options, QgsVectorFileWriter.SaveVectorOptions):
 
@@ -1484,13 +1498,12 @@ def writeAsVectorFormat(layer: QgsVectorLayer,
         QgsProject.instance().transformContext(),
         options,
     )
-    assert err == QgsVectorFileWriter.NoError, errMsg
-
-    # assert r
-    # save styling
+    if err != QgsVectorFileWriter.NoError:
+        raise AssertionError(errMsg)
 
     lyr2 = QgsVectorLayer(path.as_posix(), layer.name())
-    assert lyr2.isValid()
+    if not lyr2.isValid():
+        raise AssertionError(f'Layer is invalid: {path}')
 
     style = QgsMapLayerStyle()
     style.readFromLayer(layer)
@@ -1499,7 +1512,8 @@ def writeAsVectorFormat(layer: QgsVectorLayer,
     path_qlr = path.parent / re.sub(r'\.[^.]+$', '.qml', path.name)
     # msg, success = layer.saveNamedStyle(pathQlr.as_posix())
     msg, success = lyr2.saveNamedStyle(path_qlr.as_posix())
-    assert success, 'Failed to save style:' + msg
+    if not success:
+        raise AssertionError(f'Failed to save style: {msg}')
 
     return lyr2
 
@@ -1532,14 +1546,13 @@ class KeepRefs(object):
                 yield inst
 
 
-def appendItemsToMenu(menu, itemsToAdd):
+def appendItemsToMenu(menu: QMenu, itemsToAdd: List[Union[QMenu, QAction]]):
     """
     Appends items to QMenu "menu"
     :param menu: the QMenu to be extended
     :param itemsToAdd: QMenu or [list-of-QActions-or-QMenus]
     :return: menu
     """
-    assert isinstance(menu, QMenu)
     if isinstance(itemsToAdd, QMenu):
         itemsToAdd = itemsToAdd.children()[1:]
     if not isinstance(itemsToAdd, list):
@@ -1549,14 +1562,15 @@ def appendItemsToMenu(menu, itemsToAdd):
         if isinstance(item, QAction):
             item.setParent(menu)
             menu.addAction(item)
-            s = ""
+
         elif isinstance(item, QMenu):
             # item.setParent(menu)
             sub = menu.addMenu(item.title())
             sub.setIcon(item.icon())
             appendItemsToMenu(sub, item.children()[1:])
         else:
-            s = ""
+            pass
+
     return menu
 
 
@@ -1588,13 +1602,15 @@ def copyEditorWidgetSetup(vectorLayer: QgsVectorLayer, fields: Union[QgsFields, 
             # profile_field name does not exist
             continue
         fDst = vectorLayer.fields().at(idx)
-        assert isinstance(fDst, QgsField)
+        if not isinstance(fDst, QgsField):
+            raise AssertionError(f'Unable to get QgsField at index {idx}')
 
         setup = fSrc.editorWidgetSetup()
         if QgsGui.instance().editorWidgetRegistry().factory(setup.type()).supportsField(vectorLayer, idx):
             vectorLayer.setEditorWidgetSetup(idx, setup)
         else:
-            s = ""
+            pass
+
     vectorLayer.updatedFields.emit()
 
 
@@ -1634,7 +1650,7 @@ def compare_dicts(d1, d2, path=""):
 def check_package(name, package=None, stop_on_error=False):
     try:
         importlib.import_module(name, package)
-    except Exception as e:
+    except Exception:
         if stop_on_error:
             raise Exception('Unable to import package/module "{}"'.format(name))
         return False
@@ -1651,7 +1667,6 @@ def qgsFields2str(qgsFields: QgsFields) -> str:
     """Converts the QgsFields definition into a pickable string"""
     infos = []
     for field in qgsFields:
-        assert isinstance(field, QgsField)
         # info = [field.name(), field.type(), field.typeName(), field.length(), field.precision(),
         # field.comment(), field.subType()]
         info = dict(name=field.name(),
@@ -1663,7 +1678,7 @@ def qgsFields2str(qgsFields: QgsFields) -> str:
                     subType=field.subType(),
                     editorWidget=field.editorWidgetSetup().type())
         infos.append(info)
-    return json.dumps(infos)
+    return json.dumps(infos, ensure_ascii=False)
 
 
 def str2QgsFields(fieldString: str) -> QgsFields:
@@ -1671,7 +1686,9 @@ def str2QgsFields(fieldString: str) -> QgsFields:
     fields = QgsFields()
 
     infos = json.loads(fieldString)
-    assert isinstance(infos, list)
+    if not isinstance(infos, list):
+        raise AssertionError('json.loads did not return a list')
+
     for info in infos:
         field = QgsField(name=info['name'],
                          type=info['type'],
@@ -1693,7 +1710,7 @@ def as_py_value(value, datatype: Qgis.DataType):
     :param datatype:
     :return:
     """
-    if value in [None, QVariant()]:
+    if value in [None, NULL]:
         return None
     if datatype in [Qgis.Byte, Qgis.Int16, Qgis.Int32, Qgis.UInt16, Qgis.UInt32]:
         return int(value)
@@ -1708,15 +1725,6 @@ def zipdir(pathDir, pathZip):
     :param pathZip: path to new zipfile
     """
     # thx to https://stackoverflow.com/questions/1855095/how-to-create-a-zip-archive-of-a-directory
-    """
-    import zipfile
-    assert os.path.isdir(pathDir)
-    zipf = zipfile.ZipFile(pathZip, 'w', zipfile.ZIP_DEFLATED)
-    for root, dirs, files in os.walk(pathDir):
-        for file in files:
-            zipf.write(os.path.join(root, file))
-    zipf.close()
-    """
     relroot = os.path.abspath(os.path.join(pathDir, os.pardir))
     with zipfile.ZipFile(pathZip, "w", zipfile.ZIP_DEFLATED) as zip:
         for root, dirs, files in os.walk(pathDir):
@@ -1830,9 +1838,11 @@ def defaultBands(dataset) -> List[int]:
         return defaultBands(gdal.Open(dataset))
     elif isinstance(dataset, QgsRasterDataProvider):
         return defaultBands(dataset.dataSourceUri())
-    elif isinstance(dataset, QgsRasterLayer) and \
-            isinstance(dataset.dataProvider(), QgsRasterDataProvider) and \
-            dataset.dataProvider().name() == 'gdal':
+    elif (
+            isinstance(dataset, QgsRasterLayer)
+            and isinstance(dataset.dataProvider(), QgsRasterDataProvider)
+            and dataset.dataProvider().name() == 'gdal'
+    ):
         return defaultBands(dataset.source())
     elif isinstance(dataset, gdal.Dataset):
 
@@ -1846,8 +1856,7 @@ def defaultBands(dataset) -> List[int]:
         db = [0, 0, 0]
         cis = [gdal.GCI_RedBand, gdal.GCI_GreenBand, gdal.GCI_BlueBand]
         for b in range(dataset.RasterCount):
-            band = dataset.GetRasterBand(b + 1)
-            assert isinstance(band, gdal.Band)
+            band: gdal.Band = dataset.GetRasterBand(b + 1)
             ci = band.GetColorInterpretation()
             if ci in cis:
                 db[cis.index(ci)] = b + 1
@@ -1877,7 +1886,8 @@ def bandClosestToWavelength(dataset, wl, wl_unit: str = 'nm') -> int:
     :return: band index (starting with 0) | defaults to 0, e.g. if wavelength information is not provided
     """
     if isinstance(wl, str):
-        assert wl.upper() in LUT_WAVELENGTH.keys(), wl
+        if wl.upper() not in LUT_WAVELENGTH.keys():
+            raise AssertionError(f'No band with wavelength {wl}')
         return bandClosestToWavelength(dataset, LUT_WAVELENGTH[wl.upper()], wl_unit='nm')
     else:
         try:
@@ -1891,8 +1901,31 @@ def bandClosestToWavelength(dataset, wl, wl_unit: str = 'nm') -> int:
                 wl = UnitLookup.convertLengthUnit(wl, wl_unit, ds_wlu)
             return int(np.argmin(np.abs(ds_wl - wl)))
         except Exception:
-            pass
+            return 0
     return 0
+
+
+def stringToByteArray(text: Union[str, QDomDocument]):
+    """
+    Converts input into a QByteArray
+    :param text: bytes or str
+    :return: QByteArray
+    """
+
+    if isinstance(text, QDomDocument):
+        text = text.toString()
+    data = QByteArray()
+    data.append(text.encode())
+    return data
+
+
+def stringFromByteArray(data: QByteArray):
+    """
+    Decodes a QByteArray into a str
+    :param data: QByteArray
+    :return: str
+    """
+    return data.data().decode()
 
 
 def parseBadBandList(dataset) -> List[int]:
@@ -1931,7 +1964,7 @@ def parseBadBandList(dataset) -> List[int]:
     return bbl
 
 
-def parseFWHM(dataset) -> np.ndarray:
+def parseFWHM(dataset) -> Optional[np.ndarray]:
     """
     Returns the full width half maximum
     :param dataset:
@@ -1945,42 +1978,9 @@ def parseFWHM(dataset) -> np.ndarray:
     else:
         return None
 
-    try:
-        dataset = gdalDataset(dataset)
-    except Exception:
-        return None
 
-    key_positions = [('fwhm', None),
-                     ('fwhm', 'ENVI')]
-
-    if isinstance(dataset, gdal.Dataset):
-        for key, domain in key_positions:
-            values = dataset.GetMetadataItem(key, domain)
-            if isinstance(values, str):
-                values = re.sub('[{}]', '', values).strip()
-                try:
-                    values = np.fromstring(values, sep=',', count=dataset.RasterCount)
-                    if len(values) == dataset.RasterCount:
-                        return values
-                except Exception:
-                    pass
-
-        # search band by band
-        values = []
-        for b in range(dataset.RasterCount):
-            band: gdal.Band = dataset.GetRasterBand(b + 1)
-            for key, domain in key_positions:
-                value = dataset.GetMetadataItem(key, domain)
-                if value not in ['', None]:
-                    values.append(value)
-                    break
-        if len(values) == dataset.RasterCount:
-            return np.asarray(values)
-    return None
-
-
-def checkWavelength(key: str, values: str, expected: int = 1) -> np.ndarray:
-    wl: np.ndarray = None
+def checkWavelength(key: str, values: str, expected: int = 1) -> Optional[np.ndarray]:
+    wl = None
     if re.search(r'^(center[ _]*)?wavelengths?$', key, re.I):
         # remove trailing / ending { } and whitespace
         values = re.sub('[{}]', '', values).strip()
@@ -1993,10 +1993,10 @@ def checkWavelength(key: str, values: str, expected: int = 1) -> np.ndarray:
             if len(wl) != expected:
                 wl = None
             # wl = np.fromstring(values, count=expected, sep=sep)
-        except ValueError as exV:
-            pass
-        except Exception as ex:
-            pass
+        except ValueError:
+            return wl
+        except Exception:
+            return wl
     return wl
 
 
@@ -2212,16 +2212,15 @@ def nodeXmlString(node: QDomElement, indent: int = 1) -> str:
     :return: str
     """
     if isinstance(node, QDomDocument):
-        node = node.documentElement()
-    assert isinstance(node, QDomElement)
+        node: QDomElement = node.documentElement()
+
     doc = QDomDocument()
     doc.createElement('root')  # curious, we just need to create it, without adding as child
     doc.appendChild(node.cloneNode(True).toElement())
     return doc.toString(indent=indent)
 
 
-def getDOMAttributes(elem) -> dict:
-    assert isinstance(elem, QDomElement)
+def getDOMAttributes(elem: QDomElement) -> dict:
     values = dict()
     attributes = elem.attributes()
     for a in range(attributes.count()):
@@ -2254,7 +2253,6 @@ def geo2pxF(geo: QgsPointXY, gt: Union[list, np.ndarray, tuple]) -> QPointF:
     :param gt: GDAL Geo-Transformation tuple, as described in https://gdal.org/user/raster_data_model.html
     :return: pixel position as QPointF
     """
-    assert isinstance(geo, QgsPointXY)
     # see https://gdal.org/user/raster_data_model.html#affine-geotransform
     px = (geo.x() - gt[0]) / gt[1]  # x pixel
     py = (geo.y() - gt[3]) / gt[5]  # y pixel
@@ -2294,12 +2292,12 @@ def check_vsimem() -> bool:
         from qgis.core import QgsCoordinateReferenceSystem, QgsRasterLayer
         import uuid
         # create an 2x2x1 in-memory raster
-        driver = gdal.GetDriverByName('GTiff')
-        assert isinstance(driver, gdal.Driver)
+        driver: gdal.Driver = gdal.GetDriverByName('GTiff')
         path = f'/vsimem/inmemorytestraster.{uuid.uuid4()}.tif'
 
         dataSet: gdal.Dataset = driver.Create(path, 2, 2, bands=1, eType=gdal.GDT_Byte)
-        assert isinstance(dataSet, gdal.Dataset)
+        if not isinstance(dataSet, gdal.Dataset):
+            raise AssertionError(f'Unable to create dataset: {path}')
         drv: gdal.Driver = dataSet.GetDriver()
         c = QgsCoordinateReferenceSystem('EPSG:32632')
         dataSet.SetProjection(c.toWkt())
@@ -2307,16 +2305,18 @@ def check_vsimem() -> bool:
         dataSet.FlushCache()
         dataSet = None
 
-        ds2 = gdal.Open(path)
-        assert isinstance(ds2, gdal.Dataset)
+        ds2: gdal.Dataset = gdal.Open(path)
+        if not isinstance(ds2, gdal.Dataset):
+            raise AssertionError(f'Unable to open gdal.Dataset: {path}')
 
         layer = QgsRasterLayer(path)
-        assert isinstance(layer, QgsRasterLayer)
+        if not isinstance(layer, QgsRasterLayer):
+            raise AssertionError(f'Unable to open QgsRasterLayer: {path}')
         result = layer.isValid()
         del layer
         drv.Delete(path)
 
-    except Exception as ex:
+    except Exception:
         return False
     return result
 
@@ -2328,7 +2328,6 @@ def layerGeoTransform(rasterLayer: QgsRasterLayer) -> Tuple[float, float, float,
     :param rasterLayer: QgsRasterLayer
     :return: [array]
     """
-    assert isinstance(rasterLayer, QgsRasterLayer)
     ext = rasterLayer.extent()
     x0 = ext.xMinimum()
     y0 = ext.yMaximum()
@@ -2382,10 +2381,6 @@ def px2geocoordinatesV2(layer: QgsRasterLayer,
     :param px: QPoint pixel position (0,0) = 1st pixel
     :return: geo_x, geo_y numpy arrays
     """
-    assert isinstance(layer, QgsRasterLayer) and layer.isValid()
-    # assert 0 <= px.x() < layer.width()
-    # assert 0 <= px.y() < layer.height()
-    assert 0 <= subpixel_pos <= 1.0
 
     if xcoordinates is None:
         xcoordinates = np.arange(layer.width())
@@ -2399,8 +2394,11 @@ def px2geocoordinatesV2(layer: QgsRasterLayer,
     if subpixel_pos_y is None:
         subpixel_pos_y = subpixel_pos
 
-    assert 0 <= subpixel_pos_x <= 1.0
-    assert 0 <= subpixel_pos_y <= 1.0
+    if not (
+            (0 <= subpixel_pos_x <= 1.0) and (0 <= subpixel_pos_y <= 1.0)
+    ):
+        raise AssertionError('subpixel position(s) not in range 0.0 - 1.0:\n'
+                             f'subpixel_pos_x={subpixel_pos_x} subpixel_pos_y={subpixel_pos_y}')
 
     ext: QgsRectangle = layer.extent()
 
@@ -2531,7 +2529,6 @@ class HashableRect(QRect):
 
 
 def rasterLayerMapToPixel(layer: QgsRasterLayer) -> QgsMapToPixel:
-    assert isinstance(layer, QgsRasterLayer)
     c = layer.extent().center()
 
     m2p = QgsMapToPixel(layer.rasterUnitsPerPixelX(),
@@ -2557,21 +2554,25 @@ class SpatialPoint(QgsPointXY):
 
     @staticmethod
     def fromMapCanvasCenter(mapCanvas: QgsMapLayer):
-        assert isinstance(mapCanvas, QgsMapCanvas)
         crs = mapCanvas.mapSettings().destinationCrs()
         return SpatialPoint(crs, mapCanvas.center())
 
     @staticmethod
     def fromMapLayerCenter(mapLayer: QgsMapLayer):
-        assert isinstance(mapLayer, QgsMapLayer) and mapLayer.isValid()
         crs = mapLayer.crs()
         return SpatialPoint(crs, mapLayer.extent().center())
 
     @staticmethod
     def fromSpatialExtent(spatialExtent):
-        assert isinstance(spatialExtent, SpatialExtent)
         crs = spatialExtent.crs()
         return SpatialPoint(crs, spatialExtent.center())
+
+    @classmethod
+    def fromJson(cls, json_str: str):
+        d = json.loads(json_str)
+        crs = QgsCoordinateReferenceSystem(d['crs'])
+        pt = QgsPointXY(d['x'], d['y'])
+        return SpatialPoint(crs, pt)
 
     @staticmethod
     def fromPixelPosition(rasterLayer: QgsRasterLayer,
@@ -2583,12 +2584,13 @@ class SpatialPoint(QgsPointXY):
         :param y:
         :return:
         """
-        assert isinstance(rasterLayer, QgsRasterLayer)
         if isinstance(x, (QPoint, QPointF)):
             y = x.y()
             x = x.x()
-        assert isinstance(x, (int, float))
-        assert isinstance(y, (int, float))
+        if not isinstance(x, (int, float)):
+            raise AssertionError(f'x must be int or float: {x}')
+        if not isinstance(y, (int, float)):
+            raise AssertionError(f'y must be int or float: {y}')
 
         mapUnitsPerPixel = rasterLayer.rasterUnitsPerPixelX()
         ext = rasterLayer.extent()
@@ -2604,28 +2606,27 @@ class SpatialPoint(QgsPointXY):
         geoPt = m2p.toMapCoordinatesF(x, y)
         return SpatialPoint(rasterLayer.crs(), geoPt)
 
-    def __init__(self, crs, *args):
+    def __init__(self, crs: Union[str, 'SpatialPoint', QgsCoordinateReferenceSystem], *args):
         if isinstance(crs, SpatialPoint):
             crs, args = crs.crs(), [crs]
 
         if not isinstance(crs, QgsCoordinateReferenceSystem):
             crs = QgsCoordinateReferenceSystem(crs)
-        assert isinstance(crs, QgsCoordinateReferenceSystem)
         super(SpatialPoint, self).__init__(*args)
         self.mCrs = crs
 
     def __hash__(self):
         return hash(str(self))
 
-    def setCrs(self, crs):
-        assert isinstance(crs, QgsCoordinateReferenceSystem)
+    def setCrs(self, crs: QgsCoordinateReferenceSystem):
+        if not isinstance(crs, QgsCoordinateReferenceSystem):
+            raise TypeError(f'not a QgsCoordinateReferenceSystem: {crs}')
         self.mCrs = crs
 
     def crs(self):
         return self.mCrs
 
-    def toPixel(self, layer: QgsRasterLayer) -> QPoint:
-        assert isinstance(layer, QgsRasterLayer)
+    def toPixel(self, layer: QgsRasterLayer) -> Optional[QPoint]:
 
         pt = self.toCrs(layer.crs())
         if not isinstance(pt, SpatialPoint):
@@ -2642,7 +2643,7 @@ class SpatialPoint(QgsPointXY):
 
         return QPoint(math.floor(px.x()), math.floor(px.y()))
 
-    def toPixelPosition(self, rasterDataSource, allowOutOfRaster=False) -> QPoint:
+    def toPixelPosition(self, rasterDataSource, allowOutOfRaster: bool = False) -> Optional[QPoint]:
         """
         Returns the pixel position of this SpatialPoint within the rasterDataSource
         :param rasterDataSource: gdal.Dataset
@@ -2681,14 +2682,18 @@ class SpatialPoint(QgsPointXY):
         node.appendChild(node_geom)
         node.appendChild(node_crs)
 
-    def toCrs(self, crs) -> Optional['SpatialPoint']:
-        assert isinstance(crs, QgsCoordinateReferenceSystem)
+    def toCrs(self, crs: QgsCoordinateReferenceSystem) -> Optional['SpatialPoint']:
+
         pt = QgsPointXY(self)
 
         if self.mCrs != crs:
             pt = saveTransform(pt, self.mCrs, crs)
 
         return SpatialPoint(crs, pt) if pt else None
+
+    def json(self) -> str:
+        d = {'x': self.x(), 'y': self.y(), 'crs': self.crs().toWkt()}
+        return json.dumps(d, ensure_ascii=False)
 
     def __reduce_ex__(self, protocol):
         return self.__class__, (self.crs().toWkt(), self.x(), self.y()), {}
@@ -2714,8 +2719,8 @@ class SpatialPoint(QgsPointXY):
 def px2spatialPoint(rasterInterface: Union[QgsRasterInterface, QgsRasterLayer],
                     px: QPoint,
                     subpixel_pos: float = 0.5,
-                    subpixel_pos_x: float = None,
-                    subpixel_pos_y: float = None) -> SpatialPoint:
+                    subpixel_pos_x: Optional[float] = None,
+                    subpixel_pos_y: Optional[float] = None) -> SpatialPoint:
     """
     Returns the pixel center as coordinate in a raster layer's CRS
     :param rasterInterface: QgsRasterLayer
@@ -2723,14 +2728,12 @@ def px2spatialPoint(rasterInterface: Union[QgsRasterInterface, QgsRasterLayer],
     :return: SpatialPoint
     """
     if isinstance(rasterInterface, QgsRasterLayer):
-        assert rasterInterface.isValid()
+        if not rasterInterface.isValid():
+            raise AssertionError(f'not a valid QgsRasterLayer: {rasterInterface}')
         rasterInterface = rasterInterface.dataProvider()
 
-    assert isinstance(rasterInterface, QgsRasterInterface)
-
-    # assert 0 <= px.x() < layer.width()
-    # assert 0 <= px.y() < layer.height()
-    assert 0 <= subpixel_pos <= 1.0
+    if not isinstance(rasterInterface, QgsRasterInterface):
+        raise AssertionError(f'not a valid QgsRasterInterface: {rasterInterface}')
 
     if subpixel_pos_x is None:
         subpixel_pos_x = subpixel_pos
@@ -2738,8 +2741,10 @@ def px2spatialPoint(rasterInterface: Union[QgsRasterInterface, QgsRasterLayer],
     if subpixel_pos_y is None:
         subpixel_pos_y = subpixel_pos
 
-    assert 0 <= subpixel_pos_x <= 1.0
-    assert 0 <= subpixel_pos_y <= 1.0
+    if not (0 <= subpixel_pos_x <= 1.0):
+        raise AssertionError('subpixel_pos_x must be in range [0.0 - 1.0]')
+    if not (0 <= subpixel_pos_y <= 1.0):
+        raise AssertionError('subpixel_pos_y must be in range [0.0 - 1.0]')
 
     ext: QgsRectangle = rasterInterface.extent()
 
@@ -2751,7 +2756,10 @@ def px2spatialPoint(rasterInterface: Union[QgsRasterInterface, QgsRasterLayer],
                         ext.yMaximum() - (px.y() + subpixel_pos_y) * resY)
 
 
-def spatialPoint2px(layer: QgsRasterLayer, spatialPoint: Union[QgsPointXY, SpatialPoint]) -> Optional[QPoint]:
+def spatialPoint2px(
+        layer: QgsRasterLayer,
+        spatialPoint: Union[QgsPointXY, SpatialPoint]
+) -> Optional[QPoint]:
     """
     Converts a spatial point into a raster pixel coordinate
     :param layer:
@@ -2761,8 +2769,6 @@ def spatialPoint2px(layer: QgsRasterLayer, spatialPoint: Union[QgsPointXY, Spati
     """
     if isinstance(spatialPoint, SpatialPoint):
         spatialPoint = spatialPoint.toCrs(layer.crs())
-    assert isinstance(spatialPoint, QgsPointXY)
-    assert isinstance(layer, QgsRasterLayer)
     ext = layer.extent()
     if layer.width() == 0 or layer.height() == 0:
         return None
@@ -2849,7 +2855,6 @@ def iconForFieldType(field: Union[QgsField, QgsVectorDataProvider.NativeType]) -
                          prec=field.mMaxPrec,
                          subType=field.mSubType)
 
-    assert isinstance(field, QgsField)
     return QgsFields.iconForFieldType(field.type())
 
 
@@ -2860,8 +2865,6 @@ def createCRSTransform(src: QgsCoordinateReferenceSystem, dst: QgsCoordinateRefe
     :param dst:
     :return:
     """
-    assert isinstance(src, QgsCoordinateReferenceSystem)
-    assert isinstance(dst, QgsCoordinateReferenceSystem)
     t = QgsCoordinateTransform()
     t.setSourceCrs(src)
     t.setDestinationCrs(dst)
@@ -2878,9 +2881,6 @@ def saveTransform(geom: Union[QgsPointXY, QgsRectangle, Tuple[np.ndarray, np.nda
     :param crs2:
     :return:
     """
-    assert isinstance(crs1, QgsCoordinateReferenceSystem)
-    assert isinstance(crs2, QgsCoordinateReferenceSystem)
-
     transform = QgsCoordinateTransform(crs1, crs2, QgsProject.instance())
 
     result = None
@@ -2908,8 +2908,9 @@ def saveTransform(geom: Union[QgsPointXY, QgsRectangle, Tuple[np.ndarray, np.nda
 
         xcoords, ycoords = geom
         shape = xcoords.shape
-        assert xcoords.shape == ycoords.shape
-        n = np.prod(xcoords.shape)
+        if xcoords.shape != ycoords.shape:
+            raise AssertionError(f'Differing shapes: {xcoords.shape} vs. {ycoords.shape}')
+        _ = np.prod(xcoords.shape)
         results = [transform.transform(QgsPointXY(x, y))
                    for x, y in zip(xcoords.flatten(), ycoords.flatten())]
         xresults = np.asarray([r.x() for r in results])
@@ -2923,12 +2924,12 @@ def snapGeoCoordinates(coordinates: List[Union[QgsPointXY, QPointF]],
                        m2p: Union[QgsRasterLayer, QgsMapToPixel]) -> List[QgsPointXY]:
     if isinstance(m2p, QgsRasterLayer):
         c = m2p.extent().center()
-        raster = QgsMapToPixel(m2p.rasterUnitsPerPixelX(),
-                               c.x(), c.y(),
-                               m2p.width(), m2p.height(),
-                               0,
-                               )
-    assert isinstance(m2p, QgsMapToPixel)
+        _ = QgsMapToPixel(m2p.rasterUnitsPerPixelX(),
+                          c.x(), c.y(),
+                          m2p.width(), m2p.height(),
+                          0,
+                          )
+
     d = QgsVector(0.5 * m2p.mapUnitsPerPixel(),
                   -0.5 * m2p.mapUnitsPerPixel())
     snapped = []
@@ -2979,9 +2980,7 @@ class SpatialExtent(QgsRectangle):
         return SpatialExtent(crs, rectangle)
 
     @staticmethod
-    def fromMapCanvas(mapCanvas, fullExtent: bool = False):
-        assert isinstance(mapCanvas, QgsMapCanvas)
-
+    def fromMapCanvas(mapCanvas: QgsMapCanvas, fullExtent: bool = False):
         if fullExtent:
             extent = mapCanvas.fullExtent()
         else:
@@ -2998,7 +2997,6 @@ class SpatialExtent(QgsRectangle):
     @staticmethod
     def fromRasterSource(pathSrc):
         ds = gdalDataset(pathSrc)
-        assert isinstance(ds, gdal.Dataset)
         ns, nl = ds.RasterXSize, ds.RasterYSize
         gt = ds.GetGeoTransform()
         crs = QgsCoordinateReferenceSystem(ds.GetProjection())
@@ -3014,28 +3012,37 @@ class SpatialExtent(QgsRectangle):
         return SpatialExtent(crs, min(xValues), min(yValues),
                              max(xValues), max(yValues))
 
+    @classmethod
+    def fromJson(cls, json_str: str):
+
+        d = json.loads(json_str)
+        return cls(QgsCoordinateReferenceSystem(d['crs']),
+                   QgsRectangle.fromWkt(d['extent']))
+
     @staticmethod
-    def fromLayer(mapLayer):
-        assert isinstance(mapLayer, QgsMapLayer)
+    def fromLayer(mapLayer: QgsMapLayer):
         extent = mapLayer.extent()
         crs = mapLayer.crs()
         return SpatialExtent(crs, extent)
 
-    def __init__(self, crs, *args):
+    def __init__(self, crs: Union['SpatialExtent', QgsCoordinateReferenceSystem], *args):
 
         if isinstance(crs, SpatialExtent):
             crs, args = crs.crs(), [crs]
         if not isinstance(crs, QgsCoordinateReferenceSystem):
             crs = QgsCoordinateReferenceSystem(crs)
-        assert isinstance(crs, QgsCoordinateReferenceSystem)
+
         super(SpatialExtent, self).__init__(*args)
+        self.mCrs: QgsCoordinateReferenceSystem = crs
+
+    def json(self) -> str:
+        d = {'crs': self.crs().toWkt(), 'extent': self.asWktPolygon()}
+        return json.dumps(d, ensure_ascii=False)
+
+    def setCrs(self, crs: QgsCoordinateReferenceSystem):
         self.mCrs = crs
 
-    def setCrs(self, crs):
-        assert isinstance(crs, QgsCoordinateReferenceSystem)
-        self.mCrs = crs
-
-    def crs(self):
+    def crs(self) -> QgsCoordinateReferenceSystem:
         return self.mCrs
 
     def writeXml(self, node: QDomNode, doc: QDomDocument):
@@ -3050,8 +3057,7 @@ class SpatialExtent(QgsRectangle):
         node.appendChild(node_geom)
         node.appendChild(node_crs)
 
-    def toCrs(self, crs):
-        assert isinstance(crs, QgsCoordinateReferenceSystem)
+    def toCrs(self, crs: QgsCoordinateReferenceSystem):
         box = QgsRectangle(self)
         if self.mCrs != crs:
             box = saveTransform(box, self.mCrs, crs)
@@ -3093,7 +3099,6 @@ class SpatialExtent(QgsRectangle):
     def __cmp__(self, other):
         if other is None:
             return 1
-        s = ""
 
     def upperRightPt(self) -> QgsPointXY:
         """
@@ -3216,7 +3221,6 @@ class MapGeometryToPixel(object):
     @staticmethod
     def fromRaster(raster):
         raster = qgsRasterLayer(raster)
-        assert isinstance(raster, QgsRasterLayer)
         center = raster.extent().center()
         m2p = QgsMapToPixel(raster.rasterUnitsPerPixelX(),
                             center.x(),
@@ -3244,21 +3248,21 @@ class MapGeometryToPixel(object):
     def __init__(self,
                  m2p: QgsMapToPixel,
                  crs: QgsCoordinateReferenceSystem = None):
-        assert m2p.isValid()
+        if not m2p.isValid():
+            raise AssertionError('Invalid QgsMapToPixel')
         self.m2p = m2p
 
         ul = m2p.toMapCoordinatesF(0, 0)
 
         self.xMin = ul.x()
         self.yMax = ul.y()
-        self.crs = crs
-        self.srs = None
+        self.crs: QgsCoordinateReferenceSystem = crs
 
         # t: QTransform = self.m2p.transform()
-        self.rsMEM: gdal.Dataset = None
-        self.bandMEM: gdal.Band = None
-        self.vsMem: ogr.DataSource = None
-        self.srs: osr.SpatialReference = None
+        self.rsMEM: Optional[gdal.Dataset] = None
+        self.bandMEM: Optional[gdal.Band] = None
+        self.vsMem: Optional[ogr.DataSource] = None
+        self.srs: Optional[osr.SpatialReference] = None
         self.wkbTypeLayers: Dict[int, ogr.Layer] = dict()
 
     def nSamples(self) -> int:
@@ -3297,8 +3301,10 @@ class MapGeometryToPixel(object):
         return [self.geo2px(x, y) for x, y in zip(xvalues, yvalues)]
 
     def memoryLayerBand(self, qgsGeometry: QgsGeometry) -> Tuple[gdal.Band, ogr.Layer]:
-        if not isinstance(self.srs, SpatialReference) and \
-                isinstance(self.crs, QgsCoordinateReferenceSystem):
+        if (
+                not isinstance(self.srs, SpatialReference)
+                and isinstance(self.crs, QgsCoordinateReferenceSystem)
+        ):
             self.srs = SpatialReference(self.crs.toWkt())
 
         if not isinstance(self.rsMEM, gdal.Dataset):
@@ -3306,7 +3312,8 @@ class MapGeometryToPixel(object):
                                         .Create('', self.nSamples(), self.nLines(), 1, gdal.GDT_Byte))
             # ul = self.px2geo(0, 0)
             t, success = self.m2p.transform().inverted()
-            assert success, 'Matrix is not invertible'
+            if not success:
+                raise AssertionError('Matrix is not invertible')
             self.rsMEM.SetGeoTransform((t.m31(), t.m11(), t.m12(),
                                         t.m32(), t.m21(), t.m22()))
             #  self.rsMEM.SetGeoTransform((ul.x(), self.pixelWidth(), 0,
@@ -3343,7 +3350,7 @@ class MapGeometryToPixel(object):
         if not isinstance(g, QgsGeometry) or _geometryIsEmpty(g):
             return None, None
 
-        if g.wkbType() == QGIS_WKBTYPE.Point and not burn_points:
+        if g.wkbType() == Qgis.WkbType.Point and not burn_points:
             g = QgsGeometry(g)
             g.mapToPixel(self.m2p)
             px_x = []
@@ -3354,7 +3361,7 @@ class MapGeometryToPixel(object):
                     px_x.append(x)
                     px_y.append(y)
                 else:
-                    s = ""
+                    pass
             if len(px_x) > 0:
                 return np.asarray(px_y), np.asarray(px_x)
             else:
@@ -3368,16 +3375,20 @@ class MapGeometryToPixel(object):
             ogrFeature.SetFID(1)
             ogrFeature.SetField("FID_BURN", 1)
             ogrFeature.SetGeometryDirectly(ogr.CreateGeometryFromWkb(g.asWkb()))
-            assert ogrFeature.geometry().IsValid()
 
-            assert ogr.OGRERR_NONE == self._clearAndInsert(lyr, ogrFeature)
-            assert lyr.GetFeatureCount() == 1
+            if ogr.OGRERR_NONE != self._clearAndInsert(lyr, ogrFeature):
+                raise AssertionError('Unable to insert feature')
+            if not (lyr.GetFeatureCount() == 1):
+                raise AssertionError('Failed to insert feature')
             lyr.ResetReading()
             bandMEM.Fill(0)  # ensure that no FIDs are left from previous writes
-            assert gdal.CPLE_None == gdal.RasterizeLayer(dsMEM, [1], lyr,
-                                                         options=['ALL_TOUCHED={}'.format(all_touched).upper(),
-                                                                  'ATTRIBUTE={}'.format('FID_BURN')]
-                                                         )
+            if not (
+                    gdal.CPLE_None == gdal.RasterizeLayer(dsMEM, [1], lyr,
+                                                          options=[
+                                                              f'ALL_TOUCHED={all_touched}'.upper(),
+                                                              'ATTRIBUTE=FID_BURN'])
+            ):
+                raise AssertionError('Unable to rasterize layer')
             is_fid = dsMEM.ReadAsArray() == 1
             px_y, px_x = np.where(is_fid)
             if len(px_y) > 0:
@@ -3415,15 +3426,18 @@ class ExtentTileIterator(object):
             tileSizeY = raster.dataProvider().yBlockSize() * raster.rasterUnitsPerPixelY()
             extent = raster.extent()
 
-        assert isinstance(extent, QgsRectangle) and not extent.isEmpty()
+        if not (isinstance(extent, QgsRectangle) and not extent.isEmpty()):
+            raise AssertionError(f'Invalid extent: {extent}')
+
         if tileSizeX < 0 or tileSizeX > extent.width():
             tileSizeX = extent.width()
 
         if tileSizeY < 0 or tileSizeY > extent.height():
             tileSizeY = extent.width()
 
-        assert 0 < tileSizeX
-        assert 0 < tileSizeY
+        if not (0 < tileSizeX and 0 < tileSizeY):
+            raise AssertionError(
+                f'tileSizeX and tileSizeY must be > 0: {tileSizeX} {tileSizeY}')
 
         self.mExtent = extent
         self.mTileSizeX = tileSizeX
@@ -3464,14 +3478,15 @@ class ExtentTileIterator(object):
         return rect
 
 
-def rasterizeFeatures(featureSource: QgsFeatureSource,
-                      rasterLayer: QgsRasterLayer,
-                      request: QgsFeatureRequest = QgsFeatureRequest(),
-                      all_touched: bool = True,
-                      pixel_metadata: bool = True,
-                      blockSize: int = 0,
-                      feedback: QgsProcessingFeedback = QgsProcessingFeedback()) -> \
-        Iterator[Tuple[QgsFeature, np.ndarray, Dict[str, Any]]]:
+def rasterizeFeatures(
+        featureSource: QgsFeatureSource,
+        rasterLayer: QgsRasterLayer,
+        request: QgsFeatureRequest = QgsFeatureRequest(),
+        all_touched: bool = True,
+        pixel_metadata: bool = True,
+        blockSize: int = 0,
+        feedback: QgsProcessingFeedback = QgsProcessingFeedback()
+) -> Iterator[Tuple[QgsFeature, np.ndarray, Dict[str, Any]]]:
     transform = QgsCoordinateTransform()
     transform.setSourceCrs(featureSource.crs())
     transform.setDestinationCrs(rasterLayer.crs())
@@ -3483,7 +3498,7 @@ def rasterizeFeatures(featureSource: QgsFeatureSource,
     # snap to raster grid
 
     if extI.isEmpty():
-        s = ""
+        pass
     dp: QgsRasterDataProvider = rasterLayer.dataProvider()
 
     c: QgsPointXY = rasterLayer.extent().center()
@@ -3627,11 +3642,14 @@ def rasterizeFeatures(featureSource: QgsFeatureSource,
 
         feedback.setProgress(int((tid + 1.0) * 100. / tileIterator.nTotal))
 
-    assert len(FEATURE_DATA) == 0
+    if len(FEATURE_DATA) > 0:
+        raise AssertionError('FEATURE_DATA is not empty')
+
     for k in list(Tile2Features.keys()):
         if len(Tile2Features[k]) == 0:
             del Tile2Features[k]
-    assert len(Tile2Features) == 0
+    if len(Tile2Features) > 0:
+        raise AssertionError('Tile2Features is not empty')
 
 
 def rasterLayerArray(*args, **kwds):
@@ -3646,7 +3664,8 @@ def rasterArray(rasterInterface: Union[QgsRasterInterface, str, QgsRasterLayer],
                 lr: Union[SpatialPoint, QPoint] = None,
                 bands: Union[str, int, List[int]] = None) -> Optional[np.ndarray]:
     """
-    Returns the raster values of a QgsRasterLayer or QgsRasterInterface as 3D numpy array of shape (bands, height, width)
+    Returns the raster values of a QgsRasterLayer or QgsRasterInterface as 3D numpy array of
+    shape (bands, height, width)
     :param rasterInterface: QgsRasterLayer, QgsRasterInterface or str to load a QgsRasterLayer from
     :param rect: Subset to be returned.
                  QRect for subset in pixel coordinates,
@@ -3665,9 +3684,9 @@ def rasterArray(rasterInterface: Union[QgsRasterInterface, str, QgsRasterLayer],
     """
     if not isinstance(rasterInterface, QgsRasterInterface):
         rlayer = qgsRasterLayer(rasterInterface)
-        assert isinstance(rlayer, QgsRasterLayer) and rlayer.isValid()
-        rasterInterface = rlayer.dataProvider()
-    assert isinstance(rasterInterface, QgsRasterInterface)
+        if not (isinstance(rlayer, QgsRasterLayer) and rlayer.isValid()):
+            raise AssertionError(f'Unable to open QgsRasterLayer from {rasterInterface}')
+        rasterInterface: QgsRasterInterface = rlayer.dataProvider()
 
     ext = rasterInterface.extent()
     resX = ext.width() / rasterInterface.xSize()
@@ -3699,7 +3718,8 @@ def rasterArray(rasterInterface: Union[QgsRasterInterface, str, QgsRasterLayer],
         elif ul is None:
             ul = SpatialPoint(rasterInterface.crs(), ext.xMinimum(), ext.yMaximum())
 
-    assert isinstance(ul, SpatialPoint)
+    if not isinstance(ul, SpatialPoint):
+        raise AssertionError('Unable to read ul')
     ul = ul.toCrs(rasterInterface.crs())
 
     if not isinstance(lr, SpatialPoint):
@@ -3710,10 +3730,12 @@ def rasterArray(rasterInterface: Union[QgsRasterInterface, str, QgsRasterLayer],
         elif lr is None:
             lr = SpatialPoint(rasterInterface.crs(), ext.xMaximum(), ext.yMinimum())
 
-    assert isinstance(lr, SpatialPoint)
-    lr = lr.toCrs(rasterInterface.crs())
+    if not isinstance(lr, SpatialPoint):
+        raise AssertionError('Unable to read lr')
 
-    assert isinstance(lr, SpatialPoint)
+    lr = lr.toCrs(rasterInterface.crs())
+    if not isinstance(lr, SpatialPoint):
+        raise AssertionError(f'Unable to convert lr to {rasterInterface.crs()}')
 
     if bands in [None, 'all', '*']:
         bands = list(range(1, rasterInterface.bandCount() + 1))
@@ -3726,7 +3748,9 @@ def rasterArray(rasterInterface: Union[QgsRasterInterface, str, QgsRasterLayer],
     result_array: Optional[np.ndarray] = None
     bands = sorted(set(bands))
     nb = len(bands)
-    assert nb > 0
+    if not nb > 0:
+        raise AssertionError('number of bands must be > 0')
+
     feedback = QgsRasterBlockFeedback()
 
     if not boundingBox.isNull() and boundingBox.isEmpty():
@@ -3775,9 +3799,9 @@ def rasterArray(rasterInterface: Union[QgsRasterInterface, str, QgsRasterLayer],
             if not (isinstance(band_block, QgsRasterBlock) and band_block.isValid()):
                 return None
 
-            assert isinstance(band_block, QgsRasterBlock)
             band_array = rasterBlockArray(band_block)
-            assert band_array.shape == (height_px, width_px)
+            if not (band_array.shape == (height_px, width_px)):
+                raise AssertionError(f'Wrong shape: {band_array.shape} instead {(height_px, width_px)}')
             if i == 0:
                 result_array = np.empty((nb, height_px, width_px), dtype=band_array.dtype)
             result_array[i, :, :] = band_array
@@ -3785,19 +3809,18 @@ def rasterArray(rasterInterface: Union[QgsRasterInterface, str, QgsRasterLayer],
         return result_array
 
 
-def setToolButtonDefaultActionMenu(toolButton: QToolButton, actions: list):
+def setToolButtonDefaultActionMenu(toolButton: QToolButton, actions: List[QAction]):
     if isinstance(toolButton, QAction):
         for btn in toolButton.parent().findChildren(QToolButton):
-            assert isinstance(btn, QToolButton)
+            btn: QToolButton
             if btn.defaultAction() == toolButton:
                 toolButton = btn
                 break
 
-    assert isinstance(toolButton, QToolButton)
     toolButton.setPopupMode(QToolButton.MenuButtonPopup)
     menu = QMenu(toolButton)
     for i, a in enumerate(actions):
-        assert isinstance(a, QAction)
+        a: QAction
         a.setParent(menu)
         menu.addAction(a)
         if i == 0:
@@ -3836,7 +3859,7 @@ class SelectMapLayerDialog(QgsDialog):
 class SelectMapLayersDialog(QgsDialog):
     class LayerDescription(object):
 
-        def __init__(self, info: str, filters: QGIS_LAYERFILTER, allowEmptyLayer=False):
+        def __init__(self, info: str, filters: Qgis.LayerFilters, allowEmptyLayer=False):
             self.labelText = info
             self.filters = filters
             self.allowEmptyLayer = allowEmptyLayer
@@ -3845,8 +3868,7 @@ class SelectMapLayersDialog(QgsDialog):
         super(SelectMapLayersDialog, self).__init__(buttons=QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         self.setWindowTitle('Select layer(s)')
 
-        gl = QGridLayout()
-        assert isinstance(gl, QGridLayout)
+        gl: QGridLayout = QGridLayout()
         self.mGrid = gl
         gl.setSpacing(6)
         gl.setColumnStretch(0, 0)
@@ -3858,33 +3880,14 @@ class SelectMapLayersDialog(QgsDialog):
         self.buttonBox().button(QDialogButtonBox.Ok).clicked.connect(self.accept)
         self.buttonBox().button(QDialogButtonBox.Cancel).clicked.connect(self.reject)
 
-    def selectMapLayer(self, i, layer):
-        """
-        Selects the QgsMapLayer layer in QgsMapLayerComboBox.
-        :param i: int
-        :param layer: QgsMapLayer.
-        """
-        if isinstance(i, QgsMapLayerComboBox):
-            i = self.mMapLayerBoxes.index(i)
-        box = self.mMapLayerBoxes[i]
-        assert isinstance(layer, QgsMapLayer)
-        assert isinstance(box, QgsMapLayerComboBox)
-        QgsProject.instance().addMapLayer(layer)
-
-        for i in range(box.count()):
-            boxLayer = box.layer(i)
-            if isinstance(boxLayer, QgsMapLayer) and boxLayer == layer:
-                box.setCurrentIndex(i)
-                break
-
-    def exec_(self):
+    def exec(self):
 
         if len(self.mMapLayerBoxes) == 0:
             self.addLayerDescription('Map Layer', QgsMapLayerProxyModel.All)
-        super(SelectMapLayersDialog, self).exec_()
+        super(SelectMapLayersDialog, self).exec()
 
     def addLayerDescription(self, info: str,
-                            filters: QGIS_LAYERFILTER,
+                            filters: Qgis.LayerFilters,
                             allowEmptyLayer=False,
                             layerDescription=None) -> QgsMapLayerComboBox:
         """
@@ -3899,7 +3902,8 @@ class SelectMapLayersDialog(QgsDialog):
         if not isinstance(layerDescription, SelectMapLayersDialog.LayerDescription):
             layerDescription = SelectMapLayersDialog.LayerDescription(info, filters, allowEmptyLayer=allowEmptyLayer)
 
-        assert isinstance(layerDescription, SelectMapLayersDialog.LayerDescription)
+        if not isinstance(layerDescription, SelectMapLayersDialog.LayerDescription):
+            raise AssertionError(f'wrong type for layerDescription: {layerDescription} ')
         i = self.mGrid.rowCount()
 
         layerbox = QgsMapLayerComboBox(self)
@@ -3982,7 +3986,7 @@ def printCaller(prefix: str = None,
     FOI = outerFrames[1]
     stack = inspect.stack()
     stack_class = stack[1][0].f_locals["self"].__class__.__name__
-    stack_method = stack[1][0].f_code.co_name
+    _ = stack[1][0].f_code.co_name
     info = f'{stack_class}.{FOI.function}: {os.path.basename(FOI.filename)}:{FOI.lineno}'
 
     prefix = f'{prefix}:' if prefix else ''

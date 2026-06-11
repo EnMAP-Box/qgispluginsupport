@@ -24,20 +24,21 @@
     along with this software. If not, see <https://www.gnu.org/licenses/>.
 ***************************************************************************
 """
-import os
 import collections
+import io
+import os
 import re
 import sys
-import io
 
-from qgis.core import QgsVectorLayer, QgsFeature
-from qgis.core import QgsProcessingFeedback
 import numpy as np
+
 from qgis.PyQt.QtWidgets import QMenu, QFileDialog
+from qgis.core import QgsProcessingFeedback
+from qgis.core import QgsVectorLayer, QgsFeature
+from .. import FIELD_VALUES, FIELD_NAME, FIELD_FID, createStandardFields
 from ..core import is_spectral_library
 from ..core.spectrallibrary import SpectralSetting, SpectralLibraryUtils
 from ..core.spectrallibraryio import SpectralLibraryIO
-from .. import FIELD_VALUES, FIELD_NAME, FIELD_FID, createStandardFields
 from ...utils import findTypeFromString, createQgsField
 
 
@@ -59,7 +60,7 @@ class SPECCHIOSpectralLibraryIO(SpectralLibraryIO):
                 for line in f:
                     if re.search(r'^\d+(\.\d+)?.+', line):
                         return True
-        except Exception as ex:
+        except Exception:
             return False
         return False
 
@@ -93,8 +94,8 @@ class SPECCHIOSpectralLibraryIO(SpectralLibraryIO):
             regNumber = re.compile(r'^\d+(\.\d+)?$')
             nProfiles = 0
             for i, line in enumerate(lines):
-
-                assert isinstance(line, str)
+                i: int
+                line: str
                 line = line.strip()
                 if len(line) == 0:
                     continue
@@ -105,7 +106,8 @@ class SPECCHIOSpectralLibraryIO(SpectralLibraryIO):
 
                 try:
                     mdKey = values.pop(0).strip()
-                    assert isinstance(mdKey, str)
+                    if not (isinstance(mdKey, str)):
+                        raise AssertionError
                     if len(values) == 0:
                         continue
 
@@ -142,7 +144,8 @@ class SPECCHIOSpectralLibraryIO(SpectralLibraryIO):
                     continue
 
                 qgsField = createQgsField(k, DATA[k][0])
-                assert sl.addAttribute(qgsField)
+                if not (sl.addAttribute(qgsField)):
+                    raise AssertionError(f'Unable to add attribute: {qgsField}')
 
             sl.endEditCommand()
             sl.commitChanges(stopEditing=False)
@@ -182,7 +185,8 @@ class SPECCHIOSpectralLibraryIO(SpectralLibraryIO):
         :param path: str, path to library source
         :return: [str-list-of-written-files]
         """
-        assert is_spectral_library(speclib)
+        if not (is_spectral_library(speclib)):
+            raise AssertionError(f'Not a spectral library/missing spectral profile field: {speclib}')
         basePath, ext = os.path.splitext(path)
 
         writtenFiles = []
@@ -201,12 +205,12 @@ class SPECCHIOSpectralLibraryIO(SpectralLibraryIO):
 
             # write metadata
             for fn in speclib.fields().names():
-                assert isinstance(fn, str)
                 if fn in [FIELD_FID, FIELD_VALUES]:
                     continue
                 line = [fn]
                 for p in profiles:
-                    assert isinstance(p, QgsFeature)
+                    if not (isinstance(p, QgsFeature)):
+                        raise AssertionError
                     line.append(str(p.attribute(fn)))
                 stream.write(delimiter.join(line) + '\n')
             #
@@ -219,7 +223,8 @@ class SPECCHIOSpectralLibraryIO(SpectralLibraryIO):
             for i, xValue in enumerate(xValues):
                 line = [str(xValue)]
                 for p in profiles:
-                    assert isinstance(p, QgsFeature)
+                    if not (isinstance(p, QgsFeature)):
+                        raise AssertionError
                     yValue = p.values()['y'][i]
                     line.append(str(yValue))
                 stream.write(delimiter.join(line) + '\n')

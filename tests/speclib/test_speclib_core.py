@@ -20,7 +20,6 @@
 import datetime
 import json
 import math
-import pickle
 import re
 import unittest
 from typing import List
@@ -28,11 +27,10 @@ from typing import List
 import numpy as np
 from osgeo import ogr
 
-from qgis.PyQt.QtCore import NULL, QByteArray, QJsonDocument, QVariant
+from qgis.PyQt.QtCore import NULL, QByteArray, QJsonDocument, QVariant, QMetaType
 from qgis.core import edit, QgsCoordinateReferenceSystem, QgsFeature, QgsField, QgsFields, QgsRasterLayer, \
     QgsVectorLayer, QgsWkbTypes
 from qps import initAll
-from qps.qgisenums import QMETATYPE_DOUBLE, QMETATYPE_INT, QMETATYPE_QBYTEARRAY, QMETATYPE_QSTRING
 from qps.speclib import EDITOR_WIDGET_REGISTRY_KEY
 from qps.speclib.core import can_store_spectral_profiles, create_profile_field, is_profile_field, is_spectral_library, \
     profile_field_list, profile_fields, is_spectral_feature
@@ -43,7 +41,7 @@ from qps.speclib.core.spectralprofile import decodeProfileValueDict, encodeProfi
 from qps.testing import start_app, TestCase, TestObjects
 from qps.unitmodel import BAND_NUMBER
 from qps.utils import createQgsField, FeatureReferenceIterator, findTypeFromString, qgsFields2str, SpatialExtent, \
-    SpatialPoint, str2QgsFields, toType
+    SpatialPoint, str2QgsFields, toType, stringToByteArray
 from qpstestdata import enmap, envi_sli
 
 start_app()
@@ -63,15 +61,15 @@ class SpeclibCoreTests(TestCase):
         f1 = createQgsField('foo', 9999)
 
         self.assertEqual(f1.name(), 'foo')
-        self.assertEqual(f1.type(), QMETATYPE_INT)
+        self.assertEqual(f1.type(), QMetaType.Int)
         self.assertEqual(f1.typeName(), 'int')
 
         f2 = createQgsField('bar', 9999.)
-        self.assertEqual(f2.type(), QMETATYPE_DOUBLE)
+        self.assertEqual(f2.type(), QMetaType.Double)
         self.assertEqual(f2.typeName(), 'double')
 
         f3 = createQgsField('text', 'Hello World')
-        self.assertEqual(f3.type(), QMETATYPE_QSTRING)
+        self.assertEqual(f3.type(), QMetaType.QString)
         self.assertEqual(f3.typeName(), 'varchar')
 
         fields = QgsFields()
@@ -150,7 +148,7 @@ class SpeclibCoreTests(TestCase):
         xUnit = 'μm'
         yUnit = 'reflectance ä$32{}'  # special characters to test UTF-8 compatibility
 
-        vector_keys = ['x', 'y', 'bbl']
+        # vector_keys = ['x', 'y', 'bbl']
 
         d = prepareProfileValueDict(x=x, y=y, bbl=bbl, xUnit=xUnit, yUnit=yUnit)
         self.assertIsInstance(d, dict)
@@ -208,7 +206,7 @@ class SpeclibCoreTests(TestCase):
         SpectralLibraryUtils.setProfileValues(feature, field=pField, x=x, y=y, bbl=bbl, xUnit=xUnit, yUnit=yUnit)
 
         vd1 = decodeProfileValueDict(feature.attribute(pField.name()))
-        dump = encodeProfileValueDict(vd1, QgsField('test', QMETATYPE_QBYTEARRAY))
+        dump = encodeProfileValueDict(vd1, QgsField('test', QMetaType.QByteArray))
         self.assertIsInstance(dump, QByteArray)
 
         vd2 = decodeProfileValueDict(dump)
@@ -218,7 +216,7 @@ class SpeclibCoreTests(TestCase):
         self.assertTrue(sl.commitChanges())
 
         # serialize to text formats
-        field = QgsField('text', QMETATYPE_QSTRING)
+        field = QgsField('text', QMetaType.QString)
         dump = encodeProfileValueDict(vd1, field)
         self.assertIsInstance(dump, str)
 
@@ -228,21 +226,21 @@ class SpeclibCoreTests(TestCase):
 
         # decode valid inputs
         valid_inputs = {  # 'str(d)': str(d),  #  missed double quotes
-            "bytes(json.dumps(d), 'utf-8')": bytes(re.sub('(NaN|Infinity)', 'null', json.dumps(d)), 'utf-8'),
-
+            'QByteArray from JSON': stringToByteArray(json.dumps(d, ensure_ascii=False)),
+            "bytes(json.dumps(d), 'utf-8')": bytes(re.sub('(NaN|Infinity)', 'null', json.dumps(d, ensure_ascii=False)),
+                                                   'utf-8'),
             'dictionary': d,
             'json dump': json.dumps(d, default=nanToNone),
-            'pickle dump': pickle.dumps(d),
-            'QByteArray from pickle dump': QByteArray(pickle.dumps(d)),
+
             'QJsonDocument': QJsonDocument.fromVariant(d),
             'QJsonDocument->toJson': QJsonDocument.fromVariant(d).toJson(),
             'QJsonDocument->toBinaryData': QJsonDocument.fromVariant(d).toBinaryData(),
 
         }
-        for info, v in valid_inputs.items():
+        for i, (info, v) in enumerate(valid_inputs.items()):
             d2 = decodeProfileValueDict(v)
             self.assertIsInstance(d2, dict)
-            self.assertTrue(isProfileValueDict(d2))
+            self.assertTrue(isProfileValueDict(d2), msg=f'Unable to decode input {i} "{info}": {d2}')
 
         # decode invalid inputs
         invalid_inputs = ['{invalid',
@@ -255,13 +253,13 @@ class SpeclibCoreTests(TestCase):
         # test encoding
 
         for e in ['ByTeS', ProfileEncoding.Bytes,
-                  QgsField('dummy', type=QMETATYPE_QBYTEARRAY)]:
+                  QgsField('dummy', type=QMetaType.QByteArray)]:
             dump = encodeProfileValueDict(d, e)
             self.assertIsInstance(dump, QByteArray)
 
         for e in [None, 'TeXt',
                   ProfileEncoding.Text,
-                  QgsField('dummy', type=QMETATYPE_QSTRING),
+                  QgsField('dummy', type=QMetaType.QString),
                   ]:
             dump = encodeProfileValueDict(d, e)
             self.assertIsInstance(dump, str)
@@ -365,8 +363,6 @@ class SpeclibCoreTests(TestCase):
                         self.assertEqual(value1, value2)
                         profile2 = decodeProfileValueDict(value2)
                         self.assertEqual(profile1, profile2)
-                s = ""
-        s = ""
 
     # @unittest.skip('')
     def test_FeatureReferenceIterator(self):
@@ -473,7 +469,7 @@ class SpeclibCoreTests(TestCase):
         groups = SpectralLibraryUtils.groupBySpectralProperties(sl1)
         self.assertTrue(len(groups) > 0)
         for key, profiles in groups.items():
-            assert isinstance(key, str)
+            self.assertIsInstance(key, str)
             data = json.loads(key)
             self.assertIsInstance(data, dict)
 
@@ -516,7 +512,7 @@ class SpeclibCoreTests(TestCase):
 
     # @unittest.skip('')
     def test_example_profile_fields(self):
-        fieldNP = QgsField('no profile', type=QMETATYPE_QBYTEARRAY)
+        fieldNP = QgsField('no profile', type=QMetaType.QByteArray)
         self.assertFalse(is_profile_field(fieldNP))
 
         fieldP = create_profile_field('profiles')
@@ -584,7 +580,6 @@ class SpeclibCoreTests(TestCase):
             d1 = decodeProfileValueDict(f1['profiles'])
             d2 = decodeProfileValueDict(fDst['profiles'])
             self.assertDictEqual(d1, d2)
-        s = ""
 
     def test_save_gpkg_crs(self):
         crs = QgsCoordinateReferenceSystem('EPSG:32632')

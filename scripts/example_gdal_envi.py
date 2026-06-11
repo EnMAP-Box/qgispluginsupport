@@ -14,7 +14,8 @@ ds: gdal.Dataset = drv.Create(path.as_posix(),
                               array.shape[2], array.shape[1], bands=array.shape[0],
                               eType=gdal_array.flip_code(array.dtype))
 
-assert ds.RasterCount == array.shape[0]
+if not (ds.RasterCount == array.shape[0]):
+    raise AssertionError
 
 wl = []
 for b in range(ds.RasterCount):

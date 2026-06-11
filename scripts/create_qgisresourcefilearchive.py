@@ -26,9 +26,12 @@ def create_qgis_resource_file_archive(qgis_repo=None):
     else:
         qgis_repo = pathlib.Path(qgis_repo)
 
-    assert isinstance(qgis_repo, pathlib.Path)
-    assert qgis_repo.is_dir()
-    assert pathlib.Path(qgis_repo / '.git').is_dir()
+    if not (isinstance(qgis_repo, pathlib.Path)):
+        raise AssertionError
+    if not (qgis_repo.is_dir()):
+        raise AssertionError
+    if not (pathlib.Path(qgis_repo / '.git').is_dir()):
+        raise AssertionError
 
     TARGET_DIR = REPO / 'qgisresources'
     TARGET_ZIP = REPO / 'qgisresources.zip'

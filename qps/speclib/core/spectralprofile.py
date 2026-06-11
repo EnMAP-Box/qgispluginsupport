@@ -2,7 +2,6 @@ import datetime
 import enum
 import json
 import math
-import pickle
 import re
 import warnings
 from json import JSONDecodeError
@@ -12,12 +11,12 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 
-from qgis.PyQt.QtCore import NULL, QByteArray, QDateTime, QJsonDocument, Qt, QVariant
+from qgis.PyQt.QtCore import NULL, QByteArray, QDateTime, QJsonDocument, Qt, QMetaType
 from qgis.core import QgsExpressionContext, QgsFeature, QgsField, QgsFields, QgsGeometry, \
     QgsPointXY, QgsProcessingFeedback, QgsPropertyTransformer, QgsVectorLayer
 from . import create_profile_field, profile_fields
 from .. import EMPTY_VALUES
-from ...qgisenums import QMETATYPE_QDATETIME, QMETATYPE_QSTRING, QMETATYPE_QVARIANTMAP
+from ...utils import stringFromByteArray
 
 # The values that describe a spectral profiles
 # y in 1st position ot show profile values in string representations first
@@ -85,13 +84,17 @@ def prepareProfileValueDict(x: Union[np.ndarray, List[Any], Tuple] = None,
 
     x = d.get('x', None)
     if x:
-        assert isinstance(x, list)
-        assert len(x) == len(y), f'x has length {len(x)} instead of {len(y)}'
+        if not (isinstance(x, list)):
+            raise AssertionError
+        if not (len(x) == len(y)):
+            raise AssertionError(f'x has length {len(x)} instead of {len(y)}')
 
     bbl = d.get('bbl', None)
     if bbl:
-        assert isinstance(bbl, list)
-        assert len(bbl) == len(y), f'bbl has length {len(bbl)} instead of {len(y)}'
+        if not (isinstance(bbl, list)):
+            raise AssertionError
+        if not (len(bbl) == len(y)):
+            raise AssertionError(f'bbl has length {len(bbl)} instead of {len(y)}')
 
     return d
 
@@ -110,40 +113,53 @@ def validateProfileValueDict(d: dict, allowEmpty: bool = False) -> Tuple[bool, s
     if allowEmpty and d in [dict(), None]:
         return True, '', d
     try:
-        assert isinstance(d, dict), 'Input is not a profile dictionary'
+        if not (isinstance(d, dict)):
+            raise AssertionError('Input is not a profile dictionary')
 
         # enhanced consistency checks
         y = d.get('y', None)
-        assert isinstance(y, (list, np.ndarray)), f'Unsupported type to store y values: {y}'
-        assert len(y) > 0, 'Missing y values'
+        if not (isinstance(y, (list, np.ndarray))):
+            raise AssertionError(f'Unsupported type to store y values: {y}')
+        if not (len(y) > 0):
+            raise AssertionError('Missing y values')
         arr = np.asarray(y)
-        assert np.issubdtype(arr.dtype, np.number), f'data type of y values in not numeric: {arr.dtype.name}'
+        if not (np.issubdtype(arr.dtype, np.number)):
+            raise AssertionError(f'data type of y values in not numeric: {arr.dtype.name}')
 
         x = d.get('x', None)
         if x is not None:
-            assert isinstance(x, (list, np.ndarray)), f'Unsupported type to store x values: {x}'
-            assert len(x) == len(y), f'Unequal number of y ({len(y)}) and x ({len(x)}) values.'
+            if not (isinstance(x, (list, np.ndarray))):
+                raise AssertionError(f'Unsupported type to store x values: {x}')
+            if not (len(x) == len(y)):
+                raise AssertionError(f'Unequal number of y ({len(y)}) and x ({len(x)}) values.')
             arr = np.asarray(x)
             if np.issubdtype(arr.dtype, str):
                 # allow date-time strings
                 arr = np.asarray(arr, dtype=np.datetime64)
             else:
-                assert np.issubdtype(arr.dtype, np.number), f'None-numeric data type of y values: {arr.dtype.name}'
+                if not (np.issubdtype(arr.dtype, np.number)):
+                    raise AssertionError(f'None-numeric data type of y values: {arr.dtype.name}')
 
         xUnit = d.get('xUnit', None)
         if xUnit:
-            assert x is not None, 'xUnit defined but missing x values'
-            assert isinstance(xUnit, str), f'Unsupported type to store xUnit: {xUnit} ({type(xUnit)})'
+            if not (x is not None):
+                raise AssertionError('xUnit defined but missing x values')
+            if not (isinstance(xUnit, str)):
+                raise AssertionError(f'Unsupported type to store xUnit: {xUnit} ({type(xUnit)})')
         yUnit = d.get('yUnit', None)
         if yUnit:
-            assert isinstance(yUnit, str), f'Unsupported type to store yUnit: {yUnit} ({type(yUnit)})'
+            if not (isinstance(yUnit, str)):
+                raise AssertionError(f'Unsupported type to store yUnit: {yUnit} ({type(yUnit)})')
 
         bbl = d.get('bbl', None)
         if bbl is not None:
-            assert isinstance(bbl, (list, np.ndarray)), f'Unsupported type to bbl values: {bbl}'
-            assert len(y) == len(bbl), f'Unequal number of y ({len(y)}) and bbl ({len(bbl)}) values.'
+            if not (isinstance(bbl, (list, np.ndarray))):
+                raise AssertionError(f'Unsupported type to bbl values: {bbl}')
+            if not (len(y) == len(bbl)):
+                raise AssertionError(f'Unequal number of y ({len(y)}) and bbl ({len(bbl)}) values.')
             arr = np.asarray(bbl)
-            assert np.issubdtype(arr.dtype, np.number), f'None-numeric bbl value data type: {arr.dtype.name}'
+            if not (np.issubdtype(arr.dtype, np.number)):
+                raise AssertionError(f'None-numeric bbl value data type: {arr.dtype.name}')
 
     except Exception as ex:
         return False, str(ex), dict()
@@ -180,7 +196,7 @@ class ProfileEncoding(enum.Enum):
         elif isinstance(input, QgsField):
             if input.type() == 8:
                 return ProfileEncoding.Json
-            elif input.type() == QVariant.ByteArray:
+            elif input.type() == QMetaType.QByteArray:
                 return ProfileEncoding.Bytes
             else:
                 return ProfileEncoding.Text
@@ -282,18 +298,16 @@ def decodeProfileValueDict(dump: Union[QByteArray, str, dict], numpy_arrays: boo
     if isinstance(dump, bytes):
         dump = QByteArray(dump)
     if isinstance(dump, QByteArray):
+        # json_str = stringFromByteArray(dump)
         if dump.count() > 0 and dump.at(0) == b'{':
             jsonDoc = QJsonDocument.fromJson(dump)
         else:
             jsonDoc = QJsonDocument.fromBinaryData(dump)
-        if jsonDoc.isNull():
-            try:
-                dump = pickle.loads(dump)
 
-            except EOFError as ex:
-                pass
-            except pickle.UnpicklingError as ex:
-                pass
+        if jsonDoc.isNull():
+            dump = stringFromByteArray(dump)
+        else:
+            dump = jsonDoc.toVariant()
 
     if isinstance(dump, str):
         try:
@@ -362,7 +376,8 @@ def groupBySpectralProperties(features: Union[QgsVectorLayer, List[QgsFeature]],
 
     :return: {dict:[list-of-profiles]}
     """
-    assert mode in ['features', 'data']
+    if not (mode in ['features', 'data']):
+        raise AssertionError
     if isinstance(features, QgsVectorLayer):
         features = features.getFeatures()
     if isinstance(features, QgsFeature):
@@ -399,7 +414,7 @@ def groupBySpectralProperties(features: Union[QgsVectorLayer, List[QgsFeature]],
             d = decodeProfileValueDict(dump)
             if len(d) > 0:
                 key = spectralSettingsDict(d, bbl=bbl, fwhm=fwhm)
-                key = json.dumps(key, indent=0, sort_keys=True)
+                key = json.dumps(key, ensure_ascii=False, indent=0, sort_keys=True)
                 if mode == 'features':
                     results[key] = results.get(key, []) + [f]
                 elif mode == 'data':
@@ -412,7 +427,7 @@ class SpectralProfileFileWriter(object):
     Base class for writers that can write SpectralProfile data to a file
     """
 
-    def __init__(self, *args, field: str = None, **kwds):
+    def __init__(self, *args, field: Optional[str] = None, **kwds):
         self.mField = field
 
     @classmethod
@@ -481,7 +496,8 @@ class SpectralProfileFileReader(object):
                  path: Union[str, Path],
                  dtg_fmt: Optional[str] = None, **kwds):
         path = Path(path)
-        assert path.is_file()
+        if not (path.is_file()):
+            raise AssertionError
 
         # member attributes each profile should be able to describe
 
@@ -545,12 +561,12 @@ class SpectralProfileFileReader(object):
                 create_profile_field(SpectralProfileFileReader.KEY_Target, encoding=ProfileEncoding.Dict))
             fields.append(
                 create_profile_field(SpectralProfileFileReader.KEY_Reflectance, encoding=ProfileEncoding.Dict))
-            fields.append(QgsField(SpectralProfileFileReader.KEY_ReferenceTime, QMETATYPE_QDATETIME))
-            fields.append(QgsField(SpectralProfileFileReader.KEY_TargetTime, QMETATYPE_QDATETIME))
-            fields.append(QgsField(SpectralProfileFileReader.KEY_Name, QMETATYPE_QSTRING))
-            fields.append(QgsField(SpectralProfileFileReader.KEY_Path, QMETATYPE_QSTRING))
-            fields.append(QgsField(SpectralProfileFileReader.KEY_Metadata, QMETATYPE_QVARIANTMAP,
-                                   typeName='map', subType=QMETATYPE_QSTRING))
+            fields.append(QgsField(SpectralProfileFileReader.KEY_ReferenceTime, QMetaType.QDateTime))
+            fields.append(QgsField(SpectralProfileFileReader.KEY_TargetTime, QMetaType.QDateTime))
+            fields.append(QgsField(SpectralProfileFileReader.KEY_Name, QMetaType.QString))
+            fields.append(QgsField(SpectralProfileFileReader.KEY_Path, QMetaType.QString))
+            fields.append(QgsField(SpectralProfileFileReader.KEY_Metadata, QMetaType.QVariantMap,
+                                   typeName='map', subType=QMetaType.QString))
             SpectralProfileFileReader._STANDARD_FIELDS = fields
         return QgsFields(SpectralProfileFileReader._STANDARD_FIELDS)
 

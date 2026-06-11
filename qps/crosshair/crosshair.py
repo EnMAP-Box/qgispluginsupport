@@ -29,7 +29,6 @@
 """
 import math
 import pathlib
-import warnings
 from typing import Union, Optional
 
 import numpy as np
@@ -49,17 +48,17 @@ class CrosshairStyle(object):
     """
 
     def __init__(self, **kwds):
-        self.mColor = QColor.fromRgb(255, 0, 0, 255)
+        self.mColor: QColor = QColor.fromRgb(255, 0, 0, 255)
         self.mThickness = 1  # in px
-        self.mSize = 1.0  # normalized
-        self.mGap = 0.05  # normalized
-        self.mShowDot = True
-        self.mDotSize = 1  # in px
-        self.mSizePixelBorder = 1
-        self.mShow = True
-        self.mShowPixelBorder = True
-        self.mShowDistanceMarker = True
-        self.mShowDistanceLabel = True
+        self.mSize: float = 1.0  # normalized
+        self.mGap: float = 0.05  # normalized
+        self.mShowDot: bool = True
+        self.mDotSize: int = 1  # in px
+        self.mSizePixelBorder: int = 1
+        self.mShow: bool = True
+        self.mShowPixelBorder: bool = True
+        self.mShowDistanceMarker: bool = True
+        self.mShowDistanceLabel: bool = True
 
     def setColor(self, color: Union[str, QColor]):
         """
@@ -73,7 +72,8 @@ class CrosshairStyle(object):
         self.mSize = self._normalize(size)
 
     def setDotSize(self, size):
-        assert size >= 0
+        if not size >= 0:
+            raise AssertionError('size must be >= 0')
         self.mDotSize = size
 
     def setThickness(self, size):
@@ -82,7 +82,8 @@ class CrosshairStyle(object):
         :param size:
         :return:
         """
-        assert size >= 0
+        if not size >= 0:
+            raise AssertionError('size must be >= 0')
         self.mThickness = size
 
     def setShowPixelBorder(self, b: bool):
@@ -91,8 +92,7 @@ class CrosshairStyle(object):
         :param b:
         :return:
         """
-        assert isinstance(b, bool)
-        self.mShowPixelBorder = b
+        self.mShowPixelBorder = bool(b)
 
     def setGap(self, gapSize):
         """
@@ -103,45 +103,37 @@ class CrosshairStyle(object):
         self.mGap = self._normalize(gapSize)
 
     def setShowDistanceMarker(self, b):
-        assert isinstance(b, bool)
-        self.mShowDistanceMarker = b
+        self.mShowDistanceMarker = bool(b)
 
     def _normalize(self, size):
-        assert size >= 0 and size <= 100
+        if not (0 <= size <= 100):
+            raise AssertionError('size must be 0 <= size <= 100')
         size = float(size)
         if size > 1:
             size /= 100
         return size
 
-    def setShowDot(self, b):
-        assert isinstance(b, bool)
-        self.mShowDot = b
-
-    def setShow(self, b):
-        warnings.warn('MapCanvas.setShow was replaced by .setVisibility(b:bool)', DeprecationWarning, stacklevel=2)
-        assert isinstance(b, bool)
-        self.mShow = b
+    def setShowDot(self, b: bool):
+        self.mShowDot = bool(b)
 
     def setVisibility(self, b: bool):
-        assert isinstance(b, bool)
         self.mShow = b
 
 
 class CrosshairMapCanvasItem(QgsMapCanvasItem):
 
     def __init__(self, mapCanvas):
-        assert isinstance(mapCanvas, QgsMapCanvas)
         super(CrosshairMapCanvasItem, self).__init__(mapCanvas)
 
-        self.mCanvas = mapCanvas
-        self.mRasterGridLayer = None
-        self.mSizePixelBox = 0
-        self.mSizePixelBox = 1
-        self.mShow = False
-        self.mCrosshairStyle = CrosshairStyle()
+        self.mCanvas: QgsMapCanvas = mapCanvas
+        self.mRasterGridLayer: Optional[QgsRasterLayer] = None
+        self.mSizePixelBox: int = 0
+        self.mSizePixelBox: int = 1
+        self.mShow: bool = False
+        self.mCrosshairStyle: CrosshairStyle = CrosshairStyle()
         self.mCrosshairStyle.setVisibility(False)
         self.setCrosshairStyle(self.mCrosshairStyle)
-        self.mPosition = None
+        self.mPosition: Optional[QgsPointXY] = None
 
     def setPosition(self, point: QgsPointXY):
         """
@@ -165,8 +157,8 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
         :param b:
         :return:
         """
-        assert isinstance(b, bool)
         old = self.mShow
+        b = bool(b)
         self.mShow = b
         self.mCrosshairStyle.setVisibility(b)
         if old != b:
@@ -224,8 +216,8 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
         Sets the box size of the center box
         :param nPx: number of pixel around, need to an odd integer number 1,3, ...
         """
-        assert nPx >= 0
-        assert nPx == 1 or nPx % 3 == 0, 'Size of pixel box must be an odd integer value (1,3,5...)'
+        if not (nPx >= 0 and nPx == 1 or nPx % 3 == 0):
+            raise AssertionError('Size of pixel box must be 0 or an odd positive integer value (1,3,5...)')
         self.mSizePixelBox = nPx
 
     def setCrosshairStyle(self, crosshairStyle: CrosshairStyle):
@@ -234,7 +226,8 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
         :param crosshairStyle: CrosshairStyle
         :return:
         """
-        assert isinstance(crosshairStyle, CrosshairStyle)
+        if not isinstance(crosshairStyle, CrosshairStyle):
+            raise AssertionError(f'crosshairStyle must be of type CrosshairStyle but is {crosshairStyle}')
         self.mCrosshairStyle = crosshairStyle
 
         # apply style
@@ -295,13 +288,13 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
 
                     extent = self.mCanvas.extent()
 
-                    orientation = Qt.AlignmentFlag.AlignLeft
+                    # orientation = Qt.AlignmentFlag.AlignLeft
                     if centerGeo.x() - extent.xMinimum() > 0.2 * extent.width():
-                        orientation = Qt.AlignmentFlag.AlignLeft
+                        # orientation = Qt.AlignmentFlag.AlignLeft
                         x0_thickmark = QgsPointXY(centerGeo.x() - 0.5 * (centerGeo.x() - extent.xMinimum()),
                                                   centerGeo.y())
                     else:
-                        orientation = Qt.AlignmentFlag.AlignRight
+                        # orientation = Qt.AlignmentFlag.AlignRight
                         x0_thickmark = QgsPointXY(centerGeo.x() + 0.5 * (extent.xMaximum() - centerGeo.x()),
                                                   centerGeo.y())
 
@@ -317,9 +310,11 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
                     # rad = -90 * math.pi / 180
                     # print(f'{rad}\n{bearing}')
                     x0 = None
-                    if crs.isValid() \
-                            and distanceArea.lengthUnits() == QgsUnitTypes.DistanceUnit.DistanceMeters \
-                            and math.isfinite(bearing):
+                    if (
+                            crs.isValid()
+                            and distanceArea.lengthUnits() == QgsUnitTypes.DistanceUnit.DistanceMeters
+                            and math.isfinite(bearing)
+                    ):
                         transE = QgsCoordinateTransform(crs, crsLL, transformContext)
                         try:
                             e1 = transE.transform(x1)
@@ -332,8 +327,8 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
                             else:
                                 e0 = distanceArea.computeSpheroidProject(e1, nice_distance, bearing)
                             x0 = transE.transform(e0, Qgis.TransformDirection.Reverse)
-                        except QgsCsException as ex:
-                            s = ""
+                        except QgsCsException:
+
                             pass
 
                     if isinstance(x0, QgsPointXY):
@@ -403,16 +398,16 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
                         y2 = ex.yMaximum() - (y * yres)
                         return QgsPointXY(x2, y2)
 
-                    func = lambda x, y: self.toCanvasCoordinates(
-                        ms.layerToMapCoordinates(lyr,
-                                                 px2LayerGeo(x, y)))
-                    lyrCoord2CanvasPx = func
+                    def lyrCoord2CanvasPx(x, y):
+                        return self.toCanvasCoordinates(
+                            ms.layerToMapCoordinates(lyr, px2LayerGeo(x, y)))
+
                     if 0 <= pxX < ns and 0 <= pxY < nl:
                         # get pixel edges in map canvas coordinates
 
-                        lyrGeo = px2LayerGeo(pxX, pxY)
-                        mapGeo = ms.layerToMapCoordinates(lyr, lyrGeo)
-                        canCor = self.toCanvasCoordinates(mapGeo)
+                        # lyrGeo = px2LayerGeo(pxX, pxY)
+                        # mapGeo = ms.layerToMapCoordinates(lyr, lyrGeo)
+                        # canCor = self.toCanvasCoordinates(mapGeo)
 
                         ul = lyrCoord2CanvasPx(pxX, pxY)
                         ur = lyrCoord2CanvasPx(pxX + 1, pxY)
@@ -501,7 +496,6 @@ class CrosshairWidget(QWidget):
         :param mapCanvas:
         :return:
         """
-        assert isinstance(mapCanvas, QgsMapCanvas)
         # copy layers
         canvas = self.mapCanvas
         lyrs = mapCanvas.layers()
@@ -531,8 +525,7 @@ class CrosshairWidget(QWidget):
         self.mapCanvasItem.updateCanvas()
         self.sigCrosshairStyleChanged.emit(style)
 
-    def setCrosshairStyle(self, style):
-        assert isinstance(style, CrosshairStyle)
+    def setCrosshairStyle(self, style: CrosshairStyle):
         self.btnCrosshairColor.setColor(style.mColor)
         self.spinBoxCrosshairAlpha.setValue(style.mColor.alpha())
         self.spinBoxCrosshairThickness.setValue(style.mThickness)
@@ -580,9 +573,15 @@ class CrosshairDialog(QgsDialog):
 
             return None
 
-    def __init__(self, parent=None, crosshairStyle=None, mapCanvas=None, title='Specify Crosshair'):
-        super(CrosshairDialog, self).__init__(parent=parent,
-                                              buttons=QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+    def __init__(self,
+                 parent: Optional[QWidget] = None,
+                 crosshairStyle: Optional[CrosshairStyle] = None,
+                 mapCanvas: Optional[QgsMapCanvas] = None,
+                 title: str = 'Specify Crosshair'):
+        super(CrosshairDialog, self).__init__(
+            parent=parent,
+            buttons=QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
         self.w = CrosshairWidget(parent=self)
         self.setWindowTitle(title)
         self.btOk = QPushButton('Ok')
@@ -614,7 +613,6 @@ class CrosshairDialog(QgsDialog):
         :param crosshairStyle: CrosshairStyle
         :return:
         """
-        assert isinstance(crosshairStyle, CrosshairStyle)
         self.w.setCrosshairStyle(crosshairStyle)
 
     def copyCanvas(self, mapCanvas: QgsMapCanvas):

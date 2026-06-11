@@ -19,11 +19,10 @@ class PythonCodeEditorTestCases(TestCase):
         w.codeEditor().setText('# b(1)')
         w.setHelpText(None)
 
-        s = ""
         # w.setCode('b(1)')
         # w.setHelpText('<h1>This is a help text</h1>')
 
-        tt = 'More info on code status'
+        # tt = 'More info on code status'
 
         def onCodeChanged(d: dict):
             code: str = d[w.VALKEY_CODE]
@@ -46,8 +45,10 @@ class PythonCodeEditorTestCases(TestCase):
                 try:
                     kwds = {'f': attributes.copy()}
 
-                    exec(compiled_code, kwds)
-                    assert 'y' in kwds, 'Missing y in kwds'
+                    # this is exactly what is expected here
+                    exec(compiled_code, kwds)  # nosec B102
+                    if not ('y' in kwds):
+                        raise AssertionError('Missing y in kwds')
 
                 except Exception as ex:
                     error = str(ex)
@@ -82,7 +83,7 @@ class PythonCodeEditorTestCases(TestCase):
 
     def test_validation(self):
 
-        is_ok = ['foo', 'broken"python', '1+3']
+        # is_ok = ['foo', 'broken"python', '1+3']
         errMsg = 'MyError'
 
         def onValidateRequest(data: dict):
@@ -96,8 +97,9 @@ class PythonCodeEditorTestCases(TestCase):
                 code = data.get(PythonCodeDialog.VALKEY_CODE)
                 try:
                     compiled_code = compile(code, f'<expression: "{code}">', 'exec')
+                    self.assertTrue(compiled_code)
                     data[PythonCodeDialog.VALKEY_PREVIEW_TEXT] = 'Done!'
-                except Exception as ex:
+                except Exception:
                     data[PythonCodeDialog.VALKEY_ERROR] = errMsg
 
         w = PythonCodeWidget()

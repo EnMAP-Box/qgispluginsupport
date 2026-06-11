@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 
-from qgis.PyQt.QtCore import NULL, QByteArray, QDateTime, QMetaType, QObject, QUrl, QUrlQuery, QVariant
+from qgis.PyQt.QtCore import NULL, QByteArray, QDateTime, QObject, QUrl, QUrlQuery, QMetaType
 from qgis.PyQt.QtGui import QColor
 from qgis.core import Qgis, QgsColorRampShader, QgsCoordinateReferenceSystem, QgsDataProvider, QgsFeature, \
     QgsFeatureRequest, QgsField, QgsFields, QgsPointXY, QgsProject, \
@@ -15,12 +15,6 @@ from qgis.core import Qgis, QgsColorRampShader, QgsCoordinateReferenceSystem, Qg
 from .spectralprofile import groupBySpectralProperties, spectralSettingsDict
 from ..core import is_profile_field, profile_fields
 from ..core.spectralprofile import decodeProfileValueDict  # , groupBySpectralProperties_depr, SpectralSetting
-from ...qgisenums import QGIS_RASTERBANDSTATISTIC, QGIS_RASTERINTERFACECAPABILITY, QMETATYPE_BOOL, QMETATYPE_DOUBLE, \
-    QMETATYPE_INT, \
-    QMETATYPE_QDATE, QMETATYPE_QDATETIME, \
-    QMETATYPE_QSTRING, \
-    QMETATYPE_QTIME, QMETATYPE_UINT, \
-    QMETATYPE_ULONGLONG
 from ...unitmodel import BAND_INDEX
 from ...utils import HashableRectangle, nextColor, numpyToQgisDataType, qgisToNumpyDataType, \
     qgsField
@@ -60,7 +54,8 @@ def createRasterLayers(features: Union[QgsVectorLayer, List[QgsFeature]],
             fields = [f for f in fields]
 
     for field in fields:
-        assert isinstance(field, QgsField)
+        if not (isinstance(field, QgsField)):
+            raise AssertionError
         if is_profile_field(field):
             GROUPS = groupBySpectralProperties(features, field=field)
 
@@ -70,7 +65,8 @@ def createRasterLayers(features: Union[QgsVectorLayer, List[QgsFeature]],
                 xUnit = settings.get('xUnit', '')
                 name = f'{field.name()} ({nb} bands, {xUnit})'
                 layer = QgsRasterLayer('?', name, VectorLayerFieldRasterDataProvider.providerKey())
-                assert layer.isValid()
+                if not (layer.isValid()):
+                    raise AssertionError
                 dp: VectorLayerFieldRasterDataProvider = layer.dataProvider()
                 dp.setActiveFeatures(profiles, field=SpectralProfileValueConverter(field))
                 # layer.setTitle(f'Field "{field.name()}" as raster')
@@ -80,7 +76,8 @@ def createRasterLayers(features: Union[QgsVectorLayer, List[QgsFeature]],
             if isinstance(converter, FieldToRasterValueConverter):
                 name = f'{field.name()} ({field.typeName()})'
                 layer = QgsRasterLayer('?', name, VectorLayerFieldRasterDataProvider.providerKey())
-                assert layer.isValid(), 'Unable to create QgsRasterLayer based on VectorLayerFieldRasterDataProvider'
+                if not (layer.isValid()):
+                    raise AssertionError('Unable to create QgsRasterLayer based on VectorLayerFieldRasterDataProvider')
                 dp: VectorLayerFieldRasterDataProvider = layer.dataProvider()
                 dp.setActiveFeatures(features, field=converter)
                 # layer.setTitle(f'Field "{field.name()}" as raster')
@@ -113,7 +110,8 @@ def featuresToArrays(speclib: QgsVectorLayer,
     :param bbl: False, set True differentiate returned data by BBL too
     :return: dict with a string keys containing all metadata, and a numpy array containing the profile data
     """
-    assert isinstance(speclib, QgsVectorLayer)
+    if not (isinstance(speclib, QgsVectorLayer)):
+        raise AssertionError
 
     if fields is None:
         fields = profile_fields(speclib)
@@ -156,7 +154,7 @@ def featuresToArrays(speclib: QgsVectorLayer,
                 y = data['y']
                 key = spectralSettingsDict(data)
                 key['field_name'] = field_name
-                key = json.dumps(key)
+                key = json.dumps(key, ensure_ascii=False)
                 pdata = PROFILE_DATA.get(key, {'profiles': [], 'fids': []})
                 pdata['profiles'].append(y)
                 pdata['fids'].append(fid)
@@ -205,16 +203,16 @@ class FieldToRasterValueConverter(QObject):
     This class converts QgsFeature values of a field from / to 3D-array raster layer values
     """
     LUT_FIELD_TYPES = {
-        QMETATYPE_BOOL: Qgis.DataType.Byte,
-        QMETATYPE_INT: Qgis.DataType.Int32,
-        QMETATYPE_UINT: Qgis.DataType.UInt32,
-        QMetaType.Type.LongLong: Qgis.DataType.Int32,
-        QMETATYPE_ULONGLONG: Qgis.DataType.UInt32,
-        QMETATYPE_DOUBLE: Qgis.DataType.Float32,
-        QMETATYPE_QSTRING: Qgis.DataType.Int32,
-        QMETATYPE_QDATETIME: Qgis.DataType.Int32,
-        QMETATYPE_QDATE: Qgis.DataType.Int32,
-        QMETATYPE_QTIME: Qgis.DataType.Int32,
+        QMetaType.Bool: Qgis.DataType.Byte,
+        QMetaType.Int: Qgis.DataType.Int32,
+        QMetaType.UInt: Qgis.DataType.UInt32,
+        QMetaType.LongLong: Qgis.DataType.Int32,
+        QMetaType.ULong: Qgis.DataType.UInt32,
+        QMetaType.Double: Qgis.DataType.Float32,
+        QMetaType.QString: Qgis.DataType.Int32,
+        QMetaType.QDateTime: Qgis.DataType.Int32,
+        QMetaType.QDate: Qgis.DataType.Int32,
+        QMetaType.QTime: Qgis.DataType.Int32,
     }
 
     NO_DATA_CANDIDATES = [-1, -9999]
@@ -226,7 +224,8 @@ class FieldToRasterValueConverter(QObject):
     def __init__(self, field: QgsField):
         super().__init__(None)
 
-        assert isinstance(field, QgsField)
+        if not (isinstance(field, QgsField)):
+            raise AssertionError
         self.mField: QgsField = field
         # there need to be a numeric no-data value
         self.mNoData = -1
@@ -263,7 +262,7 @@ class FieldToRasterValueConverter(QObject):
 
     def isClassification(self) -> bool:
 
-        return self.field().type() == QMETATYPE_QSTRING
+        return self.field().type() == QMetaType.QString
 
     def colorInterpretation(self, bandNo: int) -> int:
 
@@ -305,7 +304,7 @@ class FieldToRasterValueConverter(QObject):
         return self.mNoData
 
     def rasterDataTypeSize(self, band: int):
-        s = ""
+        pass
 
     def generateBandName(self, band: int):
         digits = int(math.log10(self.bandCount())) + 1
@@ -330,7 +329,7 @@ class FieldToRasterValueConverter(QObject):
         noData = None
         numericValues = None
 
-        if field.type() == QMETATYPE_QSTRING:
+        if field.type() == QMetaType.QString:
             # convert text values to raster class values
             noData = 0
             uniqueValues = set(fieldValues)
@@ -350,10 +349,10 @@ class FieldToRasterValueConverter(QObject):
 
             numericValues = [LUT[v] for v in fieldValues]
 
-        elif field.type() in [QMETATYPE_BOOL,
-                              QMETATYPE_INT, QVariant.UInt,
-                              QVariant.LongLong, QVariant.ULongLong,
-                              QMETATYPE_DOUBLE]:
+        elif field.type() in [QMetaType.Bool,
+                              QMetaType.Int, QMetaType.UInt,
+                              QMetaType.LongLong, QMetaType.ULongLong,
+                              QMetaType.Double, QMetaType.Double]:
             # convert int/bool/floats to 1-D raster class valuess
             for c in self.NO_DATA_CANDIDATES:
                 if c not in fieldValues:
@@ -371,7 +370,7 @@ class FieldToRasterValueConverter(QObject):
                     numericValues.append(noData)
                 else:
                     numericValues.append(v)
-        elif field.type() == QMETATYPE_QDATETIME:
+        elif field.type() == QMetaType.QDateTime:
             # convert datetime values to raster class values
             numericValues = []
             noData = -9999
@@ -389,7 +388,8 @@ class FieldToRasterValueConverter(QObject):
             noData = -9999
             array = noData * np.ones((nb, 1, ns))
 
-        assert array.ndim == 3
+        if not (array.ndim == 3):
+            raise AssertionError
         return array, colorTable, noData
 
     @classmethod
@@ -404,7 +404,8 @@ class SpectralProfileValueConverter(FieldToRasterValueConverter):
         return is_profile_field(field)
 
     def __init__(self, field: QgsField):
-        assert is_profile_field(field)
+        if not (is_profile_field(field)):
+            raise AssertionError
         super(SpectralProfileValueConverter, self).__init__(field)
         self.mSpectralSetting: dict = dict()
 
@@ -441,8 +442,7 @@ class SpectralProfileValueConverter(FieldToRasterValueConverter):
         else:
             return Qgis.DataType.UnknownDataType
 
-    def toRasterValues(self, fieldValues: List) -> \
-            Tuple[np.ndarray, List[QgsColorRampShader.ColorRampItem], Any]:
+    def toRasterValues(self, fieldValues: List) -> Tuple[np.ndarray, List[QgsColorRampShader.ColorRampItem], Any]:
 
         # get spectral setting
         self.mSpectralSetting.clear()
@@ -454,14 +454,14 @@ class SpectralProfileValueConverter(FieldToRasterValueConverter):
 
         for i, v in enumerate(fieldValues):
             if isinstance(v, (QByteArray, str, dict)):
-                d = s = None
+
                 try:
                     d = decodeProfileValueDict(v)
-
                     s = spectralSettingsDict(d)
                     s['field_name'] = self.field().name()
-                except Exception as ex:
-                    _test = ""
+                except Exception:
+                    s = None
+
                 if isinstance(s, dict):
                     self.mSpectralSetting.update(s)
                     nb = s['band_count']
@@ -536,7 +536,7 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
 
         layerID: Optional[str] = None
         layer: Optional[QgsVectorLayer] = None
-        cacheSize: int = 2048
+        # cacheSize: int = 2048
 
         if query.hasQueryItem('lid'):
             layerID = query.queryItemValue('lid')
@@ -549,8 +549,9 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
         if isinstance(layer, QgsVectorLayer):
             if query.hasQueryItem('cachesize'):
                 cs = int(query.queryItemValue('cachesize'))
-                assert cs > 0, 'cachesize needs to be > 0'
-                cacheSize = cs
+                if not (cs > 0):
+                    raise AssertionError('cachesize needs to be > 0')
+                # cacheSize = cs
 
             if layer.featureCount() > 0:
                 self.setActiveFeatures(layer.getFeatures())
@@ -675,10 +676,11 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
             stats.height = band_data.shape[-2]
             stats.width = band_data.shape[-1]
 
-            statsGathered = QGIS_RASTERBANDSTATISTIC.Sum | \
-                            QGIS_RASTERBANDSTATISTIC.Min | \
-                            QGIS_RASTERBANDSTATISTIC.Max | \
-                            QGIS_RASTERBANDSTATISTIC.Mean
+            statsGathered = (Qgis.RasterBandStatistics.Sum
+                             | Qgis.RasterBandStatistics.Min
+                             | Qgis.RasterBandStatistics.Max
+                             | Qgis.RasterBandStatistics.Mean
+                             )
 
             if Qgis.versionInt() >= 33600:
                 stats.statsGathered = Qgis.RasterBandStatistics(statsGathered)
@@ -712,7 +714,8 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
 
         activeField = qgsField(self.fields(), field)
 
-        assert isinstance(activeField, QgsField), f'Field not found/supported: {field}'
+        if not (isinstance(activeField, QgsField)):
+            raise AssertionError(f'Field not found/supported: {field}')
         self.mField = activeField
 
         if not (isinstance(self.fieldConverter(), FieldToRasterValueConverter)
@@ -735,7 +738,8 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
         self.mStatsCache.clear()
 
     def setExtentYOffset(self, offset: int):
-        assert offset >= 0
+        if not (offset >= 0):
+            raise AssertionError
         self.mYOffset = offset
         self.mYOffsetManual = True
 
@@ -749,7 +753,8 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
 
         if not isinstance(features, list):
             features = list(features)
-        assert isinstance(features, list)
+        if not (isinstance(features, list)):
+            raise AssertionError
         self.mFeatures.clear()
         self.mFeatures.extend(features)
 
@@ -767,9 +772,12 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
         return [f.id() for f in self.mFeatures]
 
     def setFieldConverter(self, converter: FieldToRasterValueConverter):
-        assert isinstance(self.activeField(), QgsField)
-        assert isinstance(converter, FieldToRasterValueConverter)
-        assert converter.supportsField(self.activeField())
+        if not (isinstance(self.activeField(), QgsField)):
+            raise AssertionError
+        if not (isinstance(converter, FieldToRasterValueConverter)):
+            raise AssertionError
+        if not (converter.supportsField(self.activeField())):
+            raise AssertionError
         self.mFieldConverter = converter
 
     def fieldConverter(self) -> FieldToRasterValueConverter:
@@ -823,7 +831,9 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
     def capabilities(self):
 
         # scap = super().capabilities()
-        caps = QGIS_RASTERINTERFACECAPABILITY.Size | QGIS_RASTERINTERFACECAPABILITY.IdentifyValue | QGIS_RASTERINTERFACECAPABILITY.Identify
+        caps = (Qgis.RasterInterfaceCapabilities.Size
+                | Qgis.RasterInterfaceCapabilities.IdentifyValue
+                | Qgis.RasterInterfaceCapabilities.Identify)
         if Qgis.versionInt() >= 33800:
             return Qgis.RasterInterfaceCapabilities(caps)  # QgsRasterDataProvider.ProviderCapabilities(caps)
         else:

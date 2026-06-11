@@ -62,9 +62,10 @@ class MyTaskDialog(QDialog):
         mgr.statusChanged.connect(self.onStatusChanged)
 
     def onProgressChanged(self, taskId, progress):
-        mgr: QgsTaskManager = QgsApplication.taskManager()
+        # mgr: QgsTaskManager = QgsApplication.taskManager()
         # print('{}:{}%'.format(taskId, progress))
         # self.pbar.setValue(int(progress))
+        pass
 
     def onFinished(self, task: MyTask):
 
@@ -97,7 +98,8 @@ class MyTaskDialog(QDialog):
     def onCancel(self):
         mgr: QgsTaskManager = QgsApplication.taskManager()
         for t in mgr.tasks():
-            assert isinstance(t, QgsTask)
+            if not isinstance(t, QgsTask):
+                raise AssertionError
             t.cancel()
 
         self.btnStart.setEnabled(True)
@@ -113,7 +115,8 @@ class MyTaskDialog(QDialog):
 
         self.mTasks.clear()
         for t in tasks:
-            assert isinstance(t, MyTask)
+            if not isinstance(t, MyTask):
+                raise AssertionError
             t.mCallback = self.onFinished
             mgr.addTask(t)
 
@@ -129,7 +132,7 @@ def run():
         tasks.append(MyTask('Task A{}'.format(i + 1)))
     d1.setWindowTitle('Dialog 1')
     d1.addTasks(tasks)
-    d1.exec_()
+    d1.exec()
 
     if False:
         d2 = MyTaskDialog()
@@ -138,7 +141,7 @@ def run():
             tasks.append(MyTask('Task B {}'.format(i)))
         d2.setWindowTitle('Second Dialog')
         d2.addTasks(tasks)
-        d2.exec_()
+        d2.exec()
 
     print('Script finished')
 

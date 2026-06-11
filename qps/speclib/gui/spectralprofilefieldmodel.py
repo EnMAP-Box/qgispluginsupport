@@ -132,8 +132,6 @@ class SpectralProfileFieldActivatorModel(QgsFieldModel):
             flags = flags | Qt.ItemIsEnabled
             if index.column() == 0:
                 flags = flags | Qt.ItemIsUserCheckable
-        else:
-            s = ""
 
         return flags
 
@@ -160,7 +158,6 @@ class SpectralProfileFieldActivatorModel(QgsFieldModel):
                     last = QgsEditorWidgetSetup()
                 layer.setEditorWidgetSetup(i, last)
                 changed = True
-                s = ""
 
             if changed:
                 # update entire row

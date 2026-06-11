@@ -72,7 +72,7 @@ class TestSpeclibIO_SVC(TestCase):
             text = dt.strftime(fmt)
             dt2 = SVCSigFile._readDateTime(text)
             if dt != dt2:
-                s = ""
+                pass
             self.assertEqual(dt, dt2, msg=f'Failed for format "{fmt}" : {text}')
 
     # @unittest.skipIf(TestCase.runsInCI(), 'Skipped CI')
@@ -121,7 +121,6 @@ class TestSpeclibIO_SVC(TestCase):
 
         self.showGui(slw)
         QgsProject.instance().removeAllMapLayers()
-        s = ""
 
 
 if __name__ == '__main__':

@@ -43,7 +43,7 @@ from qgis.PyQt.QtCore import QModelIndex, QObject, Qt
 from qgis.PyQt.QtWidgets import QDialog
 from qgis.core import edit, QgsApplication, QgsFeature, QgsProcessingAlgorithm, \
     QgsProcessingAlgRunnerTask, QgsProcessingOutputRasterLayer, QgsProcessingRegistry, QgsProject, QgsTaskManager, \
-    QgsVectorLayer
+    QgsVectorLayer, QgsProcessing
 from qgis.gui import QgsProcessingRecentAlgorithmLog, QgsProcessingToolboxProxyModel
 
 start_app()
@@ -87,7 +87,7 @@ class ProcessingToolsTest(TestCase):
         d = ProcessingAlgorithmDialog()
         model = MyAlgModel(None)
         d.setAlgorithmModel(model)
-        result = d.exec_()
+        result = d.exec()
         if result == QDialog.Accepted:
             alg = d.algorithm()
             self.assertIsInstance(alg, QgsProcessingAlgorithm)
@@ -139,7 +139,7 @@ class ProcessingToolsTest(TestCase):
         alg = reg.algorithmById(alg_id)
         d = AlgorithmDialog(alg, False, None)
         d.context = context
-        d.exec_()
+        d.exec()
         processingPlugin.executeAlgorithm(alg_id, None, in_place=False, as_batch=False)
 
         project.removeAllMapLayers()
@@ -196,7 +196,7 @@ class ProcessingToolsTest(TestCase):
                 {'aggregate': 'median', 'delimiter': ',', 'input': '"profiles"', 'length': -1,
                  'name': 'p_median', 'precision': 0, 'sub_type': 0, 'type': 10, 'type_name': 'text'}
             ],
-            AggregateProfiles.P_OUTPUT: 'TEMPORARY_OUTPUT'}
+            AggregateProfiles.P_OUTPUT: QgsProcessing.TEMPORARY_OUTPUT}
 
         # r1 = alg.prepare(parameters, context, feedback)
         # r2 = alg.processAlgorithm(parameters, context, feedback)
@@ -242,7 +242,7 @@ class ProcessingToolsTest(TestCase):
         on_complete(success, results)
 
         # test processing.run
-        results = processing.run(alg_id, parameters, context=context)
+        results = processing.run(alg_id, parameters, context=context, is_child_algorithm=True)
         on_complete(True, results)
 
         # test run by task
@@ -294,7 +294,7 @@ class ProcessingToolsTest(TestCase):
         lyr = results[ImportSpectralProfiles.P_OUTPUT]
         if isinstance(lyr, str):
             lyr = QgsVectorLayer(lyr)
-        assert lyr.isValid()
+        self.assertTrue(lyr.isValid())
 
         dt = datetime.datetime.now() - t0
         seconds = dt.total_seconds()
@@ -313,19 +313,19 @@ class ProcessingToolsTest(TestCase):
         results = {}
 
         def onFinished(ok, res):
-            assert ok
+            if not (ok):
+                raise AssertionError
             results.update(res)
 
         d = AlgorithmDialog(alg, context=context)
         d.algorithmFinished.connect(onFinished)
-        d.exec_()
+        d.exec()
 
         lyr = results.get(ImportSpectralProfiles.P_OUTPUT)
         if lyr:
-            assert isinstance(lyr, QgsVectorLayer)
-            assert is_spectral_library(lyr)
-            assert lyr.featureCount() > 0
-        s = ""
+            self.assertIsInstance(lyr, QgsVectorLayer)
+            self.assertTrue(is_spectral_library(lyr))
+            self.assertGreater(lyr.featureCount(), 0)
 
     @unittest.skipIf(TestCase.runsInCI(), 'blocking dialog')
     def test_spectralprofile_export_dialog(self):
@@ -345,19 +345,19 @@ class ProcessingToolsTest(TestCase):
         results = {}
 
         def onFinished(ok, res):
-            assert ok
+            if not (ok):
+                raise AssertionError
             results.update(res)
 
         d = AlgorithmDialog(alg, context=context)
         d.algorithmFinished.connect(onFinished)
-        d.exec_()
+        d.exec()
 
         lyr = results.get(ExportSpectralProfiles.P_OUTPUT)
         if lyr:
-            assert isinstance(lyr, QgsVectorLayer)
-            assert is_spectral_library(lyr)
-            assert lyr.featureCount() > 0
-        s = ""
+            self.assertIsInstance(lyr, QgsVectorLayer)
+            self.assertTrue(is_spectral_library(lyr))
+            self.assertGreater(lyr.featureCount(), 0)
 
     def test_spectralprofile_import(self):
 

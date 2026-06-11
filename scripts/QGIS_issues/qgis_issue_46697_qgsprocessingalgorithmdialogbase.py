@@ -4,7 +4,7 @@ from qgis.core import QgsApplication, QgsProcessingRegistry
 from qgis.gui import QgsProcessingAlgorithmDialogBase
 from qgis.testing.mocked import start_app
 
-APP = start_app()
+app = start_app()
 
 QgsApplication.processingRegistry().addProvider(QgsNativeAlgorithms())
 Processing.initialize()
@@ -13,8 +13,10 @@ reg: QgsProcessingRegistry = QgsApplication.instance().processingRegistry()
 alg1 = reg.algorithmById('native:rescaleraster')
 alg2 = reg.algorithmById('gdal:aspect')
 
-assert alg1.shortHelpString() != ''
-assert alg2.shortHelpString() == ''
+if not (alg1.shortHelpString() != ''):
+    raise AssertionError
+if not (alg2.shortHelpString() == ''):
+    raise AssertionError
 
 
 class ExampleDialog(QgsProcessingAlgorithmDialogBase):
@@ -36,4 +38,4 @@ HiddenHelp.setWindowTitle(f'{HiddenHelp.windowTitle()} (Hidden Help)')
 
 VisibleHelp.show()
 HiddenHelp.show()
-APP.exec_()
+app.exec()

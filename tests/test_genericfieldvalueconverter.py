@@ -1,13 +1,10 @@
 import datetime
 import unittest
 
-from qgis.PyQt.QtCore import QDate, QDateTime, QTime, Qt
+from qgis.PyQt.QtCore import QDate, QDateTime, QTime, Qt, QMetaType
 from qgis.core import edit, QgsField, QgsFields, QgsProject, QgsVectorDataProvider, QgsVectorFileWriter, QgsVectorLayer
 from qps.fieldvalueconverter import collect_native_types, create_vsimemfile, GenericFieldValueConverter, \
     GenericPropertyTransformer
-from qps.qgisenums import QMETATYPE_QDATE, QMETATYPE_QDATETIME, QMETATYPE_QSTRING, \
-    QMETATYPE_QTIME, \
-    QMETATYPE_QVARIANTMAP
 from qps.testing import start_app, TestCase, TestObjects
 
 start_app()
@@ -56,7 +53,7 @@ class GenericFieldValueConverterTests(TestCase):
         for ext in formats:
             path, drvName = create_vsimemfile(ext)
             lyr = QgsVectorLayer(path)
-            assert lyr.isValid()
+            self.assertTrue(lyr.isValid())
 
     def test_collect_native_types_0(self):
 
@@ -82,12 +79,12 @@ class GenericFieldValueConverterTests(TestCase):
         #
 
         fields = QgsFields()
-        fields.append(QgsField('json', type=QMETATYPE_QVARIANTMAP, subType=QMETATYPE_QSTRING, typeName='JSON'))
-        fields.append(QgsField('map', type=QMETATYPE_QVARIANTMAP, subType=0, typeName='map'))
-        fields.append(QgsField('text', type=QMETATYPE_QSTRING))
-        fields.append(QgsField('datetime', type=QMETATYPE_QDATETIME))
-        fields.append(QgsField('date', type=QMETATYPE_QDATE))
-        fields.append(QgsField('time', type=QMETATYPE_QTIME))
+        fields.append(QgsField('json', type=QMetaType.QVariantMap, subType=QMetaType.QString, typeName='JSON'))
+        fields.append(QgsField('map', type=QMetaType.QVariantMap, subType=0, typeName='map'))
+        fields.append(QgsField('text', type=QMetaType.QString))
+        fields.append(QgsField('datetime', type=QMetaType.QDateTime))
+        fields.append(QgsField('date', type=QMetaType.QDate))
+        fields.append(QgsField('time', type=QMetaType.QTime))
 
         for driverName in ['memory', 'GeoJSON', 'GPKG', 'ESRI Shapefile', 'CSV', 'SQLite',
                            QgsVectorFileWriter.driverForExtension('.kml')
@@ -108,10 +105,10 @@ class GenericFieldValueConverterTests(TestCase):
 
         lyr: QgsVectorLayer = TestObjects.createSpectralLibrary(n=2)
         with edit(lyr):
-            lyr.addAttribute(QgsField('datetime', type=QMETATYPE_QDATETIME))
-            lyr.addAttribute(QgsField('time', type=QMETATYPE_QTIME))
-            lyr.addAttribute(QgsField('date', type=QMETATYPE_QDATE))
-            lyr.addAttribute(QgsField('map', type=QMETATYPE_QVARIANTMAP))
+            lyr.addAttribute(QgsField('datetime', type=QMetaType.QDateTime))
+            lyr.addAttribute(QgsField('time', type=QMetaType.QTime))
+            lyr.addAttribute(QgsField('date', type=QMetaType.QDate))
+            lyr.addAttribute(QgsField('map', type=QMetaType.QVariantMap))
 
             dtg = QDateTime.currentDateTime()
             f1 = lyr.getFeature(lyr.allFeatureIds()[0])
@@ -156,11 +153,11 @@ class GenericFieldValueConverterTests(TestCase):
                                                                      QgsProject.instance().transformContext(),
                                                                      options,
                                                                      )
-            assert not writer.hasError(), writer.errorMessage()
-            assert isinstance(writer, QgsVectorFileWriter)
+            self.assertFalse(writer.hasError(), writer.errorMessage())
+            self.assertIsInstance(writer, QgsVectorFileWriter)
             for f in lyr.getFeatures():
-                assert writer.addFeature(f), f'{writer.errorMessage()}'
-            assert writer.flushBuffer()
+                self.assertTrue(writer.addFeature(f), f'{writer.errorMessage()}')
+            self.assertTrue(writer.flushBuffer())
 
 
 if __name__ == '__main__':

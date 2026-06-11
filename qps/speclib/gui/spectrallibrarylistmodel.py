@@ -14,8 +14,11 @@ class SpectralLibraryListModel(FilteredMapLayerProxyModel):
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
         self.setShowAll(False)
-        filter = lambda layer: is_spectral_library(layer)
-        self.setFilterFunc(filter)
+
+        def filterFunc(layer):
+            return is_spectral_library(layer)
+
+        self.setFilterFunc(filterFunc)
 
     def spectralLibraries(self) -> List[QgsVectorLayer]:
         """

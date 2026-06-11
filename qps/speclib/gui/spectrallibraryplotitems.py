@@ -5,6 +5,9 @@ import warnings
 from typing import Any, Generator, List, Optional, Tuple, Union
 
 import numpy as np
+import pyqtgraph as pg
+from pyqtgraph import mkBrush, mkPen
+from pyqtgraph.graphicsItems.PlotDataItem import PlotDataItem
 
 from qgis.PyQt.QtCore import QRectF
 from qgis.PyQt.QtCore import pyqtSignal, QPoint, QPointF, Qt
@@ -13,9 +16,6 @@ from qgis.PyQt.QtWidgets import QAction, QMenu, QSlider, QWidgetAction
 from qgis.PyQt.QtWidgets import QApplication
 from qgis.PyQt.QtWidgets import QGraphicsRectItem, QGraphicsSceneMouseEvent
 from ...plotstyling.plotstyling import PlotStyle, PlotWidgetStyle
-from ...pyqtgraph import pyqtgraph as pg
-from ...pyqtgraph.pyqtgraph import mkBrush, mkPen
-from ...pyqtgraph.pyqtgraph.graphicsItems.PlotDataItem import PlotDataItem
 from ...unitmodel import datetime64, UnitWrapper
 from ...utils import HashablePointF
 
@@ -46,7 +46,6 @@ class SpectralXAxis(pg.AxisItem):
                     rng = v_max.astype(scale_type) - v_min.astype(scale_type)
                     nscale_units = rng.astype(int)
                     if nscale_units > 0:
-                        s = ""
                         break
 
                 if tscale == 'Y':
@@ -82,7 +81,8 @@ class SpectralXAxis(pg.AxisItem):
         """
         if isinstance(unit, UnitWrapper):
             unit = unit.unit
-        assert unit is None or isinstance(unit, str)
+        if not (unit is None or isinstance(unit, str)):
+            raise AssertionError
         self.mUnit = unit
 
         if isinstance(labelName, str):
@@ -387,14 +387,14 @@ class SpectralProfilePlotDataItem(PlotDataItem):
                 selectedStyle = self.mSelectedStyle(self.mDefaultStyle)
             else:
                 selectedStyle = self.mSelectedStyle
-            assert isinstance(selectedStyle, PlotStyle)
+            if not (isinstance(selectedStyle, PlotStyle)):
+                raise AssertionError
             self.setPlotStyle(selectedStyle)
         else:
             self.setPlotStyle(self.mDefaultStyle)
 
     def selectPoints(self, point_indices):
-
-        s = ""
+        pass
 
     def selectedPoints(self) -> list:
 
@@ -468,8 +468,11 @@ class SpectralProfilePlotDataItem(PlotDataItem):
                      symbolSize=symbolSize)
 
     def setPlotStyle(self, plotStyle: PlotStyle):
-        assert isinstance(plotStyle, PlotStyle)
+        """
 
+        :param plotStyle:
+        :return:
+        """
         self.opts['pen'] = pg.mkPen(plotStyle.linePen)
         self.opts['symbol'] = plotStyle.markerSymbol
         self.opts['symbolPen'] = pg.mkPen(plotStyle.markerPen)
@@ -490,7 +493,7 @@ class SpectralProfilePlotDataItem(PlotDataItem):
         y = pos.y()
         pw = self.pixelWidth()
         ph = self.pixelHeight()
-        pts = []
+        _ = []
         dataX, dataY = self.getData()
         distX = np.abs(dataX - x) / pw
         distY = np.abs(dataY - y) / ph
@@ -512,14 +515,10 @@ class SpectralProfilePlotDataItem(PlotDataItem):
     def updateItems(self, *args, **kwds):
         if not self.signalsBlocked():
             super().updateItems(*args, **kwds)
-        else:
-            s = ""
 
     def viewRangeChanged(self, *args, **kwds):
         if not self.signalsBlocked():
             super().viewRangeChanged()
-        else:
-            s = ""
 
     def setClickable(self, b: bool, width=None):
         """
@@ -527,12 +526,12 @@ class SpectralProfilePlotDataItem(PlotDataItem):
         :param width:
         :return:
         """
-        assert isinstance(b, bool)
+        if not (isinstance(b, bool)):
+            raise AssertionError
         self.curve.setClickable(b, width=width)
 
     def populateContextMenu(self, menu: QMenu):
-
-        s = ""
+        pass
 
     def raiseContextMenu(self, ev):
         menu = self.contextMenu()
@@ -705,7 +704,8 @@ class SpectralProfilePlotWidget(pg.GraphicsLayoutWidget):
         return [HashablePointF(p.pos()) for p in self.mInfoScatterPoints.points()]
 
     def setShowCrosshair(self, b: bool):
-        assert isinstance(b, bool)
+        if not (isinstance(b, bool)):
+            raise AssertionError
         self.mShowCrosshair = b
 
     def setBackgroundColor(self, color: Union[str, QColor]):
@@ -754,7 +754,8 @@ class SpectralProfilePlotWidget(pg.GraphicsLayoutWidget):
         self.mInfoLabelCursor.setColor(QColor(color))
 
     def setShowCursorInfo(self, b: bool):
-        assert isinstance(b, bool)
+        if not (isinstance(b, bool)):
+            raise AssertionError
         self.mShowCursorInfo = b
 
     def xAxis(self) -> SpectralXAxis:
@@ -813,17 +814,19 @@ class SpectralProfilePlotWidget(pg.GraphicsLayoutWidget):
         pos = evt[0]  # using signal proxy turns original arguments into a tuple
 
         plotItem = self.plotItem1
-        assert isinstance(plotItem, SpectralProfilePlotItem)
+        if not (isinstance(plotItem, SpectralProfilePlotItem)):
+            raise AssertionError
         vb = plotItem.vb
-        assert isinstance(vb, SpectralViewBox)
+        if not (isinstance(vb, SpectralViewBox)):
+            raise AssertionError
 
         if plotItem.sceneBoundingRect().contains(pos) and self.underMouse():
             mousePoint = vb.mapSceneToView(pos)
             self.mCurrentMousePosition = mousePoint
 
-            nearest_item = None
-            nearest_index = -1
-            nearest_distance = sys.float_info.max
+            _ = None
+            _ = -1
+            _ = sys.float_info.max
             # sx, sy = self.mInfoScatterPoints.getData()
 
             self.updatePositionInfo()

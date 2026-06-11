@@ -3,7 +3,7 @@ import warnings
 from typing import List, Optional, Union
 
 from qgis.PyQt.QtCore import pyqtSignal, QAbstractItemModel, QItemSelectionModel, QMimeData, QModelIndex, \
-    QRect, QSize, QSortFilterProxyModel, Qt
+    QRect, QSize, QSortFilterProxyModel, Qt, QMetaType
 from qgis.PyQt.QtGui import QColor, QContextMenuEvent, QDragEnterEvent, QDropEvent, QFontMetrics, QIcon, \
     QPainter, QPalette, QPixmap
 from qgis.PyQt.QtWidgets import QAbstractItemView, QAction, QApplication, QComboBox, QDialog, QFrame, QHBoxLayout, \
@@ -22,7 +22,6 @@ from .. import speclibUiPath
 from ..core import profile_field_list
 from ...models import SettingsModel
 from ...plotstyling.plotstyling import PlotStyle, PlotWidgetStyle
-from ...qgisenums import QMETATYPE_INT, QMETATYPE_QSTRING
 from ...utils import loadUi, SelectMapLayerDialog
 
 
@@ -48,7 +47,7 @@ class SpectralProfilePlotView(QTreeView):
             visualizations = [visualizations]
 
         model = self.model()
-        rows = []
+
         for r in range(model.rowCount()):
             idx = model.index(r, 0)
             vis = model.data(idx, Qt.UserRole)
@@ -87,7 +86,6 @@ class SpectralProfilePlotView(QTreeView):
             # item = idx.data(Qt.UserRole)
             # if isinstance(item, PropertyItemBase) and item.firstColumnSpanned():
             #    self.setFirstColumnSpanned(r, idx.parent(), True)
-        s = ""
 
     def contextMenuEvent(self, event: QContextMenuEvent) -> None:
         """
@@ -143,7 +141,7 @@ class SpectralProfilePlotView(QTreeView):
 
         if not menu.isEmpty():
             # actions = menu.actions()
-            menu.exec_(self.viewport().mapToGlobal(event.pos()))
+            menu.exec(self.viewport().mapToGlobal(event.pos()))
             # s = actions
 
     def removeItems(self, vis: List[PropertyItemGroup]):
@@ -193,7 +191,8 @@ class SpectralProfilePlotViewDelegate(QStyledItemDelegate):
     """
 
     def __init__(self, treeView: SpectralProfilePlotView, parent=None):
-        assert isinstance(treeView, SpectralProfilePlotView)
+        if not (isinstance(treeView, SpectralProfilePlotView)):
+            raise AssertionError
         super(SpectralProfilePlotViewDelegate, self).__init__(parent=parent)
         self.mTreeView: SpectralProfilePlotView = treeView
 
@@ -281,8 +280,8 @@ class SpectralProfilePlotViewDelegate(QStyledItemDelegate):
                             palette.setCurrentColorGroup(QPalette.Disabled)
 
                         # Use highlighted text color if an item is selected
-                        text_role = QPalette.HighlightedText if (
-                                option.state & QStyle.State_Selected) else QPalette.Text
+                        text_role = QPalette.HighlightedText \
+                            if (option.state & QStyle.State_Selected) else QPalette.Text
                         style.drawItemText(painter, rect, Qt.AlignLeft | Qt.AlignVCenter, palette, enabled, p,
                                            textRole=text_role)
                         x0 = rect.x() + rect.width() + margin
@@ -326,7 +325,7 @@ class SpectralProfilePlotViewDelegate(QStyledItemDelegate):
         return self.mTreeView.model().sourceModel()
 
     def createEditor(self, parent, option, index):
-        w = None
+
         editor = None
         if index.isValid():
             item = index.data(Qt.UserRole)
@@ -379,13 +378,17 @@ class SpectralLibraryPlotWidget(QWidget):
         super().__init__(*args, **kwds)
         loadUi(speclibUiPath('spectrallibraryplotwidget.ui'), self)
 
-        assert isinstance(self.panelVisualization, QFrame)
+        if not (isinstance(self.panelVisualization, QFrame)):
+            raise AssertionError
 
-        assert isinstance(self.mPlotWidget, SpectralProfilePlotWidget)
-        assert isinstance(self.treeView, SpectralProfilePlotView)
+        if not (isinstance(self.mPlotWidget, SpectralProfilePlotWidget)):
+            raise AssertionError
+        if not (isinstance(self.treeView, SpectralProfilePlotView)):
+            raise AssertionError
 
         self.mPlotWidget: SpectralProfilePlotWidget
-        assert isinstance(self.mPlotWidget, SpectralProfilePlotWidget)
+        if not (isinstance(self.mPlotWidget, SpectralProfilePlotWidget)):
+            raise AssertionError
         # self.plotWidget.sigPopulateContextMenuItems.connect(self.onPopulatePlotContextMenu)
 
         self.mPlotModel = SpectralProfilePlotModel(parent=self)
@@ -495,7 +498,6 @@ class SpectralLibraryPlotWidget(QWidget):
         return self.mPlotModel.plotWidgetStyle()
 
     def populateProfilePlotContextMenu(self, menu_list: list):
-        s = ""
 
         items = list(self.plotWidget().spectralProfilePlotDataItems(is_selected=True))
         n = len(items)
@@ -561,12 +563,14 @@ class SpectralLibraryPlotWidget(QWidget):
             self.treeView.setExpanded(idx2, True)
             self.treeView.scrollTo(idx2, QAbstractItemView.PositionAtCenter)
 
-            result = QMessageBox.information(self,
-                                             'Maximum number of profiles',
-                                             f'Reached maximum number of profiles to display ({n}).\n'
-                                             'Increase this value to display more profiles at same time.\n'
-                                             'Showing a large numbers of profiles (and bands) can reduce '
-                                             'visualization speed')
+            _ = QMessageBox.information(
+                self,
+                'Maximum number of profiles',
+                f'Reached maximum number of profiles to display ({n}).\n'
+                'Increase this value to display more profiles at same time.\n'
+                'Showing a large numbers of profiles (and bands) can reduce '
+                'visualization speed'
+            )
 
     def createLayerBandVisualization(self, *args):
 
@@ -575,7 +579,7 @@ class SpectralLibraryPlotWidget(QWidget):
         d.setWindowTitle('Select Raster Layer')
         d.setProject(self.plotModel().project())
         d.mapLayerComboBox().setFilters(QgsMapLayerProxyModel.RasterLayer)
-        if d.exec_() == QDialog.Accepted:
+        if d.exec() == QDialog.Accepted:
             layer = d.layer()
 
         existing_layers = [v.layerId() for v in self.mPlotModel.layerRendererVisualizations()]
@@ -667,7 +671,7 @@ class SpectralLibraryPlotWidget(QWidget):
                 rx3 = re.compile('fid', re.I)
                 for rx in [rx1, rx2, rx3]:
                     for field_name in layer.fields():
-                        if field_name.type() in [QMETATYPE_QSTRING, QMETATYPE_INT] and rx.search(field_name.name()):
+                        if field_name.type() in [QMetaType.QString, QMetaType.Int] and rx.search(field_name.name()):
                             name_field = field_name
                             break
                     if name_field:

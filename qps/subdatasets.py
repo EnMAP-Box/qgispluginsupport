@@ -64,9 +64,11 @@ class SubDatasetLoadingTask(QgsTask):
         if providers is None:
             providers = all_providers
         else:
-            assert isinstance(providers, list)
+            if not (isinstance(providers, list)):
+                raise AssertionError
             for p in providers:
-                assert p in all_providers, f'Provider {p} not found'
+                if not (p in all_providers):
+                    raise AssertionError(f'Provider {p} not found')
 
         self.mProviders: List[str] = providers
         self.mMessages: Dict[str, str] = dict()
@@ -84,7 +86,8 @@ class SubDatasetLoadingTask(QgsTask):
         t0 = datetime.datetime.now()
 
         for i, path in enumerate(self.mFiles):
-            assert isinstance(path, str)
+            if not (isinstance(path, str)):
+                raise AssertionError
 
             try:
                 reg = QgsProviderRegistry.instance()
@@ -182,7 +185,7 @@ class DatasetTableModel(QAbstractTableModel):
         """
         Returns a unique set of subset details
         """
-        all_details = self.allSublayerDetails()
+        # all_details = self.allSublayerDetails()
 
         RESULTS = dict()
         for d in self.allSublayerDetails():
@@ -308,14 +311,16 @@ class SubDatasetSelectionDialog(QDialog):
         self.validate()
 
     def setProviders(self, providers: List[str]):
-        assert isinstance(providers, list)
+        if not (isinstance(providers, list)):
+            raise AssertionError
 
         all_providers = QgsProviderRegistry.instance().providerList()
         if 'all' in providers:
             providers = all_providers
         else:
             for p in providers:
-                assert p in all_providers, f'Provider {p} not found'
+                if not (p in all_providers):
+                    raise AssertionError(f'Provider {p} not found')
         self.mProviders = providers
 
     def showMultiFiles(self, b: bool):
@@ -328,7 +333,8 @@ class SubDatasetSelectionDialog(QDialog):
             self.validate()
 
     def setFiles(self, files: List[Union[str, Path]]):
-        assert isinstance(files, list)
+        if not (isinstance(files, list)):
+            raise AssertionError
         files = [str(f) for f in files]
         fileString = ' '.join(['"{}"'.format(f) for f in files])
         self.fileWidget.setFilePath(fileString)
@@ -356,7 +362,8 @@ class SubDatasetSelectionDialog(QDialog):
             return
 
         tm = QgsApplication.taskManager()
-        assert isinstance(tm, QgsTaskManager)
+        if not (isinstance(tm, QgsTaskManager)):
+            raise AssertionError
         qgsTask = SubDatasetLoadingTask(files,
                                         description='Search Subdatasets',
                                         providers=self.mProviders.copy(),
@@ -382,7 +389,8 @@ class SubDatasetSelectionDialog(QDialog):
 
         self.mTasks[tid] = qgsTask
         tm = QgsApplication.taskManager()
-        assert isinstance(tm, QgsTaskManager)
+        if not (isinstance(tm, QgsTaskManager)):
+            raise AssertionError
         tm.addTask(qgsTask)
 
     def setDefaultRoot(self, root: str):

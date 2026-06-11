@@ -30,9 +30,9 @@ import re
 from pathlib import Path
 from typing import Union
 
+from qgis.PyQt.QtCore import QMetaType
 from qgis.core import QgsPointXY
 from ..core.spectralprofile import prepareProfileValueDict, SpectralProfileFileReader
-from ...qgisenums import QMETATYPE_QSTRING
 
 
 class SEDAttributes(object):
@@ -74,7 +74,7 @@ class SEDAttributes(object):
 
 
 KEY2TYPE = {
-    'Comment': QMETATYPE_QSTRING,
+    'Comment': QMetaType.QString,
     'Version': SEDAttributes.Version,
     'File Name': SEDAttributes.FileName,
     'Instrument': SEDAttributes.Instrument,

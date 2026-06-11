@@ -12,10 +12,10 @@ class GDALUtilsTests(TestCase):
         gdal.SetConfigOption('foobar', 'yes')
         self.assertEqual(gdal.GetConfigOption('foobar'), 'yes')
 
-        with GDALConfigChanges(changes) as changer:
-            assert gdal.GetConfigOption('GDAL_VRT_ENABLE_RAWRASTERBAND') == 'YES'
-            assert gdal.GetConfigOption('foobar') is None
+        with GDALConfigChanges(changes) as _:
+            self.assertEqual(gdal.GetConfigOption('GDAL_VRT_ENABLE_RAWRASTERBAND'), 'YES')
+            self.assertIsNone(gdal.GetConfigOption('foobar'))
 
         self.assertEqual(gdal.GetConfigOption('foobar'), 'yes')
-        assert gdal.GetConfigOption('GDAL_VRT_ENABLE_RAWRASTERBAND') is None
+        self.assertIsNone(gdal.GetConfigOption('GDAL_VRT_ENABLE_RAWRASTERBAND'))
         self.assertEqual(gdal.GetConfigOption('foobar'), 'yes')

@@ -87,7 +87,7 @@ class TestSpeclibWidgets(TestCase):
                 if d1 != d2:
                     editor.setProfileDict(d1)
                     d2 = editor.profileDict()
-                    s = ""
+
                 self.assertEqual(d1, d2)
             editor.clear()
             self.assertEqual(editor.profileDict(), dict())
@@ -208,9 +208,9 @@ class TestSpeclibWidgets(TestCase):
 
         eww.valueChanged.connect(lambda v: print(f'value changed: {v}'))
 
-        fields = speclib.fields()
+        _ = speclib.fields()
         speclib.startEditing()
-        value = eww.value()
+        _ = eww.value()
         f = speclib.getFeature(1)
         self.assertTrue(speclib.updateFeature(f))
 

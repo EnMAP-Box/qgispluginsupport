@@ -3,6 +3,7 @@ from typing import Any, List, Union, Optional
 
 import numpy as np
 
+from qgis.PyQt.QtCore import QMetaType
 from qgis.core import (QgsCoordinateReferenceSystem, QgsCoordinateTransformContext,
                        QgsExpressionContext,
                        QgsExpressionContextScope, QgsFeature, QgsMapLayer,
@@ -13,7 +14,7 @@ from qgis.core import QgsFeatureIterator
 from ..core import is_profile_field
 from ..core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict, SpectralProfileFileReader, \
     SpectralProfileFileWriter
-from ...qgisenums import QMETATYPE_QSTRING
+from ...fieldvalueconverter import GenericFieldValueConverter
 
 
 class GeoJsonFieldValueConverter(QgsVectorFileWriter.FieldValueConverter):
@@ -29,8 +30,8 @@ class GeoJsonFieldValueConverter(QgsVectorFileWriter.FieldValueConverter):
         for field in self.mFields:
             name = field.name()
             idx = self.mFields.lookupField(name)
-            if field.type() != QMETATYPE_QSTRING and is_profile_field(field):
-                converted_field = QgsField(name=name, type=QMETATYPE_QSTRING, typeName='string', len=-1)
+            if field.type() != QMetaType.QString and is_profile_field(field):
+                converted_field = QgsField(name=name, type=QMetaType.QString, typeName='string', len=-1)
                 self.mFieldDefinitions[name] = converted_field
                 self.mFieldConverters[idx] = lambda v, f=converted_field: self.convertProfileField(v, f)
 
@@ -126,9 +127,11 @@ class GeoJSONSpectralLibraryWriter(SpectralProfileFileWriter):
         options.skipAttributeCreation = False
         options.driverName = 'GeoJSON'
 
-        converter = GeoJsonFieldValueConverter(srcFields)
+        dstFields = GenericFieldValueConverter.compatibleTargetFields(srcFields, 'GeoJSON')
+        converter = GenericFieldValueConverter(srcFields, dstFields)
+        # converter = GeoJsonFieldValueConverter(srcFields)
         options.fieldValueConverter = converter
-        dstFields = converter.convertedFields()
+        # dstFields = converter.convertedFields()
 
         writer_crs: QgsCoordinateReferenceSystem = crsJson if self.mRFC7946 else self.mCrs
         writer: QgsVectorFileWriter = QgsVectorFileWriter.create(path.as_posix(),

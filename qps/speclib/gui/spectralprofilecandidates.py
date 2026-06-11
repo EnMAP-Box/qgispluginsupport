@@ -35,7 +35,7 @@ class SpectralProfileCandidates(object):
         changed = set()
         for lyr in layers:
             if (isinstance(lyr,
-                           QgsVectorLayer) and lyr.isValid() and CUSTOM_PROPERTY_CANDIDATE_FIDs in lyr.customPropertyKeys()):
+                           QgsVectorLayer) and lyr.isValid() and CUSTOM_PROPERTY_CANDIDATE_FIDs in lyr.customPropertyKeys()):  # noqa: E501
                 lyr.removeCustomProperty(CUSTOM_PROPERTY_CANDIDATE_FIDs)
                 changed.add(lyr.id())
 
@@ -99,7 +99,8 @@ class SpectralProfileCandidates(object):
         :param candidates: Dictionary with profile candidates as {layer id:[List of QgsFeatures]}.
         :param add_automatically: If True, the features will be added to the vector layer and not marked as candidates.
         """
-        assert isinstance(candidates, dict)
+        if not (isinstance(candidates, dict)):
+            raise AssertionError
 
         candidates = {k: list(c) if not isinstance(c, list) else c for k, c in candidates.items()}
 
@@ -135,6 +136,6 @@ class SpectralProfileCandidates(object):
             changed_layers.add(lyr.id())
 
         if len(changed_layers) > 0 and not block_signal:
-            s = ""
             cls.SHARED_SIGNALS.candidatesChanged.emit(list(changed_layers))
+
         return changed_layers

@@ -87,7 +87,7 @@ class CursorLocationTest(TestCase):
 
             elif isinstance(lyr, QgsVectorLayer):
                 for feature in lyr.getFeatures():
-                    assert isinstance(feature, QgsFeature)
+                    self.assertIsInstance(feature, QgsFeature)
                     if not feature.geometry().isNull():
                         center = feature.geometry().centroid().asPoint()
                         center = SpatialPoint(lyr.crs(), center)

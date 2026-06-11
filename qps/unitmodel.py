@@ -293,13 +293,17 @@ class UnitConverterFunctionModel(object):
         single number input must return a single number output
         """
         # test func with dummy variables
-        assert not isinstance(func(1), (list, np.ndarray))
-        assert len(func([1, 2])) == 2
-        assert len(func(np.asarray([1, 2]))) == 2
+        if not (not isinstance(func(1), (list, np.ndarray))):
+            raise AssertionError
+        if not (len(func([1, 2])) == 2):
+            raise AssertionError
+        if not (len(func(np.asarray([1, 2]))) == 2):
+            raise AssertionError
 
         k = (unitSrc, unitDst)
 
-        assert k not in self.mLUT, k
+        if not (k not in self.mLUT):
+            raise AssertionError(k)
         self.mLUT[k] = func
 
     def convertFunction(self, unitSrc: Optional[str], unitDst: Optional[str]):
@@ -342,7 +346,8 @@ class XUnitModel(UnitModel):
                   'Micrometers',
                   'Millimeters']:
             baseUnit = UnitLookup.baseUnit(u)
-            assert isinstance(baseUnit, str), u
+            if not (isinstance(baseUnit, str)):
+                raise AssertionError(u)
             self.addUnit(baseUnit,
                          description=f'Wavelength [{baseUnit}]',
                          tooltip=f'Wavelength in {u} [{baseUnit}]')
@@ -353,7 +358,8 @@ class XUnitModel(UnitModel):
 
         for u in ['Meters', 'Kilometers', 'Yards', 'Miles']:
             baseUnit = UnitLookup.baseUnit(u)
-            assert isinstance(baseUnit, str), u
+            if not (isinstance(baseUnit, str)):
+                raise AssertionError(u)
             self.addUnit(baseUnit,
                          description=f'Distance [{baseUnit}]',
                          tooltip=f'Distance in {u} [{baseUnit}]')
@@ -601,8 +607,10 @@ class UnitLookup(object):
         :return: float | numpy.array, converted values
                  or None in case conversion is not possible
         """
-        assert isinstance(u1, str), 'Source length unit (str)'
-        assert isinstance(u2, str), 'Destination length unit (str)'
+        if not (isinstance(u1, str)):
+            raise AssertionError('Source length unit (str)')
+        if not (isinstance(u2, str)):
+            raise AssertionError('Destination length unit (str)')
         u1 = UnitLookup.baseUnit(u1)
         u2 = UnitLookup.baseUnit(u2)
 
@@ -630,8 +638,10 @@ class UnitLookup(object):
         :return: float | numpy.array, converted values
                  or None in case conversion is not possible
         """
-        assert isinstance(u1, str), 'Source area unit (str)'
-        assert isinstance(u2, str), 'Destination area unit (str)'
+        if not (isinstance(u1, str)):
+            raise AssertionError('Source area unit (str)')
+        if not (isinstance(u2, str)):
+            raise AssertionError('Destination area unit (str)')
 
         # get the base unit, e.g. 'm2' instead 'square meters'
         u1 = UnitLookup.baseUnit(u1)
@@ -706,7 +716,7 @@ class UnitLookup(object):
                 '{:04}-01-01T00:00:00'.format(year))
             spy2 = int(spy2.astype(int))
             if spy != spy2:
-                s = ""
+                pass
             return float(year + soy / spy)
         else:
             raise NotImplementedError()
@@ -741,7 +751,8 @@ def datetime64(value, dpy: int = None) -> np.datetime64:
         if dpy is None:
             dpy = 366 if calendar.isleap(year) else 365
         else:
-            assert dpy in [365, 366]
+            if not (dpy in [365, 366]):
+                raise AssertionError
         # seconds of year
         soy = np.round(fraction * dpy * 86400).astype(int)
         return np.datetime64('{:04}-01-01'.format(year)) + np.timedelta64(soy, 's')

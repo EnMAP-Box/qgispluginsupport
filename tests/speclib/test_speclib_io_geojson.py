@@ -3,10 +3,10 @@ import unittest
 
 from osgeo import ogr
 
-from qgis.PyQt.QtCore import QVariant
+from qgis.PyQt.QtCore import QMetaType
 from qgis.core import QgsCoordinateReferenceSystem, QgsField, QgsPoint, QgsProject, \
     QgsVectorFileWriter, QgsVectorLayer
-from qps.speclib.core import is_profile_field, profile_field_names
+from qps.speclib.core import is_profile_field, profile_field_names, is_spectral_library
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
 from qps.speclib.io.geojson import GeoJsonFieldValueConverter, GeoJSONSpectralLibraryReader, \
@@ -44,7 +44,7 @@ class TestSpeclibIOGeoJSON(TestCase):
         path2 = DIR / 'test_GeoJSON2008.geojson'
 
         drv: ogr.Driver = ogr.GetDriverByName('GeoJSON')
-        md = drv.GetMetadata_Dict()
+        _ = drv.GetMetadata_Dict()
 
         filesRFCYes = SpectralLibraryUtils.writeToSource(sl1, path1, rfc7946=True, crs=sl1.crs())
         filesRFCNo = SpectralLibraryUtils.writeToSource(sl1, path2, rfc7946=False, crs=sl1.crs())
@@ -54,6 +54,7 @@ class TestSpeclibIOGeoJSON(TestCase):
         for lyr in [lyrYes, lyrNo]:
             self.assertTrue(lyr.isValid())
             self.assertEqual(n, lyr.featureCount())
+            self.assertTrue(is_spectral_library(lyr))
         self.assertEqual(lyrYes.crs(), crs4326)
         self.assertEqual(lyrNo.crs(), crsUTM)
 
@@ -68,7 +69,7 @@ class TestSpeclibIOGeoJSON(TestCase):
         for field in sl.fields():
             field2 = converter.fieldDefinition(field)
             self.assertIsInstance(field2, QgsField)
-            self.assertTrue(field2.type() not in [QVariant.ByteArray, 8])
+            self.assertTrue(field2.type() not in [QMetaType.QByteArray, 8])
             fieldc = cloned.fieldDefinition(field)
             self.assertEqual(field2, fieldc)
 

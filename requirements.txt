@@ -4,6 +4,9 @@
 ###### Requirements ######
 
 scipy
+pyqtgraph
+matplotlib
+defusedxml
 colorama # required by recent pyqtgraph
 
 # clean code

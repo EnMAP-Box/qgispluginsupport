@@ -75,7 +75,7 @@ class TestSpeclibIO_ENVI(TestCase):
                 self.assertIsInstance(data, dict)
                 self.assertTrue(len(data) > 0)
                 p_jsons_in.append(json.dumps(data, sort_keys=True))
-            p_jsons_out = []
+            _ = []
             for file in files:
                 self.assertTrue(EnviSpectralLibraryReader.canReadFile(file))
                 reader = EnviSpectralLibraryReader(file)
@@ -84,7 +84,7 @@ class TestSpeclibIO_ENVI(TestCase):
                     data = decodeProfileValueDict(p.attribute('profiles'))
                     self.assertIsInstance(data, dict)
                     self.assertTrue(len(data) > 0)
-                    dump = json.dumps(data, sort_keys=True)
+                    dump = json.dumps(data, sort_keys=True, ensure_ascii=False)
                     self.assertTrue(dump in p_jsons_in)
 
 

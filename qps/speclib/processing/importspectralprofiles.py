@@ -55,7 +55,8 @@ def file_reader(path: Union[str, Path],
     :return:
     """
     path = Path(path)
-    assert path.is_file()
+    if not (path.is_file()):
+        raise AssertionError(f'Not a file: {path}')
 
     for reader in READERS.values():
         if reader.canReadFile(path):
@@ -405,7 +406,8 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
         # outputPar = QgsProcessingOutputLayerDefinition(parameters.get(self.P_OUTPUT), context.project())
         # remapping = QgsRemappingSinkDefinition()
 
-        assert len(all_fields) == len(dst_fields)
+        if not (len(all_fields) == len(dst_fields)):
+            raise AssertionError
 
         # outputPar.setRemappingDefinition(remapping)
 
@@ -448,7 +450,8 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
             remappingFieldMap = dict()
             transformers = []
             for dstField in dst_fields:
-                assert isinstance(dstField, QgsField)
+                if not (isinstance(dstField, QgsField)):
+                    raise AssertionError
                 if dstField.name() in srcFieldNames:
                     srcFieldName = dstField.name()
                     transformer = GenericPropertyTransformer(dstField)
@@ -500,7 +503,7 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
 
         vl = self._results.get(self.P_OUTPUT)
         if isinstance(vl, str):
-            lyr_id = vl
+            _ = vl
             vl = QgsProcessingUtils.mapLayerFromString(vl, context,
                                                        allowLoadingNewLayers=True,
                                                        typeHint=QgsProcessingUtils.LayerHint.Vector)
@@ -520,8 +523,8 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
                     if isinstance(setup, QgsEditorWidgetSetup):
                         vl.setEditorWidgetSetup(idx, setup)
                 else:
-                    s = ""
-                    # setup = QgsEditorWidgetSetup()
+                    pass
+            # setup = QgsEditorWidgetSetup()
             # for fieldName in self._profile_field_names:
             #    idx = vl.fields().lookupField(fieldName)
             #    if idx > -1:

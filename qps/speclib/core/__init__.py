@@ -1,8 +1,7 @@
-from typing import Dict, List, Union
+from typing import Dict, List, Union, Optional
 
-from qgis.PyQt.QtCore import QVariant
+from qgis.PyQt.QtCore import QMetaType
 from qgis.core import QgsFeature, QgsField, QgsFields, QgsVectorLayer, QgsMapLayer
-from ...qgisenums import QMETATYPE_QBYTEARRAY, QMETATYPE_QSTRING, QMETATYPE_QVARIANTMAP
 
 
 def create_profile_field(*args, **kwds) -> QgsField:
@@ -22,9 +21,9 @@ def can_store_spectral_profiles(field: QgsField) -> bool:
     """
     if not (isinstance(field, QgsField) and field.length() in [0, -1, 2 ** 16 - 1]):
         return False
-    b = field.type() in [QMETATYPE_QBYTEARRAY,
-                         QMETATYPE_QSTRING,
-                         QMETATYPE_QVARIANTMAP  # JSON
+    b = field.type() in [QMetaType.QByteArray,
+                         QMetaType.QString,
+                         QMetaType.QVariantMap  # JSON
                          ]
 
     return b
@@ -64,7 +63,7 @@ def contains_profile_field(object: Union[QgsVectorLayer, QgsFeature, QgsFields])
     return False
 
 
-def is_spectral_library(layer: QgsMapLayer) -> bool:
+def is_spectral_library(layer: Optional[QgsMapLayer]) -> bool:
     """
     Returns True if a vector layer contains at least one spectral profile field
     :param layer: QgsVectorLayer
@@ -84,7 +83,7 @@ def is_spectral_feature(feature: QgsFeature) -> bool:
     return contains_profile_field(feature)
 
 
-def profile_fields(fields: Union[QgsFeature, QgsVectorLayer, QgsFields]) -> QgsFields:
+def profile_fields(fields: Union[QgsFeature, QgsVectorLayer, QgsFields, List[QgsField]]) -> QgsFields:
     """
     Returns the spectral profile fields
     :param fields: fields to check
@@ -99,7 +98,8 @@ def profile_fields(fields: Union[QgsFeature, QgsVectorLayer, QgsFields]) -> QgsF
     elif isinstance(fields, list):
         fds = QgsFields()
         for f in fields:
-            assert isinstance(f, QgsField)
+            if not (isinstance(f, QgsField)):
+                raise AssertionError('List item is not a QgsField')
             fds.append(f)
         fields = fds
     elif isinstance(fields, QgsFields):
@@ -124,8 +124,7 @@ def profile_field_list(spectralLibrary: Union[QgsFeature, QgsVectorLayer, QgsFie
     return [pfields.at(i) for i in range(pfields.count())]
 
 
-def profile_field_lookup(spectralLibrary: Union[QgsFeature, QgsVectorLayer]) -> \
-        Dict[Union[int, str], QgsField]:
+def profile_field_lookup(spectralLibrary: Union[QgsFeature, QgsVectorLayer]) -> Dict[Union[int, str], QgsField]:
     """
     Returns a dictionary to lookup spectral profile fields by name or field index
     :param spectralLibrary: QgsVectorLayer
@@ -169,7 +168,7 @@ def first_profile_field_index(source: Union[QgsFields, QgsFeature, QgsVectorLaye
         return first_profile_field_index(source.fields())
     elif isinstance(source, QgsFields):
         for f in source:
-            if f.type() == QVariant.ByteArray:
+            if f.type() == QMetaType.QByteArray:
                 return source.lookupField(f.name())
     return -1
 
@@ -186,9 +185,14 @@ def field_index(source: Union[QgsFields, QgsFeature, QgsVectorLayer],
         return field
 
     idx = -1
-    if isinstance(source, (QgsVectorLayer, QgsFeature)):
+    if not isinstance(source, (QgsVectorLayer, QgsFeature)):
+        raise AssertionError(f'Wrong source type: {source}')
+
+    if isinstance(source, QgsFields):
+        fields = source
+    else:
         fields = source.fields()
-    assert isinstance(fields, QgsFields)
+
     if isinstance(field, QgsField):
         idx = fields.lookupField(field.name())
     elif isinstance(field, str):

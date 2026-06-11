@@ -5,10 +5,9 @@ from datetime import datetime
 from typing import List
 
 import qpstestdata
-from qgis.PyQt.QtCore import QDateTime, Qt
+from qgis.PyQt.QtCore import QDateTime, Qt, QMetaType
 from qgis.core import edit, QgsFeature, QgsField
 from qps.fieldvalueconverter import collect_native_types
-from qps.qgisenums import QMETATYPE_QDATE, QMETATYPE_QDATETIME
 from qps.speclib.core import is_spectral_feature, profile_field_names, is_spectral_library
 from qps.speclib.core.spectralprofile import decodeProfileValueDict, SpectralProfileFileReader, validateProfileValueDict
 from qps.speclib.io.asd import ASDBinaryFile
@@ -55,7 +54,6 @@ class TestSpeclibIO_SpectralProfileReaders(TestCase):
         context, feedback = self.createProcessingContextFeedback()
         results, success = alg.run(par, context, feedback)
         self.assertTrue(success, msg=feedback.textLog())
-        s = ""
 
     def test_import_files(self):
         from processing import run
@@ -86,7 +84,7 @@ class TestSpeclibIO_SpectralProfileReaders(TestCase):
 
             self.assertIsInstance(reader, SpectralProfileFileReader)
             profiles = reader.asFeatures()
-            assert len(profiles) > 0
+            self.assertGreater(len(profiles), 0)
             for profile in profiles:
                 pfields = profile_field_names(profile)
                 for name in pfields:
@@ -112,10 +110,10 @@ class TestSpeclibIO_SpectralProfileReaders(TestCase):
         path_gpkg = TEST_DIR / 'example.gpkg'
         vl = TestObjects.createVectorLayer(path=path_gpkg)
 
-        nt = collect_native_types()
+        _ = collect_native_types()
         with edit(vl):
-            assert vl.addAttribute(QgsField('datetime', QMETATYPE_QDATETIME))
-            assert vl.addAttribute(QgsField('date', QMETATYPE_QDATE))
+            self.assertTrue(vl.addAttribute(QgsField('datetime', QMetaType.QDateTime)))
+            self.assertTrue(vl.addAttribute(QgsField('date', QMetaType.QDate)))
 
         f = QgsFeature(vl.fields())
         dt = datetime.now()
@@ -125,9 +123,7 @@ class TestSpeclibIO_SpectralProfileReaders(TestCase):
         # f.setAttribute('time', QDateTime.fromString(dt.isoformat(), Qt.ISODate).time())
 
         with edit(vl):
-            assert vl.addFeature(f)
-
-        s = ""
+            self.assertTrue(vl.addFeature(f))
 
 
 if __name__ == '__main__':

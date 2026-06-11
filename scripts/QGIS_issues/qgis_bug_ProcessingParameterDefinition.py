@@ -85,7 +85,7 @@ class SpectralMathTests(TestCase):
 
     def test_TestMyParameter(self):
         procReg = QgsApplication.instance().processingRegistry()
-        assert isinstance(procReg, QgsProcessingRegistry)
+        self.assertIsInstance(procReg, QgsProcessingRegistry)
 
         myType = MyParameterType()
         procReg.addParameterType(myType)
@@ -120,8 +120,6 @@ class SpectralMathTests(TestCase):
             variant_map = parameter.toVariantMap()
             self.assertIsInstance(variant_map, dict)
             self.assertEqual(variant_map.get('name', None), name)
-            s = ""
-            # dlg.exec_()
 
         model: QgsProcessingModelAlgorithm = md
         # md.model().addModelParameter()
@@ -131,6 +129,7 @@ class SpectralMathTests(TestCase):
 
 if __name__ == '__main__':
     procReg = QgsApplication.instance().processingRegistry()
-    assert isinstance(procReg, QgsProcessingRegistry)
+    if not (isinstance(procReg, QgsProcessingRegistry)):
+        raise AssertionError
     parameterType = MyParameterType()
     procReg.addParameterType(parameterType)

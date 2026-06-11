@@ -31,8 +31,8 @@ import sys
 from pathlib import Path
 from typing import Any, Generator, List, Optional, Union
 
-from qgis.PyQt.QtCore import QAbstractTableModel, QDirIterator, QFile, QModelIndex, QRegExp, QSortFilterProxyModel, Qt, \
-    QTextStream
+from qgis.PyQt.QtCore import QAbstractTableModel, QDirIterator, QFile, QModelIndex, QSortFilterProxyModel, Qt, \
+    QTextStream, QT_VERSION_STR
 from qgis.PyQt.QtGui import QContextMenuEvent, QIcon, QPixmap
 from qgis.PyQt.QtSvg import QGraphicsSvgItem
 from qgis.PyQt.QtWidgets import QAction, QApplication, QGraphicsPixmapItem, QGraphicsScene, QGraphicsView, QLabel, \
@@ -40,12 +40,18 @@ from qgis.PyQt.QtWidgets import QAction, QApplication, QGraphicsPixmapItem, QGra
 from qgis.PyQt.QtXml import QDomDocument, QDomElement
 from .utils import file_search, findUpwardPath
 
+if QT_VERSION_STR[0] == '5':
+    from qgis.PyQt.QtCore import QRegExp as QRegularExpression  # noqa: QGS406
+else:
+    from qgis.PyQt.QtCore import QRegularExpression
+
 REGEX_FILEXTENSION_IMAGE = re.compile(r'\.([^.]+)$')
 REGEX_QGIS_IMAGES_QRC = re.compile(r'.*QGIS[^\/]*[\/]images[\/]images\.qrc$')
 
 
 def getDOMAttributes(elem):
-    assert isinstance(elem, QDomElement)
+    if not (isinstance(elem, QDomElement)):
+        raise AssertionError
     values = dict()
     attributes = elem.attributes()
     for a in range(attributes.count()):
@@ -74,7 +80,8 @@ def compileResourceFiles(dirRoot: Union[str, Path],
     """
     # find ui files
     dirRoot = Path(dirRoot)
-    assert dirRoot.is_dir(), '"dirRoot" is not a directory: {}'.format(dirRoot)
+    if not (dirRoot.is_dir()):
+        raise AssertionError('"dirRoot" is not a directory: {}'.format(dirRoot))
     dirRoot = dirRoot.resolve()
 
     ui_files = list(file_search(dirRoot, '*.ui', recursive=True))
@@ -121,7 +128,8 @@ def compileResourceFiles(dirRoot: Union[str, Path],
     print('Compile {} *.qrc files:'.format(len(qrc_files)))
     targetDirOutputNames = []
     for qrcFile in qrc_files:
-        assert isinstance(qrcFile, Path)
+        if not (isinstance(qrcFile, Path)):
+            raise AssertionError
         # in case of similar base names, use different output names
         # e.g. make
         #  src/images.qrc
@@ -161,15 +169,18 @@ def compileResourceFile(pathQrc, targetDir=None, suffix: str = '_rc.py', compres
     if not isinstance(pathQrc, Path):
         pathQrc = Path(pathQrc)
 
-    assert isinstance(pathQrc, Path)
-    assert pathQrc.name.endswith('.qrc')
+    if not (isinstance(pathQrc, Path)):
+        raise AssertionError
+    if not (pathQrc.name.endswith('.qrc')):
+        raise AssertionError
     print('Compile {}...'.format(pathQrc))
     if targetDir is None:
         targetDir = pathQrc.parent
     elif not isinstance(targetDir, Path):
         targetDir = Path(targetDir)
 
-    assert isinstance(targetDir, Path)
+    if not (isinstance(targetDir, Path)):
+        raise AssertionError
     targetDir = targetDir.resolve()
 
     cwd = Path(pathQrc).parent
@@ -179,27 +190,19 @@ def compileResourceFile(pathQrc, targetDir=None, suffix: str = '_rc.py', compres
     last_cwd = os.getcwd()
     os.chdir(cwd)
 
-    # print(cmd)
+    last_level = PyQt5.pyrcc_main.compressLevel
+    last_threshold = PyQt5.pyrcc_main.compressThreshold
 
-    if True:
-        last_level = PyQt5.pyrcc_main.compressLevel
-        last_threshold = PyQt5.pyrcc_main.compressThreshold
+    # increase compression level and move to *.qrc's directory
+    PyQt5.pyrcc_main.compressLevel = compressLevel
+    PyQt5.pyrcc_main.compressThreshold = compressThreshold
 
-        # increase compression level and move to *.qrc's directory
-        PyQt5.pyrcc_main.compressLevel = compressLevel
-        PyQt5.pyrcc_main.compressThreshold = compressThreshold
+    if not (PyQt5.pyrcc_main.processResourceFile([pathQrc.name], pathPy.as_posix(), False)):
+        raise AssertionError
 
-        assert PyQt5.pyrcc_main.processResourceFile([pathQrc.name], pathPy.as_posix(), False)
-
-        # restore previous settings
-        PyQt5.pyrcc_main.compressLevel = last_level
-        PyQt5.pyrcc_main.compressThreshold = last_threshold
-    else:
-        cmd = 'pyrcc5 -compress {} -o {} {}'.format(compressLevel, pathPy, pathQrc)
-        cmd2 = 'pyrcc5 -no-compress -o {} {}'.format(pathPy.as_posix(), pathQrc.name)
-
-        print(cmd2)
-        os.system(cmd2)
+    # restore previous settings
+    PyQt5.pyrcc_main.compressLevel = last_level
+    PyQt5.pyrcc_main.compressThreshold = last_threshold
 
     os.chdir(last_cwd)
 
@@ -226,10 +229,13 @@ def compileQGISResourceFiles(qgis_repo: Union[str, Path, None], target: str = No
 
     if not isinstance(qgis_repo, Path):
         qgis_repo = Path(qgis_repo)
-    assert isinstance(qgis_repo, Path)
-    assert qgis_repo.is_dir()
-    assert (qgis_repo / 'images' / 'images.qrc').is_file(), '{} is not the QGIS repository root'.format(
-        qgis_repo.as_posix())
+    if not (isinstance(qgis_repo, Path)):
+        raise AssertionError
+    if not (qgis_repo.is_dir()):
+        raise AssertionError
+    if not ((qgis_repo / 'images' / 'images.qrc').is_file()):
+        raise AssertionError('{} is not the QGIS repository root'.format(
+            qgis_repo.as_posix()))
 
     if target is None:
         DIR_REPO = findUpwardPath(__file__, '.git')
@@ -293,7 +299,6 @@ def initResourceFile(path: Union[str, Path]):
         # spec.loader.exec_module(rcModule)
         # rcModule.qInitResources()
         rcModule.qInitResources()
-        s = ""
 
     except Exception as ex:
         print(ex, file=sys.stderr)
@@ -430,7 +435,7 @@ class ResourceTableView(QTableView):
             a = m.addAction('Copy Icon')
             a.triggered.connect(lambda *args, n=uri: QApplication.clipboard().setPixmap(QPixmap(n)))
 
-            m.exec_(event.globalPos())
+            m.exec(event.globalPos())
 
         pass
 
@@ -482,12 +487,12 @@ class ResourceBrowser(QWidget):
 
         txt = self.tbFilter.text()
 
-        expr = QRegExp(txt)
+        expr = QRegularExpression(txt)
 
         if self.optionUseRegex.isChecked():
-            expr.setPatternSyntax(QRegExp.RegExp)
+            expr.setPatternSyntax(QRegularExpression.RegExp)
         else:
-            expr.setPatternSyntax(QRegExp.Wildcard)
+            expr.setPatternSyntax(QRegularExpression.Wildcard)
 
         if self.optionCaseSensitive.isChecked():
             expr.setCaseSensitivity(Qt.CaseSensitive)
@@ -508,7 +513,8 @@ class ResourceBrowser(QWidget):
             self.updatePreview(None)
         else:
             idx1 = selectedIdx[0]
-            assert isinstance(idx1, QModelIndex)
+            if not (isinstance(idx1, QModelIndex)):
+                raise AssertionError
 
             uri = idx1.data(Qt.UserRole)
             self.updatePreview(uri)
@@ -561,9 +567,9 @@ def showResources() -> ResourceBrowser:
     """
     needQApp = not isinstance(QApplication.instance(), QApplication)
     if needQApp:
-        app = QApplication([])
+        _ = QApplication([])
     browser = ResourceBrowser()
     browser.show()
     if needQApp:
-        QApplication.instance().exec_()
+        QApplication.instance().exec()
     return browser

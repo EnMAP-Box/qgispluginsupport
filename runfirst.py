@@ -47,7 +47,8 @@ def setupRepository():
     try:
         import os.path
         import qps.qpsresources
-        assert qps.qpsresouces is not None
+        if qps.qpsresources is None:
+            raise AssertionError
         path_qrc = dir_repo / 'qps' / 'qpsresources.qrc'
         path_py = dir_repo / 'qps' / 'qpsresources.py'
 

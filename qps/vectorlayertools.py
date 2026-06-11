@@ -138,9 +138,9 @@ class VectorLayerTools(QgsVectorLayerTools):
         if not isinstance(vlayer, QgsVectorLayer):
             return False
 
-        res: bool = True
+        _ = True
         isEditable = vlayer.isEditable()
-        isModified = vlayer.isModified()
+        _ = vlayer.isModified()
 
         if isEditable:
             return self.stopEditing(vlayer, allowCancel=allowCancel)

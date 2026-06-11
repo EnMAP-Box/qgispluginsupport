@@ -6,7 +6,8 @@ from qps.resources import compileResourceFiles
 
 def create_resource_files():
     QPS_DIR = pathlib.Path(__file__).resolve().parents[1] / 'qps'
-    assert QPS_DIR.is_dir()
+    if not (QPS_DIR.is_dir()):
+        raise AssertionError
     compileResourceFiles(QPS_DIR)
 
 

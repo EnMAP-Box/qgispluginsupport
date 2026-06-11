@@ -7,10 +7,11 @@ temp_fids = []
 
 
 def onFeaturesDeleted(deleted_fids):
-    assert len(deleted_fids) == len(temp_fids), \
-        f'featuresDeleted returned {deleted_fids} instead {temp_fids}'
+    if not (len(deleted_fids) == len(temp_fids)):
+        raise AssertionError(f'featuresDeleted returned {deleted_fids} instead {temp_fids}')
     for d in deleted_fids:
-        assert d in temp_fids
+        if not (d in temp_fids):
+            raise AssertionError
 
 
 layer = QgsVectorLayer("point?crs=epsg:4326&field=name:string", "Scratch point layer", "memory")

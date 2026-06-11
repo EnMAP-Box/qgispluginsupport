@@ -18,7 +18,7 @@ from .spectrallibraryplotwidget import SpectralLibraryPlotWidget
 from .spectralprocessingdialog import SpectralProcessingDialog
 from .spectralprofilefieldmodel import SpectralProfileFieldActivatorDialog
 from .spectralprofileplotmodel import SpectralProfilePlotModel
-from ..core import is_spectral_library, profile_field_names
+from ..core import is_spectral_library
 from ..core.spectrallibrary import SpectralLibraryUtils
 from ..processing.exportspectralprofiles import ExportSpectralProfiles
 from ..processing.extractspectralprofiles import ExtractSpectralProfiles
@@ -57,7 +57,8 @@ class SpectralLibraryWidget(QWidget):
 
         if project is None:
             project = QgsProject.instance()
-        assert isinstance(self.mSpeclibPlotWidget, SpectralLibraryPlotWidget)
+        if not (isinstance(self.mSpeclibPlotWidget, SpectralLibraryPlotWidget)):
+            raise AssertionError
         self.setProject(project)
         # self.mSpeclibPlotWidget.plotModel().setProject(project)
         model = self.plotModel()
@@ -180,7 +181,8 @@ class SpectralLibraryWidget(QWidget):
             self.sigWindowIsClosing.emit()
 
     def setProject(self, project: QgsProject):
-        assert isinstance(project, QgsProject)
+        if not (isinstance(project, QgsProject)):
+            raise AssertionError
         self.mSpeclibPlotWidget.setProject(project)
 
     def project(self) -> QgsProject:
@@ -237,7 +239,7 @@ class SpectralLibraryWidget(QWidget):
             if isinstance(lyr, QgsVectorLayer):
                 d = SpectralProfileFieldActivatorDialog()
                 d.setLayer(lyr)
-                d.exec_()
+                d.exec()
 
     def libraryPlotWidget(self) -> SpectralLibraryPlotWidget:
         return self.mSpeclibPlotWidget
@@ -333,14 +335,14 @@ class SpectralLibraryWidget(QWidget):
                 if not lyr.isEditable():
                     lyr.startEditing()
 
-                profile_fields_before = profile_field_names(lyr)
+                # profile_fields_before = profile_field_names(lyr)
                 dialog = SpectralProcessingDialog(
                     speclib=lyr,
                     algorithmId=algorithmId,
                     parameters=parameters)
                 # dialog.setMainMessageBar(self.mainMessageBar())
                 # dialog.sigOutputsCreated.connect(self.onSpectralProcessingOutputsCreated)
-                dialog.exec_()
+                dialog.exec()
 
                 dialog.close()
 
@@ -356,7 +358,7 @@ class SpectralLibraryWidget(QWidget):
 
     def createProfileVisualization(self, layer, field=None):
 
-        vis = self.mSpeclibPlotWidget.createProfileVisualization(layer_id=layer, field_name=field)
+        self.mSpeclibPlotWidget.createProfileVisualization(layer_id=layer, field_name=field)
         # m = self.plotModel()
         # vis = ProfileVisualizationGroup()
         # vis.setProject(self.project())
@@ -403,7 +405,8 @@ class SpectralLibraryWidget(QWidget):
             currentProfiles = list(currentProfiles)
         if isinstance(currentProfiles, list):
             currentProfiles = {self.speclib().id(): currentProfiles}
-        assert isinstance(currentProfiles, dict)
+        if not (isinstance(currentProfiles, dict)):
+            raise AssertionError
 
         plotModel: SpectralProfilePlotModel = self.plotModel()
         plotModel.addProfileCandidates(currentProfiles)
@@ -448,14 +451,15 @@ class SpectralLibraryWidget(QWidget):
         results = {}
 
         def onFinished(ok, res):
-            assert ok
+            if not (ok):
+                raise AssertionError
             results.update(res)
 
         alg = ExtractSpectralProfiles()
         alg.initAlgorithm({})
         d = AlgorithmDialog(alg, context=context)
         d.algorithmFinished.connect(onFinished)
-        d.exec_()
+        d.exec()
 
         lyr = results.get(ExtractSpectralProfiles.P_OUTPUT, None)
         if isinstance(lyr, (QgsVectorLayer, str)):
@@ -477,14 +481,15 @@ class SpectralLibraryWidget(QWidget):
         results = {}
 
         def onFinished(ok, res):
-            assert ok
+            if not (ok):
+                raise AssertionError
             results.update(res)
 
         alg = ImportSpectralProfiles()
         alg.initAlgorithm({})
         d = AlgorithmDialog(alg, context=context)
         d.algorithmFinished.connect(onFinished)
-        d.exec_()
+        d.exec()
 
         lyr = results.get(ImportSpectralProfiles.P_OUTPUT, None)
         if isinstance(lyr, (QgsVectorLayer, str)):
@@ -541,7 +546,8 @@ class SpectralLibraryWidget(QWidget):
             results = dict()
 
             def onFinished(ok, res):
-                assert ok
+                if not (ok):
+                    raise AssertionError
                 results.update(res)
 
             alg = ExportSpectralProfiles()
@@ -555,7 +561,7 @@ class SpectralLibraryWidget(QWidget):
             alg.initAlgorithm(conf)
             d = AlgorithmDialog(alg, context=context)
             d.algorithmFinished.connect(onFinished)
-            d.exec_()
+            d.exec()
 
             files = results.get(ExportSpectralProfiles.P_OUTPUT, [])
             if len(files) > 0:

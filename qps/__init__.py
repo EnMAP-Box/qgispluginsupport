@@ -13,7 +13,7 @@
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation; either version 3 of the License, or
     (at your option) any later version.
-                                                                                                                                                 *
+
     This program is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
@@ -74,7 +74,8 @@ def registerMapLayerConfigWidgetFactory(factory: QgsMapLayerConfigWidgetFactory)
     :return: QgsMapLayerConfigWidgetFactory or None, if a factory with similar name was registered before by this method
     """
     # global MAPLAYER_CONFIGWIDGET_FACTORIES
-    assert isinstance(factory, QgsMapLayerConfigWidgetFactory)
+    if not (isinstance(factory, QgsMapLayerConfigWidgetFactory)):
+        raise AssertionError
     name: str = factory.__class__.__name__
 
     registered = os.environ.get(KEY_MAPLAYERCONFIGWIDGETFACTORIES, '').split('::')
@@ -100,7 +101,8 @@ def unregisterMapLayerConfigWidgetFactory(factory: QgsMapLayerConfigWidgetFactor
     :return:
     :rtype:
     """
-    assert isinstance(factory, QgsMapLayerConfigWidgetFactory)
+    if not (isinstance(factory, QgsMapLayerConfigWidgetFactory)):
+        raise AssertionError
     # global MAPLAYER_CONFIGWIDGET_FACTORIES
     name: str = factory.__class__.__name__
 
@@ -132,7 +134,8 @@ def registerEditorWidgets():
     Call this function to register QgsEditorWidgetFactories to the QgsEditorWidgetRegistry
     It is required that a QgsApplication has been instantiated.
     """
-    assert isinstance(QgsApplication.instance(), QgsApplication), 'QgsApplication has not been instantiated'
+    if not (isinstance(QgsApplication.instance(), QgsApplication)):
+        raise AssertionError('QgsApplication has not been instantiated')
     from .classification.classificationscheme import classificationSchemeEditorWidgetFactory
     classificationSchemeEditorWidgetFactory(register=True)
 

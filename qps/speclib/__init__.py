@@ -26,17 +26,16 @@
 """
 import pathlib
 
-from qgis.PyQt.QtCore import NULL, QVariant
+from qgis.PyQt.QtCore import NULL, QMetaType
 from qgis.PyQt.QtWidgets import QWidget
 from qgis.core import QgsCoordinateReferenceSystem, QgsField, QgsFields, QgsSettings
-from ..qgisenums import QMETATYPE_QSTRING
 
 EDITOR_WIDGET_REGISTRY_KEY = 'SpectralProfile'
 # EDITOR_WIDGET_REGISTRY_NAME = 'Spectral Profile'
 
 SPECLIB_EPSG_CODE = 4326
 
-EMPTY_VALUES = [None, NULL, QVariant(), '', 'None']
+EMPTY_VALUES = [None, NULL, '', 'None']
 
 FIELD_VALUES = 'profiles'
 FIELD_NAME = 'name'
@@ -45,7 +44,8 @@ FIELD_FID = 'fid'
 
 def defaultSpeclibCrs() -> QgsCoordinateReferenceSystem:
     crs = QgsCoordinateReferenceSystem()
-    assert crs.createFromString(f'EPSG:{SPECLIB_EPSG_CODE}'), f'Unable to create CRS for input "{SPECLIB_EPSG_CODE}"'
+    if not (crs.createFromString(f'EPSG:{SPECLIB_EPSG_CODE}')):
+        raise AssertionError(f'Unable to create CRS for input "{SPECLIB_EPSG_CODE}"')
     return crs
 
 
@@ -53,7 +53,7 @@ def createStandardFields() -> QgsFields:
     from .core import create_profile_field
     fields = QgsFields()
     fields.append(create_profile_field('profiles'))
-    fields.append(QgsField('name', QMETATYPE_QSTRING))
+    fields.append(QgsField('name', QMetaType.QString))
     return fields
 
 
@@ -87,5 +87,6 @@ def speclibUiPath(name: str) -> str:
         name = name.__class__.__name__.lower() + '.ui'
 
     path = pathlib.Path(__file__).parent / 'ui' / name
-    assert path.is_file(), f'File does not exist: {path}'
+    if not (path.is_file()):
+        raise AssertionError(f'File does not exist: {path}')
     return path.as_posix()

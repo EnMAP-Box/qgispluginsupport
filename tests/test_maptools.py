@@ -76,7 +76,7 @@ class TestMapTools(TestCase):
         canvas.setMapTool(mts)
         canvas.setCurrentLayer(lyrV_Poly)
 
-        # QMouseEvent(QEvent::Type type, const QPointF &localPos, Qt::MouseButton button, Qt::MouseButtons buttons, Qt::KeyboardModifiers modifiers)
+        # QMouseEvent(QEvent::Type type, const QPointF &localPos, Qt::MouseButton button, Qt::MouseButtons buttons, Qt::KeyboardModifiers modifiers)  # noqa: E501
 
         me1 = QMouseEvent(QEvent.MouseButtonPress, QPointF(0, 0), Qt.LeftButton, Qt.LeftButton, Qt.NoModifier)
         me2 = QMouseEvent(QEvent.MouseButtonPress, QPointF(0, w), Qt.LeftButton, Qt.LeftButton, Qt.NoModifier)
@@ -260,7 +260,6 @@ class TestMapTools(TestCase):
         del lyr
 
         QgsProject.instance().removeAllMapLayers()
-        s = ""
 
     # @unittest.skip('')
     def test_MapTools(self):
