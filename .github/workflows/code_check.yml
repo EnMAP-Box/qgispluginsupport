@@ -41,4 +41,4 @@ jobs:
       - name: Run flake8
         run: flake8 --config=tox.ini
       - name: Run bandit
-        run: bandit -c tox.ini -r .
+        run: bandit --ini=tox.ini -r .
