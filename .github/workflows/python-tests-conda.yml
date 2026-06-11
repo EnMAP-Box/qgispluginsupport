@@ -6,11 +6,11 @@ on:
     types: [ completed ]
 
   push:
-    branches: [master, enmapbox_**]
+    branches: [master, 'enmapbox_**', '208_**']
 
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
-    branches: [master, enmapbox_**]
+    branches: [master, 'enmapbox_**', '208_**']
     paths:
           - '**.py'
           - '.conda/**'
