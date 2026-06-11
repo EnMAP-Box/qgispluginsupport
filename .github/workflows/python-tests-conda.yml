@@ -2,7 +2,7 @@ name: 🐍 Conda Environments
 
 on:
   workflow_run:
-    workflows: [ "❄ Flake8" ]
+    workflows: [ "Code Checks" ]
     types: [ completed ]
 
   push:
@@ -11,7 +11,7 @@ on:
 
   pull_request:
     branches:
-      - main
+      - master
       - release-**
 
   release:
@@ -37,7 +37,7 @@ jobs:
       # mamba_env: [enmapbox_light_latest, enmapbox_light_longterm, enmapbox_full_latest, enmapbox_full_longterm]
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
         with:
           submodules: recursive
 
@@ -50,12 +50,9 @@ jobs:
           echo "conda environment file: ${{matrix.conda_env}}.yml"
           cat .conda/${{matrix.conda_env}}.yml
 
-      - name: Setup Mambaforge
+      - name: Setup Miniconda
         uses: conda-incubator/setup-miniconda@v4
         with:
-          # miniforge-variant: Mambaforge
-          # miniforge-version: latest
-          # mamba-version: "*"
           channels: conda-forge,defaults
           channel-priority: true
           activate-environment: ${{matrix.conda_env}}
