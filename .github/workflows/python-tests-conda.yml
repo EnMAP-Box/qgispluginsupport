@@ -5,14 +5,19 @@ on:
     workflows: [ "Code Checks" ]
     types: [ completed ]
 
+  push:
+    branches: [master, enmapbox_**]
+
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
-    branches: [master, release-**]
+    branches: [master, enmapbox_**]
     paths:
           - '**.py'
           - '.conda/**'
           - 'requirements.txt'
           - '.github/workflows/python-tests-conda.yml'
+
+
 jobs:
   # Run EnMAP-Box tests
   test:
