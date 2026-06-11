@@ -6,17 +6,10 @@ on:
     types: [ completed ]
 
   push:
-    branches: [master, 'enmapbox_**', '208_**']
+    branches: [master, 'enmapbox_*', '208_*']
 
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
-    branches: [master, 'enmapbox_**', '208_**']
-    paths:
-          - '**.py'
-          - '.conda/**'
-          - 'requirements.txt'
-          - '.github/workflows/python-tests-conda.yml'
-
+    branches: [master, 'enmapbox_*', '208_*']
 
 jobs:
   # Run EnMAP-Box tests
@@ -38,7 +31,7 @@ jobs:
       # python_version : [3.9, 3.10, 3.11]
       # mamba_env: [enmapbox_light_latest, enmapbox_light_longterm, enmapbox_full_latest, enmapbox_full_longterm]
 
-    name: {{matrix.conda_env}}
+    name: {{ matrix.conda_env }}
 
     steps:
       - name: Checkout
