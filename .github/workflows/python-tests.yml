@@ -1,4 +1,4 @@
-name: 🧪 Tests
+name: Linux Tests
 
 on:
   workflow_run:
@@ -29,6 +29,7 @@ jobs:
       fail-fast: true
       matrix:
         qgis_version: [ '3.38', '3.40', '3.44' ]
+    name: QGIS ${{ matrix.qgis_version }}
     env:
       QGIS_TEST_VERSION: ${{ matrix.qgis_version }}
     steps:
@@ -36,7 +37,7 @@ jobs:
         uses: actions/checkout@v6
         with:
           submodules: recursive
-      - name: Test on QGIS
+      - name: Test on QGIS {{matrix.qgis_version}}
         run: |
           ls -la .docker/
           chmod +x .docker/run_docker_tests.sh

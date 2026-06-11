@@ -1,4 +1,4 @@
-name: 🐍 Conda Environments
+name: Conda Tests
 
 on:
   workflow_run:
@@ -20,6 +20,7 @@ on:
 jobs:
   # Run EnMAP-Box tests
   test:
+
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -35,6 +36,9 @@ jobs:
         conda_env: [ qps_latest, qps_ltr, qps_minimum ]
       # python_version : [3.9, 3.10, 3.11]
       # mamba_env: [enmapbox_light_latest, enmapbox_light_longterm, enmapbox_full_latest, enmapbox_full_longterm]
+
+    name: {{matrix.conda_env}}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v6
