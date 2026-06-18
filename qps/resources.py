@@ -200,6 +200,15 @@ def compileResourceFile(pathQrc, targetDir=None, suffix: str = '_rc.py', compres
     if not (PyQt5.pyrcc_main.processResourceFile([pathQrc.name], pathPy.as_posix(), False)):
         raise AssertionError
 
+    with open(pathPy, 'r') as f:
+        content = f.read()
+
+    content = re.sub(r'\ndef (q.*:)', r'\n\ndef \g<1>', content)
+    content = re.sub(r'\nqInitResources\(\)', '\n\nqInitResources()', content)
+
+    with open(pathPy, 'w') as f:
+        f.write(content)
+
     # restore previous settings
     PyQt5.pyrcc_main.compressLevel = last_level
     PyQt5.pyrcc_main.compressThreshold = last_threshold
