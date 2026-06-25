@@ -203,6 +203,7 @@ def compileResourceFile(pathQrc, targetDir=None, suffix: str = '_rc.py', compres
     with open(pathPy, 'r') as f:
         content = f.read()
 
+    content = re.sub(r'from PyQt[56] import QtCore', r'from qgis.PyQt import QtCore', content)
     content = re.sub(r'\ndef (q.*:)', r'\n\ndef \g<1>', content)
     content = re.sub(r'\nqInitResources\(\)', '\n\nqInitResources()', content)
 
@@ -221,7 +222,7 @@ def compileQGISResourceFiles(qgis_repo: Union[str, Path, None], target: str = No
     Searches for *.qrc files in the QGIS repository and compiles them to <target>
 
     :param qgis_repo: str, path to local QGIS repository.
-    :param target: str, path to directory that contains the compiled QGIS resources. By default it will be
+    :param target: str, path to directory that contains the compiled QGIS resources. By default, it will be
             `<REPOSITORY_ROOT>/qgisresources`.
     """
 
@@ -382,7 +383,7 @@ class ResourceTableModel(QAbstractTableModel):
         self.RESOURCES.extend(list(scanResources()))
         self.endResetModel()
 
-    def columnCount(self, parent: QModelIndex = ...) -> int:
+    def columnCount(self, parent: QModelIndex) -> int:
         return 2
 
     def rowCount(self, parent: QModelIndex = ...) -> int:
