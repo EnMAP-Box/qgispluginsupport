@@ -19,7 +19,7 @@ import json
 import sys
 import time
 import traceback
-from typing import Optional, Tuple, Callable
+from typing import Optional, Tuple, Callable, Union
 
 import qgis.utils
 from processing import getTempFilename, ProcessingConfig
@@ -36,6 +36,7 @@ from processing.tools import dataobjects
 from qgis.PyQt.QtCore import QCoreApplication, QDir, QFileInfo
 from qgis.PyQt.QtGui import QColor, QPalette
 from qgis.PyQt.QtWidgets import QDialogButtonBox, QFileDialog, QHeaderView, QMessageBox, QPushButton, QTableWidgetItem
+from qgis.PyQt.QtWidgets import QWidget
 from qgis.core import (
     Qgis, QgsApplication, QgsExpressionContext, QgsExpressionContextScope, QgsExpressionContextUtils,
     QgsFeatureRequest, QgsFileUtils, QgsLayerTreeGroup, QgsMapLayer, QgsMessageLog,
@@ -104,7 +105,7 @@ def layerTreeResultsGroup(
     return group
 
 
-def handleAlgorithmResults(
+def handleAlgorithmResults(  # noqa: QGS105
         alg: QgsProcessingAlgorithm,
         context: QgsProcessingContext,
         feedback: Optional[QgsProcessingFeedback] = None,
@@ -239,9 +240,11 @@ def handleAlgorithmResults(
 # changing this signature? make sure you update the signature in
 # python/processing/__init__.py too!
 # Docstring for this function is in python/processing/__init__.py
-def createContext(feedback: Optional[QgsProcessingFeedback] = None,
-                  project: Optional[QgsProject] = None,
-                  iface: Optional[QgisInterface] = None):
+def createContext(  # noqa: QGS105
+        feedback: Optional[QgsProcessingFeedback] = None,
+        project: Optional[QgsProject] = None,
+        iface: Optional[QgisInterface] = None
+):
     if project is None:
         project = QgsProject.instance()
 
@@ -280,8 +283,10 @@ def createContext(feedback: Optional[QgsProcessingFeedback] = None,
     return context
 
 
-def createExpressionContext(iface: Optional[QgisInterface] = None,
-                            project: Optional[QgsProject] = None):
+def createExpressionContext(  # noqa: QGS105
+        iface: Optional[QgisInterface] = None,
+        project: Optional[QgsProject] = None
+):
     if not isinstance(project, QgsProject):
         project = QgsProject.instance()
 
@@ -309,10 +314,14 @@ def createExpressionContext(iface: Optional[QgisInterface] = None,
 
 class AlgorithmDialog(QgsProcessingAlgorithmDialogBase):
 
-    def __init__(self, alg, in_place=False, parent=None,
-                 context: Optional[QgsProcessingContext] = None,
-                 iface: Optional[QgisInterface] = None,
-                 ):
+    def __init__(  # noqa: QGS105
+            self,
+            alg: QgsProcessingAlgorithm,
+            in_place: bool = False,
+            parent: Optional[QWidget] = None,
+            context: Optional[QgsProcessingContext] = None,
+            iface: Optional[QgisInterface] = None,
+    ):
         super().__init__(parent)
 
         if not isinstance(iface, QgisInterface):
@@ -780,9 +789,15 @@ class AlgorithmDialog(QgsProcessingAlgorithmDialogBase):
 
 class ParametersPanel(QgsProcessingParametersWidget):
 
-    def __init__(self, parent, alg, in_place=False, active_layer=None,
-                 context: Optional[QgsProcessingContext] = None,
-                 iface: Optional[QgisInterface] = None):
+    def __init__(  # noqa: QGS105
+            self,
+            parent: Optional[QWidget],
+            alg: QgsProcessingAlgorithm,
+            in_place: bool = False,
+            active_layer=None,
+            context: Optional[QgsProcessingContext] = None,
+            iface: Optional[QgisInterface] = None
+    ):
         super().__init__(alg, parent)
         self.in_place = in_place
         self.active_layer = active_layer
@@ -1043,9 +1058,12 @@ class ParametersPanel(QgsProcessingParametersWidget):
 
 class BatchAlgorithmDialog(QgsProcessingBatchAlgorithmDialogBase):
 
-    def __init__(self, alg, parent=None,
-                 context: Optional[QgsProcessingContext] = None,
-                 iface: Optional[QgisInterface] = None):
+    def __init__(  # noqa: QGS105
+            self,
+            alg: QgsProcessingAlgorithm,
+            parent: Optional[QWidget] = None,
+            context: Optional[QgsProcessingContext] = None,
+            iface: Optional[QgisInterface] = None):
 
         super().__init__(parent)
 
@@ -1200,8 +1218,13 @@ class BatchPanel(QgsPanelWidget, WIDGET):
     FORMAT = "format"
     CURRENT_FORMAT = "batch_3.40"
 
-    def __init__(self, parent, alg, context: QgsProcessingContext,
-                 iface: Optional[QgisInterface] = None):
+    def __init__(  # noqa: QGS105
+            self,
+            parent,
+            alg,
+            context: QgsProcessingContext,
+            iface: Optional[QgisInterface] = None
+    ):
         super().__init__(None)
         self.setupUi(self)
 
@@ -1711,11 +1734,15 @@ class BatchPanel(QgsPanelWidget, WIDGET):
         return parameters, True
 
 
-def executeAlgorithm(alg_id, parent, in_place=False, as_batch=False,
-                     iface: QgisInterface = None,
-                     context: QgsProcessingContext = None,
-                     on_results: Optional[Callable] = None,
-                     ) -> Tuple[bool, dict]:
+def executeAlgorithm(  # noqa: QGS105
+        alg_id: Union[str, QgsProcessingAlgorithm],
+        parent: Optional[QWidget] = None,
+        in_place: bool = False,
+        as_batch: bool = False,
+        iface: Optional[QgisInterface] = None,
+        context: Optional[QgsProcessingContext] = None,
+        on_results: Optional[Callable] = None,
+) -> Tuple[bool, dict]:
     """Executes a project model with GUI interaction if needed.
 
     :param alg_id: algorithm id

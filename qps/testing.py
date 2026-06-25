@@ -477,7 +477,7 @@ def get_iface() -> QgisInterface:
     return qgis.utils.iface
 
 
-def _set_iface(ifaceMock: QgisInterface):
+def _set_iface(ifaceMock):
     """
     Replaces the iface variable in other plugins, i.e. the  QGIS processing plugin
     :param ifaceMock: QgisInterface
