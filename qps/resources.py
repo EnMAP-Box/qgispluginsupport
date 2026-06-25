@@ -165,7 +165,7 @@ def compileResourceFile(pathQrc, targetDir=None, suffix: str = '_rc.py', compres
     :param pathQrc:
     :return:
     """
-    import PyQt5.pyrcc_main
+    import PyQt5.pyrcc_main  # noqa: QGS104 # cannot be imported from qgis.PyQt.pyrcc_main
     if not isinstance(pathQrc, Path):
         pathQrc = Path(pathQrc)
 
