@@ -1,6 +1,6 @@
-# install: conda env create -n qgis_minimum --file=qgis_minimum.yml
-# update : conda env update -n qgis_minimum --file=qgis_minimum.yml --prune
-# remove : conda env remove -n qgis_minimum
+# install: conda env create -n qps_minimum --file=qps_minimum.yml
+# update : conda env update -n qps_minimum --file=qps_minimum.yml --prune
+# remove : conda env remove -n qps_minimum
 # see also https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html#creating-an-environment-from-an-environment-yml-file
 name: qps_minimum
 channels:
@@ -10,8 +10,8 @@ dependencies:
   - python=3.10
   - gdal=3.9
   - pip
-  - matplotlib
   - pyqtgraph
+  - defusedxml
 
   # Development
   - bandit
@@ -19,14 +19,14 @@ dependencies:
   - git-lfs
   - pytest
   - pytest-cov
+  - pytest-xdist
+  - pytest-env
   - flake8
   - docutils
 
   - pip:
       - flake8-qgis
-      - pytest-env
-      - pytest-xdist
-      - genbadge[all]
+
 
 variables:
   QT_MAC_WANTS_LAYER: 1
