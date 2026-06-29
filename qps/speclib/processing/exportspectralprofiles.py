@@ -1,3 +1,4 @@
+import contextlib
 import json
 from pathlib import Path
 from typing import Dict, Any, List, Optional, Union
@@ -30,12 +31,11 @@ def file_writer(path: Union[str, Path], **kwds) -> Optional[SpectralProfileFileW
     :return:
     """
     path = Path(path)
+
     for writer in WRITERS.values():
-        if writer.canWriteFile(path):
-            try:
+        with contextlib.suppress(Exception):
+            if writer.canWriteFile(path):
                 return writer(path, **kwds)
-            except Exception:  # nosec: B112
-                continue
     return None
 
 
