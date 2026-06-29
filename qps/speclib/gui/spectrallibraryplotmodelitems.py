@@ -2096,11 +2096,10 @@ class ProfileVisualizationGroup(PropertyItemGroup):
         if not error and isinstance(feature, QgsFeature) and isinstance(field, str):
             # 2. execute code
             try:
-
                 kwds = decodeProfileValueDict(feature.attribute(field))
                 kwds['f'] = feature
                 lists_to_numpy_array(kwds)
-                exec(compiled_code, kwds, kwds)  # nosec: B102
+                exec(compiled_code, kwds, kwds)  # nosec: B102 # User-defined scipy/numpy code execution
                 if not ('y' in kwds):
                     raise AssertionError('Missing y in kwds')
 
