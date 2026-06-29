@@ -148,7 +148,7 @@ class QGISPluginsSupportPlugin(object):
         print(f'Execute {path}')
         with open(path) as f:
             code = f.read()
-        exec(code)  # nosec: B102
+        exec(code)  # nosec: B102 # User-defined code execution by design, to be used by developers
 
     def unload(self):
         for w in self.mWidgets:

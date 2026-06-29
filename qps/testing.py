@@ -909,15 +909,17 @@ class SpectralProfileDataIterator(object):
 
     def __next__(self):
 
-        x = random.randint(0, self.coredata.shape[2] - 1)  # nosec B311
-        y = random.randint(0, self.coredata.shape[1] - 1)  # nosec B311
+        x = random.randint(0, self.coredata.shape[2] - 1)  # nosec B311 # no security relevant sampling
+        y = random.randint(0, self.coredata.shape[1] - 1)  # nosec B311 # no security relevant sampling
 
         px = QPoint(x, y)
         # from .utils import px2geo
         pt = px2geo(px, self.gt, pxCenter=False)
-        pt = SpatialPoint(self.sourceCrs(),
-                          pt.x() + self.dx * random.uniform(0, 1),  # nosec B311
-                          pt.y() - self.dy * random.uniform(0, 1))  # nosec B311
+        pt = SpatialPoint(
+            self.sourceCrs(),
+            pt.x() + self.dx * random.uniform(0, 1),  # nosec B311 # not security relevant sampling
+            pt.y() - self.dy * random.uniform(0, 1)  # nosec B311 # not security relevant sampling
+        )
         pt = pt.toCrs(self.targetCrs())
         results = []
         for band_indices in self.band_indices:
@@ -1015,8 +1017,8 @@ class TestObjects(object):
             band_indices = np.linspace(0, cnb - 1, num=nb, dtype=np.int16)
             i = 0
             while i < n:
-                x = random.randint(0, coredata.shape[2] - 1)  # nosec B311
-                y = random.randint(0, coredata.shape[1] - 1)  # nosec B311
+                x = random.randint(0, coredata.shape[2] - 1)  # nosec B311 # no security relevant sampling
+                y = random.randint(0, coredata.shape[1] - 1)  # nosec B311 # no security relevant sampling
                 yield coredata[band_indices, y, x], wl[band_indices], wlu
                 i += 1
 
@@ -1211,8 +1213,8 @@ class TestObjects(object):
 
         global_nodata = -9999
         for b in range(nb):
-            x = random.randint(0, ns - 1)  # nosec B311
-            y = random.randint(0, nl - 1)  # nosec B311
+            x = random.randint(0, ns - 1)  # nosec B311 # not security relevant sampling
+            y = random.randint(0, nl - 1)  # nosec B311 # not security relevant sampling
 
             # nodata = b
             nodata = global_nodata
@@ -1944,7 +1946,7 @@ class QgsPythonRunnerMockup(QgsPythonRunner):
     def runCommand(self, command, messageOnError=''):
         try:
             o = compile(command, 'fakemodule', 'exec')
-            exec(o)  # nosec: B102
+            exec(o)  # nosec: B102 # a QgsPythonRunnerMockup is expected to execute user-defined Python code
         except Exception as ex:
             _ = str(ex)
             command = ['{}:{}'.format(i + 1, l) for i, l in enumerate(command.splitlines())]
