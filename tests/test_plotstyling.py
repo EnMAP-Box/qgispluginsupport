@@ -20,20 +20,21 @@ import json
 import os
 import unittest
 
-from qgis.PyQt.QtCore import QByteArray, QDataStream, QIODevice, QSize, Qt
-from qgis.PyQt.QtGui import QBrush
+from pyqtgraph import mkBrush
+from pyqtgraph.graphicsItems.ScatterPlotItem import Symbols as pgSymbols
+
+from qgis.PyQt.QtCore import QByteArray, QDataStream, QIODevice, QSize, Qt, QMetaType
 from qgis.PyQt.QtGui import QColor, QPen
 from qgis.PyQt.QtWidgets import QCheckBox, QComboBox, QGridLayout, QHBoxLayout, QLabel, QVBoxLayout, QWidget
 from qgis.PyQt.QtXml import QDomDocument
-from qgis.core import QgsAction, QgsActionManager, QgsAttributeTableConfig, QgsEditorWidgetSetup, QgsFeature, QgsField, \
-    QgsVectorLayer
+from qgis.core import (
+    QgsAction, QgsActionManager, QgsAttributeTableConfig, QgsEditorWidgetSetup, QgsFeature, QgsField,
+    QgsVectorLayer)
 from qgis.gui import QgsDualView, QgsGui, QgsMapCanvas, QgsSearchWidgetWrapper
-from qps.plotstyling.plotstyling import createSetPlotStyleAction, list2pen, MarkerSymbol, MarkerSymbolComboBox, \
-    pen2list, PlotStyle, PlotStyleButton, PlotStyleEditorConfigWidget, PlotStyleEditorWidgetFactory, \
-    plotStyleEditorWidgetFactory, PlotStyleEditorWidgetWrapper, PlotStyleWidget, PlotWidgetStyle, XMLTAG_PLOTSTYLENODE
-from qps.pyqtgraph.pyqtgraph import mkBrush
-from qps.pyqtgraph.pyqtgraph.graphicsItems.ScatterPlotItem import Symbols as pgSymbols
-from qps.qgisenums import QMETATYPE_DOUBLE, QMETATYPE_INT, QMETATYPE_QSTRING
+from qps.plotstyling.plotstyling import (
+    createSetPlotStyleAction, list2pen, MarkerSymbol, MarkerSymbolComboBox,
+    pen2list, PlotStyle, PlotStyleButton, PlotStyleEditorConfigWidget, PlotStyleEditorWidgetFactory,
+    plotStyleEditorWidgetFactory, PlotStyleEditorWidgetWrapper, PlotStyleWidget, PlotWidgetStyle, XMLTAG_PLOTSTYLENODE)
 from qps.testing import start_app, TestCase
 
 start_app()
@@ -44,10 +45,10 @@ class PlotStyleTests(TestCase):
     def create_vectordataset(self) -> QgsVectorLayer:
         vl = QgsVectorLayer("Point?crs=EPSG:4326", 'test', "memory")
         vl.startEditing()
-        vl.addAttribute(QgsField(name='fStyle', type=QMETATYPE_QSTRING, typeName='varchar', len=500))
-        vl.addAttribute(QgsField(name='fString', type=QMETATYPE_QSTRING, typeName='varchar', len=50))
-        vl.addAttribute(QgsField(name='fInt', type=QMETATYPE_INT, typeName='int'))
-        vl.addAttribute(QgsField(name='fDouble', type=QMETATYPE_DOUBLE))
+        vl.addAttribute(QgsField(name='fStyle', type=QMetaType.QString, typeName='varchar', len=500))
+        vl.addAttribute(QgsField(name='fString', type=QMetaType.QString, typeName='varchar', len=50))
+        vl.addAttribute(QgsField(name='fInt', type=QMetaType.Int, typeName='int'))
+        vl.addAttribute(QgsField(name='fDouble', type=QMetaType.Double))
         vl.addFeature(QgsFeature(vl.fields()))
         vl.commitChanges()
         return vl
@@ -58,8 +59,8 @@ class PlotStyleTests(TestCase):
         """
         s = PlotStyle()
 
-        s0 = s.markerSymbol
-        c0 = s.markerColor()
+        # s0 = s.markerSymbol
+        # c0 = s.markerColor()
 
         s.setMarkerSymbol(['x', 'o'])
         self.assertEqual(s.markerSymbol, 'x')
@@ -67,7 +68,7 @@ class PlotStyleTests(TestCase):
         s.setMarkerColor(['yellow', 'magenta'])
         self.assertEqual(s.markerColor(), QColor('yellow'))
 
-        b = mkBrush(QBrush(QColor('yellow')))
+        # b = mkBrush(QBrush(QColor('yellow')))
         s.setMarkerBrush([mkBrush('yellow'), mkBrush('magenta')])
         self.assertEqual(s.markerBrush, mkBrush('yellow'))
 
@@ -100,7 +101,7 @@ class PlotStyleTests(TestCase):
         pen = QPen()
         encoded = pen2list(pen)
         self.assertIsInstance(encoded, list)
-        penStr = json.dumps(encoded)
+        penStr = json.dumps(encoded, ensure_ascii=False)
         pen2 = list2pen(json.loads(penStr))
         self.assertIsInstance(pen2, QPen)
         self.assertEqual(pen, pen2)
@@ -243,8 +244,6 @@ class PlotStyleTests(TestCase):
         pen_string = byte_array.toHex().data().decode("utf-8")
         print("Serialized Pen:", pen_string)
 
-        s = ""
-
     def test_PlotStyleQgsAction(self):
 
         layer = QgsVectorLayer(
@@ -325,8 +324,8 @@ class PlotStyleTests(TestCase):
         am = vl.actions()
         self.assertIsInstance(am, QgsActionManager)
 
-        uid = am.addAction(QgsAction.Generic, 'sdsd', 'sdsd')
-
+        action = am.addAction(QgsAction.Generic, 'sdsd', 'sdsd')
+        self.assertTrue(action)
         c = QgsMapCanvas()
         w = QWidget()
         w.setLayout(QVBoxLayout())

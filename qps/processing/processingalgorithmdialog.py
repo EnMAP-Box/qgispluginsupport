@@ -42,7 +42,8 @@ class ProcessingAlgorithmDialog(QDialog):
         self.onAlgorithmTreeSelectionChanged(None, None)
 
     def setAlgorithmModel(self, model: QgsProcessingToolboxProxyModel):
-        assert isinstance(model, QgsProcessingToolboxProxyModel)
+        if not (isinstance(model, QgsProcessingToolboxProxyModel)):
+            raise AssertionError
         self.mTreeViewAlgorithms.selectionModel().selectionChanged.disconnect(self.onAlgorithmTreeSelectionChanged)
         self.mTreeViewAlgorithms.setToolboxProxyModel(model)
         self.mTreeViewAlgorithms.selectionModel().selectionChanged.connect(self.onAlgorithmTreeSelectionChanged)

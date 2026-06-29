@@ -1,8 +1,8 @@
+from qgis.PyQt.QtCore import QMetaType
 from qgis.core import QgsProject, QgsField, QgsFeature
 from qgis.core import edit
 from qgis.gui import QgsFieldCalculator
 from qgis.utils import iface
-from qps.qgisenums import QMETATYPE_QSTRING
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
 from qps.speclib.core.spectralprofile import encodeProfileValueDict
 
@@ -28,7 +28,7 @@ QgsProject.instance().addMapLayer(sl)
 iface.showAttributeTable(sl)
 
 with edit(sl):
-    sl.addAttribute(QgsField('class', QMETATYPE_QSTRING))
+    sl.addAttribute(QgsField('class', QMetaType.QString))
     for item in data:
         f = QgsFeature(sl.fields())
 
@@ -36,10 +36,11 @@ with edit(sl):
         dump = encodeProfileValueDict(data, sl.fields()['profile'])
         f.setAttribute('profile', dump)
         f.setAttribute('class', item['class'])
-        assert sl.addFeature(f)
+        if not (sl.addFeature(f)):
+            raise AssertionError
 
 calc = QgsFieldCalculator(sl)
-calc.exec_()
+calc.exec()
 
 for f in sl.getFeatures():
     f: QgsFeature

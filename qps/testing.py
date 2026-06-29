@@ -25,11 +25,11 @@
 ***************************************************************************
 """
 import gc
-import hashlib
 import inspect
 import itertools
 import os
 import random
+import secrets
 import shutil
 import sys
 import traceback
@@ -48,19 +48,22 @@ import qgis.utils
 from qgis.PyQt import sip
 from qgis.PyQt.QtCore import pyqtSignal, QMimeData, QObject, QPoint, QPointF, QSize, Qt
 from qgis.PyQt.QtGui import QDropEvent, QIcon, QImage, QStandardItemModel
-from qgis.PyQt.QtWidgets import QAction, QApplication, QDialogButtonBox, QDockWidget, QFrame, QHBoxLayout, QListWidget, \
-    QMainWindow, QMenu, QSplitter, QStackedWidget, QToolBar, QTreeView, QVBoxLayout, QWidget
-from qgis.core import edit, Qgis, QgsApplication, QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsFeature, \
-    QgsFeatureStore, QgsField, QgsFields, QgsGeometry, QgsLayerTree, QgsLayerTreeLayer, QgsLayerTreeModel, \
-    QgsLayerTreeRegistryBridge, QgsMapLayer, QgsProcessingAlgorithm, QgsProcessingContext, QgsProcessingFeedback, \
-    QgsProcessingModelAlgorithm, QgsProcessingParameterNumber, QgsProcessingParameterRasterDestination, \
-    QgsProcessingParameterRasterLayer, QgsProcessingProvider, QgsProcessingRegistry, QgsProject, QgsProviderRegistry, \
-    QgsPythonRunner, QgsRasterLayer, QgsTemporalController, QgsVectorLayer, QgsVectorLayerUtils, QgsWkbTypes
-from qgis.gui import QgisInterface, QgsAbstractMapToolHandler, QgsBrowserGuiModel, QgsFilterLineEdit, QgsGui, \
-    QgsLayerTreeMapCanvasBridge, QgsLayerTreeView, QgsMapCanvas, QgsMapLayerConfigWidgetFactory, QgsMapTool, \
+from qgis.PyQt.QtWidgets import (
+    QAction, QApplication, QDialogButtonBox, QDockWidget, QFrame, QHBoxLayout, QListWidget,
+    QMainWindow, QMenu, QSplitter, QStackedWidget, QToolBar, QTreeView, QVBoxLayout, QWidget)
+from qgis.core import (
+    edit, Qgis, QgsApplication, QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsFeature,
+    QgsFeatureStore, QgsField, QgsFields, QgsGeometry, QgsLayerTree, QgsLayerTreeLayer, QgsLayerTreeModel,
+    QgsLayerTreeRegistryBridge, QgsMapLayer, QgsProcessingAlgorithm, QgsProcessingContext, QgsProcessingFeedback,
+    QgsProcessingModelAlgorithm, QgsProcessingParameterNumber, QgsProcessingParameterRasterDestination,
+    QgsProcessingParameterRasterLayer, QgsProcessingProvider, QgsProcessingRegistry, QgsProject, QgsProviderRegistry,
+    QgsPythonRunner, QgsRasterLayer, QgsTemporalController, QgsVectorLayer, QgsVectorLayerUtils, QgsWkbTypes)
+from qgis.gui import (
+    QgisInterface, QgsAbstractMapToolHandler, QgsBrowserGuiModel, QgsFilterLineEdit, QgsGui,
+    QgsLayerTreeMapCanvasBridge, QgsLayerTreeView, QgsMapCanvas, QgsMapLayerConfigWidgetFactory, QgsMapTool,
     QgsMessageBar, QgsOptionsDialogBase, QgsOptionsPageWidget, QgsOptionsWidgetFactory, QgsPluginManagerInterface
+)
 from qgis.testing import QgisTestCase
-from .qgisenums import QGIS_WKBTYPE
 from .qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from .resources import initResourceFile
 from .unitmodel import UnitLookup
@@ -88,7 +91,8 @@ def start_app(cleanup: bool = True,
                       f'Available providers: {QgsProviderRegistry.instance().providerList()}')
 
     from qgis.core import QgsCoordinateReferenceSystem
-    assert QgsCoordinateReferenceSystem('EPSG:4326').isValid()
+    if not (QgsCoordinateReferenceSystem('EPSG:4326').isValid()):
+        raise AssertionError('Unable to load CRS EPSG:4326.')
 
     UseExceptions()
     providers = QgsApplication.processingRegistry().providers()
@@ -119,11 +123,13 @@ def start_app(cleanup: bool = True,
             initResourceFile(path)
 
     crs1 = QgsCoordinateReferenceSystem('EPSG:4326')
-    assert crs1.isValid(), 'Failed to initialize QGIS SRS database'
+    if not (crs1.isValid()):
+        raise AssertionError('Failed to initialize QGIS SRS database')
     crs2 = QgsCoordinateReferenceSystem.fromWkt(crs1.toWkt())
-    assert crs2.isValid(), ('Failed to initialize QGIS SRS database. '
-                            'Is a QgsCoordinateSystem instance created before a '
-                            'QgsApplication.instance() is created, e.g. using `qgis.testing.start_app()`.')
+    if not (crs2.isValid()):
+        raise AssertionError('Failed to initialize QGIS SRS database. '
+                             'Is a QgsCoordinateSystem instance created before a '
+                             'QgsApplication.instance() is created, e.g. using `qgis.testing.start_app()`.')
 
     return app
 
@@ -133,11 +139,13 @@ QGroupBox{ font-weight: 600; }
 QListWidget#mOptionsListWidget { background-color: rgba(69, 69, 69, 0); outline: 0;}
 QFrame#mOptionsListFrame { background-color: rgba(69, 69, 69, 220);}
 QListWidget#mOptionsListWidget::item { color: white; padding: 3px;}
-QListWidget#mOptionsListWidget::item::selected { color: palette(window-text); background-color:palette(window); padding-right: 0px;}
+QListWidget#mOptionsListWidget::item::selected {
+color: palette(window-text); background-color:palette(window); padding-right: 0px;}
 QTreeView#mOptionsTreeView { background-color: rgba(69, 69, 69, 0); outline: 0;}
 QFrame#mOptionsListFrame { background-color: rgba(69, 69, 69, 220);}
 QTreeView#mOptionsTreeView::item { color: white; padding: 3px;}
-QTreeView#mOptionsTreeView::item::selected, QTreeView#mOptionsTreeView::branch::selected { color: palette(window-text); background-color:palette(window); padding-right: 0px;}
+QTreeView#mOptionsTreeView::item::selected, QTreeView#mOptionsTreeView::branch::selected {
+color: palette(window-text); background-color:palette(window); padding-right: 0px;}
 QTableView { selection-background-color: #0078d7; selection-color: #ffffff;}
 QgsPropertyOverrideButton { background: none; border: 1px solid rgba(0, 0, 0, 0%); }
 QgsPropertyOverrideButton:focus { border: 1px solid palette(highlight); }'
@@ -217,7 +225,7 @@ class QgisMockup(QgisInterface):
         excluded = QObject.__dict__.keys()
         self._mock = mock.Mock(spec=QgisInterface)
         for n in self._mock._mock_methods:
-            assert isinstance(n, str)
+            n: str
             if not n.startswith('_') and n not in excluded:
                 try:
                     inspect.getfullargspec(getattr(self, n))
@@ -232,7 +240,6 @@ class QgisMockup(QgisInterface):
         for lyr in layers:
             if lyr.id() not in existing:
                 grp.addLayer(lyr)
-        s = ""
 
     def _onRemoveLayers(self, layerIDs: List[str]):
         to_remove: List[QgsLayerTreeLayer] = []
@@ -256,9 +263,9 @@ class QgisMockup(QgisInterface):
 
     def registerMapToolHandler(self, handler: QgsAbstractMapToolHandler) -> None:
 
-        assert isinstance(handler, QgsAbstractMapToolHandler)
-        assert isinstance(handler.action(), QAction) and \
-               isinstance(handler.mapTool(), QgsMapTool), 'Map tool handler is not properly constructed'
+        if not (isinstance(handler.action(), QAction)
+                and isinstance(handler.mapTool(), QgsMapTool)):
+            raise AssertionError('Map tool handler is not properly constructed')
 
         self.mMapToolHandler.append(handler)
         handler.action().setCheckable(True)
@@ -268,7 +275,8 @@ class QgisMockup(QgisInterface):
         handler.action().setEnabled(handler.isCompatibleWithLayer(self.activeLayer(), context))
 
     def unregisterMapToolHandler(self, handler: QgsAbstractMapToolHandler) -> None:
-        assert isinstance(handler, QgsAbstractMapToolHandler)
+        if not (isinstance(handler, QgsAbstractMapToolHandler)):
+            raise AssertionError
         if handler in self.mMapToolHandler:
             self.mMapToolHandler.remove(handler)
             if isinstance(handler.action(), QAction):
@@ -300,12 +308,14 @@ class QgisMockup(QgisInterface):
                     h.setLayerForTool(layer)
 
     def registerMapLayerConfigWidgetFactory(self, factory: QgsMapLayerConfigWidgetFactory):
-        assert isinstance(factory, QgsMapLayerConfigWidgetFactory)
+        if not (isinstance(factory, QgsMapLayerConfigWidgetFactory)):
+            raise AssertionError
 
         self.mMapLayerPanelFactories.append(factory)
 
     def unregisterMapLayerConfigWidgetFactory(self, factory: QgsMapLayerConfigWidgetFactory):
-        assert isinstance(factory, QgsMapLayerConfigWidgetFactory)
+        if not (isinstance(factory, QgsMapLayerConfigWidgetFactory)):
+            raise AssertionError
         self.mMapLayerPanelFactories = [f for f in self.mMapLayerPanelFactories if f.title() != factory.title()]
 
     def addLegendLayers(self, mapLayers: List[QgsMapLayer]):
@@ -358,10 +368,12 @@ class QgisMockup(QgisInterface):
         return self.ui
 
     def addToolBarIcon(self, action):
-        assert isinstance(action, QAction)
+        if not (isinstance(action, QAction)):
+            raise AssertionError
 
     def removeToolBarIcon(self, action):
-        assert isinstance(action, QAction)
+        if not (isinstance(action, QAction)):
+            raise AssertionError
 
     def addToolBar(self, name: str) -> QToolBar:
         return self.mainWindow().addToolBar(name)
@@ -375,7 +387,8 @@ class QgisMockup(QgisInterface):
             basename = os.path.basename(path)
 
         lyr = QgsVectorLayer(path, basename, providerkey)
-        assert lyr.isValid()
+        if not (lyr.isValid()):
+            raise AssertionError
         QgsProject.instance().addMapLayer(lyr, True)
         self.mRootNode.addLayer(lyr)
         self.mLayerTreeMapCanvasBridge.setCanvasLayers()
@@ -397,8 +410,8 @@ class QgisMockup(QgisInterface):
         return lyr
 
     def createActions(self):
-        m = self.ui.menuBar().addAction('Add Vector')
-        m = self.ui.menuBar().addAction('Add Raster')
+        _ = self.ui.menuBar().addAction('Add Vector')
+        _ = self.ui.menuBar().addAction('Add Raster')
 
     def mapCanvas(self) -> QgsMapCanvas:
         return self.mCanvas
@@ -413,11 +426,13 @@ class QgisMockup(QgisInterface):
         return self.mMessageBar
 
     def registerOptionsWidgetFactory(self, factory: QgsOptionsWidgetFactory):
-        assert isinstance(factory, QgsOptionsWidgetFactory)
+        if not (isinstance(factory, QgsOptionsWidgetFactory)):
+            raise AssertionError
         self.mOptionsWidgetFactories.append(factory)
 
     def unregisterOptionsWidgetFactory(self, factory):
-        assert factory in self.mOptionsWidgetFactories
+        if not (factory in self.mOptionsWidgetFactories):
+            raise AssertionError
         self.mOptionsWidgetFactories.remove(factory)
 
     def showOptionsDialog(self,
@@ -462,7 +477,7 @@ def get_iface() -> QgisInterface:
     return qgis.utils.iface
 
 
-def _set_iface(ifaceMock: QgisInterface):
+def _set_iface(ifaceMock):
     """
     Replaces the iface variable in other plugins, i.e. the  QGIS processing plugin
     :param ifaceMock: QgisInterface
@@ -477,8 +492,6 @@ def _set_iface(ifaceMock: QgisInterface):
 
     for m in modules:
         m.iface = ifaceMock
-
-    s = ""
 
 
 # APP = None
@@ -544,7 +557,7 @@ class TestCase(QgisTestCase):
             try:
                 app.exec()
             except Exception:
-                app.exec_()
+                app.exec()
 
         return True
 
@@ -601,10 +614,12 @@ class TestCase(QgisTestCase):
         :rtype:
         """
         path = Path(path)
-        assert path.is_file()
+        if not (path.is_file()):
+            raise AssertionError
 
         ds: gdal.Dataset = gdal.Open(path.as_posix())
-        assert isinstance(ds, gdal.Dataset)
+        if not (isinstance(ds, gdal.Dataset)):
+            raise AssertionError
         drv: gdal.Driver = ds.GetDriver()
 
         testdir = self.createTestOutputDirectory() / 'images'
@@ -625,7 +640,7 @@ class TestCase(QgisTestCase):
                     try:
                         drv2.Delete(path2)
                         deleted = True
-                    except RuntimeError as ex:
+                    except RuntimeError:
                         sleep(1)
                         n_tries -= 1
 
@@ -677,9 +692,9 @@ class TestCase(QgisTestCase):
         p = Path(DIR_REPO) / root / Path(*folders)
 
         if len(p.as_posix()) > max_length:
-            p2 = Path(DIR_REPO) / root / hashlib.md5(p.as_posix().encode()).hexdigest()
+            p2 = Path(DIR_REPO) / root / secrets.token_urlsafe(8).upper()
             info = [f'Path exceeds max_length ({max_length}: {p}).',
-                    f'Use MD5 hash instead: {p2}']
+                    f'Use random name instead: {p2}']
             warnings.warn('\n'.join(info), stacklevel=2)
             p = p2
 
@@ -789,9 +804,12 @@ class ExampleAlgorithmProvider(QgsProcessingProvider):
         if not reg.providerById(ExampleAlgorithmProvider.NAME.lower()):
             provider = ExampleAlgorithmProvider()
             ExampleAlgorithmProvider._INSTANCE = provider
-            assert isinstance(ExampleAlgorithmProvider._INSTANCE, ExampleAlgorithmProvider)
-            assert reg.addProvider(ExampleAlgorithmProvider._INSTANCE)
-        assert reg.providerById(ExampleAlgorithmProvider.NAME.lower())
+            if not (isinstance(ExampleAlgorithmProvider._INSTANCE, ExampleAlgorithmProvider)):
+                raise AssertionError
+            if not (reg.addProvider(ExampleAlgorithmProvider._INSTANCE)):
+                raise AssertionError
+        if not (reg.providerById(ExampleAlgorithmProvider.NAME.lower())):
+            raise AssertionError
         return ExampleAlgorithmProvider._INSTANCE
 
     def __init__(self, *args, **kwds):
@@ -864,7 +882,8 @@ class SpectralProfileDataIterator(object):
         self.cnb, self.cnl, self.cns = self.coredata.shape
         n_bands_per_field = [self.cnb if nb == -1 else nb for nb in n_bands_per_field]
         for nb in n_bands_per_field:
-            assert nb is None or 0 < nb
+            if not (nb is None or 0 < nb):
+                raise AssertionError
             # assert 0 < nb <= self.cnb, f'Max. number of bands can be {self.cnb}'
         self.band_indices: List[Optional[np.ndarray]] = []
         for nb in n_bands_per_field:
@@ -890,15 +909,15 @@ class SpectralProfileDataIterator(object):
 
     def __next__(self):
 
-        x = random.randint(0, self.coredata.shape[2] - 1)
-        y = random.randint(0, self.coredata.shape[1] - 1)
+        x = random.randint(0, self.coredata.shape[2] - 1)  # nosec B311
+        y = random.randint(0, self.coredata.shape[1] - 1)  # nosec B311
 
         px = QPoint(x, y)
         # from .utils import px2geo
         pt = px2geo(px, self.gt, pxCenter=False)
         pt = SpatialPoint(self.sourceCrs(),
-                          pt.x() + self.dx * random.uniform(0, 1),
-                          pt.y() - self.dy * random.uniform(0, 1))
+                          pt.x() + self.dx * random.uniform(0, 1),  # nosec B311
+                          pt.y() - self.dy * random.uniform(0, 1))  # nosec B311
         pt = pt.toCrs(self.targetCrs())
         results = []
         for band_indices in self.band_indices:
@@ -929,10 +948,12 @@ class TestObjects(object):
     def coreData(cls) -> dict:
         if TestObjects._coreData is None:
             source_raster = Path(__file__).parent / 'enmap.tif'
-            assert source_raster.is_file()
+            if not (source_raster.is_file()):
+                raise AssertionError
 
             ds = gdal.Open(source_raster.as_posix())
-            assert isinstance(ds, gdal.Dataset)
+            if not (isinstance(ds, gdal.Dataset)):
+                raise AssertionError
             TestObjects._coreData = ds.ReadAsArray()
             TestObjects._coreDataGT = ds.GetGeoTransform()
             TestObjects._coreDataWkt = ds.GetProjection()
@@ -968,22 +989,25 @@ class TestObjects(object):
         coredata = CD['data']
         wl = CD['wl']
         wlu = CD['wlu']
-        gt = CD['gt']
-        wkt = CD['wkt']
+        _ = CD['gt']
+        _ = CD['wkt']
 
         cnb, cnl, cns = coredata.shape
-        assert n > 0
+        if not (n > 0):
+            raise AssertionError
         if n_bands is None:
             n_bands = [-1]
         if not isinstance(n_bands, list):
             n_bands = [n_bands]
-        assert isinstance(n_bands, list)
+        if not (isinstance(n_bands, list)):
+            raise AssertionError
         for i in range(len(n_bands)):
             nb = n_bands[i]
             if nb == -1:
                 n_bands[i] = cnb
             else:
-                assert 0 < nb <= cnb, f'Number of bands need to be in range 0 < nb <= {cnb}.'
+                if not (0 < nb <= cnb):
+                    raise AssertionError(f'Number of bands need to be in range 0 < nb <= {cnb}.')
 
         n_bands = [nb if nb > 0 else cnb for nb in n_bands]
 
@@ -991,8 +1015,8 @@ class TestObjects(object):
             band_indices = np.linspace(0, cnb - 1, num=nb, dtype=np.int16)
             i = 0
             while i < n:
-                x = random.randint(0, coredata.shape[2] - 1)
-                y = random.randint(0, coredata.shape[1] - 1)
+                x = random.randint(0, coredata.shape[2] - 1)  # nosec B311
+                y = random.randint(0, coredata.shape[1] - 1)  # nosec B311
                 yield coredata[band_indices, y, x], wl[band_indices], wlu
                 i += 1
 
@@ -1027,18 +1051,21 @@ class TestObjects(object):
                     fields.append(f)
             profile_fields = pFields(fields)
 
-        assert isinstance(profile_fields, QgsFields)
+        if not (isinstance(profile_fields, QgsFields)):
+            raise AssertionError
 
         for f in profile_fields:
-            assert is_profile_field(f)
+            if not (is_profile_field(f)):
+                raise AssertionError
 
         if n_bands is None:
             n_bands = [-1 for f in profile_fields]
         elif isinstance(n_bands, int):
             n_bands = [n_bands]
 
-        assert len(n_bands) == profile_fields.count(), \
-            f'Number of bands list ({n_bands}) has different lengths that number of profile fields'
+        if not (len(n_bands) == profile_fields.count()):
+            raise AssertionError(
+                f'Number of bands list ({n_bands}) has different lengths that number of profile fields')
 
         profileGenerator: SpectralProfileDataIterator = SpectralProfileDataIterator(n_bands, target_crs=crs)
 
@@ -1099,12 +1126,15 @@ class TestObjects(object):
         from .speclib.core import profile_field_indices
         from .speclib import FIELD_VALUES
 
-        assert n >= 0
-        assert 0 <= n_empty <= n
+        if not (n >= 0):
+            raise AssertionError
+        if not (0 <= n_empty <= n):
+            raise AssertionError
         if profile_field_names:
             if n_bands in [[-1], None]:
                 n_bands = [-1 for _ in profile_field_names]
-            assert len(profile_field_names) == len(n_bands)
+            if not (len(profile_field_names) == len(n_bands)):
+                raise AssertionError
 
         if n_bands is None:
             n_bands = [-1]
@@ -1115,8 +1145,10 @@ class TestObjects(object):
             if n_bands.ndim == 1:
                 n_bands = n_bands.reshape((1, n_bands.shape[0]))
 
-        assert isinstance(n_bands, np.ndarray)
-        assert n_bands.ndim == 2
+        if not (isinstance(n_bands, np.ndarray)):
+            raise AssertionError
+        if not (n_bands.ndim == 2):
+            raise AssertionError
 
         n_profile_columns = n_bands.shape[-1]
         if not isinstance(profile_field_names, list):
@@ -1131,7 +1163,8 @@ class TestObjects(object):
 
             pfield_indices = profile_field_indices(slib)
 
-            assert len(pfield_indices) == len(profile_field_names)
+            if not (len(pfield_indices) == len(profile_field_names)):
+                raise AssertionError
 
             if n > 0:
                 # slib.beginEditCommand(f'Add {n} features')
@@ -1178,8 +1211,8 @@ class TestObjects(object):
 
         global_nodata = -9999
         for b in range(nb):
-            x = random.randint(0, ns - 1)
-            y = random.randint(0, nl - 1)
+            x = random.randint(0, ns - 1)  # nosec B311
+            y = random.randint(0, nl - 1)  # nosec B311
 
             # nodata = b
             nodata = global_nodata
@@ -1195,7 +1228,8 @@ class TestObjects(object):
         ds2.FlushCache()
         lyr = QgsRasterLayer(path)
         lyr.setName(f'Multiband Mask {lyr.bandCount()}x{lyr.height()}x{lyr.width()}')
-        assert lyr.isValid()
+        if not (lyr.isValid()):
+            raise AssertionError
 
         return lyr
 
@@ -1263,7 +1297,8 @@ class TestObjects(object):
             drv = gdal.GetDriverByName(drv)
         elif drv is None:
             drv = gdal.GetDriverByName('GTiff')
-        assert isinstance(drv, gdal.Driver), 'Unable to load GDAL Driver'
+        if not (isinstance(drv, gdal.Driver)):
+            raise AssertionError('Unable to load GDAL Driver')
 
         if isinstance(path, Path):
             path = path.as_posix()
@@ -1276,10 +1311,12 @@ class TestObjects(object):
                 path = f'{prefix}testClassification.{uuid.uuid4()}{ext}'
             else:
                 path = f'{prefix}testImage.{uuid.uuid4()}{ext}'
-        assert isinstance(path, str)
+        if not (isinstance(path, str)):
+            raise AssertionError
 
         ds: gdal.Dataset = drv.Create(path, ns, nl, bands=nb, eType=eType)
-        assert isinstance(ds, gdal.Dataset)
+        if not (isinstance(ds, gdal.Dataset)):
+            raise AssertionError
         for b in range(ds.RasterCount):
             band: gdal.Band = ds.GetRasterBand(b + 1)
             band.SetDescription(f'Test Band {b + 1}')
@@ -1305,8 +1342,10 @@ class TestObjects(object):
 
         dt_out = gdal_array.flip_code(eType)
         if isinstance(crs, str) or gt is not None:
-            assert isinstance(gt, list) and len(gt) == 6
-            assert isinstance(crs, str) and len(crs) > 0
+            if not (isinstance(gt, list) and len(gt) == 6):
+                raise AssertionError
+            if not (isinstance(crs, str) and len(crs) > 0):
+                raise AssertionError
             c = QgsCoordinateReferenceSystem(crs)
             ds.SetProjection(c.toWkt())
             ds.SetGeoTransform(gt)
@@ -1317,10 +1356,12 @@ class TestObjects(object):
         if nc > 0:
             for b in range(nb):
                 band: gdal.Band = ds.GetRasterBand(b + 1)
-                assert isinstance(band, gdal.Band)
+                if not (isinstance(band, gdal.Band)):
+                    raise AssertionError
 
                 array = np.empty((nl, ns), dtype=dt_out)
-                assert isinstance(array, np.ndarray)
+                if not (isinstance(array, np.ndarray)):
+                    raise AssertionError
 
                 array.fill(0)
                 y0 = 0
@@ -1374,7 +1415,8 @@ class TestObjects(object):
                         wl.append(core_wl[-1])
                 else:
                     wl = core_wl[:nb].tolist()
-                assert len(wl) == nb
+                if not (len(wl) == nb):
+                    raise AssertionError
 
                 if wlu is None:
                     wlu = core_wlu
@@ -1410,12 +1452,14 @@ class TestObjects(object):
         :return: QgsRasterLayer
         """
         ds = TestObjects.createRasterDataset(*args, **kwds)
-        assert isinstance(ds, gdal.Dataset)
+        if not (isinstance(ds, gdal.Dataset)):
+            raise AssertionError
         path = ds.GetDescription()
 
         name = name if name else os.path.basename(path)
         lyr = QgsRasterLayer(path, name, 'gdal')
-        assert lyr.isValid()
+        if not (lyr.isValid()):
+            raise AssertionError
         return lyr
 
     @classmethod
@@ -1428,7 +1472,8 @@ class TestObjects(object):
         """
         # ogr.RegisterAll()
         # ogr.UseExceptions()
-        assert wkb in [ogr.wkbPoint, ogr.wkbPolygon, ogr.wkbLineString, ogr.wkbNone]
+        if not (wkb in [ogr.wkbPoint, ogr.wkbPolygon, ogr.wkbLineString, ogr.wkbNone]):
+            raise AssertionError
 
         # find the QGIS world_map.shp
         # pkgPath = QgsApplication.instance().pkgDataPath()
@@ -1436,24 +1481,31 @@ class TestObjects(object):
 
         # pathSrc = Path(__file__).parent / 'landcover_polygons.geojson'
         pathSrc = TEST_VECTOR_GEOJSON
-        assert pathSrc.is_file(), 'Unable to find {}'.format(pathSrc)
+        if not (pathSrc.is_file()):
+            raise AssertionError('Unable to find {}'.format(pathSrc))
 
         dsSrc: ogr.DataSource = ogr.Open(pathSrc.as_posix())
         if not isinstance(dsSrc, gdal.Dataset):
             lyr = QgsVectorLayer(pathSrc.as_posix())
-            assert lyr.isValid(), f'Unable to load QGS Layer: {pathSrc.as_posix()}'
-        assert isinstance(dsSrc, ogr.DataSource), f'Unable to load {pathSrc}'
+            if not (lyr.isValid()):
+                raise AssertionError(f'Unable to load QGS Layer: {pathSrc.as_posix()}')
+        if not (isinstance(dsSrc, ogr.DataSource)):
+            raise AssertionError(f'Unable to load {pathSrc}')
         lyrSrc: ogr.Layer = dsSrc.GetLayerByIndex(0)
-        assert isinstance(lyrSrc, ogr.Layer)
+        if not (isinstance(lyrSrc, ogr.Layer)):
+            raise AssertionError
 
         ldef = lyrSrc.GetLayerDefn()
-        assert isinstance(ldef, ogr.FeatureDefn)
+        if not (isinstance(ldef, ogr.FeatureDefn)):
+            raise AssertionError
 
         srs = lyrSrc.GetSpatialRef()
-        assert isinstance(srs, osr.SpatialReference)
+        if not (isinstance(srs, osr.SpatialReference)):
+            raise AssertionError
 
         drv = ogr.GetDriverByName('GPKG')
-        assert isinstance(drv, ogr.Driver)
+        if not (isinstance(drv, ogr.Driver)):
+            raise AssertionError
 
         # set temp path
         if path:
@@ -1478,32 +1530,38 @@ class TestObjects(object):
                 raise NotImplementedError()
 
         dsDst: ogr.DataSource = drv.CreateDataSource(pathDst)
-        assert isinstance(dsDst, ogr.DataSource)
+        if not (isinstance(dsDst, ogr.DataSource)):
+            raise AssertionError
         lyrDst = dsDst.CreateLayer(lname, srs=srs, geom_type=wkb)
-        assert isinstance(lyrDst, ogr.Layer)
+        if not (isinstance(lyrDst, ogr.Layer)):
+            raise AssertionError
 
         if n_features is None:
             n_features = lyrSrc.GetFeatureCount()
 
-        assert n_features >= 0
+        if not (n_features >= 0):
+            raise AssertionError
 
         # copy features
         TMP_FEATURES: List[ogr.Feature] = []
         for fSrc in lyrSrc:
-            assert isinstance(fSrc, ogr.Feature)
+            if not (isinstance(fSrc, ogr.Feature)):
+                raise AssertionError
             TMP_FEATURES.append(fSrc)
 
         # copy field definitions
         for i in range(ldef.GetFieldCount()):
             fieldDefn = ldef.GetFieldDefn(i)
-            assert isinstance(fieldDefn, ogr.FieldDefn)
+            if not (isinstance(fieldDefn, ogr.FieldDefn)):
+                raise AssertionError
             lyrDst.CreateField(fieldDefn)
 
         n = 0
         for fSrc in itertools.cycle(TMP_FEATURES):
             g: ogr.Geometry = fSrc.geometry()
             fDst = ogr.Feature(lyrDst.GetLayerDefn())
-            assert isinstance(fDst, ogr.Feature)
+            if not (isinstance(fDst, ogr.Feature)):
+                raise AssertionError
 
             if isinstance(g, ogr.Geometry):
                 if wkb == ogr.wkbPolygon:
@@ -1522,12 +1580,14 @@ class TestObjects(object):
             for i in range(ldef.GetFieldCount()):
                 fDst.SetField(i, fSrc.GetField(i))
 
-            assert lyrDst.CreateFeature(fDst) == ogr.OGRERR_NONE
+            if not (lyrDst.CreateFeature(fDst) == ogr.OGRERR_NONE):
+                raise AssertionError
             n += 1
 
             if n >= n_features:
                 break
-        assert isinstance(dsDst, ogr.DataSource)
+        if not (isinstance(dsDst, ogr.DataSource)):
+            raise AssertionError
         dsDst.FlushCache()
         return dsDst
 
@@ -1535,13 +1595,13 @@ class TestObjects(object):
     def createEmptyMemoryLayer(fields: QgsFields,
                                name: str = 'memory layer',
                                crs: QgsCoordinateReferenceSystem = None,
-                               wkbType: QGIS_WKBTYPE = QGIS_WKBTYPE.NoGeometry):
+                               wkbType: Qgis.WkbType = Qgis.WkbType.NoGeometry):
 
         """
             Class with static routines to create test objects
             """
         uri = ''
-        if wkbType != QGIS_WKBTYPE.NoGeometry:
+        if wkbType != Qgis.WkbType.NoGeometry:
             uri += QgsWkbTypes.displayString(wkbType)
         else:
             uri += 'none'
@@ -1552,7 +1612,8 @@ class TestObjects(object):
         lyr = QgsVectorLayer(uri, name, 'memory', options=options)
         lyr.setCustomProperty('skipMemoryLayerCheck', 1)
 
-        assert lyr.isValid()
+        if not (lyr.isValid()):
+            raise AssertionError
         with edit(lyr):
             for a in fields:
                 success = lyr.addAttribute(a)
@@ -1585,38 +1646,47 @@ class TestObjects(object):
         elif wkbType == QgsWkbTypes.NoGeometry:
             wkb = ogr.wkbNone
 
-        assert wkb is not None
+        if not (wkb is not None):
+            raise AssertionError
         dsSrc = TestObjects.createVectorDataSet(wkb=wkb, n_features=n_features, path=path)
 
-        assert isinstance(dsSrc, ogr.DataSource)
+        if not (isinstance(dsSrc, ogr.DataSource)):
+            raise AssertionError
         lyr = dsSrc.GetLayer(0)
-        assert isinstance(lyr, ogr.Layer)
-        assert lyr.GetFeatureCount() > 0
+        if not (isinstance(lyr, ogr.Layer)):
+            raise AssertionError
+        if not (lyr.GetFeatureCount() > 0):
+            raise AssertionError
         # uri = '{}|{}'.format(dsSrc.GetName(), lyr.GetName())
         uri = dsSrc.GetName()
 
         name = name if name else os.path.basename(uri)
 
         vl = QgsVectorLayer(uri, name, 'ogr', lyrOptions)
-        assert isinstance(vl, QgsVectorLayer)
-        assert vl.isValid()
+        if not (isinstance(vl, QgsVectorLayer)):
+            raise AssertionError
+        if not (vl.isValid()):
+            raise AssertionError
         if wkb != ogr.wkbNone:
             if not vl.crs().isValid():
                 srs = lyr.GetSpatialRef()
                 srs_wkt = srs.ExportToWkt()
                 crs2 = QgsCoordinateReferenceSystem(srs_wkt)
-                assert crs2.isValid()
-                s = ""
+                if not (crs2.isValid()):
+                    raise AssertionError
 
-            assert vl.crs().isValid()
-        assert vl.featureCount() == lyr.GetFeatureCount()
+            if not (vl.crs().isValid()):
+                raise AssertionError
+        if not (vl.featureCount() == lyr.GetFeatureCount()):
+            raise AssertionError
 
         if isinstance(crs, QgsCoordinateReferenceSystem) and vl.crs() != crs:
             trans = QgsCoordinateTransform(vl.crs(), crs, QgsProject.instance())
             with edit(vl):
                 for f in vl.getFeatures():
                     g = f.geometry()
-                    assert g.transform(trans) == Qgis.GeometryOperationResult.Success
+                    if not (g.transform(trans) == Qgis.GeometryOperationResult.Success):
+                        raise AssertionError
                     f.setGeometry(g)
                     vl.updateFeature(f)
             vl.setCrs(crs)
@@ -1630,7 +1700,6 @@ class TestObjects(object):
 
             def __init__(self):
                 super(TestProcessingAlgorithm, self).__init__()
-                s = ""
 
             def createInstance(self):
                 return TestProcessingAlgorithm()
@@ -1655,9 +1724,12 @@ class TestObjects(object):
                 self.addParameter(QgsProcessingParameterRasterDestination('pathOutput', 'The Output Dataset'))
 
             def processAlgorithm(self, parameters, context, feedback):
-                assert isinstance(parameters, dict)
-                assert isinstance(context, QgsProcessingContext)
-                assert isinstance(feedback, QgsProcessingFeedback)
+                if not (isinstance(parameters, dict)):
+                    raise AssertionError
+                if not (isinstance(context, QgsProcessingContext)):
+                    raise AssertionError
+                if not (isinstance(feedback, QgsProcessingFeedback)):
+                    raise AssertionError
 
                 outputs = {}
                 return outputs
@@ -1732,8 +1804,9 @@ class QgsOptionsMockup(QgsOptionsDialogBase):
         super().__init__(*args, **kwargs)
         loadUi(path_mockup_ui, self)
         # w = self.findChild(QListWidget, 'mOptionsListWidget')
-        assert (self.findChild(QListWidget, 'mOptionsListWidget')
-                or self.findChild(QTreeView, 'mOptionsTreeView'))
+        if not (self.findChild(QListWidget, 'mOptionsListWidget')
+                or self.findChild(QTreeView, 'mOptionsTreeView')):
+            raise AssertionError
 
         check = [
             ('mOptionsTreeView', QTreeView),
@@ -1747,9 +1820,11 @@ class QgsOptionsMockup(QgsOptionsDialogBase):
 
         for (name, cls) in check:
             c1 = getattr(self, name)
-            assert isinstance(c1, cls)
+            if not (isinstance(c1, cls)):
+                raise AssertionError
             c2 = self.findChild(cls, name)
-            assert isinstance(c2, cls)
+            if not (isinstance(c2, cls)):
+                raise AssertionError
 
         self.buttonBox: QDialogButtonBox
         self.mOptTreeModel = QStandardItemModel()
@@ -1860,18 +1935,18 @@ class QgsPythonRunnerMockup(QgsPythonRunner):
 
     def evalCommand(self, cmd: str, result: str):
         try:
-            o = compile(cmd)
+            _ = compile(cmd)
         except Exception as ex:
-            result = str(ex)
+            _ = str(ex)
             return False
         return True
 
     def runCommand(self, command, messageOnError=''):
         try:
             o = compile(command, 'fakemodule', 'exec')
-            exec(o)
+            exec(o)  # nosec: B102
         except Exception as ex:
-            messageOnError = str(ex)
+            _ = str(ex)
             command = ['{}:{}'.format(i + 1, l) for i, l in enumerate(command.splitlines())]
             print('\n'.join(command), file=sys.stderr)
             raise ex

@@ -4,21 +4,22 @@ import random
 import unittest
 from typing import Iterator, List, Tuple
 
-from qgis.PyQt.QtCore import QSize, Qt
+from qgis.PyQt.QtCore import QSize, Qt, QMetaType
 from qgis.PyQt.QtWidgets import QHBoxLayout, QPushButton, QSplitter, QVBoxLayout, QWidget
 from qgis.core import edit, Qgis, QgsExpressionContext, QgsFeature, QgsField, QgsGeometry, QgsMapToPixel, QgsPoint, \
     QgsPointXY, QgsProject, QgsRaster, QgsRasterDataProvider, QgsRasterLayer, QgsVectorLayer, QgsWkbTypes
 from qgis.gui import QgsDualView, QgsMapCanvas
 from qps import initAll
 from qps.maptools import CursorLocationMapTool
-from qps.qgisenums import QMETATYPE_DOUBLE, QMETATYPE_INT, QMETATYPE_QSTRING
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
 from qps.speclib.core.spectralprofile import isProfileValueDict
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
-from qps.speclib.gui.spectralprofilesources import MapCanvasLayerProfileSource, ProfileSamplingMode, \
-    SpectralFeatureGeneratorNode, SpectralProfileBridge, SpectralProfileBridgeTreeView, \
-    SpectralProfileBridgeViewDelegate, SpectralProfileGeneratorNode, SpectralProfileSource, SpectralProfileSourceModel, \
-    SpectralProfileSourcePanel, SpectralProfileSourceProxyModel, StandardFieldGeneratorNode, StandardLayerProfileSource
+from qps.speclib.gui.spectralprofilesources import (
+    MapCanvasLayerProfileSource, ProfileSamplingMode,
+    SpectralFeatureGeneratorNode, SpectralProfileBridge, SpectralProfileBridgeTreeView,
+    SpectralProfileBridgeViewDelegate, SpectralProfileGeneratorNode, SpectralProfileSource,
+    SpectralProfileSourceModel, SpectralProfileSourcePanel, SpectralProfileSourceProxyModel,
+    StandardFieldGeneratorNode, StandardLayerProfileSource)
 from qps.testing import start_app, TestCase, TestObjects
 from qps.utils import rasterArray, SpatialExtent, SpatialPoint
 from qpstestdata import enmap
@@ -42,13 +43,13 @@ class SpectralProcessingTests(TestCase):
         sl.startEditing()
         fids = sl.allFeatureIds()
         sl.selectByIds(fids[-2500:])
-        n_to_del = len(sl.selectedFeatureIds())
+        _ = len(sl.selectedFeatureIds())
         t0 = datetime.datetime.now()
         context = QgsVectorLayer.DeleteContext(cascade=True, project=QgsProject.instance())
         sl.beginEditCommand('Delete features')
         success, n_del = sl.deleteSelectedFeatures(context)
         sl.endEditCommand()
-        assert success
+        self.assertTrue(success)
         print(f'Required {datetime.datetime.now() - t0} to delete {n_del} features')
         # self.showGui(dv)
 
@@ -58,9 +59,9 @@ class SpectralProcessingTests(TestCase):
         lyr.setName('EnMAP')
         ext = lyr.extent()
 
-        dp: QgsRasterDataProvider = lyr.dataProvider()
-        nb, ns, nl = lyr.bandCount(), lyr.height(), lyr.width()
-        pxx, pxy = lyr.rasterUnitsPerPixelX(), lyr.rasterUnitsPerPixelY()
+        _ = lyr.dataProvider()
+        _, _, _ = lyr.bandCount(), lyr.height(), lyr.width()
+        pxx, _ = lyr.rasterUnitsPerPixelX(), lyr.rasterUnitsPerPixelY()
 
         out_of_image = [
             SpatialPoint(lyr.crs(), ext.xMinimum() - 0.0001 * pxx, ext.yMaximum()),
@@ -78,10 +79,9 @@ class SpectralProcessingTests(TestCase):
             size = k_mode.kernelSize()
             x, y = size.width(), size.height()
             profiles = source.collectProfiles(pt, QSize(x, y))
-            self.assertTrue(len(profiles) > 0)
-            self.assertTrue(len(profiles) < x * y)
 
-            s = ""
+            self.assertTrue(len(profiles) > 0, msg=f'No profiles for {pt}')
+            self.assertTrue(len(profiles) < x * y)
 
         sl = TestObjects.createSpectralLibrary()
         slw = SpectralLibraryWidget(speclib=sl)
@@ -213,7 +213,7 @@ class SpectralProcessingTests(TestCase):
         canvas.setMapTool(mt)
         mt.sigLocationRequest.connect(lambda crs, pt: panel.loadCurrentMapSpectra(SpatialPoint(crs, pt)))
 
-        center = SpatialPoint.fromMapCanvasCenter(canvas)
+        _ = SpatialPoint.fromMapCanvasCenter(canvas)
 
         panel = SpectralProfileSourcePanel()
         panel.mBridge.addSources(sources)
@@ -293,7 +293,7 @@ class SpectralProcessingTests(TestCase):
         n.setProfileSource(lyrA)
         mode = n.setSampling(ProfileSamplingMode())
         self.assertIsInstance(mode, ProfileSamplingMode)
-        size = mode.kernelSize()
+        _ = mode.kernelSize()
         g.spectralProfileGeneratorNodes()
 
         # panel.loadCurrentMapSpectra(center, mapCanvas=canvas, runAsync=False)
@@ -310,7 +310,7 @@ class SpectralProcessingTests(TestCase):
         sl1 = slw1.plotModel().visualizations()[0].layer()
 
         with edit(sl1):
-            assert SpectralLibraryUtils.addSpectralProfileField(sl1, 'profile_new')
+            self.assertTrue(SpectralLibraryUtils.addSpectralProfileField(sl1, 'profile_new'))
 
         # re-add generators
         fgnode1 = panel.createRelation()
@@ -330,7 +330,7 @@ class SpectralProcessingTests(TestCase):
 
         sl1 = slw1.plotModel().spectralLibraries()[0]
         with edit(sl1):
-            assert SpectralLibraryUtils.addSpectralProfileField(sl1, 'profile2')
+            self.assertTrue(SpectralLibraryUtils.addSpectralProfileField(sl1, 'profile2'))
 
         speclib_sources = slw1.spectralLibraries()
         QgsProject.instance().addMapLayers(speclib_sources, False)
@@ -387,8 +387,8 @@ class SpectralProcessingTests(TestCase):
 
         def onClicked():
             ext = SpatialExtent.fromMapCanvas(canvas)
-            x = random.uniform(ext.xMinimum(), ext.xMaximum())
-            y = random.uniform(ext.yMinimum(), ext.yMaximum())
+            x = random.uniform(ext.xMinimum(), ext.xMaximum())  # nosec B311
+            y = random.uniform(ext.yMinimum(), ext.yMaximum())  # nosec B311
             pt = SpatialPoint(ext.crs(), x, y)
             panel.loadCurrentMapSpectra(pt, mapCanvas=canvas, runAsync=False)
 
@@ -430,7 +430,7 @@ class SpectralProcessingTests(TestCase):
 
     def validate_profile_data(self, profileData, lyr: QgsRasterLayer, ptR: QgsPointXY):
 
-        array = rasterArray(lyr)
+        _ = rasterArray(lyr)
         dp: QgsRasterDataProvider = lyr.dataProvider()
         for (d, context) in profileData:
             self.assertTrue(isProfileValueDict(d))
@@ -467,7 +467,7 @@ class SpectralProcessingTests(TestCase):
             yValuesR = [results.results()[b] for b in range(1, lyr.bandCount() + 1)]
 
             if yValues != yValuesR:
-                s = ""
+                pass
             self.assertListEqual(yValues, yValuesR)
 
     def test_SpectralProfileSourceModel(self):
@@ -509,7 +509,6 @@ class SpectralProcessingTests(TestCase):
                     self.validate_profile_data(profileData1, lyr, pt)
                     self.validate_profile_data(profileData2, lyr, pt)
                     self.validate_profile_data(profileData3, lyr, pt)
-                    s = ""
 
         sources = model[:]
         sources = sources + sources[0:]
@@ -622,12 +621,12 @@ class SpectralProcessingTests(TestCase):
             for oldName, newName in RENAME.items():
                 idx = sl.fields().lookupField(oldName)
                 sl.renameAttribute(idx, newName)
-            sl.addAttribute(QgsField('px_x', QMETATYPE_INT))
-            sl.addAttribute(QgsField('px_y', QMETATYPE_INT))
-            sl.addAttribute(QgsField('geo_x', QMETATYPE_DOUBLE))
-            sl.addAttribute(QgsField('geo_y', QMETATYPE_DOUBLE))
-            sl.addAttribute(QgsField('text', QMETATYPE_QSTRING))
-            sl.addAttribute(QgsField('color', QMETATYPE_QSTRING))
+            sl.addAttribute(QgsField('px_x', QMetaType.Int))
+            sl.addAttribute(QgsField('px_y', QMetaType.Int))
+            sl.addAttribute(QgsField('geo_x', QMetaType.Double))
+            sl.addAttribute(QgsField('geo_y', QMetaType.Double))
+            sl.addAttribute(QgsField('text', QMetaType.QString))
+            sl.addAttribute(QgsField('color', QMetaType.QString))
 
         sl.commitChanges()
 
@@ -650,10 +649,10 @@ class SpectralProcessingTests(TestCase):
 
         self.assertTrue(n1.hasErrors())
         self.assertTrue(len(errors) > 0)
-        field = QgsField('n1field', QMETATYPE_QSTRING)
+        field = QgsField('n1field', QMetaType.QString)
         n1.setField(field)
         n1.setExpression("'foobar'")
-        errors2 = list(n1.errors(recursive=True))
+        _ = list(n1.errors(recursive=True))
         self.assertFalse(n1.hasErrors())
 
         n2 = SpectralProfileGeneratorNode()
@@ -676,7 +675,7 @@ class SpectralProcessingTests(TestCase):
         model.addSources(MapCanvasLayerProfileSource())
         model.addSources(MapCanvasLayerProfileSource(mode=MapCanvasLayerProfileSource.MODE_LAST_LAYER))
         model.addSources(sources)
-        node = model.createFeatureGenerator()
+        _ = model.createFeatureGenerator()
         # model.createFeatureGenerator()
         model.addSpectralLibraryWidgets(widgets)
 

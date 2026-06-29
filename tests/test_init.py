@@ -51,10 +51,10 @@ class TestsCases_Init(TestCase):
         from qgis.core import QgsCoordinateReferenceSystem
 
         crs1 = QgsCoordinateReferenceSystem('EPSG:4326')
-        assert crs1.isValid()
+        self.assertTrue(crs1.isValid())
         crs2 = QgsCoordinateReferenceSystem.fromWkt(crs1.toWkt())
-        assert crs1.toWkt() == crs2.toWkt()
-        assert crs2.isValid()
+        self.assertEqual(crs1.toWkt(), crs2.toWkt())
+        self.assertTrue(crs2.isValid())
 
     def test_relative_imports(self):
 

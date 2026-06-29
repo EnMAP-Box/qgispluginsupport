@@ -35,17 +35,18 @@ from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union
 
 import numpy as np
 
-from qgis.PyQt.QtCore import NULL, QByteArray, QCoreApplication, QVariant
-from qgis.core import Qgis, QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsExpression, QgsExpressionContext, \
-    QgsExpressionContextScope, QgsExpressionFunction, QgsExpressionNode, QgsExpressionNodeFunction, QgsFeature, \
-    QgsFeatureRequest, QgsField, QgsGeometry, QgsMapLayer, QgsMapToPixel, QgsMessageLog, QgsPointXY, QgsProject, \
-    QgsRasterDataProvider, QgsRasterLayer
-from .qgisenums import QGIS_WKBTYPE
+from qgis.PyQt.QtCore import NULL, QByteArray, QCoreApplication
+from qgis.core import (
+    Qgis, QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsExpression, QgsExpressionContext,
+    QgsExpressionContextScope, QgsExpressionFunction, QgsExpressionNode, QgsExpressionNodeFunction, QgsFeature,
+    QgsFeatureRequest, QgsGeometry, QgsMapLayer, QgsMapToPixel, QgsMessageLog, QgsPointXY, QgsProject,
+    QgsRasterDataProvider, QgsRasterLayer)
 from .qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from .speclib.core import is_profile_field
 from .speclib.core.spectrallibrary import FIELD_VALUES
-from .speclib.core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict, prepareProfileValueDict, \
-    ProfileEncoding, SpectralProfileFileReader
+from .speclib.core.spectralprofile import (
+    decodeProfileValueDict, encodeProfileValueDict, prepareProfileValueDict,
+    ProfileEncoding, SpectralProfileFileReader)
 from .speclib.io.asd import ASDBinaryFile
 from .speclib.io.spectralevolution import SEDFile
 from .speclib.io.svc import SVCSigFile
@@ -63,7 +64,8 @@ class HelpStringMaker(object):
         helpDir = pathlib.Path(__file__).parent / 'function_help'
         self.mHELP = dict()
 
-        assert helpDir.is_dir()
+        if not (helpDir.is_dir()):
+            raise AssertionError
 
         for e in os.scandir(helpDir):
             if e.is_file() and e.name.endswith('.json'):
@@ -124,7 +126,8 @@ class HelpStringMaker(object):
                 delim = ''
                 syntaxParameters = set()
                 for P in parameters:
-                    assert isinstance(P, QgsExpressionFunction.Parameter)
+                    if not (isinstance(P, QgsExpressionFunction.Parameter)):
+                        raise AssertionError
                     syntaxParameters.add(P.name())
                     optional: bool = P.optional()
                     if optional:
@@ -135,7 +138,7 @@ class HelpStringMaker(object):
                     defaultValue = P.defaultValue()
                     if isinstance(defaultValue, str):
                         defaultValue = f"'{defaultValue}'"
-                    if defaultValue not in [None, QVariant()]:
+                    if defaultValue not in [None, NULL]:
                         syntax += f'={defaultValue}'
 
                     syntax += '</span>'
@@ -159,7 +162,8 @@ class HelpStringMaker(object):
                 html.append('<div class="arguments"><table>')
 
                 for P in parameters:
-                    assert isinstance(P, QgsExpressionFunction.Parameter)
+                    if not (isinstance(P, QgsExpressionFunction.Parameter)):
+                        raise AssertionError
 
                     description = ARGUMENT_DESCRIPTIONS.get(P.name(), '')
                     html.append(f'<tr><td class="argument">{P.name()}</td><td>{description}</td></tr>')
@@ -214,7 +218,8 @@ class Format_Py(QgsExpressionFunction):
     def func(self, values, context: QgsExpressionContext, parent: QgsExpression, node):
         if len(values) == 0 or values[0] in (None, NULL):
             return None
-        assert isinstance(values[0], str)
+        if not (isinstance(values[0], str)):
+            raise AssertionError
         fmt: str = values[0]
         fmtArgs = values[1:]
         try:
@@ -322,7 +327,8 @@ class ReadSpectralProfile(QgsExpressionFunction):
         try:
             path = values[0]
             filetype = values[1]
-            assert os.path.isfile(path), f'File does not exists: {path}'
+            if not (os.path.isfile(path)):
+                raise AssertionError(f'File does not exists: {path}')
 
             if not filetype:
                 filetype = self.findFileType(path)
@@ -346,8 +352,6 @@ class ReadSpectralProfile(QgsExpressionFunction):
         except Exception as ex:
             parent.setEvalErrorString(str(ex))
             return None
-
-        s = ""
 
 
 class StaticExpressionFunction(QgsExpressionFunction):
@@ -450,7 +454,7 @@ class StaticExpressionFunction(QgsExpressionFunction):
             # print(f'#R: {type(r)} :{r}')
             return r
         else:
-            return QVariant()
+            return NULL
 
 
 class ExpressionFunctionUtils(object):
@@ -475,7 +479,7 @@ class ExpressionFunctionUtils(object):
         dump = context.cachedValue(k)
         if dump is None:
             NODATA: Dict = noDataValues(rasterLayer)
-            dump = json.dumps(NODATA)
+            dump = json.dumps(NODATA, ensure_ascii=False)
             context.setCachedValue(k, dump)
             return NODATA
         else:
@@ -494,7 +498,7 @@ class ExpressionFunctionUtils(object):
             dp: QgsRasterDataProvider = rasterLayer.dataProvider()
             for b in range(1, rasterLayer.bandCount() + 1):
                 SCALEVALUES[b] = (dp.bandOffset(b), dp.bandScale(b))
-            dump = json.dumps(SCALEVALUES)
+            dump = json.dumps(SCALEVALUES, ensure_ascii=False)
             context.setCachedValue(k, dump)
             return SCALEVALUES
         else:
@@ -524,7 +528,7 @@ class ExpressionFunctionUtils(object):
             if wlu.count(None) == len(wlu):
                 wlu = None
 
-            dump = json.dumps(dict(bbl=bbl, wl=wl, wlu=wlu))
+            dump = json.dumps(dict(bbl=bbl, wl=wl, wlu=wlu), ensure_ascii=False)
             context.setCachedValue(k, dump)
 
         spectral_properties = json.loads(dump)
@@ -536,8 +540,10 @@ class ExpressionFunctionUtils(object):
         return k
 
     @staticmethod
-    def cachedCrsTransformation(context: QgsExpressionContext, layer: QgsMapLayer) \
-            -> QgsCoordinateTransform:
+    def cachedCrsTransformation(
+            context: QgsExpressionContext,
+            layer: QgsMapLayer
+    ) -> QgsCoordinateTransform:
         """
         Returns a CRS Transformation from the context to the layer CRS
         """
@@ -749,8 +755,8 @@ class RasterArray(QgsExpressionFunction):
             MG2P = MapGeometryToPixel.fromExtent(bbox, ns, nl,
                                                  mapUnitsPerPixel=mapUnitsPerPixel,
                                                  crs=dp.crs())
-            if geom.wkbType() == QGIS_WKBTYPE.PolygonZ:
-                geom = geom.coerceToType(QGIS_WKBTYPE.Polygon)[0]
+            if geom.wkbType() == Qgis.WkbType.PolygonZ:
+                geom = geom.coerceToType(Qgis.WkbType.Polygon)[0]
             i_y, i_x = MG2P.geometryPixelPositions(geom, all_touched=all_touched)
             # print(array.shape)
             if not isinstance(i_x, np.ndarray):
@@ -879,7 +885,7 @@ class RasterProfile(QgsExpressionFunction):
         if results is None or len(results) == 0:
             return None
 
-        aggr = str(values[2]).lower()
+        _ = str(values[2]).lower()
         has_multiple_profiles = isinstance(results[0], list)
 
         lyrR: QgsRasterLayer = ExpressionFunctionUtils.extractRasterLayer(self.parameters()[0], values[0], context)
@@ -956,7 +962,7 @@ class SpectralData(QgsExpressionFunction):
                         feat = context.feature()
                         value = feat.attribute(field.name())
                         break
-                s = ""
+
             else:
                 value = values[0]
             if value is not None:
@@ -1003,10 +1009,10 @@ class SpectralMath(QgsExpressionFunction):
 
         if len(values) < 1:
             parent.setEvalErrorString(f'{self.name()}: requires at least 1 argument')
-            return QVariant()
+            return NULL
         if not isinstance(values[-1], str):
             parent.setEvalErrorString(f'{self.name()}: last argument needs to be a string')
-            return QVariant()
+            return NULL
 
         encoding = None
 
@@ -1020,12 +1026,12 @@ class SpectralMath(QgsExpressionFunction):
         if not isinstance(pyExpression, str):
             parent.setEvalErrorString(
                 f'{self.name()}: Argument {iPy + 1} needs to be a string with python code')
-            return QVariant()
+            return NULL
 
         try:
             profilesData = values[0:-1]
             DATA = dict()
-            fieldType: QgsField = None
+            _ = None
             for i, dump in enumerate(profilesData):
                 d = decodeProfileValueDict(dump, numpy_arrays=True)
                 if len(d) == 0:
@@ -1049,8 +1055,9 @@ class SpectralMath(QgsExpressionFunction):
                         k2 = f'{k}{n}'
                         DATA[k2] = v
 
-            assert context.fields()
-            exec(pyExpression, DATA)
+            if not (context.fields()):
+                raise AssertionError
+            exec(pyExpression, DATA)  # nosec: B102
 
             # collect output profile values
             d = prepareProfileValueDict(x=DATA.get('x', None),
@@ -1062,7 +1069,7 @@ class SpectralMath(QgsExpressionFunction):
             return encodeProfileValueDict(d, encoding)
         except Exception as ex:
             parent.setEvalErrorString(f'{ex}')
-            return QVariant()
+            return NULL
 
     def usesGeometry(self, node) -> bool:
         return True
@@ -1104,7 +1111,8 @@ def registerQgsExpressionFunctions():
 
 def unregisterQgsExpressionFunctions():
     for name, func in QGIS_FUNCTION_INSTANCES.items():
-        assert name == func.name()
+        if not (name == func.name()):
+            raise AssertionError
         if QgsExpression.isFunctionName(name):
             if QgsExpression.unregisterFunction(name):
                 QgsMessageLog.logMessage(f'Unregistered {name}', level=Qgis.Info)

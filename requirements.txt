@@ -4,11 +4,15 @@
 ###### Requirements ######
 
 scipy
-colorama # required by recent pyqtgraph
+pyqtgraph
+matplotlib
+defusedxml
+colorama
 
 # clean code
 flake8
 flake8-qgis
+bandit
 
 # for unit testing only
 pytest

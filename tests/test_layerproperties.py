@@ -72,7 +72,7 @@ class LayerPropertyTests(TestCase):
 
     def test_enmapboxbug_452(self):
         lyr = TestObjects.createVectorLayer()
-        rlr = TestObjects.createRasterLayer()
+        # rlr = TestObjects.createRasterLayer()
         style = QgsStyle()
         d = QgsRendererPropertiesDialog(lyr, style, embedded=True)
         self.showGui(d)
@@ -137,8 +137,6 @@ class LayerPropertyTests(TestCase):
 
     @unittest.skip
     def test_LayerPropertiesDialog_Raster(self):
-
-        s = ""
 
         lyr = TestObjects.createRasterLayer(nb=255, eType=gdal.GDT_UInt16)
         QgsProject.instance().addMapLayer(lyr)
@@ -244,7 +242,7 @@ class LayerPropertyTests(TestCase):
         lyr.commitChanges()
         d = CopyAttributesDialog(sl, lyr.fields())
 
-        if d.exec_() == QDialog.Accepted:
+        if d.exec() == QDialog.Accepted:
             sl.startEditing()
             for f in d.selectedFields():
                 sl.addAttribute(f)
@@ -252,12 +250,12 @@ class LayerPropertyTests(TestCase):
 
     def test_AttributeTableWidget(self):
         vl = TestObjects.createVectorLayer()
-        assert vl.isSpatial()
+        self.assertTrue(vl.isSpatial())
         w = AttributeTableWidget(vl)
         vl.startEditing()
 
         def onAction(*args):
-            s = ""
+            pass
 
         w.mActionZoomMapToSelectedRows.triggered.connect(onAction)
         w.mUpdateExpressionText.setField("'dummy'")

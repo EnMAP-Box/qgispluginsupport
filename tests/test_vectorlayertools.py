@@ -12,7 +12,7 @@ class TestCasesVectorLayerTools(TestCase):
         lyr0 = TestObjects.createVectorLayer()
         lyr = TestObjects.createVectorLayer()
 
-        f0 = lyr0.getFeature(0)
+        _ = lyr0.getFeature(0)
         tools = VectorLayerTools()
 
         self.cntEdits = 0
@@ -26,14 +26,13 @@ class TestCasesVectorLayerTools(TestCase):
 
         tools.sigEditingStarted.connect(onEditingStarted)
         tools.sigMessage.connect(onMessage)
-        tools.startEditing(lyr)
+        self.assertTrue(tools.startEditing(lyr))
 
         self.assertTrue(self.cntEdits == 1)
         # tools.addFeature(lyr, None, f0.geometry(), f0)
-        tools.stopEditing(lyr, True)
-        tools.stopEditing(lyr, False)
-        tools.commitError(lyr)
-        tools.saveEdits(lyr)
+        self.assertTrue(tools.stopEditing(lyr, True))
+        self.assertTrue(tools.stopEditing(lyr, False))
+        self.assertTrue(tools.saveEdits(lyr))
         tools.commitError(lyr)
 
 

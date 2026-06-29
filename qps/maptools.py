@@ -76,7 +76,8 @@ def createQgsMapCanvasUserInputWidget(canvas: QgsMapCanvas) -> QgsUserInputWidge
     :param canvas: QgsMapCanvas
     :return: QgsUserInputWidget
     """
-    assert isinstance(canvas, QgsMapCanvas)
+    if not (isinstance(canvas, QgsMapCanvas)):
+        raise AssertionError
     mUserInputWidget = canvas.findChild(QgsUserInputWidget)
     if not isinstance(mUserInputWidget, QgsUserInputWidget):
         mUserInputWidget = QgsUserInputWidget(canvas)
@@ -117,7 +118,8 @@ class MapTools(enum.Enum):
                 arg = MapTools.__members__.get(arg)
             elif arg in values:
                 arg = MapTools.__members__.get(names[values.index(arg)])
-        assert isinstance(arg, MapTools)
+        if not (isinstance(arg, MapTools)):
+            raise AssertionError
         return arg
 
     @staticmethod
@@ -134,8 +136,10 @@ class MapTools(enum.Enum):
 
         mapToolEnum = MapTools.toMapToolEnum(mapToolEnum)
 
-        assert isinstance(mapToolEnum, MapTools)
-        assert isinstance(canvas, QgsMapCanvas)
+        if not (isinstance(mapToolEnum, MapTools)):
+            raise AssertionError
+        if not (isinstance(canvas, QgsMapCanvas)):
+            raise AssertionError
 
         mapTool = None
         if mapToolEnum == MapTools.ZoomIn:
@@ -234,11 +238,13 @@ class CursorLocationMapTool(QgsMapToolEmitPoint):
         return QgsMapTool.ShowContextMenu
 
     def setMouseButtons(self, listOfButtons):
-        assert isinstance(listOfButtons)
+        if not (isinstance(listOfButtons)):
+            raise AssertionError
         self.mButtons = listOfButtons
 
     def canvasPressEvent(self, e):
-        assert isinstance(e, QgsMapMouseEvent)
+        if not (isinstance(e, QgsMapMouseEvent)):
+            raise AssertionError
         if e.button() in self.mButtons:
             geoPoint = self.toMapCoordinates(e.pos())
             self.marker.setCenter(geoPoint)
@@ -323,7 +329,8 @@ class MapToolCenter(CursorLocationMapTool):
         Call to center the linked QgsMapCanvas to a point
         :param point: SpatialPoint to center the map canvas to.
         """
-        assert isinstance(point, SpatialPoint)
+        if not (isinstance(point, SpatialPoint)):
+            raise AssertionError
         point = point.toCrs(self.canvas().mapSettings().destinationCrs())
         if isinstance(point, SpatialPoint):
             self.canvas().setCenter(point)
@@ -596,7 +603,8 @@ class QgsFeatureAction(QAction):
 
         super(QgsFeatureAction, self).__init__(name, parent)
 
-        assert isinstance(layer, QgsVectorLayer)
+        if not (isinstance(layer, QgsVectorLayer)):
+            raise AssertionError
         self.mLayer = layer
         self.mFeature = f
         self.mActionId = actionID
@@ -607,11 +615,13 @@ class QgsFeatureAction(QAction):
         self.mVectorLayerTools = VectorLayerTools()
 
     def setVectorLayerTools(self, tools: QgsVectorLayerTools):
-        assert isinstance(VectorLayerTools, QgsVectorLayerTools)
+        if not (isinstance(VectorLayerTools, QgsVectorLayerTools)):
+            raise AssertionError
         self.mVectorLayerTools = tools
 
     def setAttributeEditorContext(self, context: QgsAttributeEditorContext):
-        assert isinstance(context, QgsAttributeEditorContext)
+        if not (isinstance(context, QgsAttributeEditorContext)):
+            raise AssertionError
         self.mAttributeEditorContext = context
 
     def execute(self):
@@ -647,7 +657,8 @@ class QgsFeatureAction(QAction):
         dialog.addAction(a)
 
         for action in actions:
-            assert isinstance(action, QgsAction)
+            if not (isinstance(action, QgsAction)):
+                raise AssertionError
             if not action.runable():
                 continue
 
@@ -670,7 +681,7 @@ class QgsFeatureAction(QAction):
         if not self.mLayer or not self.mFeature:
             return False
 
-        name = "featureactiondlg:{}:{}".format(self.mLayer.id(), self.mFeature.id())
+        _ = "featureactiondlg:{}:{}".format(self.mLayer.id(), self.mFeature.id())
 
         dialog = self.newDialog(True)
         dialog.setHighlight(h)
@@ -698,7 +709,7 @@ class QgsFeatureAction(QAction):
 
         else:
 
-            name = "featureactiondlg:{}:{}".format(self.mLayer.id(), self.mFeatureid())
+            _ = "featureactiondlg:{}:{}".format(self.mLayer.id(), self.mFeatureid())
 
             # QgsAttributeDialog *dialog = QgisApp::instance() -> findChild<QgsAttributeDialog *>( name );
             # if ( dialog )
@@ -738,9 +749,11 @@ class QgsFeatureAction(QAction):
 
             if idx in defaultAttributeValues.keys():
                 initialAttributeValues[idx] = defaultAttributeValues[idx]
-            elif (reuseLastValues or lyr.editFormConfig().reuseLastValue(idx)) and \
-                    self.mLayer.id() in self.sLastUsedValues.keys() and \
-                    idx in self.sLastUsedValues[lyr.id()].keys():
+            elif (
+                    (reuseLastValues or lyr.editFormConfig().reuseLastValue(idx))
+                    and self.mLayer.id() in self.sLastUsedValues.keys()
+                    and idx in self.sLastUsedValues[lyr.id()].keys()
+            ):
 
                 lastUsed = self.sLastUsedValues[lyr.id()][idx]
                 """
@@ -806,7 +819,7 @@ class QgsFeatureAction(QAction):
                 self.mFeature = None
                 return True
 
-            dialog.exec_()
+            dialog.exec()
 
         return self.mFeatureSaved
 
@@ -959,7 +972,7 @@ class QgsMapToolDigitizeFeature(QgsMapToolCapture):
                         savePoint = QgsPoint(QgsWkbTypes.PointZ, layerPoint.x(), layerPoint.y(), fetchPoint.z())
                     else:
                         savePoint = QgsPoint(layerPoint.x(), layerPoint.y())
-            except QgsCsException as cse:
+            except QgsCsException:
                 self.messageEmitted.emit("Cannot transform the point to the layers coordinate system", Qgis.Warning)
                 return
 
@@ -1012,15 +1025,21 @@ class QgsMapToolDigitizeFeature(QgsMapToolCapture):
         elif self.mode() == self.CaptureLine or self.mode() == self.CapturePolygon:
 
             # //check we only use the line tool for line/multiline layers
-            if self.mode() == self.CaptureLine \
-                    and vlayer.geometryType() != QgsWkbTypes.LineGeometry and self.mCheckGeometryType:
+            if (
+                    self.mode() == self.CaptureLine
+                    and vlayer.geometryType() != QgsWkbTypes.LineGeometry
+                    and self.mCheckGeometryType
+            ):
                 self.messageEmitted.emit(
                     tr("Wrong editing tool, cannot apply the 'capture line' tool on this vector layer"), Qgis.Warning)
                 return
 
             # //check we only use the polygon tool for polygon/multipolygon layers
-            if self.mode() == self.CapturePolygon \
-                    and vlayer.geometryType() != QgsWkbTypes.PolygonGeometry and self.mCheckGeometryType:
+            if (
+                    self.mode() == self.CapturePolygon
+                    and vlayer.geometryType() != QgsWkbTypes.PolygonGeometry
+                    and self.mCheckGeometryType
+            ):
                 self.messageEmitted.emit(
                     tr("Wrong editing tool, cannot apply the 'capture polygon' tool on this vector layer"),
                     Qgis.Warning)
@@ -1070,7 +1089,7 @@ class QgsMapToolDigitizeFeature(QgsMapToolCapture):
                 providerSupportsCurvedSegments = \
                     vlayer.dataProvider().capabilities() & QgsVectorDataProvider.CircularGeometries
 
-                snappingMatchesList = []
+                _ = []
                 curveToAdd = None
                 if hasCurvedSegments and providerSupportsCurvedSegments:
 
@@ -1386,7 +1405,7 @@ class QgsMapToolSelectUtils(object):
 
             selectGeomTrans.transform(ct)
 
-        except QgsCsException as cse:
+        except QgsCsException:
             # catch exception for 'invalid' point and leave existing selection unchanged
             return newSelectedFeatures
 
@@ -1406,7 +1425,8 @@ class QgsMapToolSelectUtils(object):
             request.setNoAttributes()
 
         fit = vlayer.getFeatures(request)
-        assert isinstance(fit, QgsFeatureIterator)
+        if not (isinstance(fit, QgsFeatureIterator)):
+            raise AssertionError
 
         f = QgsFeature()
         closestFeatureId = 0
@@ -1464,9 +1484,11 @@ class QgsMapToolSelectionHandler(QObject):
     def __init__(self, canvas: QgsMapCanvas, selectionMode, parent: QObject = None):
         super(QgsMapToolSelectionHandler, self).__init__(parent=parent)
         self.mSelectionGeometry = None
-        assert isinstance(selectionMode, QgsMapToolSelectionHandler.SelectionMode)
+        if not (isinstance(selectionMode, QgsMapToolSelectionHandler.SelectionMode)):
+            raise AssertionError
         self.mCanvas = canvas
-        assert isinstance(canvas, QgsMapCanvas)
+        if not (isinstance(canvas, QgsMapCanvas)):
+            raise AssertionError
 
         self.mSelectionMode = selectionMode
         self.mSnapIndicator = QgsSnapIndicator(canvas)
@@ -1494,7 +1516,6 @@ class QgsMapToolSelectionHandler(QObject):
             self.selectFreehandReleaseEvent(e)
         elif self.mSelectionMode == QgsMapToolSelectionHandler.SelectionMode.SelectRadius:
             self.selectRadiusReleaseEvent(e)
-        s = ""
 
     def canvasMoveEvent(self, e: QgsMapMouseEvent):
         if self.mSelectionMode == QgsMapToolSelectionHandler.SelectionMode.SelectSimple:
@@ -1763,7 +1784,8 @@ class QgsMapToolSelectionHandler(QObject):
         self.geometryChanged.emit(modifiers)
 
     def setSelectionMode(self, mode):
-        assert isinstance(mode, QgsMapToolSelectionHandler.SelectionMode)
+        if not (isinstance(mode, QgsMapToolSelectionHandler.SelectionMode)):
+            raise AssertionError
         self.mSelectionMode = mode
 
     def selectionMode(self):
@@ -1813,8 +1835,10 @@ class QgsMapToolSelect(QgsMapTool):
 
     def selectFeatures(self, modifiers: Qt.KeyboardModifiers):
 
-        if self.mSelectionHandler.selectionMode() == QgsMapToolSelectionHandler.SelectionMode.SelectSimple \
-                and self.mSelectionHandler.selectedGeometry().type() == QgsWkbTypes.PointGeometry:
+        if (
+                self.mSelectionHandler.selectionMode() == QgsMapToolSelectionHandler.SelectionMode.SelectSimple
+                and self.mSelectionHandler.selectedGeometry().type() == QgsWkbTypes.PointGeometry
+        ):
 
             vlayer = QgsMapToolSelectUtils.getCurrentVectorLayer(self.canvas())
             if isinstance(vlayer, QgsVectorLayer):

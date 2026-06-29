@@ -57,6 +57,4 @@ class ECOSTRESSSpectralProfileReaderTests(TestCase):
         self.assertTrue(layer.featureCount() > 0)
 
         for f in layer.getFeatures():
-            s = ""
             break
-        s = ""

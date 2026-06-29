@@ -36,13 +36,13 @@ class SimpleWidgetTests(TestCase):
             flowLayout.addWidget(btn)
         w.setLayout(flowLayout)
         self.assertIsInstance(w.layout(), FlowLayout)
-        s = ""
+
         self.showGui(w)
 
     def test_SliderSpinBox(self):
 
-        sb = SliderSpinBox()
-        sbl = DoubleSliderSpinBox()
+        # sb = SliderSpinBox()
+        # sbl = DoubleSliderSpinBox()
 
         gridLayout = QGridLayout()
         for row, a in enumerate([Qt.AlignLeft, Qt.AlignRight, Qt.AlignTop, Qt.AlignBottom]):

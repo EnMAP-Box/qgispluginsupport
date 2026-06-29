@@ -23,13 +23,13 @@
 ***************************************************************************
 """
 import pathlib
-from typing import List, Union
+from typing import List, Union, Optional
 
 import numpy as np
 
 from qgis.PyQt.QtCore import Qt, QTimer
 from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.QtWidgets import QLabel, QPushButton, QSlider, QStackedWidget, QWidget
+from qgis.PyQt.QtWidgets import QPushButton, QSlider, QStackedWidget, QWidget
 from qgis.core import Qgis, QgsMapLayer, QgsMultiBandColorRenderer, QgsPalettedRasterRenderer, QgsRasterLayer, \
     QgsRasterRenderer, QgsSingleBandColorDataRenderer, QgsSingleBandGrayRenderer, QgsSingleBandPseudoColorRenderer
 from qgis.gui import QgsMapCanvas, QgsMapLayerConfigWidget, QgsMapLayerConfigWidgetFactory, QgsRasterBandComboBox
@@ -94,10 +94,12 @@ class BandCombination(object):
 
         if isinstance(band_keys, str):
             band_keys = (band_keys,)
-        assert isinstance(band_keys, tuple)
-        assert len(band_keys) > 0
+        if not (isinstance(band_keys, tuple) and len(band_keys) > 0):
+            raise AssertionError('band_keys must be a tuple')
+
         for b in band_keys:
-            assert b in LUT_WAVELENGTH.keys(), f'Unknown wavelength key: {b}'
+            if not (b in LUT_WAVELENGTH.keys()):
+                raise AssertionError(f'Unknown wavelength key: {b}')
 
         self.mBand_keys = band_keys
         self.mName = name
@@ -159,12 +161,12 @@ class RasterBandConfigWidget(QpsMapLayerConfigWidget):
         pathUi = pathlib.Path(__file__).parents[1] / 'ui' / 'rasterbandconfigwidget.ui'
         loadUi(pathUi, self)
 
-        assert isinstance(layer, QgsRasterLayer)
         self.mCanvas = canvas
         self.mLayer = layer
-        self.mRendererXMLString: str = None
+        self.mRendererXMLString: Optional[str] = None
         self.mLayer.rendererChanged.connect(self.syncToLayer)
-        assert isinstance(self.cbSingleBand, QgsRasterBandComboBox)
+        if not isinstance(self.cbSingleBand, QgsRasterBandComboBox):
+            raise AssertionError('self.cbSingleBand is not a QgsRasterBandComboBox')
 
         self.cbSingleBand.setLayer(self.mLayer)
         self.cbMultiBandRed.setLayer(self.mLayer)
@@ -180,7 +182,7 @@ class RasterBandConfigWidget(QpsMapLayerConfigWidget):
         self.mChangedTimer = QTimer()
         self.mChangedTimer.timeout.connect(self.onWidgetChanged)
 
-        assert isinstance(self.sliderSingleBand, QSlider)
+        self.sliderSingleBand: QSlider
         self.sliderSingleBand.setRange(1, self.mLayer.bandCount())
         self.sliderMultiBandRed.setRange(1, self.mLayer.bandCount())
         self.sliderMultiBandGreen.setRange(1, self.mLayer.bandCount())
@@ -228,7 +230,8 @@ class RasterBandConfigWidget(QpsMapLayerConfigWidget):
                 lMulti.addWidget(createButton(bc))
 
         self.gbSingleBandWavelength.setLayout(lSingle)
-        assert self.gbSingleBandWavelength.layout() == lSingle
+        if not self.gbSingleBandWavelength.layout() == lSingle:
+            raise AssertionError('requires FlowLayout')
         self.gbMultiBandWavelength.setLayout(lMulti)
         lSingle.setContentsMargins(0, 0, 0, 0)
         lSingle.setSpacing(0)
@@ -280,7 +283,7 @@ class RasterBandConfigWidget(QpsMapLayerConfigWidget):
         elif isinstance(newRenderer, QgsPalettedRasterRenderer):
             newRenderer = QgsPalettedRasterRenderer(oldRenderer.input(), self.cbSingleBand.currentBand(),
                                                     oldRenderer.classes())
-            s = ""  # setBand ?
+            # setBand ?
         elif isinstance(oldRenderer, QgsSingleBandColorDataRenderer):
             newRenderer = QgsSingleBandColorDataRenderer(oldRenderer.input(), self.cbSingleBand.currentBand())
 
@@ -300,7 +303,8 @@ class RasterBandConfigWidget(QpsMapLayerConfigWidget):
     def rendererName(self, renderer: Union[str, QgsRasterRenderer]) -> str:
         if isinstance(renderer, QgsRasterRenderer):
             renderer = renderer.type()
-        assert isinstance(renderer, str)
+        else:
+            renderer = str(renderer)
         return RENDER_TYPE2NAME.get(renderer, renderer)
 
     def blockableWidgets(self) -> List[QWidget]:
@@ -323,8 +327,6 @@ class RasterBandConfigWidget(QpsMapLayerConfigWidget):
             printCaller(prefix=id(self))
 
             w: QStackedWidget = self.renderBandWidget
-            assert isinstance(self.labelRenderType, QLabel)
-            assert isinstance(w, QStackedWidget)
 
             self.labelRenderType.setText(self.rendererName(renderer))
             bands = renderer.usesBands()
@@ -359,7 +361,7 @@ class RasterBandConfigWidget(QpsMapLayerConfigWidget):
         if isinstance(newRenderer, QgsRasterRenderer) and isinstance(self.mLayer, QgsRasterLayer):
             newRenderer.setInput(self.mLayer.dataProvider())
             printCaller(prefix=id(self))
-            with SignalBlocker(self.mLayer) as blocker:
+            with SignalBlocker(self.mLayer) as _:
                 # update on renderer will be triggered by other widgets that react on styleChanged signal
                 self.mLayer.setRenderer(newRenderer)
             self.mLayer.styleManager().currentStyleChanged.emit('')
@@ -383,7 +385,7 @@ class RasterBandConfigWidget(QpsMapLayerConfigWidget):
 
     def setWL(self, wlRegions: tuple):
         renderer = self.renderer().clone()
-        with SignalBlocker(*self.blockableWidgets()) as blocker:
+        with SignalBlocker(*self.blockableWidgets()) as _:
             if isinstance(renderer, (QgsSingleBandGrayRenderer, QgsSingleBandPseudoColorRenderer,
                                      QgsSingleBandColorDataRenderer)):
                 band = self.wlBand(wlRegions[0])
@@ -409,8 +411,7 @@ class RasterBandConfigWidget(QpsMapLayerConfigWidget):
 class RasterBandConfigWidgetBlocker(object):
 
     def __init__(self, w: RasterBandConfigWidget):
-        assert isinstance(w, RasterBandConfigWidget)
-        self.w = w
+        self.w: RasterBandConfigWidget = w
 
 
 class RasterBandConfigWidgetFactory(QgsMapLayerConfigWidgetFactory):

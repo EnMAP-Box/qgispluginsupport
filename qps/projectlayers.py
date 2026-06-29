@@ -16,7 +16,8 @@ class SelectProjectLayersDialog(QDialog):
         if project is None:
             project = QgsProject.instance()
         else:
-            assert isinstance(project, QgsProject)
+            if not (isinstance(project, QgsProject)):
+                raise AssertionError
         self.mModel = ProjectLayerTableModel()
         self.mProxyModel = QSortFilterProxyModel()
         self.mProxyModel.setSourceModel(self.mModel)
@@ -78,7 +79,6 @@ class SelectProjectLayersDialog(QDialog):
             if isinstance(lyr, QgsMapLayer) and lyr in layers:
                 to_select.select(idx0, m.index(r, m.columnCount() - 1))
         self.tableView.selectionModel().select(to_select, QItemSelectionModel.SelectionFlag.ClearAndSelect)
-        s = ""
 
     def selectedLayers(self) -> List[QgsMapLayer]:
         """
@@ -122,7 +122,8 @@ class ProjectLayerTableModel(QAbstractTableModel):
         if project is None:
             project = QgsProject.instance()
         else:
-            assert isinstance(project, QgsProject)
+            if not (isinstance(project, QgsProject)):
+                raise AssertionError
 
         if self.mProject == project:
             return

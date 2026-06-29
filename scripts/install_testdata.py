@@ -1,37 +1,42 @@
 import argparse
 import io
 import os
-import pathlib
 import shutil
 import zipfile
+from pathlib import Path
+from typing import Optional
 
 import requests
 
 # URL_QGIS_RESOURCES = r'https://box.hu-berlin.de/f/6949ab1099044018a5e4/?dl=1'
-URL_QGIS_RESOURCES = r'https://github.com/EnMAP-Box/qgispluginsupport/releases/download/qgisresources.zip_2025-11-07/qgisresources.zip'
+URL_QGIS_RESOURCES = (r'https://github.com/EnMAP-Box/qgispluginsupport/'
+                      r'releases/download/qgisresources.zip_2025-11-07/qgisresources.zip')
 
-DIR_REPO = pathlib.Path(__file__).parents[1]
+DIR_REPO = Path(__file__).parents[1]
 
 
-def install_zipfile(url: str, localPath: pathlib.Path, zip_root: str = None):
-    assert isinstance(localPath, pathlib.Path)
+def install_zipfile(url: str,
+                    localPath: Path,
+                    zip_root: Optional[str] = None):
+    if not (isinstance(localPath, Path)):
+        raise AssertionError
     localPath = localPath.resolve()
 
     print('Download {} \nto {}'.format(url, localPath))
 
-    response = requests.get(url, stream=True)
+    response = requests.get(url, stream=True, timeout=30)
 
     z = zipfile.ZipFile(io.BytesIO(response.content))
     os.makedirs(localPath, exist_ok=True)
     for src in z.namelist():
-        srcPath = pathlib.Path(src)
+        srcPath = Path(src)
         if isinstance(zip_root, str):
             if zip_root not in srcPath.parts:
                 continue
             i = srcPath.parts.index(zip_root)
-            dst = localPath / pathlib.Path(*srcPath.parts[i + 1:])
+            dst = localPath / Path(*srcPath.parts[i + 1:])
         else:
-            dst = localPath / pathlib.Path(*srcPath.parts)
+            dst = localPath / Path(*srcPath.parts)
         info = z.getinfo(src)
         if info.is_dir():
             if dst.exists():

@@ -5,27 +5,29 @@ import unittest
 
 import numpy as np
 from osgeo import gdal
+from pyqtgraph import InfiniteLine
 
-from qgis.PyQt.QtCore import QEvent, QMetaType, QPointF, Qt
+from qgis.PyQt.QtCore import QEvent, QPointF, Qt, QMetaType
 from qgis.PyQt.QtGui import QColor, QMouseEvent, QPen
 from qgis.PyQt.QtWidgets import QHBoxLayout, QVBoxLayout, QWidget
 from qgis.PyQt.QtXml import QDomDocument, QDomElement
-from qgis.core import edit, QgsApplication, QgsCategorizedSymbolRenderer, QgsClassificationRange, QgsEditorWidgetSetup, \
-    QgsExpressionContextScope, QgsFeature, QgsField, QgsGraduatedSymbolRenderer, QgsMarkerSymbol, \
-    QgsMultiBandColorRenderer, QgsNullSymbolRenderer, QgsProject, QgsProperty, QgsReadWriteContext, QgsRenderContext, \
-    QgsRendererCategory, QgsRendererRange, QgsSingleBandGrayRenderer, QgsSingleSymbolRenderer, QgsVectorLayer
+from qgis.core import (
+    edit, QgsApplication, QgsCategorizedSymbolRenderer, QgsClassificationRange, QgsEditorWidgetSetup,
+    QgsExpressionContextScope, QgsFeature, QgsField, QgsGraduatedSymbolRenderer, QgsMarkerSymbol,
+    QgsMultiBandColorRenderer, QgsNullSymbolRenderer, QgsProject, QgsProperty, QgsReadWriteContext, QgsRenderContext,
+    QgsRendererCategory, QgsRendererRange, QgsSingleBandGrayRenderer, QgsSingleSymbolRenderer, QgsVectorLayer)
 from qgis.gui import QgsMapCanvas
 from qps import DIR_REPO, initAll
 from qps.plotstyling.plotstyling import MarkerSymbol, PlotStyle
-from qps.pyqtgraph.pyqtgraph import InfiniteLine
-from qps.qgisenums import QMETATYPE_DOUBLE, QMETATYPE_INT, QMETATYPE_QSTRING
 from qps.speclib.core import create_profile_field, profile_field_list, profile_field_names, profile_fields
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
 from qps.speclib.core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict, prepareProfileValueDict
-from qps.speclib.gui.spectrallibraryplotitems import SpectralProfilePlotDataItem, SpectralProfilePlotWidget, \
-    SpectralXAxis
-from qps.speclib.gui.spectrallibraryplotmodelitems import PlotStyleItem, ProfileVisualizationGroup, RasterRendererGroup, \
-    SpectralProfileColorPropertyWidget
+from qps.speclib.gui.spectrallibraryplotitems import (
+    SpectralProfilePlotDataItem, SpectralProfilePlotWidget,
+    SpectralXAxis)
+from qps.speclib.gui.spectrallibraryplotmodelitems import (
+    PlotStyleItem, ProfileVisualizationGroup, RasterRendererGroup,
+    SpectralProfileColorPropertyWidget)
 from qps.speclib.gui.spectrallibraryplotwidget import SpectralLibraryPlotWidget
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
 from qps.speclib.gui.spectralprofilecandidates import SpectralProfileCandidates
@@ -144,7 +146,7 @@ class TestSpeclibPlotting(TestCase):
             s.setMarkerSymbol('o')
             vis.setPlotStyle(s)
 
-        pw = slw.profilePlotWidget()
+        _ = slw.profilePlotWidget()
 
         self.showGui(slw)
 
@@ -229,9 +231,9 @@ class TestSpeclibPlotting(TestCase):
         speclib = TestObjects.createSpectralLibrary()
         with edit(speclib):
             n = speclib.featureCount()
-            speclib.addAttribute(QgsField('class', QMETATYPE_QSTRING))
-            speclib.addAttribute(QgsField('float', QMETATYPE_DOUBLE))
-            speclib.addAttribute(QgsField('int', QMETATYPE_INT))
+            speclib.addAttribute(QgsField('class', QMetaType.QString))
+            speclib.addAttribute(QgsField('float', QMetaType.Double))
+            speclib.addAttribute(QgsField('int', QMetaType.Int))
             for i, feature in enumerate(speclib.getFeatures()):
                 vclass = 'cat1' if i % 2 else 'cat2'
                 vfloat = (i + 1) / n
@@ -271,12 +273,11 @@ class TestSpeclibPlotting(TestCase):
         self.showGui(slw)
 
         QgsProject.instance().removeAllMapLayers()
-        s = ""
 
     def test_SpectralProfileColorProperty(self):
         speclib: QgsVectorLayer = TestObjects.createSpectralLibrary()
         speclib.startEditing()
-        colorField = QgsField('color', type=QMETATYPE_QSTRING)
+        colorField = QgsField('color', type=QMetaType.QString)
         colorField.setEditorWidgetSetup(QgsEditorWidgetSetup('color', {}))
         speclib.addAttribute(colorField)
         speclib.commitChanges(False)
@@ -470,12 +471,12 @@ class TestSpeclibPlotting(TestCase):
         with edit(sl):
             f = QgsFeature(sl.fields())
             dump = encodeProfileValueDict(d, encoding=pfield)
-            p2 = decodeProfileValueDict(dump)
+            _ = decodeProfileValueDict(dump)
             f.setAttribute(pfield.name(), dump)
-            p3 = decodeProfileValueDict(f.attribute(pfield.name()))
+            _ = decodeProfileValueDict(f.attribute(pfield.name()))
             sl.addFeature(f)
 
-        p4 = decodeProfileValueDict(list(sl.getFeatures())[0].attribute(pfield.name()))
+        _ = decodeProfileValueDict(list(sl.getFeatures())[0].attribute(pfield.name()))
 
         slw = SpectralLibraryWidget(speclib=sl)
         model = slw.plotModel()
@@ -521,7 +522,7 @@ class TestSpeclibPlotting(TestCase):
         n1_1 = sl1.featureCount()
         n1_2 = sl2.featureCount()
 
-        result1 = model.addProfileCandidates(current1)
+        _ = model.addProfileCandidates(current1)
 
         self.assertEqual(sl1.featureCount(), n1_1 + 1)
         self.assertEqual(sl2.featureCount(), n1_2 + 2)
@@ -532,7 +533,7 @@ class TestSpeclibPlotting(TestCase):
         self.assertEqual(sl1.featureCount(), n1_1)
         self.assertEqual(sl2.featureCount(), n1_2)
 
-        result1 = model.addProfileCandidates(current1)
+        _ = model.addProfileCandidates(current1)
         self.assertEqual(sl1.featureCount(), n1_1 + 1)
         self.assertEqual(sl2.featureCount(), n1_2 + 2)
 
@@ -662,7 +663,7 @@ class TestSpeclibPlotting(TestCase):
         w.actionShowProfileViewSettings.toggled.emit(True)
         w.createProfileVisualization(sl1)
         w.createProfileVisualization(sl2)
-        m: SpectralProfilePlotModel = w.plotModel()
+        _ = w.plotModel()
 
         self.showGui(w)
         w.close()

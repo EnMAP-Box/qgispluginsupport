@@ -118,7 +118,8 @@ class QGISMetadataFileWriter(object):
         return s
 
     def metadataString(self) -> str:
-        assert self.validate()
+        if not (self.validate()):
+            raise AssertionError()
 
         lines = ['[general]']
         lines.append(self.formatTag('name', self.mName))

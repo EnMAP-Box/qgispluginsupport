@@ -1,4 +1,4 @@
-from .pyqtgraph.pyqtgraph.SignalProxy import SignalProxy
+from pyqtgraph.SignalProxy import SignalProxy
 
 
 class SignalProxyUndecorated(SignalProxy):

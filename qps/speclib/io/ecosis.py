@@ -197,7 +197,6 @@ class EcoSISSpectralLibraryReader(SpectralProfileFileReader):
 
         del csvLyr
         return profiles
-        s = ""
 
     def loadCSVLayer(self, **kwargs) -> QgsVectorLayer:
         cLat = cLon = None
@@ -233,5 +232,6 @@ class EcoSISSpectralLibraryReader(SpectralProfileFileReader):
         uri = self.path().as_uri() + '?' + query.toString()
         # uri = path.as_posix()
         lyr = QgsVectorLayer(uri, self.path().name, 'delimitedtext')
-        assert lyr.isValid()
+        if not (lyr.isValid()):
+            raise AssertionError(f'Unable to open {uri}')
         return lyr

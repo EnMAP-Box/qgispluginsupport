@@ -26,8 +26,8 @@
 """
 
 import datetime
+import json
 import os
-import pickle
 import re
 import sys
 import warnings
@@ -37,7 +37,7 @@ from typing import Dict, List, Optional, Union
 
 from osgeo import gdal, ogr
 
-from qgis.PyQt.QtCore import QDateTime, QMimeData, Qt, QUrl, QVariant
+from qgis.PyQt.QtCore import QDateTime, QMimeData, Qt, QUrl, QMetaType
 from qgis.PyQt.QtWidgets import QWidget
 from qgis.core import QgsProcessingContext
 from qgis.core import edit, Qgis, QgsAction, QgsActionManager, QgsApplication, QgsAttributeTableConfig, \
@@ -52,9 +52,7 @@ from .spectralprofile import decodeProfileValueDict, encodeProfileValueDict, pre
     groupBySpectralProperties, SpectralProfileFileWriter, SpectralProfileFileReader
 from .. import EDITOR_WIDGET_REGISTRY_KEY, FIELD_NAME, FIELD_VALUES, SPECLIB_EPSG_CODE
 from ...plotstyling.plotstyling import PlotStyle
-from ...qgisenums import QGIS_WKBTYPE, QMETATYPE_QBYTEARRAY, QMETATYPE_QDATE, QMETATYPE_QDATETIME, QMETATYPE_QSTRING, \
-    QMETATYPE_QVARIANTMAP
-from ...utils import copyEditorWidgetSetup, findMapLayer, qgsField, SpatialPoint
+from ...utils import copyEditorWidgetSetup, findMapLayer, qgsField, SpatialPoint, stringToByteArray, stringFromByteArray
 
 # get to now how we can import this module
 MODULE_IMPORT_PATH = None
@@ -65,7 +63,6 @@ for name, module in sys.modules.items():
         MODULE_IMPORT_PATH = name
         break
 
-MIMEDATA_SPECLIB = 'application/hub-spectrallibrary'
 MIMEDATA_SPECLIB_LINK = 'application/hub-spectrallibrary-link'
 MIMEDATA_XQT_WINDOWS_CSV = 'application/x-qt-windows-mime;value="Csv"'
 
@@ -81,7 +78,6 @@ OGR_EXTENSION2DRIVER[''] = []  # list all drivers without specific extension
 
 FILTERS = 'Geopackage (*.gpkg);;ENVI Spectral Library (*.sli *.esl);;CSV Table (*.csv);;GeoJSON (*.geojson)'
 
-PICKLE_PROTOCOL = pickle.HIGHEST_PROTOCOL
 # CURRENT_SPECTRUM_STYLE = PlotStyle()
 # CURRENT_SPECTRUM_STYLE.markerSymbol = None
 # CURRENT_SPECTRUM_STYLE.linePen.setStyle(Qt.SolidLine)
@@ -127,7 +123,7 @@ def containsSpeclib(mimeData: QMimeData) -> bool:
     if mimeData.hasUrls():
         return True
 
-    for f in [MIMEDATA_SPECLIB, MIMEDATA_SPECLIB_LINK]:
+    for f in [MIMEDATA_SPECLIB_LINK]:
         if f in mimeData.formats():
             return True
 
@@ -242,8 +238,9 @@ class SpectralLibraryUtils:
     @staticmethod
     def createProfileField(
             name: str,
-            comment: str = None,
-            encoding: ProfileEncoding = ProfileEncoding.Text) -> QgsField:
+            comment: Optional[str] = None,
+            encoding: ProfileEncoding = ProfileEncoding.Text
+    ) -> QgsField:
         """
         Creates a QgsField that can store spectral profiles
         :param name: field name
@@ -253,11 +250,11 @@ class SpectralLibraryUtils:
         """
         encoding = ProfileEncoding.fromInput(encoding)
         if encoding == ProfileEncoding.Bytes:
-            field = QgsField(name=name, type=QMETATYPE_QBYTEARRAY, comment=comment)
+            field = QgsField(name=name, type=QMetaType.QByteArray, comment=comment)
         elif encoding == ProfileEncoding.Text:
-            field = QgsField(name=name, type=QMETATYPE_QSTRING, len=-1, comment=comment)
+            field = QgsField(name=name, type=QMetaType.QString, len=-1, comment=comment)
         elif encoding == ProfileEncoding.Json:
-            field = QgsField(name=name, type=QMETATYPE_QVARIANTMAP, typeName='JSON', comment=comment)
+            field = QgsField(name=name, type=QMetaType.QVariantMap, typeName='JSON', comment=comment)
 
         setup = QgsEditorWidgetSetup(EDITOR_WIDGET_REGISTRY_KEY, {})
         field.setEditorWidgetSetup(setup)
@@ -285,7 +282,8 @@ class SpectralLibraryUtils:
         :param check:
 
         """
-        assert check in ['first_feature', 'field_type']
+        if not (check in ['first_feature', 'field_type']):
+            raise AssertionError
         candidates = [f for f in layer.fields() if can_store_spectral_profiles(f)]
 
         if check == 'field_type':
@@ -304,9 +302,8 @@ class SpectralLibraryUtils:
                         profileDict = decodeProfileValueDict(dump)
                         if isinstance(profileDict, dict) and len(profileDict) > 0:
                             SpectralLibraryUtils.makeToProfileField(layer, f)
-                    except Exception:
-                        s = ""
-                        pass
+                    except Exception as ex:
+                        print(f'Failed to make {f} a spectral profile field:\n', ex, file=sys.stderr)
 
     @classmethod
     def writeToSource(cls,
@@ -336,7 +333,7 @@ class SpectralLibraryUtils:
         if len(profiles) == 0:
             return []
 
-        fields = profile_field_list(profiles[0])
+        _ = profile_field_list(profiles[0])
 
         if isinstance(uri, QUrl):
             uri = uri.toString(QUrl.UrlFormattingOption.PreferLocalFile | QUrl.UrlFormattingOption.RemoveQuery)
@@ -352,7 +349,8 @@ class SpectralLibraryUtils:
         from ..processing.exportspectralprofiles import file_writer
 
         writer = file_writer(uri, **writer_options)
-        assert isinstance(writer, SpectralProfileFileWriter), f'Unable to find writer for {writer}:'
+        if not (isinstance(writer, SpectralProfileFileWriter)):
+            raise AssertionError(f'Unable to find writer for {writer}:')
 
         return writer.writeFeatures(uri, profiles, feedback=feedback)
 
@@ -413,7 +411,7 @@ class SpectralLibraryUtils:
         # assume that binary fields without other editor widgets are Spectral Profile Widgets
         for idx in range(source.fields().count()):
             field: QgsField = source.fields().at(idx)
-            if field.type() == QVariant.ByteArray and field.editorWidgetSetup().type() == '':
+            if field.type() == QMetaType.QByteArray and field.editorWidgetSetup().type() == '':
                 source.setEditorWidgetSetup(idx, QgsEditorWidgetSetup(EDITOR_WIDGET_REGISTRY_KEY, {}))
 
         if not is_spectral_library(source):
@@ -453,9 +451,11 @@ class SpectralLibraryUtils:
         exp = QgsExpression(f"{RasterProfile.NAME}('{layer.id()}', $geometry, encoding:='dict')")
         exp.prepare(context)
 
-        assert exp.parserErrorString() == '', exp.parserErrorString()
+        if not (exp.parserErrorString() == ''):
+            raise AssertionError(exp.parserErrorString())
         d = exp.evaluate(context)
-        assert exp.evalErrorString() == '', exp.evalErrorString()
+        if not (exp.evalErrorString() == ''):
+            raise AssertionError(exp.evalErrorString())
         if add_layer:
             store.takeMapLayer(layer)
         return d
@@ -477,7 +477,8 @@ class SpectralLibraryUtils:
     @staticmethod
     def setAttributeMap(feature: QgsFeature, attributes: Dict):
         """
-        Sets the attribute values. Spectral profile dictionaries are transformed into the QgsFeature specific field types.
+        Sets the attribute values. Spectral profile dictionaries are transformed
+        into the QgsFeature specific field types.
         :param feature: The QgsFeature to set values for
         :param attributes: value dictionary.
         :return:
@@ -489,12 +490,12 @@ class SpectralLibraryUtils:
                 v = attributes[n]
                 if is_profile_field(f) and isinstance(v, dict):
                     v = encodeProfileValueDict(v, f)
-                elif f.type() == QMETATYPE_QDATETIME:
+                elif f.type() == QMetaType.QDateTime:
                     if isinstance(v, datetime.datetime):
                         v = QDateTime.fromString(v.isoformat(), Qt.DateFormat.ISODate)
                     elif isinstance(v, datetime.date):
                         v = QDateTime.fromString(v.isoformat(), Qt.DateFormat.ISODate)
-                elif f.type() == QMETATYPE_QDATE:
+                elif f.type() == QMetaType.QDate:
                     if isinstance(v, datetime.datetime):
                         v = QDateTime.fromString(v.isoformat(), Qt.DateFormat.ISODate)
                     elif isinstance(v, datetime.date):
@@ -502,18 +503,30 @@ class SpectralLibraryUtils:
                 feature.setAttribute(n, v)
 
     @staticmethod
-    def readFromMimeData(mimeData: QMimeData) -> Optional[QgsVectorLayer]:
+    def readFromMimeData(mimeData: QMimeData, project: Optional[QgsProject] = None) -> Optional[QgsVectorLayer]:
         """
         Reads a SpectraLibrary from mime data.
         :param mimeData: QMimeData
-        :return: SpectralLibrary
+        :param project: QgsProject. Defaults to QgsProject.instance() if None.
+        :return: QgsVectorLayer with at least one SpectralProfile field.
         """
+
+        if project is None:
+            project = QgsProject.instance()
+
         if MIMEDATA_SPECLIB_LINK in mimeData.formats():
             # extract from link
-            sid = pickle.loads(mimeData.data(MIMEDATA_SPECLIB_LINK))
+            info = json.loads(stringFromByteArray(mimeData.data(MIMEDATA_SPECLIB_LINK)))
+            oid = info['object_id']
+            lid = info['layer_id']
+
+            sl = project.mapLayer(lid)
+            if is_spectral_library(sl):
+                return sl
+
             # global SPECLIB_CLIPBOARD
-            sl = SPECLIB_CLIPBOARD.get(sid)
-            if is_spectral_library(sl) and id(sl) == sid:
+            sl = SPECLIB_CLIPBOARD.get(oid)
+            if is_spectral_library(sl):
                 return sl
 
         if mimeData.hasUrls():
@@ -542,8 +555,9 @@ class SpectralLibraryUtils:
             profile_fields: List[str] = [FIELD_VALUES],
             name: str = DEFAULT_NAME,
             encoding: ProfileEncoding = ProfileEncoding.Json,
-            wkbType: QGIS_WKBTYPE = QGIS_WKBTYPE.Point,
-            crs: QgsCoordinateReferenceSystem = None) -> QgsVectorLayer:
+            wkbType: Qgis.WkbType = Qgis.WkbType.Point,
+            crs: Optional[QgsCoordinateReferenceSystem] = None
+    ) -> QgsVectorLayer:
         """
         Creates an empty in-memory spectral library with a "name" and a "profiles" field
         """
@@ -559,7 +573,8 @@ class SpectralLibraryUtils:
         lyr.setCustomProperty('skipMemoryLayerCheck', 1)
         with edit(lyr):
             lyr.beginEditCommand('Add fields')
-            assert lyr.addAttribute(QgsField(name=FIELD_NAME, type=QMETATYPE_QSTRING))
+            if not (lyr.addAttribute(QgsField(name=FIELD_NAME, type=QMetaType.QString))):
+                raise AssertionError(f'Unable to add field {FIELD_NAME}')
 
             for fieldname in profile_fields:
                 if isinstance(fieldname, QgsField):
@@ -587,9 +602,11 @@ class SpectralLibraryUtils:
         """
         Initializes the QgsAttributeTableConfig and further options
         """
-        assert isinstance(speclib, QgsVectorLayer)
+        if not (isinstance(speclib, QgsVectorLayer)):
+            raise AssertionError
         mgr = speclib.actions()
-        assert isinstance(mgr, QgsActionManager)
+        if not (isinstance(mgr, QgsActionManager)):
+            raise AssertionError
         mgr.clearActions()
 
         # actionSetStyle = createSetPlotStyleAction(self.fields().at(self.fields().lookupField(FIELD_STYLE)))
@@ -597,7 +614,8 @@ class SpectralLibraryUtils:
         # mgr.addAction(actionSetStyle)
 
         actionRemoveSpectrum = createRemoveFeatureAction()
-        assert isinstance(actionRemoveSpectrum, QgsAction)
+        if not (isinstance(actionRemoveSpectrum, QgsAction)):
+            raise AssertionError
         mgr.addAction(actionRemoveSpectrum)
 
         columns = speclib.attributeTableConfig().columns()
@@ -606,7 +624,8 @@ class SpectralLibraryUtils:
         invisibleColumns = []
 
         for column in columns:
-            assert isinstance(column, QgsAttributeTableConfig.ColumnConfig)
+            if not (isinstance(column, QgsAttributeTableConfig.ColumnConfig)):
+                raise AssertionError
             column.hidden = column.name in invisibleColumns
 
         # set column order
@@ -624,7 +643,8 @@ class SpectralLibraryUtils:
 
     @staticmethod
     def removeProfileField(layer: QgsVectorLayer, field: Union[int, str, QgsField]) -> bool:
-        assert isinstance(layer, QgsVectorLayer)
+        if not (isinstance(layer, QgsVectorLayer)):
+            raise AssertionError
         field = qgsField(layer, field)
 
         if field.editorWidgetSetup().type() == EDITOR_WIDGET_REGISTRY_KEY:
@@ -644,7 +664,8 @@ class SpectralLibraryUtils:
         Returns: True if successful. False if field type cannot be used to store spectral profiles.
         -------
         """
-        assert isinstance(layer, QgsVectorLayer)
+        if not (isinstance(layer, QgsVectorLayer)):
+            raise AssertionError
         field = qgsField(layer, field)
         if not can_store_spectral_profiles(field):
             return False
@@ -657,7 +678,7 @@ class SpectralLibraryUtils:
 
     @staticmethod
     def canReadFromMimeData(mimeData: QMimeData) -> bool:
-        formats = [MIMEDATA_SPECLIB_LINK, MIMEDATA_SPECLIB, MIMEDATA_URL]
+        formats = [MIMEDATA_SPECLIB_LINK, MIMEDATA_URL]
         for format in formats:
             if format in mimeData.formats():
                 if format == MIMEDATA_URL:
@@ -669,12 +690,13 @@ class SpectralLibraryUtils:
         return False
 
     @staticmethod
-    def mimeData(speclib: QgsVectorLayer, formats: list = None) -> QMimeData:
+    def mimeData(speclib: QgsVectorLayer, formats: Optional[List[str]] = None) -> QMimeData:
         """
         Wraps this Speclib into a QMimeData object
         :return: QMimeData
         """
-        assert isinstance(speclib, QgsVectorLayer)
+        if not (isinstance(speclib, QgsVectorLayer)):
+            raise AssertionError(f'speclib must be a QgsVectorLayer: {speclib}')
         if isinstance(formats, str):
             formats = [formats]
         elif formats is None:
@@ -683,15 +705,19 @@ class SpectralLibraryUtils:
         mimeData = QMimeData()
 
         for format in formats:
-            assert format in [MIMEDATA_SPECLIB_LINK, MIMEDATA_SPECLIB, MIMEDATA_TEXT, MIMEDATA_URL]
+            if not (format in [MIMEDATA_SPECLIB_LINK, MIMEDATA_TEXT, MIMEDATA_URL]):
+                raise AssertionError(f'format is not supported: {format}')
             if format == MIMEDATA_SPECLIB_LINK:
                 # global SPECLIB_CLIPBOARD
                 thisID = id(speclib)
+                info = {'object_id': thisID,
+                        'layer_id': speclib.id(),
+                        'layer_name': speclib.name(),
+                        'layer_source': speclib.source(), }
                 SPECLIB_CLIPBOARD[thisID] = speclib
 
-                mimeData.setData(MIMEDATA_SPECLIB_LINK, pickle.dumps(thisID))
-            elif format == MIMEDATA_SPECLIB:
-                mimeData.setData(MIMEDATA_SPECLIB, pickle.dumps(speclib))
+                mimeData.setData(MIMEDATA_SPECLIB_LINK,
+                                 stringToByteArray(json.dumps(info, ensure_ascii=False)))
 
             elif format == MIMEDATA_URL:
                 mimeData.setUrls([QUrl(speclib.source())])
@@ -715,10 +741,10 @@ class SpectralLibraryUtils:
         :param fields: list of QgsFields
         :param copyEditorWidgetSetup: if True (default), the editor widget setup is copied for each profile_field
         """
-        assert isinstance(speclib, QgsVectorLayer)
         missingFields = []
         for field in fields:
-            assert isinstance(field, QgsField)
+            if not (isinstance(field, QgsField)):
+                raise AssertionError
             iField = speclib.fields().lookupField(field.name())
             if iField == -1:
                 missingFields.append(field)
@@ -731,13 +757,15 @@ class SpectralLibraryUtils:
                 SpectralLibraryUtils.copyEditorWidgetSetup(speclib, missingFields)
 
     @staticmethod
-    def addSpeclib(speclibDst, speclibSrc,
+    def addSpeclib(speclibDst: QgsVectorLayer,
+                   speclibSrc: QgsVectorLayer,
                    addMissingFields: bool = True,
                    copyEditorWidgetSetup: bool = True,
                    feedback: QgsProcessingFeedback = QgsProcessingFeedback()) -> List[int]:
         """
         Adds profiles from another SpectraLibrary
         :param speclibDst: QgsVectorLayer
+        :param speclibSrc: QgsVectorLayer
         :param addMissingFields: if True (default), missing fields / attributes will be added automatically
         :param copyEditorWidgetSetup: if True (default), the editor widget setup will be copied
                for each added profile_field
@@ -745,10 +773,12 @@ class SpectralLibraryUtils:
 
         :returns: set of added feature ids
         """
-        assert is_spectral_library(speclibSrc)
-        assert is_spectral_library(speclibDst)
+        if not (is_spectral_library(speclibSrc)):
+            raise AssertionError
+        if not (is_spectral_library(speclibDst)):
+            raise AssertionError
 
-        fids_old = sorted(speclibSrc.allFeatureIds(), key=lambda i: abs(i))
+        _ = sorted(speclibSrc.allFeatureIds(), key=lambda i: abs(i))
         fids_new = SpectralLibraryUtils.addProfiles(
             speclibDst,
             speclibSrc.getFeatures(),
@@ -761,7 +791,7 @@ class SpectralLibraryUtils:
     @staticmethod
     def addProfiles(speclib: QgsVectorLayer,
                     profiles: Union[QgsFeature, List[QgsFeature], QgsVectorLayer],
-                    crs: QgsCoordinateReferenceSystem = None,
+                    crs: Optional[QgsCoordinateReferenceSystem] = None,
                     addMissingFields: bool = False,
                     copyEditorWidgetSetup: bool = True,
                     feedback: QgsProcessingFeedback = QgsProcessingFeedback()) -> List[int]:
@@ -775,9 +805,11 @@ class SpectralLibraryUtils:
         :param feedback:
         :return:
         """
-        assert isinstance(speclib, QgsVectorLayer)
-        assert speclib.isEditable(), 'SpectralLibrary "{}" is not editable. call startEditing() first'.format(
-            speclib.name())
+        if not (isinstance(speclib, QgsVectorLayer)):
+            raise AssertionError
+        if not (speclib.isEditable()):
+            raise AssertionError('SpectralLibrary "{}" is not editable. call startEditing() first'.format(
+                speclib.name()))
 
         if isinstance(profiles, QgsFeature):
             profiles = [profiles]
@@ -803,12 +835,13 @@ class SpectralLibraryUtils:
         if addMissingFields:
             SpectralLibraryUtils.addMissingFields(speclib, refProfile.fields(),
                                                   copyEditorWidgetSetup=copyEditorWidgetSetup)
-            assert speclib.commitChanges(False)
+            if not (speclib.commitChanges(False)):
+                raise AssertionError('Unable to commit changes.')
 
         keysBefore = set(speclib.editBuffer().addedFeatures().keys())
 
-        lastTime = datetime.datetime.now()
-        dt = datetime.timedelta(seconds=2)
+        _ = datetime.datetime.now()
+        _ = datetime.timedelta(seconds=2)
         nTotal = len(profiles)
         feedback.setProgressText(f'Add {nTotal} profiles')
         feedback.setProgress(0)
@@ -874,7 +907,8 @@ class SpectralLibraryUtils:
     def speclibFromFeatureIDs(layer: QgsVectorLayer, fids):
         if isinstance(fids, int):
             fids = [fids]
-        assert isinstance(fids, list)
+        if not (isinstance(fids, list)):
+            raise AssertionError
 
         features = list(layer.getFeatures(fids))
 
@@ -904,7 +938,8 @@ class SpectralLibraryUtils:
 
     @staticmethod
     def plot(speclib: QgsVectorLayer) -> QWidget:
-        assert is_spectral_library(speclib)
+        if not (is_spectral_library(speclib)):
+            raise AssertionError
         app = None
         if not isinstance(QgsApplication.instance(), QgsApplication):
             from qgis.testing import start_app
@@ -916,7 +951,7 @@ class SpectralLibraryUtils:
         w.show()
 
         if app:
-            app.exec_()
+            app.exec()
 
         return w
 
@@ -930,8 +965,7 @@ class SpectralLibraryUtils:
         copyEditorWidgetSetup(speclib, fields)
 
 
-def deleteSelected(layer):
-    assert isinstance(layer, QgsVectorLayer)
+def deleteSelected(layer: QgsVectorLayer):
     b = layer.isEditable()
 
     layer.startEditing()

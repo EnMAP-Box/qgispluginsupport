@@ -25,4 +25,4 @@ def populateContextMenu(menu: QMenu, event: QgsMapMouseEvent):
 canvas.contextMenuAboutToShow.connect(populateContextMenu)
 canvas.show()
 
-app.exec_()
+app.exec()

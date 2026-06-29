@@ -79,7 +79,8 @@ def scantree(path, pattern=re.compile(r'.$')) -> Iterator[pathlib.Path]:
 def create_plugin(create_zip: bool = False,
                   copy_to_profile: bool = True,
                   build_name: str = None) -> Optional[pathlib.Path]:
-    assert (DIR_REPO / '.git').is_dir()
+    if not ((DIR_REPO / '.git').is_dir()):
+        raise AssertionError
 
     # BUILD_NAME = '{}.{}.{}'.format(__version__, timestamp, currentBranch)
     # BUILD_NAME = re.sub(r'[:-]', '', BUILD_NAME)
@@ -113,7 +114,8 @@ def create_plugin(create_zip: bool = False,
     files = list(scantree(DIR_REPO / 'qps', pattern=pattern))
 
     for fileSrc in files:
-        assert fileSrc.is_file()
+        if not (fileSrc.is_file()):
+            raise AssertionError
         fileDst = PLUGIN_DIR / fileSrc.relative_to(DIR_REPO)
         os.makedirs(fileDst.parent, exist_ok=True)
         shutil.copy(fileSrc, fileDst.parent)
@@ -135,13 +137,14 @@ def create_plugin(create_zip: bool = False,
     # Copy to other deploy directory
     if copy_to_profile:
         profileManager: QgsUserProfileManager = userProfileManager()
-        assert len(profileManager.allProfiles()) > 0
+        if not (len(profileManager.allProfiles()) > 0):
+            raise AssertionError
         if isinstance(copy_to_profile, str):
             profileName = copy_to_profile
         else:
             profileName = profileManager.lastProfileName()
-        assert profileManager.profileExists(profileName), \
-            f'QGIS profiles "{profileName}" does not exist in {profileManager.allProfiles()}'
+        if not (profileManager.profileExists(profileName)):
+            raise AssertionError(f'QGIS profiles "{profileName}" does not exist in {profileManager.allProfiles()}')
 
         profileManager.setActiveUserProfile(profileName)
         profile: QgsUserProfile = profileManager.userProfile()

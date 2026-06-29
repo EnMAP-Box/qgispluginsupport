@@ -15,13 +15,15 @@ layer.startEditing()
 layer.addFeature(QgsFeature(layer.fields()))
 layer.commitChanges()
 
-assert layer.featureCount() == 1
+if not (layer.featureCount() == 1):
+    raise AssertionError
 
 
 def onFeaturesDeleted(deleted_fids):
     selected = layer.selectedFeatureIds()
     for fid in selected:
-        assert fid not in deleted_fids, f'Feature with id {fid} was deleted but is still selected'
+        if not (fid not in deleted_fids):
+            raise AssertionError(f'Feature with id {fid} was deleted but is still selected')
 
 
 layer.featuresDeleted.connect(onFeaturesDeleted)
@@ -31,5 +33,7 @@ layer.selectAll()
 layer.deleteSelectedFeatures()
 layer.commitChanges()
 
-assert layer.featureCount() == 0
-assert layer.selectedFeatureIds() == []
+if not (layer.featureCount() == 0):
+    raise AssertionError
+if not (layer.selectedFeatureIds() == []):
+    raise AssertionError

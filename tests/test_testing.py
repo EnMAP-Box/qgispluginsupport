@@ -189,7 +189,7 @@ class TestCasesClassTesting(TestCase):
         # shorten long-paths
         subdirs = [f'sub{i}' for i in range(100)]
         subdir = Path(*subdirs)
-        assert len(subdir.as_posix()) > 100
+        self.assertGreater(len(subdir.as_posix()), 100)
         with self.assertWarns(UserWarning):
             p = self.createTestOutputDirectory(subdir=subdir, max_length=100)
         self.assertTrue(p.is_dir())

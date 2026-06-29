@@ -151,8 +151,6 @@ class GPS_DATA(object):
         self.satellites = ASD_GPS_DATA[9:15]
         self.filler = ASD_GPS_DATA[10]
 
-        s = ""
-
 
 class SmartDetectorType(object):
 
@@ -500,8 +498,8 @@ class ASDBinaryFile(SpectralProfileFileReader):
                 #                struct.unpack('<l', DATA[o + 11:o + 11 + 8])[0], 's')
 
                 # np.datetime64('1970-01-01') + np.timedelta64(struct.unpack('<l', DATA[182:182 + 4])[0], 's')
-                reftime = struct.unpack('<8B', sub(o + 3, 8))
-                spectime = struct.unpack('<8B', sub(o + 11, 8))
+                # reftime = struct.unpack('<8B', sub(o + 3, 8))
+                # spectime = struct.unpack('<8B', sub(o + 11, 8))
                 self.SpectrumDescription, slen = n_string(o + 19)
 
                 # reference data
@@ -509,6 +507,5 @@ class ASDBinaryFile(SpectralProfileFileReader):
 
                 self.mReference = prepareProfileValueDict(x=self.xValues(), xUnit='nm',
                                                           y=self.Reference)
-            s = ""
 
         return self

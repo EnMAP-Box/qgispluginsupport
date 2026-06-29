@@ -1,12 +1,12 @@
 import os
 import pathlib
 import re
-import xml.etree.ElementTree as ElementTree
+
+import defusedxml.ElementTree as ET
 
 from qgis.core import QgsMapLayer, QgsVectorLayerExporter, QgsVectorLayer, QgsEditorWidgetSetup
 from qgis.gui import QgsEditorWidgetFactory, QgsEditorConfigWidget, QgsGui
-from qgis.gui import QgsEditorWidgetWrapper, QgsVectorLayerProperties, QgsMapCanvas, \
-    QgsMessageBar
+from qgis.gui import QgsVectorLayerProperties, QgsMapCanvas, QgsMessageBar
 from qgis.testing import start_app, TestCase
 
 qgis_app = start_app()
@@ -59,14 +59,14 @@ class TestQgsRangeWidgetSetup(TestCase):
         # check QML
         self.assertTrue(path_qml.is_file(), msg=f'{path_qml} has not been written')
 
-        tree = ElementTree.parse(path_qml)
+        tree = ET.parse(path_qml)
         root = tree.getroot()
         nodeMax = root.find(
             'fieldConfiguration/field[@name="number"]/editWidget[@type="range"]/config/Option/Option[@name="Max"]')
         nodeMin = root.find(
             'fieldConfiguration/field[@name="number"]/editWidget[@type="range"]/config/Option/Option[@name="Min"]')
-        self.assertIsInstance(nodeMax, ElementTree.Element)
-        self.assertIsInstance(nodeMin, ElementTree.Element)
+        self.assertIsInstance(nodeMax, ET.Element)
+        self.assertIsInstance(nodeMin, ET.Element)
         self.assertEqual(int(nodeMax.attrib['value']), 256)
         self.assertEqual(int(nodeMin.attrib['value']), 1)
 
@@ -80,9 +80,9 @@ class TestQgsRangeWidgetSetup(TestCase):
         self.assertEqual(configA['Max'], 256)
         self.assertEqual(configA['Min'], 1)
 
-        wr: QgsEditorWidgetWrapper = QgsGui.editorWidgetRegistry().createConfigWidget('sdsd', lyr2,
-                                                                                      lyr2.fields().lookupField(
-                                                                                          'number'), None)
+        _ = QgsGui.editorWidgetRegistry().createConfigWidget('sdsd', lyr2,
+                                                             lyr2.fields().lookupField(
+                                                                 'number'), None)
 
         # test loaded QgsEditorConfigWidget
         cw: QgsEditorConfigWidget = factory.configWidget(lyr2, lyr2.fields().lookupField('number'), None)
@@ -95,4 +95,4 @@ class TestQgsRangeWidgetSetup(TestCase):
             canvas = QgsMapCanvas()
             mbar = QgsMessageBar()
             d = QgsVectorLayerProperties(canvas, mbar, lyr2, None)
-            d.exec_()
+            d.exec()

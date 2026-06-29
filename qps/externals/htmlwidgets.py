@@ -325,4 +325,4 @@ class Testing(QtWidgets.QMainWindow):
 if __name__ == '__main__':
     app = QtWidgets.QApplication([])
     test = Testing()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

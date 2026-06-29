@@ -31,7 +31,7 @@ class ExampleCase(TestCase):
         label.setPixmap(icon.pixmap(QSize(200, 200)))
 
         # In case the environmental variable 'CI' is not set,
-        # .showGui([list-of-widgets]) function will show and calls QApplication.exec_()
+        # .showGui([list-of-widgets]) function will show and calls QApplication.exec()
         # to keep the widget open
         self.showGui(label)
 

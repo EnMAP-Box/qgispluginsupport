@@ -57,7 +57,8 @@ class FlowLayout(QLayout):
         self.m_vSpace = space
 
     def addItem(self, item: QLayoutItem):
-        assert isinstance(item, QLayoutItem)
+        if not (isinstance(item, QLayoutItem)):
+            raise AssertionError
 
         self.m_itemlist.append(item)
 
@@ -164,8 +165,10 @@ class SliderSpinBox(QWidget):
 
         if not isinstance(spinbox, QAbstractSpinBox):
             spinbox = QSpinBox()
-        assert isinstance(spinbox, QAbstractSpinBox)
-        assert isinstance(spinbox_position, Qt.AlignmentFlag)
+        if not (isinstance(spinbox, QAbstractSpinBox)):
+            raise AssertionError
+        if not (isinstance(spinbox_position, Qt.AlignmentFlag)):
+            raise AssertionError
 
         super().__init__(*args, **kwds)
 
@@ -241,7 +244,8 @@ class SliderSpinBox(QWidget):
     def setRange(self, vmin, vmax):
         vmin = min(vmin, vmax)
         vmax = max(vmin, vmax)
-        assert vmin <= vmax
+        if not (vmin <= vmax):
+            raise AssertionError
 
         self.setMinimum(vmin)
         self.setMaximum(vmax)
@@ -255,7 +259,8 @@ class DoubleSliderSpinBox(SliderSpinBox):
         super().__init__(*args, spinbox=spinbox, **kwds)
 
         self.spinbox: QDoubleSpinBox
-        assert isinstance(self.spinbox, QDoubleSpinBox)
+        if not (isinstance(self.spinbox, QDoubleSpinBox)):
+            raise AssertionError
         self.setDecimals(2)
         self.setMinimum(0)
         self.setMaximum(1)

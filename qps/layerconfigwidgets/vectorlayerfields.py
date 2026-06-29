@@ -23,16 +23,19 @@
 ***************************************************************************
 """
 import sys
+from typing import Dict
 
-from qgis.PyQt.QtCore import QSortFilterProxyModel, QModelIndex, pyqtSignal, QAbstractItemModel
+from qgis.PyQt.QtCore import QSortFilterProxyModel, QModelIndex, pyqtSignal
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtGui import QResizeEvent, QStandardItemModel, QStandardItem
-from qgis.PyQt.QtWidgets import QMessageBox, QDialog, QTableView, QStackedWidget, QMenu, QComboBox, QVBoxLayout, QLabel, \
-    QWidget
+from qgis.PyQt.QtWidgets import (
+    QMessageBox, QDialog, QTableView, QStackedWidget, QMenu, QComboBox, QVBoxLayout, QLabel,
+    QWidget)
 from qgis.core import QgsMapLayer, QgsVectorLayer, QgsField, QgsFieldModel, QgsEditorWidgetSetup
-from qgis.gui import QgsEditorWidgetFactory, QgsCollapsibleGroupBox, QgsEditorConfigWidget, QgsGui, \
-    QgsMapLayerConfigWidgetFactory
+from qgis.gui import (
+    QgsEditorWidgetFactory, QgsCollapsibleGroupBox, QgsEditorConfigWidget, QgsGui,
+    QgsMapLayerConfigWidgetFactory)
 from .core import QpsMapLayerConfigWidget
 from ..layerproperties import AddAttributeDialog
 from ..utils import loadUi
@@ -42,7 +45,6 @@ class LayerFieldsTableModel(QgsFieldModel):
 
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
-        assert isinstance(self, QAbstractItemModel)
         self.cnId = 'Id'
         self.cnName = 'Name'
         self.cnAlias = 'Alias'
@@ -184,9 +186,6 @@ class LayerAttributeFormConfigEditorWidget(QWidget):
         def __init__(self, key: str, factory: QgsEditorWidgetFactory, configWidget: QgsEditorConfigWidget):
             super(LayerAttributeFormConfigEditorWidget.ConfigInfo, self).__init__()
 
-            assert isinstance(key, str)
-            assert isinstance(factory, QgsEditorWidgetFactory)
-            assert isinstance(configWidget, QgsEditorConfigWidget)
             self.mKey = key
             self.mFactory = factory
             self.mConfigWidget = configWidget
@@ -249,12 +248,11 @@ class LayerAttributeFormConfigEditorWidget(QWidget):
 
         self.setLayout(QVBoxLayout())
 
-        assert isinstance(layer, QgsVectorLayer)
-        assert isinstance(index, int)
-
         self.mLayer = layer
         self.mField = layer.fields().at(index)
-        assert isinstance(self.mField, QgsField)
+
+        if not isinstance(self.mField, QgsField):
+            raise AssertionError(f'Unable to get field for index {index}')
         self.mFieldIndex = index
 
         self.mFieldNameLabel = QLabel(parent)
@@ -281,10 +279,8 @@ class LayerAttributeFormConfigEditorWidget(QWidget):
 
         iCurrent = -1
         i = 0
-        factories = QgsGui.editorWidgetRegistry().factories()
+        factories: Dict[str, QgsEditorWidgetFactory] = QgsGui.editorWidgetRegistry().factories()
         for key, fac in factories.items():
-            assert isinstance(key, str)
-            assert isinstance(fac, QgsEditorWidgetFactory)
             score = fac.fieldScore(self.mLayer, self.mFieldIndex)
             configWidget = fac.configWidget(self.mLayer, self.mFieldIndex, self.stackedWidget)
 
@@ -321,7 +317,7 @@ class LayerAttributeFormConfigEditorWidget(QWidget):
         """
         for i in range(self.mItemModel.rowCount()):
             confItem = self.mItemModel.item(i)
-            assert isinstance(confItem, LayerAttributeFormConfigEditorWidget.ConfigInfo)
+            confItem: LayerAttributeFormConfigEditorWidget.ConfigInfo
             if confItem.factoryKey() == factoryKey:
                 self.cbWidgetType.setCurrentIndex(i)
                 break
@@ -386,7 +382,6 @@ class LayerAttributeFormConfigWidget(QpsMapLayerConfigWidget):
         from .core import configWidgetUi
         loadUi(configWidgetUi('layerattributeformconfigwidget.ui'), self)
 
-        assert isinstance(self.mapLayer(), QgsVectorLayer)
         self.scrollArea.resizeEvent = self.onScrollAreaResize
         self.mFieldModel = LayerFieldsListModel(self)
         self.mFieldModel.setLayer(self.mapLayer())
@@ -409,7 +404,7 @@ class LayerAttributeFormConfigWidget(QpsMapLayerConfigWidget):
         if isinstance(index1, QModelIndex) and index1.isValid():
             r = index1.row()
             if r < 0 or r >= self.stackedWidget.count():
-                s = ""
+                pass
             self.stackedWidget.setCurrentIndex(r)
 
     def onScrollAreaResize(self, resizeEvent: QResizeEvent):
@@ -417,18 +412,14 @@ class LayerAttributeFormConfigWidget(QpsMapLayerConfigWidget):
         Forces the stackedWidget's width to fit into the scrollAreas viewport
         :param resizeEvent: QResizeEvent
         """
-        assert isinstance(resizeEvent, QResizeEvent)
         self.stackedWidget.setMaximumWidth(resizeEvent.size().width())
-        s = ""
 
     def onReset(self):
 
-        sw = self.stackedWidget
-        assert isinstance(sw, QStackedWidget)
+        sw: QStackedWidget = self.stackedWidget
 
         for i in range(sw.count()):
-            w = sw.widget(i)
-            assert isinstance(w, LayerAttributeFormConfigEditorWidget)
+            w: LayerAttributeFormConfigEditorWidget = sw.widget(i)
             w.reset()
         self.onSettingsChanged()
 
@@ -438,12 +429,10 @@ class LayerAttributeFormConfigWidget(QpsMapLayerConfigWidget):
         :return:
         """
 
-        sw = self.stackedWidget
-        assert isinstance(sw, QStackedWidget)
+        sw: QStackedWidget = self.stackedWidget
 
         for i in range(sw.count()):
-            w = sw.widget(i)
-            assert isinstance(w, LayerAttributeFormConfigEditorWidget)
+            w: LayerAttributeFormConfigEditorWidget = sw.widget(i)
             w.apply()
         self.onSettingsChanged()
 
@@ -452,8 +441,7 @@ class LayerAttributeFormConfigWidget(QpsMapLayerConfigWidget):
         Empties the stackedWidget and populates it with a FieldConfigEditor
         for each QgsVectorLayer field.
         """
-        sw = self.stackedWidget
-        assert isinstance(sw, QStackedWidget)
+        sw: QStackedWidget = self.stackedWidget
         i = sw.count() - 1
         while i >= 0:
             w = sw.widget(i)
@@ -474,12 +462,11 @@ class LayerAttributeFormConfigWidget(QpsMapLayerConfigWidget):
         Enables/disables buttons
         :return:
         """
-        b = False
+        _ = False
         for i in range(self.stackedWidget.count()):
-            w = self.stackedWidget.widget(i)
-            assert isinstance(w, LayerAttributeFormConfigEditorWidget)
+            w: LayerAttributeFormConfigEditorWidget = self.stackedWidget.widget(i)
             if w.changed():
-                b = True
+                _ = True
                 break
 
 
@@ -519,7 +506,7 @@ class LayerFieldsConfigWidget(QpsMapLayerConfigWidget):
 
         self.mProxyModel = QSortFilterProxyModel()
         self.mProxyModel.setSourceModel(self.mFieldModel)
-        assert isinstance(self.tableView, QTableView)
+        self.tableView: QTableView
         self.tableView.setModel(self.mProxyModel)
         self.tableView.selectionModel().selectionChanged.connect(self.validate)
         self.btnAddField.setDefaultAction(self.actionAddField)
@@ -552,7 +539,7 @@ class LayerFieldsConfigWidget(QpsMapLayerConfigWidget):
         lyr = self.mapLayer()
         if isinstance(lyr, QgsVectorLayer) and lyr.isEditable():
             d = AddAttributeDialog(lyr)
-            d.exec_()
+            d.exec()
             if d.result() == QDialog.DialogCode.Accepted:
                 field = d.field()
                 lyr.addAttribute(field)
@@ -594,7 +581,7 @@ class LayerFieldsConfigWidget(QpsMapLayerConfigWidget):
                    self.tableView.selectionModel().selectedRows()]
 
         if not lyr.deleteAttributes(indices):
-            errors = lyr.errors()
+            _ = lyr.errors()
         self.validate()
 
     def apply(self):

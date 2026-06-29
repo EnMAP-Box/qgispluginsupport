@@ -5,7 +5,8 @@ from qgis.core import QgsCoordinateReferenceSystem, QgsPointXY, QgsCoordinateTra
 crsSrc = QgsCoordinateReferenceSystem('EPSG:4326')
 crsDst = QgsCoordinateReferenceSystem('EPSG:32633')
 transform = QgsCoordinateTransform(crsSrc, crsDst, QgsProject.instance())
-assert transform.isValid()
+if not (transform.isValid()):
+    raise AssertionError
 
 point = QgsPointXY(12.0, 52.0)
 # this works well
@@ -22,7 +23,7 @@ transform.transformCoords(1, ([12.0, ], [52.0, ], [0.0, ]))
 
 
 # How can I transform multiple coordinates with one call?
-# from QGIS API docs: https://qgis.org/pyqgis/master/core/QgsCoordinateTransform.html#qgis.core.QgsCoordinateTransform.transformCoords
+# from QGIS API docs: https://qgis.org/pyqgis/master/core/QgsCoordinateTransform.html#qgis.core.QgsCoordinateTransform.transformCoords  # noqa: E501
 """
 transformCoords(self,
                 numPoint: int,

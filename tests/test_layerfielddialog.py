@@ -25,8 +25,11 @@ class LayerFieldDialogTests(TestCase):
         project = QgsProject()
         project.addMapLayers(layers)
 
-        lyrFunc = lambda lyr: is_spectral_library(lyr)
-        fieldFunc = lambda field: is_profile_field(field)
+        def lyrFunc(lyr):
+            return is_spectral_library(lyr)
+
+        def fieldFunc(field):
+            return is_profile_field(field)
 
         d = LayerFieldDialog()
         d.setLayerFilter(lyrFunc)
@@ -70,7 +73,8 @@ class LayerFieldDialogTests(TestCase):
         project = QgsProject()
         project.addMapLayers(layers)
 
-        lyrFunc = lambda lyr: isinstance(lyr, QgsRasterLayer) and lyr.bandCount() > 3
+        def lyrFunc(lyr):
+            return isinstance(lyr, QgsRasterLayer) and lyr.bandCount() > 3
 
         d = LayerFieldDialog()
         d.setProject(project)
@@ -87,7 +91,7 @@ class LayerFieldDialogTests(TestCase):
 
         else:
 
-            if d.exec_() == d.Accepted:
+            if d.exec() == d.Accepted:
                 print(f'Accepted: {d.layer()} {d.field()}')
             else:
                 print(f'Canceled: {d.layer()} {d.field()}')

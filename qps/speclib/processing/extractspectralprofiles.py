@@ -311,8 +311,7 @@ class ExtractSpectralProfiles(QgsProcessingAlgorithm):
 
             # Write feature
             if not writer.addFeature(out_feature):
-                s = ""
-
+                pass
             features_processed += 1
 
             # Update progress
@@ -334,7 +333,7 @@ class ExtractSpectralProfiles(QgsProcessingAlgorithm):
 
         vl = self._results.get(self.P_OUTPUT)
         if isinstance(vl, str):
-            lyr_id = vl
+            _ = vl
             vl = QgsProcessingUtils.mapLayerFromString(vl, context,
                                                        allowLoadingNewLayers=True,
                                                        typeHint=QgsProcessingUtils.LayerHint.Vector)

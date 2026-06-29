@@ -24,7 +24,8 @@ class SpectralLibraryImportFeatureSink(QgsRemappingProxyFeatureSink):
 
         if dstFields is None and isinstance(speclib, QgsVectorLayer):
             dstFields = speclib.fields()
-        assert isinstance(dstFields, QgsFields), 'Destination Fields (dstFields) not specified'
+        if not (isinstance(dstFields, QgsFields)):
+            raise AssertionError('Destination Fields (dstFields) not specified')
 
         for k, srcProp in fieldMap.items():
             srcProp: QgsProperty
@@ -50,12 +51,11 @@ class SpectralLibraryImportFeatureSink(QgsRemappingProxyFeatureSink):
         self.mContext = context
 
     def remapFeature(self, feature: QgsFeature) -> List[QgsFeature]:
-        s = ""
+
         try:
-            features = super().remapFeature(feature)
-        except Exception as ex:
-            s = ""
-        return features
+            return super().remapFeature(feature)
+        except Exception:
+            return []
 
 
 class ProfileProperty(QgsProperty, QObject):
@@ -67,7 +67,6 @@ class ProfileProperty(QgsProperty, QObject):
     def value(self, *args, **kwds) -> Tuple[Any, bool]:
         v = super().value(*args, **kwds)
 
-        s = ""
         return v
 
     def __repr__(self):

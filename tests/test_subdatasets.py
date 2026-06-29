@@ -42,7 +42,7 @@ class TestSubDataSets(TestCase):
     def test_tanager_h5(self):
 
         task = SubDatasetLoadingTask([PATH_TANAGER], providers=['gdal'])
-        assert task.run()
+        self.assertTrue(task.run())
 
         results = task.results()
         for p, sublayers in results.items():

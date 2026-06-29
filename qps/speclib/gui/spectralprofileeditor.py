@@ -66,7 +66,8 @@ class SpectralProfileTableModel(QAbstractTableModel):
         self.mIsReadOnly = read_only is True
 
     def setBooleanBBL(self, b: bool):
-        assert isinstance(b, bool)
+        if not (isinstance(b, bool)):
+            raise AssertionError
         self.mBooleanBBL = b
 
     def clear(self):
@@ -85,7 +86,8 @@ class SpectralProfileTableModel(QAbstractTableModel):
         :param values:
         :return:
         """
-        assert isinstance(profile, dict)
+        if not (isinstance(profile, dict)):
+            raise AssertionError
 
         m = copy(self.mValues)
 
@@ -242,7 +244,10 @@ class InlineListEncoder(JSONEncoder):
         if isinstance(obj, dict):
             items = []
             for k, v in obj.items():
-                key = json.dumps(k)
+                key = json.dumps(k,
+                                 ensure_ascii=self.ensure_ascii,
+                                 allow_nan=self.allow_nan,
+                                 separators=(self.item_separator, self.key_separator))
                 indent = ' ' * self.indent
                 if isinstance(v, list):
                     value = json.dumps(v,
@@ -397,7 +402,8 @@ class SpectralProfileTableEditor(QFrame):
         self.setProfileDict(d)
 
     def setProfileDict(self, d: dict):
-        assert isinstance(d, dict)
+        if not (isinstance(d, dict)):
+            raise AssertionError
         self.tableModel.setProfileDict(d)
         self._x_unit = d.get('xUnit', None)
         self._y_unit = d.get('yUnit', None)
@@ -502,7 +508,6 @@ class SpectralProfileEditorWidget(QGroupBox):
         self._vbox = vbox
         self.setLayout(vbox)
         self.setViewMode(self.VIEW_JSON_EDITOR)
-        s = ""
 
     def setReadOnly(self, read_only: bool):
         """
@@ -618,12 +623,13 @@ class SpectralProfileEditorWidget(QGroupBox):
         """
         if profile in [None, NULL, QVariant(None)]:
             profile = dict()
-        assert isinstance(profile, dict)
+        if not (isinstance(profile, dict)):
+            raise AssertionError
         self.mDefaultProfile = self.mCurrentProfile = profile.copy()
 
         if isinstance(self.mCurrentWidget,
                       (SpectralProfileJsonEditor, SpectralProfileTableEditor, SpectralProfilePlotWidget)):
-            with SignalBlocker(self.mCurrentWidget) as blocker:
+            with SignalBlocker(self.mCurrentWidget) as _:
                 self.mCurrentWidget.setProfile(self.mCurrentProfile)
 
         # w = self.stackedWidget.currentWidget()
@@ -693,7 +699,7 @@ class SpectralProfileEditorWidgetWrapper(QgsEditorWidgetWrapper):
         super(SpectralProfileEditorWidgetWrapper, self).__init__(vl, fieldIdx, editor, parent)
         self.mWidget: Optional[QWidget] = None
 
-        self.mLastValue: QVariant = QVariant()
+        self.mLastValue: QVariant = NULL
         self.mLayerID = vl.id()
 
     def createWidget(self, parent: QWidget):
@@ -888,7 +894,8 @@ class SpectralProfileEditorWidgetFactory(QgsEditorWidgetFactory):
         """
         # log(' fieldScore()')
         field = vl.fields().at(fieldIdx)
-        assert isinstance(field, QgsField)
+        if not (isinstance(field, QgsField)):
+            raise AssertionError
         if can_store_spectral_profiles(field):
             if field.editorWidgetSetup().type() == self.name():
                 return 20  # specialized support

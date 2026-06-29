@@ -23,7 +23,7 @@ export PYTHONPATH="${PYTHONPATH}"\
 ":/usr/share/qgis/python/plugins"\
 ":$(pwd)/tests"
 python3 runfirst.py
-python3 tests/systeminfo.py
+python3 scripts/systeminfo.py
 which python3
 which python
 which pytest

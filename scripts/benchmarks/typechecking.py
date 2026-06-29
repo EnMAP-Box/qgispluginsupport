@@ -6,12 +6,12 @@ repetitions = 100000
 
 
 def process(n1: int, n2: int):
-    n3 = n1
+    _ = n1
 
 
 @typeguard.typechecked()
 def processT(n1: int, n2: int):
-    n3 = n1
+    _ = n1
 
 
 t0 = datetime.datetime.now()

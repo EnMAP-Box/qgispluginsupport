@@ -10,12 +10,12 @@ import numpy as np
 from osgeo import gdal
 from osgeo.gdal import Band
 
+from qgis.PyQt.QtCore import QMetaType
 from qgis.PyQt.QtWidgets import QVBoxLayout, QWidget
 from qgis.PyQt.QtXml import QDomDocument, QDomElement
 from qgis.core import QgsDefaultValue, QgsFeature, QgsField, QgsFieldConstraints, QgsObjectCustomProperties, \
     QgsRasterDataProvider, QgsRasterLayer, QgsVectorLayer, QgsVectorLayerCache
 from qgis.gui import QgsAttributeTableFilterModel, QgsAttributeTableModel, QgsAttributeTableView, QgsMapCanvas
-from .qgisenums import QMETATYPE_BOOL, QMETATYPE_DOUBLE, QMETATYPE_INT, QMETATYPE_QSTRING
 from .unitmodel import UnitLookup
 
 logger = logging.getLogger(__name__)
@@ -192,22 +192,26 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
         return re.compile(f'({patters})', re.IGNORECASE)
 
     @classmethod
-    def fromGDALDataset(cls, ds: Union[str, Path, gdal.Dataset]) \
-            -> Optional['QgsRasterLayerSpectralProperties']:
+    def fromGDALDataset(
+            cls, ds: Union[str, Path, gdal.Dataset]
+    ) -> Optional['QgsRasterLayerSpectralProperties']:
         """Returns the QgsRasterLayerSpectralProperties for a gdal.Dataset.
            Does not read any QgsRasterLayer properties
         """
         if isinstance(ds, (str, Path)):
             ds = gdal.Open(str(ds))
-        assert isinstance(ds, gdal.Dataset)
+        if not (isinstance(ds, gdal.Dataset)):
+            raise AssertionError
 
         obj = cls(ds.RasterCount)
         obj.readFromGDALDataset(ds, overwrite=True)
         return obj
 
     @classmethod
-    def fromRasterLayer(cls, layer: Union[QgsRasterLayer, gdal.Dataset, str, Path]) \
-            -> Optional['QgsRasterLayerSpectralProperties']:
+    def fromRasterLayer(
+            cls,
+            layer: Union[QgsRasterLayer, gdal.Dataset, str, Path]
+    ) -> Optional['QgsRasterLayerSpectralProperties']:
         """
         Returns the QgsRasterLayerSpectralProperties for a raster layer
         """
@@ -226,7 +230,8 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
         return obj
 
     def __init__(self, bandCount: int):
-        assert bandCount > 0
+        if not (bandCount > 0):
+            raise AssertionError
         super().__init__()
         self.mBandCount = bandCount
 
@@ -245,7 +250,8 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
 
     def equalBandValues(self, other: 'QgsRasterLayerSpectralProperties') -> bool:
         """
-        Compares the spectral properties of two layers based on the values retrieved for each band, except the origin info.
+        Compares the spectral properties of two layers based on the values
+        retrieved for each band, except the origin info.
         :param other: QgsRasterLayerSpectralProperties
         :return: bool
         """
@@ -314,21 +320,26 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
         Sets the n values to the corresponding n bands
         if bands = None|'all'|'*'|':', the n values will be mapped to band 1 ... band n, with 0 < n <= bandCount().
         """
-        assert isinstance(itemKey, str)
+        if not (isinstance(itemKey, str)):
+            raise AssertionError
 
         if bands in [None, 'all', '*', ':']:
             n = self.bandCount()
             n = min(len(values), n) if isinstance(values, list) else n
             bands = list(range(1, n + 1))
         else:
-            assert isinstance(bands, list)
+            if not (isinstance(bands, list)):
+                raise AssertionError
 
         if not isinstance(values, list):
             values = len(bands) * [values]
 
-        assert len(values) == len(bands)
-        assert 0 < min(bands) <= self.bandCount()
-        assert 0 < max(bands) <= self.bandCount()
+        if not (len(values) == len(bands)):
+            raise AssertionError
+        if not (0 < min(bands) <= self.bandCount()):
+            raise AssertionError
+        if not (0 < max(bands) <= self.bandCount()):
+            raise AssertionError
 
         itemKey = self.itemKey(itemKey)
 
@@ -352,7 +363,8 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
 
         itemKey = self.itemKey(itemKey)
         data: dict = self.value(itemKey, {})
-        assert isinstance(data, dict)
+        if not (isinstance(data, dict)):
+            raise AssertionError
         return [data.get(b, default) for b in bands]
 
         # values = [self.value(f'{self.bandKey(b)}/{itemKey}') for b in bands]
@@ -449,8 +461,10 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
         """
 
         layer = self.asRasterLayer(layer)
-        assert layer.isValid()
-        assert layer.bandCount() == self.bandCount()
+        if not (layer.isValid()):
+            raise AssertionError
+        if not (layer.bandCount() == self.bandCount()):
+            raise AssertionError
 
         for key in SpectralPropertyKeys:
             if key in self.keys():
@@ -485,8 +499,10 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
         :return:
         """
         layer = self.asRasterLayer(layer)
-        assert layer and layer.isValid()
-        assert layer.bandCount() == self.bandCount()
+        if not (layer and layer.isValid()):
+            raise AssertionError
+        if not (layer.bandCount() == self.bandCount()):
+            raise AssertionError
 
         src = layer.source()
         basename = layer.name()
@@ -602,10 +618,12 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
         :param overwrite: bool, if set True, will overwrite existing spectral properties,
                           e.g. properties derived from a GDAL dataset.
         """
-        assert isinstance(layer, QgsRasterLayer)
+        if not (isinstance(layer, QgsRasterLayer)):
+            raise AssertionError
 
         customProperties = layer.customProperties()
-        assert self.bandCount() == layer.bandCount()
+        if not (self.bandCount() == layer.bandCount()):
+            raise AssertionError
 
         for k in SpectralPropertyKeys:
             if k in self.keys() and overwrite is False:
@@ -652,7 +670,8 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
         :param overwrite: overwrite existing values, e.g. those found in layer custom properties
         :param ds: gdal.Dataset
         """
-        assert isinstance(ds, gdal.Dataset)
+        if not (isinstance(ds, gdal.Dataset)):
+            raise AssertionError
 
         # reads metadata from GDAL data sets
         # priority:
@@ -704,7 +723,7 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
         band_ref_scale = []
         band_ref_offset = []
 
-        o_wl = o_wlu = o_fwhm = o_bbl = o_offset = o_scale = o_ref_scale = o_ref_offset = SpectralPropertyOrigin.GDALBand
+        o_wl = o_wlu = o_fwhm = o_bbl = o_offset = o_scale = o_ref_scale = o_ref_offset = SpectralPropertyOrigin.GDALBand  # noqa: E501
         for b in range(ds.RasterCount):
             band: Band = ds.GetRasterBand(b + 1)
 
@@ -803,7 +822,6 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
                                        origin=SpectralPropertyOrigin.Deduced)
         if canWrite(band_bbl, SpectralPropertyKeys.BadBand):
             self.setBandValues(None, SpectralPropertyKeys.BadBand, stringsToInts(band_bbl), origin=o_bbl)
-            s = ""
 
         # set other keys
         for values, origin, key in [
@@ -815,8 +833,6 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
         ]:
             if canWrite(values, key):
                 self.setBandValues(None, key, stringsToNums(values), origin=origin)
-
-        s = ""
 
     def asMap(self) -> dict:
         """
@@ -860,7 +876,8 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
                         nb = len(v)
                         break
 
-        assert isinstance(nb, int) and nb > 0
+        if not (isinstance(nb, int) and nb > 0):
+            raise AssertionError
 
         p = cls(nb)
         property_keys = [k.value for k in SpectralPropertyKeys]
@@ -896,7 +913,8 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
         """
         Reads the spectral properties from a QgsRasterDataProvider.
         """
-        assert isinstance(provider, QgsRasterDataProvider)
+        if not (isinstance(provider, QgsRasterDataProvider)):
+            raise AssertionError
 
         if provider.name() == 'gdal':
             uri = provider.dataSourceUri()
@@ -926,38 +944,39 @@ class QgsRasterLayerSpectralPropertiesTable(QgsVectorLayer):
 
         super().__init__('none?', '', 'memory')
         self.startEditing()
-        bandNo = QgsField('band', type=QMETATYPE_INT, comment='Band Number')
+        bandNo = QgsField('band', type=QMetaType.Int, comment='Band Number')
         constraints = QgsFieldConstraints()
         constraints.setConstraint(QgsFieldConstraints.ConstraintUnique)
         constraints.setConstraint(QgsFieldConstraints.ConstraintNotNull)
         bandNo.setConstraints(constraints)
         bandNo.setReadOnly(True)
         self.addAttribute(bandNo)
-        assert self.commitChanges()
+        if not (self.commitChanges()):
+            raise AssertionError
 
     def initDefaultFields(self):
         b = self.isEditable()
         self.startEditing()
 
-        BBL = QgsField('BBL', type=QMETATYPE_BOOL, comment='Band Band List')
+        BBL = QgsField('BBL', type=QMetaType.Bool, comment='Band Band List')
         BBL.setDefaultValueDefinition(QgsDefaultValue('True'))
         self.addAttribute(BBL)
 
-        WL = QgsField('WL', type=QMETATYPE_DOUBLE, comment='Wavelength of band center')
+        WL = QgsField('WL', type=QMetaType.Double, comment='Wavelength of band center')
         self.addAttribute(WL)
 
-        WLU = QgsField('WLU', type=QMETATYPE_QSTRING, comment='Wavelength Unit')
+        WLU = QgsField('WLU', type=QMetaType.QString, comment='Wavelength Unit')
         wluConstraints = QgsFieldConstraints()
         wluConstraints.setConstraintExpression('"WLU" in [\'nm\', \'m\']')
         WLU.setConstraints(wluConstraints)
         self.addAttribute(WLU)
 
-        WL_MIN = QgsField('WLmin', type=QMETATYPE_DOUBLE, comment='Minimum Wavelength')
+        WL_MIN = QgsField('WLmin', type=QMetaType.Double, comment='Minimum Wavelength')
         self.addAttribute(WL_MIN)
-        WL_MAX = QgsField('WLmax', type=QMETATYPE_DOUBLE, comment='Maximum Wavelength')
+        WL_MAX = QgsField('WLmax', type=QMetaType.Double, comment='Maximum Wavelength')
         self.addAttribute(WL_MAX)
 
-        FWHM = QgsField('FWHM', type=QMETATYPE_DOUBLE, comment='Full width at half maximum')
+        FWHM = QgsField('FWHM', type=QMetaType.Double, comment='Full width at half maximum')
         fwhmConstraints = QgsFieldConstraints()
         fwhmConstraints.setConstraintExpression('"FWHM" > 0')
         FWHM.setConstraints(fwhmConstraints)
@@ -1038,7 +1057,8 @@ class QgsRasterLayerSpectralPropertiesTable(QgsVectorLayer):
         self.startEditing()
         self.selectAll()
         self.removeSelection()
-        assert self.commitChanges(False)
+        if not (self.commitChanges(False)):
+            raise AssertionError
 
         for b in range(rasterLayer.bandCount()):
 
@@ -1047,8 +1067,10 @@ class QgsRasterLayerSpectralPropertiesTable(QgsVectorLayer):
                 bandFeature.setAttribute(bandProperty, self._readBandProperty(rasterLayer, b, bandProperty))
             bandFeature.setAttribute('band', b + 1)
             self.addFeature(bandFeature)
-        assert self.commitChanges()
-        assert self.featureCount() == rasterLayer.bandCount()
+        if not (self.commitChanges()):
+            raise AssertionError
+        if not (self.featureCount() == rasterLayer.bandCount()):
+            raise AssertionError
         # s = ""
 
     def _writeToLayer(self, layer: QgsRasterLayer):

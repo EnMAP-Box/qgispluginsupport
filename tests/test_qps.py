@@ -44,14 +44,14 @@ class ResourceTests(unittest.TestCase):
         for path in file_search(DIR_QPS, '*.py', recursive=True):
             path = pathlib.Path(path)
             with open(path, 'r', encoding='utf-8') as f:
-                lastLine = None
+                # lastLine = None
                 for i, line in enumerate(f.readlines()):
                     for (rx, err_msg) in error_types:
                         match = rx.search(line)
                         if match:
                             errors.append(f'File "{path}", line {i + 1}, "{line.strip()}"')
 
-                    lastLine = line
+                    # lastLine = line
         self.assertTrue(len(errors) == 0, msg=f'{len(errors)} Absolute imports:\n' + '\n'.join(errors))
 
 
