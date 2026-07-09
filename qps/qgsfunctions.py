@@ -541,8 +541,8 @@ class ExpressionFunctionUtils(object):
 
     @staticmethod
     def cachedCrsTransformation(
-            context: QgsExpressionContext,
-            layer: QgsMapLayer
+        context: QgsExpressionContext,
+        layer: QgsMapLayer
     ) -> QgsCoordinateTransform:
         """
         Returns a CRS Transformation from the context to the layer CRS
@@ -1057,7 +1057,7 @@ class SpectralMath(QgsExpressionFunction):
 
             if not (context.fields()):
                 raise AssertionError
-            exec(pyExpression, DATA)  # nosec: B102
+            exec(pyExpression, DATA)  # nosec: B102 # user-transparent definition of Python code, see function help
 
             # collect output profile values
             d = prepareProfileValueDict(x=DATA.get('x', None),

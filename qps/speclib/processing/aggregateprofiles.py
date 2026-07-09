@@ -538,7 +538,7 @@ Please not that not each aggregate function might be available for each field ty
 
 class SpectralAggregation(QgsExpressionFunction):
     """
-    Doese the same like fcnAggregateGeneric, just for spectral profiles
+    Does the same as fcnAggregateGeneric, just for spectral profiles
     """
 
     def __init__(self):
@@ -609,7 +609,7 @@ class SpectralAggregation(QgsExpressionFunction):
 
             if not (context.fields()):
                 raise AssertionError('context has no fields')
-            exec(pyExpression, DATA)  # nosec: B102
+            exec(pyExpression, DATA)  # nosec: B102 # there is currently no other way than to execute Python code
 
             # collect output profile values
             d = prepareProfileValueDict(x=DATA.get('x', None),
@@ -634,12 +634,12 @@ class SpectralAggregation(QgsExpressionFunction):
 
 
 def spfcnAggregateGeneric(
-        aggregate: QgsAggregateCalculator.Aggregate,
-        values: list,
-        parameters: QgsAggregateCalculator.AggregateParameters,
-        context: QgsExpressionContext,
-        parent: QgsExpression,
-        orderByPos: int = -1
+    aggregate: QgsAggregateCalculator.Aggregate,
+    values: list,
+    parameters: QgsAggregateCalculator.AggregateParameters,
+    context: QgsExpressionContext,
+    parent: QgsExpression,
+    orderByPos: int = -1
 ):
     if not isinstance(context, QgsExpressionContext):
         parent.setEvalErrorString('Cannot use aggregate function in this context')

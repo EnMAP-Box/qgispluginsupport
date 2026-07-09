@@ -4,11 +4,6 @@ import random
 import unittest
 from typing import Iterator, List, Tuple
 
-from qgis.PyQt.QtCore import QSize, Qt, QMetaType
-from qgis.PyQt.QtWidgets import QHBoxLayout, QPushButton, QSplitter, QVBoxLayout, QWidget
-from qgis.core import edit, Qgis, QgsExpressionContext, QgsFeature, QgsField, QgsGeometry, QgsMapToPixel, QgsPoint, \
-    QgsPointXY, QgsProject, QgsRaster, QgsRasterDataProvider, QgsRasterLayer, QgsVectorLayer, QgsWkbTypes
-from qgis.gui import QgsDualView, QgsMapCanvas
 from qps import initAll
 from qps.maptools import CursorLocationMapTool
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
@@ -23,6 +18,12 @@ from qps.speclib.gui.spectralprofilesources import (
 from qps.testing import start_app, TestCase, TestObjects
 from qps.utils import rasterArray, SpatialExtent, SpatialPoint
 from qpstestdata import enmap
+
+from qgis.PyQt.QtCore import QSize, Qt, QMetaType
+from qgis.PyQt.QtWidgets import QHBoxLayout, QPushButton, QSplitter, QVBoxLayout, QWidget
+from qgis.core import edit, Qgis, QgsExpressionContext, QgsFeature, QgsField, QgsGeometry, QgsMapToPixel, QgsPoint, \
+    QgsPointXY, QgsProject, QgsRaster, QgsRasterDataProvider, QgsRasterLayer, QgsVectorLayer, QgsWkbTypes
+from qgis.gui import QgsDualView, QgsMapCanvas
 
 start_app()
 initAll()
@@ -387,8 +388,8 @@ class SpectralProcessingTests(TestCase):
 
         def onClicked():
             ext = SpatialExtent.fromMapCanvas(canvas)
-            x = random.uniform(ext.xMinimum(), ext.xMaximum())  # nosec B311
-            y = random.uniform(ext.yMinimum(), ext.yMaximum())  # nosec B311
+            x = random.uniform(ext.xMinimum(), ext.xMaximum())  # nosec B311 # not security relevant sampling
+            y = random.uniform(ext.yMinimum(), ext.yMaximum())  # nosec B311 # not security relevant sampling
             pt = SpatialPoint(ext.crs(), x, y)
             panel.loadCurrentMapSpectra(pt, mapCanvas=canvas, runAsync=False)
 

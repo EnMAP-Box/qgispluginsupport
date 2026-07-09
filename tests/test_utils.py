@@ -25,18 +25,6 @@ from typing import Dict
 import defusedxml.ElementTree as ET  # B405 - defusedxml used to safely parse XML
 import numpy as np
 from osgeo import gdal, gdal_array, ogr, osr
-
-from qgis.PyQt.QtCore import NULL, QByteArray, QObject, QPoint, QRect, QUrl
-from qgis.PyQt.QtGui import QColor
-from qgis.PyQt.QtWidgets import QDialog, QDockWidget, QGroupBox, QMainWindow, QMenu, QWidget
-from qgis.PyQt.QtXml import QDomDocument, QDomElement
-from qgis.core import QgsCoordinateReferenceSystem, QgsFeature, QgsFeatureRequest, QgsField, QgsGeometry, \
-    QgsGeometryParameters, QgsMapLayerProxyModel, QgsMapLayerStore, QgsMapToPixel, QgsPointXY, QgsProcessingFeedback, \
-    QgsProject, QgsRaster, QgsRasterDataProvider, QgsRasterIdentifyResult, QgsRasterLayer, QgsRectangle, QgsVector, \
-    QgsVectorLayer
-from qgis.core import QgsWkbTypes, QgsExpressionContextUtils
-from qgis.gui import QgsDockWidget
-from qgis.gui import QgsFieldCalculator
 from qps.speclib.core import is_spectral_library
 from qps.speclib.core.spectralprofile import decodeProfileValueDict
 from qps.testing import start_app, TestCase, TestObjects
@@ -51,6 +39,18 @@ from qps.utils import (
     spatialPoint2px, value2str, writeAsVectorFormat, create_picture_viewer_config, xy_pair_matrix, featureSymbolScope,
     TemporaryGlobalLayerContext, stringToByteArray, stringFromByteArray)
 from qpstestdata import enmap, enmap_multipoint, enmap_multipolygon, enmap_pixel, hymap, landcover
+
+from qgis.PyQt.QtCore import NULL, QByteArray, QObject, QPoint, QRect, QUrl
+from qgis.PyQt.QtGui import QColor
+from qgis.PyQt.QtWidgets import QDialog, QDockWidget, QGroupBox, QMainWindow, QMenu, QWidget
+from qgis.PyQt.QtXml import QDomDocument, QDomElement
+from qgis.core import QgsCoordinateReferenceSystem, QgsFeature, QgsFeatureRequest, QgsField, QgsGeometry, \
+    QgsGeometryParameters, QgsMapLayerProxyModel, QgsMapLayerStore, QgsMapToPixel, QgsPointXY, QgsProcessingFeedback, \
+    QgsProject, QgsRaster, QgsRasterDataProvider, QgsRasterIdentifyResult, QgsRasterLayer, QgsRectangle, QgsVector, \
+    QgsVectorLayer
+from qgis.core import QgsWkbTypes, QgsExpressionContextUtils
+from qgis.gui import QgsDockWidget
+from qgis.gui import QgsFieldCalculator
 
 start_app()
 
@@ -887,8 +887,12 @@ class TestUtils(TestCase):
                   ]
 
         for n in range(25):
-            points.append(QgsPointXY(random.uniform(ext.xMinimum(), ext.xMaximum()),  # nosec B311
-                                     random.uniform(ext.yMinimum(), ext.yMaximum())))  # nosec B311
+            points.append(
+                QgsPointXY(
+                    random.uniform(ext.xMinimum(), ext.xMaximum()),  # nosec B311 # sampling not security relevant
+                    random.uniform(ext.yMinimum(), ext.yMaximum()),  # nosec B311 # sampling not security relevant
+                )
+            )  # nosec B311
 
         for i, p in enumerate(points):
             # create empty rectangle = single point

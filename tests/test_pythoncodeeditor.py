@@ -1,8 +1,9 @@
 import unittest
 
-from qgis.core import QgsFeature
 from qps.editors.pythoncodeeditor import PythonCodeWidget, PythonCodeDialog
 from qps.testing import TestCase, start_app, TestObjects
+
+from qgis.core import QgsFeature
 
 start_app()
 
@@ -46,7 +47,7 @@ class PythonCodeEditorTestCases(TestCase):
                     kwds = {'f': attributes.copy()}
 
                     # this is exactly what is expected here
-                    exec(compiled_code, kwds)  # nosec B102
+                    exec(compiled_code, kwds)  # nosec B102 # a Python code editor is used to compile and execute code
                     if not ('y' in kwds):
                         raise AssertionError('Missing y in kwds')
 
