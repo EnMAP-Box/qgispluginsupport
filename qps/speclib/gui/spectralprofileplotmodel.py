@@ -951,10 +951,12 @@ class SpectralProfilePlotModel(QStandardItemModel):
         # get all items whose shape intersects the rect
         # items1 = vb.scene().items(srect, Qt.IntersectsItemShape, Qt.AscendingOrder)
 
-        curves = [item
-                  for item in scene.items(srect2, Qt.IntersectsItemShape, Qt.AscendingOrder)
-                  if isinstance(item, PlotCurveItem)
-                  and isinstance(item.parentItem(), SpectralProfilePlotDataItem)]
+        curves = [
+            item
+            for item in scene.items(srect2, Qt.IntersectsItemShape, Qt.AscendingOrder)
+            if isinstance(item, PlotCurveItem) and isinstance(
+                item.parentItem(), SpectralProfilePlotDataItem)
+        ]
         srect2 = vb.mapSceneToView(srect).boundingRect().normalized()
 
         # need a more precise intersection test

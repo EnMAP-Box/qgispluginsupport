@@ -27,21 +27,16 @@
 """
 from typing import List
 
-from qgis.core import QgsFeatureRequest
-
-from qgis.PyQt.QtWidgets import QMessageBox
-
 from qgis.PyQt.QtCore import pyqtSignal
+from qgis.PyQt.QtWidgets import QMessageBox
+from qgis.core import QgsFeatureRequest
 from qgis.core import QgsPointXY, QgsCoordinateReferenceSystem, QgsRectangle
-
 from qgis.core import \
     QgsVectorLayerTools, QgsVectorLayer, Qgis, \
     QgsSettings, \
     QgsVectorDataProvider, \
     QgsFeature, QgsGeometry, QgsProject
-
 from qgis.gui import QgisInterface
-
 from .utils import SpatialExtent, SpatialPoint, featureBoundingBox
 
 
@@ -152,8 +147,9 @@ class VectorLayerTools(QgsVectorLayerTools):
             markSelectedOnly = bool(settings.value("qgis/digitizing/marker_only_for_selected", True))
 
             # // redraw only if markers will be drawn
-            if not markSelectedOnly or (vlayer.selectedFeatureCount() > 0
-                                        and (markerType == "Cross" or markerType == "SemiTransparentCircle")):
+            if not markSelectedOnly or (
+                vlayer.selectedFeatureCount() > 0 and markerType in ["Cross", "SemiTransparentCircle"]
+            ):
                 vlayer.triggerRepaint()
 
             return True
