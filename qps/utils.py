@@ -379,8 +379,8 @@ def file_search(rootdir,
                             yield entry.path.replace('\\', '/')
 
                     elif (
-                            (ignoreCase and fnmatch.fnmatch(name, pattern.lower()))
-                            or fnmatch.fnmatch(name, pattern)
+                        (ignoreCase and fnmatch.fnmatch(name, pattern.lower()))
+                        or fnmatch.fnmatch(name, pattern)  # noqa: W503
                     ):
                         yield entry.path.replace('\\', '/')
                 elif entry.is_dir() and recursive is True:
@@ -407,8 +407,8 @@ def file_search(rootdir,
                             yield entry.path.replace('\\', '/')
 
                     elif (
-                            (ignoreCase and fnmatch.fnmatch(name, pattern.lower()))
-                            or fnmatch.fnmatch(name, pattern)
+                        (ignoreCase and fnmatch.fnmatch(name, pattern.lower()))
+                        or fnmatch.fnmatch(name, pattern)  # noqa: W503
                     ):
                         yield entry.path.replace('\\', '/')
 
@@ -783,8 +783,8 @@ def showMessage(message: str, title: str, level):
 
 
 def gdalDataset(
-        dataset: Union[str, Path, QgsRasterLayer, QgsRasterDataProvider, gdal.Dataset, gdal.Band],
-        eAccess: int = gdal.GA_ReadOnly
+    dataset: Union[str, Path, QgsRasterLayer, QgsRasterDataProvider, gdal.Dataset, gdal.Band],
+    eAccess: int = gdal.GA_ReadOnly
 ) -> gdal.Dataset:
     """
     Returns a gdal.Dataset object instance
@@ -969,7 +969,7 @@ def fid2pixelindices(raster: gdal.Dataset,
                                           srs=layer.GetSpatialRef(),
                                           geom_type=layer.GetGeomType())
     if not (
-            ogr.OGRERR_NONE == lyrMem.CreateField(ogr.FieldDefn('FID_BURN', ogr.OFTInteger64))
+        ogr.OGRERR_NONE == lyrMem.CreateField(ogr.FieldDefn('FID_BURN', ogr.OFTInteger64))
     ):
         raise AssertionError('Unable to create field FID_BURN')
 
@@ -1839,9 +1839,8 @@ def defaultBands(dataset) -> List[int]:
     elif isinstance(dataset, QgsRasterDataProvider):
         return defaultBands(dataset.dataSourceUri())
     elif (
-            isinstance(dataset, QgsRasterLayer)
-            and isinstance(dataset.dataProvider(), QgsRasterDataProvider)
-            and dataset.dataProvider().name() == 'gdal'
+        isinstance(dataset, QgsRasterLayer) and isinstance(dataset.dataProvider(), QgsRasterDataProvider)
+        and dataset.dataProvider().name() == 'gdal'  # noqa: W503
     ):
         return defaultBands(dataset.source())
     elif isinstance(dataset, gdal.Dataset):
@@ -2395,7 +2394,7 @@ def px2geocoordinatesV2(layer: QgsRasterLayer,
         subpixel_pos_y = subpixel_pos
 
     if not (
-            (0 <= subpixel_pos_x <= 1.0) and (0 <= subpixel_pos_y <= 1.0)
+        (0 <= subpixel_pos_x <= 1.0) and (0 <= subpixel_pos_y <= 1.0)
     ):
         raise AssertionError('subpixel position(s) not in range 0.0 - 1.0:\n'
                              f'subpixel_pos_x={subpixel_pos_x} subpixel_pos_y={subpixel_pos_y}')
@@ -2757,8 +2756,8 @@ def px2spatialPoint(rasterInterface: Union[QgsRasterInterface, QgsRasterLayer],
 
 
 def spatialPoint2px(
-        layer: QgsRasterLayer,
-        spatialPoint: Union[QgsPointXY, SpatialPoint]
+    layer: QgsRasterLayer,
+    spatialPoint: Union[QgsPointXY, SpatialPoint]
 ) -> Optional[QPoint]:
     """
     Converts a spatial point into a raster pixel coordinate
@@ -3302,8 +3301,7 @@ class MapGeometryToPixel(object):
 
     def memoryLayerBand(self, qgsGeometry: QgsGeometry) -> Tuple[gdal.Band, ogr.Layer]:
         if (
-                not isinstance(self.srs, SpatialReference)
-                and isinstance(self.crs, QgsCoordinateReferenceSystem)
+            not isinstance(self.srs, SpatialReference) and isinstance(self.crs, QgsCoordinateReferenceSystem)
         ):
             self.srs = SpatialReference(self.crs.toWkt())
 
@@ -3383,10 +3381,10 @@ class MapGeometryToPixel(object):
             lyr.ResetReading()
             bandMEM.Fill(0)  # ensure that no FIDs are left from previous writes
             if not (
-                    gdal.CPLE_None == gdal.RasterizeLayer(dsMEM, [1], lyr,
-                                                          options=[
-                                                              f'ALL_TOUCHED={all_touched}'.upper(),
-                                                              'ATTRIBUTE=FID_BURN'])
+                gdal.CPLE_None == gdal.RasterizeLayer(dsMEM, [1], lyr,
+                                                      options=[
+                                                          f'ALL_TOUCHED={all_touched}'.upper(),
+                                                          'ATTRIBUTE=FID_BURN'])
             ):
                 raise AssertionError('Unable to rasterize layer')
             is_fid = dsMEM.ReadAsArray() == 1
@@ -3479,13 +3477,13 @@ class ExtentTileIterator(object):
 
 
 def rasterizeFeatures(
-        featureSource: QgsFeatureSource,
-        rasterLayer: QgsRasterLayer,
-        request: QgsFeatureRequest = QgsFeatureRequest(),
-        all_touched: bool = True,
-        pixel_metadata: bool = True,
-        blockSize: int = 0,
-        feedback: QgsProcessingFeedback = QgsProcessingFeedback()
+    featureSource: QgsFeatureSource,
+    rasterLayer: QgsRasterLayer,
+    request: QgsFeatureRequest = QgsFeatureRequest(),
+    all_touched: bool = True,
+    pixel_metadata: bool = True,
+    blockSize: int = 0,
+    feedback: QgsProcessingFeedback = QgsProcessingFeedback()
 ) -> Iterator[Tuple[QgsFeature, np.ndarray, Dict[str, Any]]]:
     transform = QgsCoordinateTransform()
     transform.setSourceCrs(featureSource.crs())

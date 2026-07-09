@@ -193,7 +193,7 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
 
     @classmethod
     def fromGDALDataset(
-            cls, ds: Union[str, Path, gdal.Dataset]
+        cls, ds: Union[str, Path, gdal.Dataset]
     ) -> Optional['QgsRasterLayerSpectralProperties']:
         """Returns the QgsRasterLayerSpectralProperties for a gdal.Dataset.
            Does not read any QgsRasterLayer properties
@@ -209,8 +209,8 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
 
     @classmethod
     def fromRasterLayer(
-            cls,
-            layer: Union[QgsRasterLayer, gdal.Dataset, str, Path]
+        cls,
+        layer: Union[QgsRasterLayer, gdal.Dataset, str, Path]
     ) -> Optional['QgsRasterLayerSpectralProperties']:
         """
         Returns the QgsRasterLayerSpectralProperties for a raster layer
@@ -218,8 +218,9 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
 
         layer = cls.asRasterLayer(layer)
 
-        if not (isinstance(layer, QgsRasterLayer)
-                and layer.isValid() and layer.bandCount() > 0):
+        if not (
+            isinstance(layer, QgsRasterLayer) and layer.isValid() and layer.bandCount() > 0
+        ):
             return None
         obj = cls(layer.bandCount())
         # read from layer custom properties

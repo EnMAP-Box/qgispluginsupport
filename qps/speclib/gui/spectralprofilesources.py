@@ -76,11 +76,11 @@ class SpectralProfileSource(QObject):
         self.mToolTip = toolTip
 
     def collectProfiles(
-            self,
-            point: SpatialPoint,
-            kernel_size: QSize = QSize(1, 1),
-            snap: bool = False,
-            **kwargs
+        self,
+        point: SpatialPoint,
+        kernel_size: QSize = QSize(1, 1),
+        snap: bool = False,
+        **kwargs
     ) -> List[Tuple[Dict, QgsExpressionContext]]:
         """
         A function to collect profiles.
@@ -203,9 +203,9 @@ class ProfileSamplingMode(object):
         return self.mAggregation
 
     def profiles(
-            self,
-            point: SpatialPoint,
-            profiles: List[Tuple[Dict, QgsExpressionContext]]
+        self,
+        point: SpatialPoint,
+        profiles: List[Tuple[Dict, QgsExpressionContext]]
     ) -> List[Tuple[Dict, QgsExpressionContext]]:
         """
         Aggregates the profiles collected from a profile source
@@ -333,12 +333,12 @@ class StandardLayerProfileSource(SpectralProfileSource):
         return context
 
     def collectProfiles(
-            self,
-            point: SpatialPoint,
-            kernel_size: QSize = QSize(1, 1),
-            snap: bool = False,
-            suffix: str = '',
-            **kwargs
+        self,
+        point: SpatialPoint,
+        kernel_size: QSize = QSize(1, 1),
+        snap: bool = False,
+        suffix: str = '',
+        **kwargs
     ) -> List[Tuple[Dict, QgsExpressionContext]]:
 
         point = point.toCrs(self.mLayer.crs())
@@ -453,11 +453,11 @@ class MapCanvasLayerProfileSource(SpectralProfileSource):
         return QgsExpressionContext()
 
     def collectProfiles(
-            self, point: SpatialPoint,
-            kernel_size: QSize = QSize(1, 1),
-            canvas: QgsMapCanvas = None,
-            snap: bool = False,
-            **kwargs
+        self, point: SpatialPoint,
+        kernel_size: QSize = QSize(1, 1),
+        canvas: QgsMapCanvas = None,
+        snap: bool = False,
+        **kwargs
     ) -> List[Tuple[Dict, QgsExpressionContext]]:
         if isinstance(canvas, QgsMapCanvas):
             self.mMapCanvas = canvas
@@ -623,8 +623,7 @@ class SpectralProfileSourceModel(QAbstractListModel):
             if not (isinstance(source, SpectralProfileSource)):
                 raise AssertionError(f'Got {source} instead SpectralProfileSource')
             if (
-                    source not in self.mSources
-                    and source not in to_insert
+                source not in self.mSources and source not in to_insert
             ):
                 to_insert.append(source)
 
@@ -666,8 +665,8 @@ class SpectralProfileSourceModel(QAbstractListModel):
         return None
 
     def removeSources(
-            self,
-            sources: Union[SpectralProfileSource, List[SpectralProfileSource]]
+        self,
+        sources: Union[SpectralProfileSource, List[SpectralProfileSource]]
     ) -> List[SpectralProfileSource]:
         if not isinstance(sources, Iterable):
             sources = [sources]
@@ -1367,8 +1366,7 @@ class SpectralFeatureGeneratorNode(ValidateNode):
                 raise AssertionError
 
         fieldnames = [n for n in fieldnames
-                      if n not in self.fieldNodeNames()
-                      and n in self.speclib().fields().names()]
+                      if n not in self.fieldNodeNames() and n in self.speclib().fields().names()]
 
         new_nodes: List[FieldGeneratorNode] = []
 
@@ -1862,7 +1860,7 @@ class SpectralProfileBridge(TreeModel):
         generator.validate()
 
     def featureGenerators(
-            self, speclib: bool = True, checked: bool = True
+        self, speclib: bool = True, checked: bool = True
     ) -> List[SpectralFeatureGeneratorNode]:
 
         for n in self.rootNode().childNodes():
@@ -2071,10 +2069,8 @@ class SpectralProfileBridge(TreeModel):
         update_parent = None
 
         if (
-                role == Qt.CheckStateRole
-                and isinstance(node, TreeNode)
-                and node.isCheckable()
-                and value in [Qt.Checked, Qt.Unchecked]
+            role == Qt.CheckStateRole and isinstance(node, TreeNode)
+            and node.isCheckable() and value in [Qt.Checked, Qt.Unchecked]  # noqa: W503
         ):
             changed = node.checkState() != value
             if changed:

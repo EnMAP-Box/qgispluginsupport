@@ -407,9 +407,9 @@ class AddAttributeDialog(QDialog):
         """
         field = self.privateField()
         if (
-                can_store_spectral_profiles(field)
-                and self.cbSpectralProfile.isEnabled()
-                and self.cbSpectralProfile.isChecked()
+            can_store_spectral_profiles(field)
+            and self.cbSpectralProfile.isEnabled()  # noqa: W503
+            and self.cbSpectralProfile.isChecked()  # noqa: W503
         ):
             # field.setComment('Spectral Profile Field')
             setup = QgsEditorWidgetSetup(EDITOR_WIDGET_REGISTRY_KEY, {})
@@ -465,8 +465,8 @@ class AddAttributeDialog(QDialog):
         name = self.tbName.text()
         existing_names = self.mLayer.fields().names()
         if (
-                self.mCaseSensitive and name in existing_names
-                or not self.mCaseSensitive and name.lower() in [n.lower() for n in existing_names]
+            self.mCaseSensitive and name in existing_names
+            or not self.mCaseSensitive and name.lower() in [n.lower() for n in existing_names]  # noqa: W503
         ):
             errors.append('Field name "{}" already exists.'.format(name))
         elif name == '':
@@ -1089,8 +1089,8 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
         r = QgsFeatureRequest()
         needsGeom = False
         if (
-                mLayer.geometryType() != QgsWkbTypes.NullGeometry
-                and initialMode == QgsAttributeTableFilterModel.ShowVisible
+            mLayer.geometryType() != QgsWkbTypes.NullGeometry
+            and initialMode == QgsAttributeTableFilterModel.ShowVisible  # noqa: W503
         ):
             mc = self.mMapCanvas
             extent = QgsRectangle(mc.mapSettings().mapToLayerCoordinates(mLayer, mc.extent()))
@@ -1337,17 +1337,15 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
 
     def updateMultiEditButtonState(self):
         if (
-                not isinstance(self.mLayer, QgsVectorLayer)
-                or (self.mLayer.editFormConfig().layout() == QgsEditFormConfig.UiFileLayout)
+            not isinstance(self.mLayer, QgsVectorLayer)
+            or (self.mLayer.editFormConfig().layout() == QgsEditFormConfig.UiFileLayout)  # noqa: W503
         ):
             return
 
         self.mActionToggleMultiEdit.setEnabled(self.mLayer.isEditable())
 
-        if (
-                not self.mLayer.isEditable()
-                or (self.mLayer.isEditable() and self.mMainView.view() != QgsDualView.AttributeEditor)
-        ):
+        b = self.mLayer.isEditable() and self.mMainView.view() != QgsDualView.AttributeEditor
+        if not self.mLayer.isEditable() or b:
             self.mActionToggleMultiEdit.setChecked(False)
 
     def openConditionalStyles(self):
@@ -1660,11 +1658,10 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
             canDeleteFeatures and self.mLayer.isEditable() and self.mLayer.selectedFeatureCount() > 0)
         self.mActionAddFeature.setEnabled(canAddFeatures and self.mLayer.isEditable())
         self.mActionPasteFeatures.setEnabled(canAddFeatures and self.mLayer.isEditable())
-        self.mActionToggleEditing.setEnabled((canChangeAttributes
-                                              or canDeleteFeatures
-                                              or canAddAttributes
-                                              or canDeleteAttributes
-                                              or canAddFeatures) and not self.mLayer.readOnly())
+        self.mActionToggleEditing.setEnabled(
+            (canChangeAttributes or canDeleteFeatures or canAddAttributes
+             or canDeleteAttributes or canAddFeatures  # noqa: W503
+             ) and not self.mLayer.readOnly())
 
         self.mUpdateExpressionBox.setVisible(self.mLayer.isEditable())
         if self.mLayer.isEditable() and self.mFieldCombo.currentIndex() == -1:
@@ -1816,8 +1813,8 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
         masterModel = self.mMainView.masterModel()
         f = QgsFeature(self.mLayer.fields())
         if self.vectorLayerTools().addFeature(
-                self.mLayer,
-                f=f
+            self.mLayer,
+            f=f
         ):
             masterModel.reload(masterModel.index(0, 0), masterModel.index(
                 masterModel.rowCount() - 1, masterModel.columnCount() - 1))
@@ -1835,10 +1832,9 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
         # this has to be done, because in case only one cell has been changed and is still enabled, the change
         # would not be added to the mEditBuffer. By disabling, it looses focus and the change will be stored.
 
+        idx = self.mMainView.tableView().indexWidget(self.mMainView.tableView().currentIndex())
         if (
-                self.mLayer.isEditable()
-                and self.mMainView.tableView().indexWidget(self.mMainView.tableView().currentIndex()
-                                                           ) is not None
+            self.mLayer.isEditable() and idx is not None
         ):
             self.mMainView.tableView().indexWidget(self.mMainView.tableView().currentIndex()).setEnabled(False)
 

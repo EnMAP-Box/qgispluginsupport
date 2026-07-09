@@ -55,8 +55,8 @@ from qgis.gui import QgsMapTool
 
 
 def layerTreeResultsGroup(
-        layer_details: QgsProcessingContext.LayerDetails,
-        context: QgsProcessingContext,
+    layer_details: QgsProcessingContext.LayerDetails,
+    context: QgsProcessingContext,
 ) -> Optional[QgsLayerTreeGroup]:
     """
     Returns the destination layer tree group to store results in, or None
@@ -106,11 +106,11 @@ def layerTreeResultsGroup(
 
 
 def handleAlgorithmResults(  # noqa: QGS105
-        alg: QgsProcessingAlgorithm,
-        context: QgsProcessingContext,
-        feedback: Optional[QgsProcessingFeedback] = None,
-        iface: Optional[QgisInterface] = None,
-        parameters: Optional[dict] = None,
+    alg: QgsProcessingAlgorithm,
+    context: QgsProcessingContext,
+    feedback: Optional[QgsProcessingFeedback] = None,
+    iface: Optional[QgisInterface] = None,
+    parameters: Optional[dict] = None,
 ):
     if not parameters:
         parameters = {}
@@ -188,12 +188,9 @@ def handleAlgorithmResults(  # noqa: QGS105
             else:
                 wrong_layers.append(str(dest_id))
         except Exception:
+            msg = QCoreApplication.translate("Postprocessing", "Error loading result layer:")
             QgsMessageLog.logMessage(
-                QCoreApplication.translate(
-                    "Postprocessing", "Error loading result layer:"
-                )
-                + "\n"
-                + traceback.format_exc(),
+                f'{msg}\n{traceback.format_exc()}',
                 "Processing",
                 Qgis.MessageLevel.Critical,
             )
@@ -241,9 +238,9 @@ def handleAlgorithmResults(  # noqa: QGS105
 # python/processing/__init__.py too!
 # Docstring for this function is in python/processing/__init__.py
 def createContext(  # noqa: QGS105
-        feedback: Optional[QgsProcessingFeedback] = None,
-        project: Optional[QgsProject] = None,
-        iface: Optional[QgisInterface] = None
+    feedback: Optional[QgsProcessingFeedback] = None,
+    project: Optional[QgsProject] = None,
+    iface: Optional[QgisInterface] = None
 ):
     if project is None:
         project = QgsProject.instance()
@@ -284,8 +281,8 @@ def createContext(  # noqa: QGS105
 
 
 def createExpressionContext(  # noqa: QGS105
-        iface: Optional[QgisInterface] = None,
-        project: Optional[QgsProject] = None
+    iface: Optional[QgisInterface] = None,
+    project: Optional[QgsProject] = None
 ):
     if not isinstance(project, QgsProject):
         project = QgsProject.instance()
@@ -315,12 +312,12 @@ def createExpressionContext(  # noqa: QGS105
 class AlgorithmDialog(QgsProcessingAlgorithmDialogBase):
 
     def __init__(  # noqa: QGS105
-            self,
-            alg: QgsProcessingAlgorithm,
-            in_place: bool = False,
-            parent: Optional[QWidget] = None,
-            context: Optional[QgsProcessingContext] = None,
-            iface: Optional[QgisInterface] = None,
+        self,
+        alg: QgsProcessingAlgorithm,
+        in_place: bool = False,
+        parent: Optional[QWidget] = None,
+        context: Optional[QgsProcessingContext] = None,
+        iface: Optional[QgisInterface] = None,
     ):
         super().__init__(parent)
 
@@ -446,7 +443,7 @@ class AlgorithmDialog(QgsProcessingAlgorithmDialogBase):
         )
 
     def createProcessingParameters(
-            self, flags=QgsProcessingParametersGenerator.Flags()
+        self, flags=QgsProcessingParametersGenerator.Flags()
     ):
         if self.mainWidget() is None:
             return {}
@@ -490,7 +487,7 @@ class AlgorithmDialog(QgsProcessingAlgorithmDialogBase):
             )
 
             if checkCRS and not self.algorithm().validateInputCrs(
-                    parameters, self.context
+                parameters, self.context
             ):
                 reply = QMessageBox.question(
                     self,
@@ -518,12 +515,12 @@ class AlgorithmDialog(QgsProcessingAlgorithmDialogBase):
 
             for param in self.algorithm().parameterDefinitions():
                 if (
-                        isinstance(
-                            parameters.get(param.name(), None),
-                            QgsProcessingFeatureSourceDefinition,
-                        )
-                        and parameters[param.name()].flags
-                        & QgsProcessingFeatureSourceDefinition.Flag.FlagCreateIndividualOutputPerInputFeature
+                    isinstance(
+                        parameters.get(param.name(), None),
+                        QgsProcessingFeatureSourceDefinition,
+                    )
+                    and parameters[param.name()].flags  # noqa: W503
+                    & QgsProcessingFeatureSourceDefinition.Flag.FlagCreateIndividualOutputPerInputFeature  # noqa: W503
                 ):
                     self.iterateParam = param.name()
                     break
@@ -531,8 +528,7 @@ class AlgorithmDialog(QgsProcessingAlgorithmDialogBase):
             self.clearProgress()
             self.feedback.pushVersionInfo(self.algorithm().provider())
             if (
-                    self.algorithm().provider()
-                    and self.algorithm().provider().warningMessage()
+                self.algorithm().provider() and self.algorithm().provider().warningMessage()
             ):
                 self.feedback.reportError(self.algorithm().provider().warningMessage())
 
@@ -552,14 +548,8 @@ class AlgorithmDialog(QgsProcessingAlgorithmDialogBase):
             self.feedback.pushInfo(self.tr("Input parameters:"))
             display_params = []
             for k, v in parameters.items():
-                display_params.append(
-                    "'"
-                    + k
-                    + "' : "
-                    + self.algorithm()
-                    .parameterDefinition(k)
-                    .valueAsPythonString(v, self.context)
-                )
+                tmp = self.algorithm().parameterDefinition(k).valueAsPythonString(v, self.context)
+                display_params.append(f"'{k}' : {tmp}")
             self.feedback.pushCommandInfo("{ " + ", ".join(display_params) + " }")
             self.feedback.pushInfo("")
             start_time = time.time()
@@ -602,11 +592,11 @@ class AlgorithmDialog(QgsProcessingAlgorithmDialogBase):
                     self.algorithm().flags() & QgsProcessingAlgorithm.Flag.FlagCanCancel
                 )
                 if executeIterating(
-                        self.algorithm(),
-                        parameters,
-                        self.iterateParam,
-                        self.context,
-                        self.feedback,
+                    self.algorithm(),
+                    parameters,
+                    self.iterateParam,
+                    self.context,
+                    self.feedback,
                 ):
                     self.feedback.pushInfo(
                         self.tr("Execution completed in {}").format(
@@ -686,8 +676,7 @@ class AlgorithmDialog(QgsProcessingAlgorithmDialogBase):
                     self.context = None
 
                 if not self.in_place and not (
-                        self.algorithm().flags()
-                        & QgsProcessingAlgorithm.Flag.FlagNoThreading
+                    self.algorithm().flags() & QgsProcessingAlgorithm.Flag.FlagNoThreading
                 ):
                     # Make sure the Log tab is visible before executing the algorithm
                     self.showLog()
@@ -748,9 +737,8 @@ class AlgorithmDialog(QgsProcessingAlgorithmDialogBase):
             # add html results to results dock
             for out in self.algorithm().outputDefinitions():
                 if (
-                        isinstance(out, QgsProcessingOutputHtml)
-                        and out.name() in result
-                        and result[out.name()]
+                    isinstance(out, QgsProcessingOutputHtml)
+                    and out.name() in result and result[out.name()]  # noqa: W503
                 ):
                     resultsList.addResult(
                         icon=self.algorithm().icon(),
@@ -790,13 +778,13 @@ class AlgorithmDialog(QgsProcessingAlgorithmDialogBase):
 class ParametersPanel(QgsProcessingParametersWidget):
 
     def __init__(  # noqa: QGS105
-            self,
-            parent: Optional[QWidget],
-            alg: QgsProcessingAlgorithm,
-            in_place: bool = False,
-            active_layer=None,
-            context: Optional[QgsProcessingContext] = None,
-            iface: Optional[QgisInterface] = None
+        self,
+        parent: Optional[QWidget],
+        alg: QgsProcessingAlgorithm,
+        in_place: bool = False,
+        active_layer=None,
+        context: Optional[QgsProcessingContext] = None,
+        iface: Optional[QgisInterface] = None
     ):
         super().__init__(alg, parent)
         self.in_place = in_place
@@ -916,8 +904,7 @@ class ParametersPanel(QgsProcessingParametersWidget):
                         if isinstance(param, QgsProcessingParameterExtent):
                             desc += self.tr(" (xmin, xmax, ymin, ymax)")
                         if (
-                                param.flags()
-                                & QgsProcessingParameterDefinition.Flag.FlagOptional
+                            param.flags() & QgsProcessingParameterDefinition.Flag.FlagOptional
                         ):
                             desc += self.tr(" [optional]")
                         widget.setText(desc)
@@ -973,7 +960,7 @@ class ParametersPanel(QgsProcessingParametersWidget):
             wrapper.postInitialize(list(self.wrappers.values()))
 
     def createProcessingParameters(
-            self, flags=QgsProcessingParametersGenerator.Flags()
+        self, flags=QgsProcessingParametersGenerator.Flags()
     ):
         include_default = not (flags & QgsProcessingParametersGenerator.Flag.SkipDefaultValueParameters)
         parameters = {}
@@ -999,8 +986,8 @@ class ParametersPanel(QgsProcessingParametersWidget):
                     widget = wrapper.wrappedWidget()
 
                 if (
-                        not isinstance(wrapper, QgsProcessingHiddenWidgetWrapper)
-                        and widget is None
+                    not isinstance(wrapper, QgsProcessingHiddenWidgetWrapper)
+                    and widget is None  # noqa: W503
                 ):
                     continue
 
@@ -1059,11 +1046,12 @@ class ParametersPanel(QgsProcessingParametersWidget):
 class BatchAlgorithmDialog(QgsProcessingBatchAlgorithmDialogBase):
 
     def __init__(  # noqa: QGS105
-            self,
-            alg: QgsProcessingAlgorithm,
-            parent: Optional[QWidget] = None,
-            context: Optional[QgsProcessingContext] = None,
-            iface: Optional[QgisInterface] = None):
+        self,
+        alg: QgsProcessingAlgorithm,
+        parent: Optional[QWidget] = None,
+        context: Optional[QgsProcessingContext] = None,
+        iface: Optional[QgisInterface] = None
+    ):
 
         super().__init__(parent)
 
@@ -1135,9 +1123,8 @@ class BatchAlgorithmDialog(QgsProcessingBatchAlgorithmDialogBase):
     def loadHtmlResults(self, results, num):
         for out in self.algorithm().outputDefinitions():
             if (
-                    isinstance(out, QgsProcessingOutputHtml)
-                    and out.name() in results
-                    and results[out.name()]
+                isinstance(out, QgsProcessingOutputHtml)
+                and out.name() in results and results[out.name()]  # noqa: W503
             ):
                 resultsList.addResult(
                     icon=self.algorithm().icon(),
@@ -1219,11 +1206,11 @@ class BatchPanel(QgsPanelWidget, WIDGET):
     CURRENT_FORMAT = "batch_3.40"
 
     def __init__(  # noqa: QGS105
-            self,
-            parent,
-            alg,
-            context: QgsProcessingContext,
-            iface: Optional[QgisInterface] = None
+        self,
+        parent,
+        alg,
+        context: QgsProcessingContext,
+        iface: Optional[QgisInterface] = None
     ):
         super().__init__(None)
         self.setupUi(self)
@@ -1302,8 +1289,8 @@ class BatchPanel(QgsPanelWidget, WIDGET):
                 column, QTableWidgetItem(param.description())
             )
             if (
-                    param.flags() & QgsProcessingParameterDefinition.Flag.FlagAdvanced
-                    or param.flags() & QgsProcessingParameterDefinition.Flag.FlagHidden
+                param.flags() & QgsProcessingParameterDefinition.Flag.FlagAdvanced
+                or param.flags() & QgsProcessingParameterDefinition.Flag.FlagHidden  # noqa: W503
             ):
                 self.tblParameters.setColumnHidden(column, True)
 
@@ -1650,8 +1637,8 @@ class BatchPanel(QgsPanelWidget, WIDGET):
     def toggleAdvancedMode(self, checked):
         for param in self.alg.parameterDefinitions():
             if (
-                    (param.flags() & QgsProcessingParameterDefinition.Flag.FlagAdvanced)
-                    and not (param.flags() & QgsProcessingParameterDefinition.Flag.FlagHidden)
+                (param.flags() & QgsProcessingParameterDefinition.Flag.FlagAdvanced)
+                and not (param.flags() & QgsProcessingParameterDefinition.Flag.FlagHidden)  # noqa: W503
             ):
                 self.tblParameters.setColumnHidden(
                     self.parameter_to_column[param.name()], not checked
@@ -1665,11 +1652,11 @@ class BatchPanel(QgsPanelWidget, WIDGET):
         return wrapper.parameterValue()
 
     def parametersForRow(
-            self,
-            row: int,
-            context: QgsProcessingContext,
-            destinationProject: Optional[QgsProject] = None,
-            warnOnInvalid: bool = True,
+        self,
+        row: int,
+        context: QgsProcessingContext,
+        destinationProject: Optional[QgsProject] = None,
+        warnOnInvalid: bool = True,
     ):
         """
         Returns the parameters dictionary corresponding to a row in the batch table
@@ -1682,7 +1669,7 @@ class BatchPanel(QgsPanelWidget, WIDGET):
             wrapper = self.wrappers[row][col]
             parameters[param.name()] = wrapper.parameterValue()
             if warnOnInvalid and not param.checkValueIsAcceptable(
-                    wrapper.parameterValue()
+                wrapper.parameterValue()
             ):
                 self.parent.messageBar().pushMessage(
                     "",
@@ -1735,13 +1722,13 @@ class BatchPanel(QgsPanelWidget, WIDGET):
 
 
 def executeAlgorithm(  # noqa: QGS105
-        alg_id: Union[str, QgsProcessingAlgorithm],
-        parent: Optional[QWidget] = None,
-        in_place: bool = False,
-        as_batch: bool = False,
-        iface: Optional[QgisInterface] = None,
-        context: Optional[QgsProcessingContext] = None,
-        on_results: Optional[Callable] = None,
+    alg_id: Union[str, QgsProcessingAlgorithm],
+    parent: Optional[QWidget] = None,
+    in_place: bool = False,
+    as_batch: bool = False,
+    iface: Optional[QgisInterface] = None,
+    context: Optional[QgsProcessingContext] = None,
+    on_results: Optional[Callable] = None,
 ) -> Tuple[bool, dict]:
     """Executes a project model with GUI interaction if needed.
 

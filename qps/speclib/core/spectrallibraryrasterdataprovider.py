@@ -676,11 +676,10 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
             stats.height = band_data.shape[-2]
             stats.width = band_data.shape[-1]
 
-            statsGathered = (Qgis.RasterBandStatistics.Sum
-                             | Qgis.RasterBandStatistics.Min
-                             | Qgis.RasterBandStatistics.Max
-                             | Qgis.RasterBandStatistics.Mean
-                             )
+            statsGathered = (
+                Qgis.RasterBandStatistics.Sum | Qgis.RasterBandStatistics.Mean
+                | Qgis.RasterBandStatistics.Min | Qgis.RasterBandStatistics.Max  # noqa: W503
+            )
 
             if Qgis.versionInt() >= 33600:
                 stats.statsGathered = Qgis.RasterBandStatistics(statsGathered)
@@ -718,8 +717,10 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
             raise AssertionError(f'Field not found/supported: {field}')
         self.mField = activeField
 
-        if not (isinstance(self.fieldConverter(), FieldToRasterValueConverter)
-                and self.fieldConverter().supportsField(activeField)):
+        if not (
+            isinstance(self.fieldConverter(), FieldToRasterValueConverter)
+            and self.fieldConverter().supportsField(activeField)  # noqa: W503
+        ):
             self.mFieldConverter = VectorLayerFieldRasterDataProvider.findFieldConverter(activeField)
 
         if not isinstance(self.fieldConverter(), FieldToRasterValueConverter):
@@ -831,9 +832,10 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
     def capabilities(self):
 
         # scap = super().capabilities()
-        caps = (Qgis.RasterInterfaceCapabilities.Size
-                | Qgis.RasterInterfaceCapabilities.IdentifyValue
-                | Qgis.RasterInterfaceCapabilities.Identify)
+        caps = (
+            Qgis.RasterInterfaceCapabilities.Size | Qgis.RasterInterfaceCapabilities.IdentifyValue
+            | Qgis.RasterInterfaceCapabilities.Identify  # noqa: W503
+        )
         if Qgis.versionInt() >= 33800:
             return Qgis.RasterInterfaceCapabilities(caps)  # QgsRasterDataProvider.ProviderCapabilities(caps)
         else:

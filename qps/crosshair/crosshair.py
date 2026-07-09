@@ -311,9 +311,9 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
                     # print(f'{rad}\n{bearing}')
                     x0 = None
                     if (
-                            crs.isValid()
-                            and distanceArea.lengthUnits() == QgsUnitTypes.DistanceUnit.DistanceMeters
-                            and math.isfinite(bearing)
+                        crs.isValid()
+                        and distanceArea.lengthUnits() == QgsUnitTypes.DistanceUnit.DistanceMeters  # noqa: W503
+                        and math.isfinite(bearing)  # noqa: W503
                     ):
                         transE = QgsCoordinateTransform(crs, crsLL, transformContext)
                         try:
