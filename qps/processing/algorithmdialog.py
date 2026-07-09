@@ -188,10 +188,9 @@ def handleAlgorithmResults(  # noqa: QGS105
             else:
                 wrong_layers.append(str(dest_id))
         except Exception:
+            msg = QCoreApplication.translate("Postprocessing", "Error loading result layer:")
             QgsMessageLog.logMessage(
-                f'{QCoreApplication.translate(
-                    "Postprocessing", "Error loading result layer:"
-                )}\n{traceback.format_exc()}',
+                f'{msg}\n{traceback.format_exc()}',
                 "Processing",
                 Qgis.MessageLevel.Critical,
             )
