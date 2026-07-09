@@ -176,8 +176,9 @@ class MetadataUtils(object):
                                     md[tag] = md.get(tag, []) + [band_info[stac_member]]
                                 if field_group == 'eo:bands' and stac_member == 'center_wavelength':
                                     # by default, STAC wavelength are micrometers
-                                    md[BandFieldNames.WavelengthUnit] = (md.get(BandFieldNames.WavelengthUnit, [])
-                                                                         + ['μm'])
+                                    md[BandFieldNames.WavelengthUnit] = (
+                                        md.get(BandFieldNames.WavelengthUnit, []) + ['μm']
+                                    )
 
         except STACTypeError:
             return md
@@ -272,8 +273,8 @@ class GDALBandMetadataModel(QgsVectorLayer):
         BandFieldNames.Number: 'Band Number',
         BandFieldNames.Name: 'Band Name',
         BandFieldNames.Range: 'Band range from (min, max) with<br>'
-                              + 'min = wavelength - 0.5 FWHM<br>'
-                              + 'max = wavelength + 0.5 FWHM',
+                              + 'min = wavelength - 0.5 FWHM<br>'  # noqa: W503
+                              + 'max = wavelength + 0.5 FWHM',  # noqa: W503
         BandFieldNames.Wavelength: 'Wavelength',
         BandFieldNames.WavelengthUnit: "Wavelength Unit, e.g. 'nm', 'μm'",
         BandFieldNames.NoData: 'Band NoData value to mask pixel',
@@ -324,8 +325,8 @@ class GDALBandMetadataModel(QgsVectorLayer):
         if not bandNo > 0:
             raise AssertionError('bandNo must be greater than 0')
         if (
-                isinstance(self.mMapLayer, QgsRasterLayer)
-                and isinstance(self.mMapLayer.dataProvider(), QgsRasterDataProvider)
+            isinstance(self.mMapLayer, QgsRasterLayer)
+            and isinstance(self.mMapLayer.dataProvider(), QgsRasterDataProvider)  # noqa: W503
         ):
             self.mMapLayer: QgsRasterLayer
             z = math.floor(math.log10(self.mMapLayer.bandCount())) + 1
@@ -558,8 +559,10 @@ class GDALBandMetadataModel(QgsVectorLayer):
         if not isinstance(metadata, dict):
             return
 
-        fields = [k for k in metadata.keys() if k in self.fields().names()
-                  and not self.fields().field(k).isReadOnly()]
+        fields = [
+            k for k in metadata.keys()
+            if k in self.fields().names() and not self.fields().field(k).isReadOnly()
+        ]
         for b, feature in enumerate(self.orderedFeatures()):
             for f in fields:
                 fieldId: int = self.fields().lookupField(f)
@@ -1253,20 +1256,23 @@ class GDALMetadataItemDialog(QDialog):
             obj=self.cbMajorObject.currentText())
 
 
-RX_MAJOR_OBJECT_ID = re.compile('^('
-                                + fr'{gdal.Dataset.__name__}'
-                                + fr'|{gdal.Band.__name__}_(?P<bandnumber>\d+)'
-                                + fr'|{ogr.DataSource.__name__}'
-                                + fr'|{ogr.Layer.__name__}[_ ]?((id_)?(?P<layerid>\d+)|(name_)?(?P<layername>.+))'
-                                + ')$')
+RX_MAJOR_OBJECT_ID = re.compile(
+    fr'^({gdal.Dataset.__name__}'  # noqa: W503
+    + fr'|{gdal.Band.__name__}_(?P<bandnumber>\d+)'  # noqa: W503
+    + fr'|{ogr.DataSource.__name__}'  # noqa: W503
+    + fr'|{ogr.Layer.__name__}[_ ]?((id_)?(?P<layerid>\d+)|(name_)?(?P<layername>.+))'  # noqa: W503
+    + ')$'  # noqa: W503
+)
 
-RX_OGR_URI = re.compile(r'(?P<path>[^|]+)(\|('
-                        + r'layername=(?P<layername>[^|]+)'
-                        + r'|layerid=(?P<layerid>[^|]+)'
-                        + r'|option:(?P<option>[^|]*)'
-                        + r'|geometrytype=(?P<geometrytype>[a-zA-Z0-9]*)'
-                        + r'|subset=(?P<subset>(?:.*[\r\n]*)*)\\Z'
-                        + r'))*', re.I)
+RX_OGR_URI = re.compile(
+    r'(?P<path>[^|]+)(\|('
+    + r'layername=(?P<layername>[^|]+)'  # noqa: W503
+    + r'|layerid=(?P<layerid>[^|]+)'  # noqa: W503
+    + r'|option:(?P<option>[^|]*)'  # noqa: W503
+    + r'|geometrytype=(?P<geometrytype>[a-zA-Z0-9]*)'  # noqa: W503
+    + r'|subset=(?P<subset>(?:.*[\r\n]*)*)\\Z'  # noqa: W503
+    + r'))*', re.I  # noqa: W503
+)
 
 RX_LEADING_BAND_NUMBER = re.compile(r'^Band \d+:')
 
@@ -1286,10 +1292,10 @@ class BandPropertyCalculator(QgsFieldCalculator):
         gbUpdate: QGroupBox = self.findChild(QGroupBox, name='mUpdateExistingGroupBox')
 
         if (
-                isinstance(cbOnlyUpdate, QCheckBox)
-                and isinstance(gbNewField, QGroupBox)
-                and isinstance(cbFields, QComboBox)
-                and isinstance(gbUpdate, QGroupBox)
+            isinstance(cbOnlyUpdate, QCheckBox)
+            and isinstance(gbNewField, QGroupBox)  # noqa: W503
+            and isinstance(cbFields, QComboBox)  # noqa: W503
+            and isinstance(gbUpdate, QGroupBox)  # noqa: W503
         ):
 
             gridLayout: QGridLayout = self.layout()
@@ -1668,9 +1674,9 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
     def updateGroupVisibilities(self):
 
         if (
-                self.supportsGDALClassification
-                and isinstance(self.mClassificationScheme, ClassificationScheme)
-                and len(self.mClassificationScheme) > 0
+            self.supportsGDALClassification
+            and isinstance(self.mClassificationScheme, ClassificationScheme)  # noqa: W503
+            and len(self.mClassificationScheme) > 0  # noqa: W503
         ):
             self.gbClassificationScheme.setVisible(True)
             self.classificationSchemeWidget.setClassificationScheme(self.mClassificationScheme)

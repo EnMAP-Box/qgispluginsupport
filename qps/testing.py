@@ -263,8 +263,9 @@ class QgisMockup(QgisInterface):
 
     def registerMapToolHandler(self, handler: QgsAbstractMapToolHandler) -> None:
 
-        if not (isinstance(handler.action(), QAction)
-                and isinstance(handler.mapTool(), QgsMapTool)):
+        if not (
+            isinstance(handler.action(), QAction) and isinstance(handler.mapTool(), QgsMapTool)
+        ):
             raise AssertionError('Map tool handler is not properly constructed')
 
         self.mMapToolHandler.append(handler)
@@ -1804,8 +1805,11 @@ class QgsOptionsMockup(QgsOptionsDialogBase):
         super().__init__(*args, **kwargs)
         loadUi(path_mockup_ui, self)
         # w = self.findChild(QListWidget, 'mOptionsListWidget')
-        if not (self.findChild(QListWidget, 'mOptionsListWidget')
-                or self.findChild(QTreeView, 'mOptionsTreeView')):
+
+        if not (
+            self.findChild(QListWidget, 'mOptionsListWidget')
+            or self.findChild(QTreeView, 'mOptionsTreeView')  # noqa: W503
+        ):
             raise AssertionError
 
         check = [

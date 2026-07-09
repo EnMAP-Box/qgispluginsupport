@@ -872,13 +872,12 @@ class PyObjectTreeNode(TreeNode):
                 if isinstance(k, str) and k.startswith('__'):
                     continue
                 if (
-                        isinstance(v, (types.BuiltinFunctionType,
-                                       pyqtSignal,
-                                       pyqtBoundSignal,
-                                       sip.wrappertype)
-                                   )
-                        or inspect.isfunction(v)
-                        or inspect.ismethod(v)
+                    isinstance(v, (types.BuiltinFunctionType,
+                                   pyqtSignal,
+                                   pyqtBoundSignal,
+                                   sip.wrappertype)
+                               )
+                    or inspect.isfunction(v) or inspect.ismethod(v)  # noqa: W503
                 ):
                     continue
 

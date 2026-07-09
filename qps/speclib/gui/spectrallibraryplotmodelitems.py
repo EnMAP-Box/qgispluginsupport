@@ -1792,9 +1792,10 @@ class RasterRendererGroup(PropertyItemGroup):
 
         is_checked = self.isVisible()
         layer = self.layer()
-        if not (isinstance(layer, QgsRasterLayer)
-                and layer.isValid()
-                and isinstance(layer.renderer(), QgsRasterRenderer)):
+        if not (
+            isinstance(layer, QgsRasterLayer) and layer.isValid()
+            and isinstance(layer.renderer(), QgsRasterRenderer)  # noqa: W503
+        ):
             for b in self.bandPlotItems():
                 b.setVisible(False)
             self.setValuesMissing(True)

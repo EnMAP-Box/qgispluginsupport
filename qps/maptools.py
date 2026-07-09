@@ -750,9 +750,9 @@ class QgsFeatureAction(QAction):
             if idx in defaultAttributeValues.keys():
                 initialAttributeValues[idx] = defaultAttributeValues[idx]
             elif (
-                    (reuseLastValues or lyr.editFormConfig().reuseLastValue(idx))
-                    and self.mLayer.id() in self.sLastUsedValues.keys()
-                    and idx in self.sLastUsedValues[lyr.id()].keys()
+                (reuseLastValues or lyr.editFormConfig().reuseLastValue(idx))
+                and self.mLayer.id() in self.sLastUsedValues.keys()  # noqa: W503
+                and idx in self.sLastUsedValues[lyr.id()].keys()  # noqa: W503
             ):
 
                 lastUsed = self.sLastUsedValues[lyr.id()][idx]
@@ -1026,9 +1026,9 @@ class QgsMapToolDigitizeFeature(QgsMapToolCapture):
 
             # //check we only use the line tool for line/multiline layers
             if (
-                    self.mode() == self.CaptureLine
-                    and vlayer.geometryType() != QgsWkbTypes.LineGeometry
-                    and self.mCheckGeometryType
+                self.mode() == self.CaptureLine
+                and vlayer.geometryType() != QgsWkbTypes.LineGeometry  # noqa: W503
+                and self.mCheckGeometryType  # noqa: W503
             ):
                 self.messageEmitted.emit(
                     tr("Wrong editing tool, cannot apply the 'capture line' tool on this vector layer"), Qgis.Warning)
@@ -1036,9 +1036,9 @@ class QgsMapToolDigitizeFeature(QgsMapToolCapture):
 
             # //check we only use the polygon tool for polygon/multipolygon layers
             if (
-                    self.mode() == self.CapturePolygon
-                    and vlayer.geometryType() != QgsWkbTypes.PolygonGeometry
-                    and self.mCheckGeometryType
+                self.mode() == self.CapturePolygon
+                and vlayer.geometryType() != QgsWkbTypes.PolygonGeometry  # noqa: W503
+                and self.mCheckGeometryType  # noqa: W503
             ):
                 self.messageEmitted.emit(
                     tr("Wrong editing tool, cannot apply the 'capture polygon' tool on this vector layer"),
@@ -1836,8 +1836,8 @@ class QgsMapToolSelect(QgsMapTool):
     def selectFeatures(self, modifiers: Qt.KeyboardModifiers):
 
         if (
-                self.mSelectionHandler.selectionMode() == QgsMapToolSelectionHandler.SelectionMode.SelectSimple
-                and self.mSelectionHandler.selectedGeometry().type() == QgsWkbTypes.PointGeometry
+            self.mSelectionHandler.selectionMode() == QgsMapToolSelectionHandler.SelectionMode.SelectSimple
+            and self.mSelectionHandler.selectedGeometry().type() == QgsWkbTypes.PointGeometry  # noqa: W503
         ):
 
             vlayer = QgsMapToolSelectUtils.getCurrentVectorLayer(self.canvas())

@@ -886,9 +886,8 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
                                 # if necessary, change editor widget type to SpectralProfile
                                 target_field: QgsField = speclib.fields().at(target_field_index)
                                 if (
-                                        nb > 0
-                                        and can_store_spectral_profiles(target_field)
-                                        and not is_profile_field(target_field)
+                                    nb > 0 and can_store_spectral_profiles(target_field)
+                                    and not is_profile_field(target_field)  # noqa: W503
                                 ):
                                     setup = QgsEditorWidgetSetup(EDITOR_WIDGET_REGISTRY_KEY, {})
                                     speclib.setEditorWidgetSetup(target_field_index, setup)
