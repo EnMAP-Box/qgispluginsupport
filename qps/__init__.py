@@ -38,8 +38,8 @@ from qgis.gui import QgisInterface, QgsMapLayerConfigWidgetFactory
 os.environ.setdefault('PYQTGRAPH_QT_LIB', f'PyQt{PYQT_VERSION_STR[0]}')
 # Qt version used by matplotlib
 os.environ.setdefault('QT_API', f'PyQt{PYQT_VERSION_STR[0]}')
-MIN_QGIS_VERSION = '3.38'
-__version__ = '1.8'
+MIN_QGIS_VERSION = '3.40'
+__version__ = '1.9'
 
 DIR_QPS = pathlib.Path(__file__).parent
 DIR_REPO = DIR_QPS.parent
