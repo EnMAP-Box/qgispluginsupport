@@ -34,7 +34,11 @@ from typing import Any, Generator, List, Optional, Union
 from qgis.PyQt.QtCore import QAbstractTableModel, QDirIterator, QFile, QModelIndex, QSortFilterProxyModel, Qt, \
     QTextStream, QT_VERSION_STR
 from qgis.PyQt.QtGui import QContextMenuEvent, QIcon, QPixmap
-from qgis.PyQt.QtSvg import QGraphicsSvgItem
+
+try:
+    from PyQt6.QtSvgWidgets import QGraphicsSvgItem  # noqa: QGS103
+except ImportError:
+    from qgis.PyQt.QtSvg import QGraphicsSvgItem
 from qgis.PyQt.QtWidgets import QAction, QApplication, QGraphicsPixmapItem, QGraphicsScene, QGraphicsView, QLabel, \
     QLineEdit, QMenu, QTableView, QTextBrowser, QToolButton, QWidget
 from qgis.PyQt.QtXml import QDomDocument, QDomElement
