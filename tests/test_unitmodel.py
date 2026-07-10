@@ -144,8 +144,8 @@ class UnitModelTests(TestCase):
         cb.setModel(model)
 
         def onIndexChanged(idx):
-            data = cb.itemData(idx, Qt.UserRole + 1)
-            data2 = cb.currentData(Qt.UserRole + 1)
+            data = cb.itemData(idx, Qt.ItemDataRole.UserRole + 1)
+            data2 = cb.currentData(Qt.ItemDataRole.UserRole + 1)
             if not (data == data2):
                 raise AssertionError
             print(data)
@@ -160,7 +160,7 @@ class UnitModelTests(TestCase):
         idx = model.unitIndex('')
         cb.setCurrentIndex(idx.row())
 
-        _ = cb.currentData(Qt.UserRole)
+        _ = cb.currentData(Qt.ItemDataRole.UserRole)
 
         wrappers = model[:]
         for i, w in enumerate(wrappers):

@@ -323,7 +323,7 @@ class ClassificationScheme(QAbstractTableModel):
                      parent: QModelIndex, **kwargs):
         if row == -1:
             row = parent.row()
-        if action == Qt.MoveAction:
+        if action == Qt.DropAction.MoveAction:
             if MIMEDATA_INTERNAL_IDs in mimeData.formats():
                 ids = json.loads(stringFromByteArray(mimeData.data(MIMEDATA_INTERNAL_IDs)))
 
@@ -339,7 +339,7 @@ class ClassificationScheme(QAbstractTableModel):
                 self.endResetModel()
                 self._updateLabels()
                 return True
-        elif action == Qt.CopyAction:
+        elif action == Qt.DropAction.CopyAction:
             if MIMEDATA_KEY in mimeData.formats():
                 cs = ClassificationScheme.fromQByteArray(mimeData.data(MIMEDATA_KEY))
                 self.insertClasses(cs[:], row)
@@ -438,7 +438,7 @@ class ClassificationScheme(QAbstractTableModel):
                     return c
         return None
 
-    def data(self, index: QModelIndex, role: int = Qt.DisplayRole):
+    def data(self, index: QModelIndex, role: int = Qt.ItemDataRole.DisplayRole):
         if not index.isValid():
             return None
 
@@ -446,7 +446,7 @@ class ClassificationScheme(QAbstractTableModel):
         row = index.row()
         classInfo = self.index2ClassInfo(row)
 
-        if role == Qt.DisplayRole:
+        if role == Qt.ItemDataRole.DisplayRole:
             if col == self.cLabel:
                 return classInfo.label()
             if col == self.cName:
@@ -454,15 +454,15 @@ class ClassificationScheme(QAbstractTableModel):
             if col == self.cColor:
                 return classInfo.color().name()
 
-        if role == Qt.ForegroundRole:
+        if role == Qt.ItemDataRole.ForegroundRole:
             if col == self.cColor:
                 return QBrush(getTextColorWithContrast(classInfo.color()))
 
-        if role == Qt.BackgroundColorRole:
+        if role == Qt.ItemDataRole.BackgroundRole:
             if col == self.cColor:
                 return QBrush(classInfo.color())
 
-        if role == Qt.AccessibleTextRole:
+        if role == Qt.ItemDataRole.AccessibleTextRole:
             if col == self.cLabel:
                 return str(classInfo.label())
             if col == self.cName:
@@ -470,7 +470,7 @@ class ClassificationScheme(QAbstractTableModel):
             if col == self.cColor:
                 return classInfo.color().name()
 
-        if role == Qt.ToolTipRole:
+        if role == Qt.ItemDataRole.ToolTipRole:
             if col == self.cLabel:
                 return 'Class label "{}"'.format(classInfo.label())
             if col == self.cName:
@@ -478,7 +478,7 @@ class ClassificationScheme(QAbstractTableModel):
             if col == self.cColor:
                 return 'Class color "{}"'.format(classInfo.color().name())
 
-        if role == Qt.EditRole:
+        if role == Qt.ItemDataRole.EditRole:
             if col == self.cLabel:
                 return classInfo.label()
             if col == self.cName:
@@ -486,16 +486,16 @@ class ClassificationScheme(QAbstractTableModel):
             if col == self.cColor:
                 return classInfo.color()
 
-        if role == Qt.UserRole:
+        if role == Qt.ItemDataRole.UserRole:
             return classInfo
 
         return None
 
     def supportedDragActions(self):
-        return Qt.MoveAction
+        return Qt.DropAction.MoveAction
 
     def supportedDropActions(self):
-        return Qt.MoveAction | Qt.CopyAction
+        return Qt.DropAction.MoveAction | Qt.DropAction.CopyAction
 
     def setData(self, index: QModelIndex, value, role: int):
         if not index.isValid():
@@ -505,7 +505,7 @@ class ClassificationScheme(QAbstractTableModel):
         row = index.row()
         classInfo = self.index2ClassInfo(row)
         b = False
-        if role == Qt.EditRole:
+        if role == Qt.ItemDataRole.EditRole:
             if col == self.cLabel:
                 classInfo.setLabel(int(value))
                 b = True
@@ -521,23 +521,23 @@ class ClassificationScheme(QAbstractTableModel):
 
     def flags(self, index: QModelIndex):
         if not index.isValid():
-            return Qt.NoItemFlags
+            return Qt.ItemFlag.NoItemFlags
         col = index.column()
 
-        flags = Qt.ItemIsSelectable | Qt.ItemIsEnabled
+        flags = Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled
         if self.mIsEditable:
-            flags |= Qt.ItemIsDragEnabled | Qt.ItemIsDropEnabled
+            flags |= Qt.ItemFlag.ItemIsDragEnabled | Qt.ItemFlag.ItemIsDropEnabled
             if self.isEditable():
                 if col == self.cLabel and not self.mZeroBased:
-                    flags |= Qt.ItemIsEditable
+                    flags |= Qt.ItemFlag.ItemIsEditable
                 elif col == self.cName:
-                    flags |= Qt.ItemIsEditable
+                    flags |= Qt.ItemFlag.ItemIsEditable
         return flags
 
-    def headerData(self, section: int, orientation: Qt.Orientation, role: int = Qt.DisplayRole):
+    def headerData(self, section: int, orientation: Qt.Orientation, role: int = Qt.ItemDataRole.DisplayRole):
 
-        if role == Qt.DisplayRole:
-            if orientation == Qt.Horizontal:
+        if role == Qt.ItemDataRole.DisplayRole:
+            if orientation == Qt.Orientation.Horizontal:
                 return self.mColNames[section]
 
         return super(ClassificationScheme, self).headerData(section, orientation, role)
@@ -842,7 +842,7 @@ class ClassificationScheme(QAbstractTableModel):
             c.mLabel = i
         self.dataChanged.emit(self.createIndex(0, 0),
                               self.createIndex(self.rowCount() - 1, 0),
-                              [Qt.DisplayRole, Qt.ToolTipRole])
+                              [Qt.ItemDataRole.DisplayRole, Qt.ItemDataRole.ToolTipRole])
 
     def removeClasses(self, classes):
         """
@@ -1401,13 +1401,13 @@ class ClassificationSchemeComboBoxModel(QAbstractListModel):
         else:
             return self.mClassScheme.createIndex(index.row(), index.column())
 
-    def data(self, index: QModelIndex, role: int = Qt.DisplayRole):
+    def data(self, index: QModelIndex, role: int = Qt.ItemDataRole.DisplayRole):
 
         if not index.isValid():
             return None
 
         if self.allowEmptyField() and index.row() == 0:
-            if role == Qt.DisplayRole:
+            if role == Qt.ItemDataRole.DisplayRole:
                 return ''
 
         idxCs = self.idx2csIdx(index)
@@ -1415,25 +1415,25 @@ class ClassificationSchemeComboBoxModel(QAbstractListModel):
             return None
         else:
 
-            classInfo = self.mClassScheme.data(idxCs, role=Qt.UserRole)
+            classInfo = self.mClassScheme.data(idxCs, role=Qt.ItemDataRole.UserRole)
             if not isinstance(classInfo, ClassInfo):
                 raise Exception(f'wrong type: {classInfo}')
-            if role == Qt.UserRole:
+            if role == Qt.ItemDataRole.UserRole:
                 return classInfo
             nCols = self.mClassScheme.columnCount(idxCs)
-            if role in [Qt.DisplayRole, Qt.ToolTipRole, Qt.WhatsThisRole]:
+            if role in [Qt.ItemDataRole.DisplayRole, Qt.ItemDataRole.ToolTipRole, Qt.ItemDataRole.WhatsThisRole]:
                 infos = []
                 for col in range(nCols):
                     idx = self.mClassScheme.createIndex(idxCs.row(), col)
                     infos.append(str(self.mClassScheme.data(idx, role=role)))
-                if role == Qt.DisplayRole:
+                if role == Qt.ItemDataRole.DisplayRole:
                     return ' '.join(infos[0:2])
-                if role == Qt.ToolTipRole:
+                if role == Qt.ItemDataRole.ToolTipRole:
                     return '\n'.join(infos)
-                if role == Qt.WhatsThisRole:
+                if role == Qt.ItemDataRole.WhatsThisRole:
                     return '\n'.join(infos)
 
-            elif role == Qt.DecorationRole:
+            elif role == Qt.ItemDataRole.DecorationRole:
                 return classInfo.icon()
 
         return None
@@ -1441,7 +1441,7 @@ class ClassificationSchemeComboBoxModel(QAbstractListModel):
     def flags(self, index: QModelIndex):
         if not index.isValid():
             return None
-        return Qt.ItemIsEnabled | Qt.ItemIsSelectable
+        return Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable
 
 
 class ClassificationMapLayerComboBox(QgsMapLayerComboBox):
@@ -1524,7 +1524,7 @@ class ClassificationSchemeComboBox(QComboBox):
         i = self.currentIndex()
         classInfo = None
         if i >= 0 and i < self.count():
-            classInfo = self.itemData(i, role=Qt.UserRole)
+            classInfo = self.itemData(i, role=Qt.ItemDataRole.UserRole)
         return classInfo
 
     def setCurrentClassInfo(self, classInfo: ClassInfo) -> bool:
@@ -1534,7 +1534,7 @@ class ClassificationSchemeComboBox(QComboBox):
         :return: bool, True, if class was found and set.
         """
         for i in range(self.count()):
-            if self.itemData(i, role=Qt.UserRole) == classInfo:
+            if self.itemData(i, role=Qt.ItemDataRole.UserRole) == classInfo:
                 self.setCurrentIndex(i)
                 return True
         return False
@@ -1675,8 +1675,8 @@ class ClassificationSchemeWidget(QWidget):
                 dialog.setWindowTitle('Load classes from layer')
                 dialog.setTextValue('Select map layer')
                 dialog.setComboBoxItems(choices)
-                dialog.setOption(QInputDialog.UseListViewForComboBoxItems)
-                if dialog.exec() == QDialog.Accepted:
+                dialog.setOption(QInputDialog.InputDialogOption.UseListViewForComboBoxItems)
+                if dialog.exec() == QDialog.DialogCode.Accepted:
                     selection = dialog.textValue()
                     i = choices.index(selection)
                     layer = possibleLayers[i]
@@ -1770,7 +1770,7 @@ class ClassificationSchemeWidget(QWidget):
         if idx.column() == ClassificationScheme.cColor and model.isEditable():
             c = QColorDialog.getColor(classInfo.mColor, self.tableClassificationScheme,
                                       'Set color for "{}"'.format(classInfo.name()))
-            model.setData(idx, c, role=Qt.EditRole)
+            model.setData(idx, c, role=Qt.ItemDataRole.EditRole)
 
     def validateButtons(self, *args):
         n = len(self.selectionModel.selectedRows())
@@ -1920,9 +1920,9 @@ class ClassificationSchemeEditorWidgetWrapper(QgsEditorWidgetWrapper):
             if isinstance(classInfo, ClassInfo):
 
                 typeCode = self.field().type()
-                if typeCode == QMetaType.QString:
+                if typeCode == QMetaType.Type.QString:
                     value = classInfo.name()
-                elif typeCode in [QMetaType.Int, QMetaType.Double]:
+                elif typeCode in [QMetaType.Type.Int, QMetaType.Type.Double]:
                     value = classInfo.label()
 
         return value

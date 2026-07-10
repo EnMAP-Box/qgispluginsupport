@@ -33,11 +33,11 @@ def createAggregateTestLayer():
             {'class': 'b', 'num': 3, 't_mean': 4.0, 't_min': 3, 't_max': 5},
             {'class': 'b', 'num': 5, 't_mean': 4.0, 't_min': 3, 't_max': 5},
             ]
-    fields = [QgsField('class', QMetaType.QString),
-              QgsField('num', QMetaType.Int),
-              QgsField('t_mean', QMetaType.Double),
-              QgsField('t_min', QMetaType.Double),
-              QgsField('t_max', QMetaType.Double)
+    fields = [QgsField('class', QMetaType.Type.QString),
+              QgsField('num', QMetaType.Type.Int),
+              QgsField('t_mean', QMetaType.Type.Double),
+              QgsField('t_min', QMetaType.Type.Double),
+              QgsField('t_max', QMetaType.Type.Double)
               ]
     with edit(sl):
         for f in fields:
@@ -778,7 +778,7 @@ class QgsFunctionTests(TestCase):
         ]
         QgsProject.instance().addMapLayer(sl)
         with edit(sl):
-            sl.addAttribute(QgsField('class', QMetaType.QString))
+            sl.addAttribute(QgsField('class', QMetaType.Type.QString))
             for item in data:
                 f = QgsFeature(sl.fields())
 

@@ -109,7 +109,7 @@ class SpectralProfileColorPropertyWidget(QWidget):
         self.mColorButton = QgsColorButton()
         self.mColorButton.colorChanged.connect(self.onButtonColorChanged)
 
-        self.mColorButton.setSizePolicy(QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed))
+        self.mColorButton.setSizePolicy(QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed))
         self.mPropertyOverrideButton = QgsPropertyOverrideButton()
         self.mPropertyOverrideButton.registerLinkedWidget(self.mColorButton)
         self.mPropertyOverrideButton.registerExpressionContextGenerator(self.mContextGenerator)
@@ -119,7 +119,7 @@ class SpectralProfileColorPropertyWidget(QWidget):
         hl.addWidget(self.mPropertyOverrideButton)
         hl.setSpacing(2)
         hl.setContentsMargins(0, 0, 0, 0)
-        self.sizePolicy().setHorizontalPolicy(QSizePolicy.Preferred)
+        self.sizePolicy().setHorizontalPolicy(QSizePolicy.Policy.Preferred)
         self.setLayout(hl)
 
         self.mPropertyDefinition = QgsPropertyDefinition()
@@ -140,7 +140,7 @@ class SpectralProfileColorPropertyWidget(QWidget):
         if not (isinstance(property, QgsProperty)):
             raise AssertionError
 
-        if property.propertyType() == QgsProperty.StaticProperty:
+        if property.propertyType() == QgsProperty.Type.StaticProperty:
             self.mColorButton.setColor(
                 property.valueAsColor(self.mContextGenerator.createExpressionContext(), self.mDefaultColor)[0])
             self.mPropertyOverrideButton.setActive(False)
@@ -190,7 +190,7 @@ class PropertyItemBase(QStandardItem):
 
     def data(self, role: int = ...) -> Any:
 
-        if role == Qt.UserRole:
+        if role == Qt.ItemDataRole.UserRole:
             return self
             # return None
         else:
@@ -216,15 +216,15 @@ class PropertyLabel(QStandardItem):
         Should be in the column left to it
         """
         item = self.model().index(self.row(), self.column() + 1,
-                                  parent=self.parent().index()).data(Qt.UserRole)
+                                  parent=self.parent().index()).data(Qt.ItemDataRole.UserRole)
 
         if isinstance(item, PropertyItem) and item.label() == self:
             return item
 
     def data(self, role: int = ...) -> Any:
-        if role == Qt.UserRole:
+        if role == Qt.ItemDataRole.UserRole:
             return self
-        if role == Qt.ForegroundRole:
+        if role == Qt.ItemDataRole.ForegroundRole:
             # quick fix to avoid overwriting the TreeViewDelegetes standard color
             return None
         return super().data(role)
@@ -270,7 +270,10 @@ class PropertyItem(PropertyItemBase):
         if self.__class__.__name__ != other.__class__.__name__:
             return False
 
-        return self.key() == other.key() and self.data(Qt.DisplayRole) == other.data(Qt.DisplayRole)
+        return (
+            self.key() == other.key()
+            and self.data(Qt.ItemDataRole.DisplayRole) == other.data(Qt.ItemDataRole.DisplayRole)  # noqa: W503
+        )
 
     def __ne__(self, other):
         return not self.__eq__(other)
@@ -283,7 +286,7 @@ class PropertyItem(PropertyItemBase):
     def itemIsChecked(self) -> bool:
 
         if self.label().isCheckable():
-            return self.label().checkState() == Qt.Checked
+            return self.label().checkState() == Qt.CheckState.Checked
         return None
 
     def setItemCheckable(self, b: bool):
@@ -291,7 +294,7 @@ class PropertyItem(PropertyItemBase):
         self.label().setEditable(b)
 
     def setItemChecked(self, b: bool):
-        self.label().setCheckState(Qt.Checked if b is True else Qt.Unchecked)
+        self.label().setCheckState(Qt.CheckState.Checked if b is True else Qt.CheckState.Unchecked)
 
     # def signals(self):
     #    return self.mSignals
@@ -370,8 +373,8 @@ class PropertyItemGroup(PropertyItemBase):
         if not (isinstance(other, PropertyItemGroup) and self.__class__.__name__ == other.__class__.__name__):
             return False
 
-        ud1 = self.data(Qt.DisplayRole)
-        ud2 = other.data(Qt.DisplayRole)
+        ud1 = self.data(Qt.ItemDataRole.DisplayRole)
+        ud2 = other.data(Qt.ItemDataRole.DisplayRole)
 
         b = (self.checkState() == other.checkState()) and (ud1 == ud2)
 
@@ -386,7 +389,7 @@ class PropertyItemGroup(PropertyItemBase):
         return not self.__eq__(other)
 
     def __repr__(self):
-        return super().__repr__() + f' "{self.data(Qt.DisplayRole)}"'
+        return super().__repr__() + f' "{self.data(Qt.ItemDataRole.DisplayRole)}"'
 
     def disconnectGroup(self):
         """
@@ -430,7 +433,7 @@ class PropertyItemGroup(PropertyItemBase):
     def initBasicSettings(self):
         self.setUserTristate(False)
         self.setCheckable(True)
-        self.setCheckState(Qt.Checked)
+        self.setCheckState(Qt.CheckState.Checked)
         self.setDropEnabled(False)
         self.setDragEnabled(False)
 
@@ -452,20 +455,20 @@ class PropertyItemGroup(PropertyItemBase):
             self.child(r, 0).setForeground(c)
 
     def setVisible(self, visible: bool):
-        if visible in [Qt.Checked, visible is True]:
-            self.setCheckState(Qt.Checked)
+        if visible in [Qt.CheckState.Checked, visible is True]:
+            self.setCheckState(Qt.CheckState.Checked)
         else:
-            self.setCheckState(Qt.Unchecked)
+            self.setCheckState(Qt.CheckState.Unchecked)
 
     def isVisible(self) -> bool:
         """
         Returns True if plot items related to this control item should be visible in the plot
         """
-        return self.checkState() == Qt.Checked
+        return self.checkState() == Qt.CheckState.Checked
 
     def data(self, role: int = ...) -> Any:
 
-        if role == Qt.DecorationRole and self.mMissingValues:
+        if role == Qt.ItemDataRole.DecorationRole and self.mMissingValues:
             return QIcon(WARNING_ICON)
 
         return super().data(role)
@@ -473,7 +476,7 @@ class PropertyItemGroup(PropertyItemBase):
     def setData(self, value: Any, role: int = ...) -> None:
         value = super().setData(value, role)
 
-        if role == Qt.CheckStateRole:
+        if role == Qt.ItemDataRole.CheckStateRole:
             # self.mSignals.requestPlotUpdate.emit()
             is_visible = self.isVisible()
             for item in self.plotDataItems():
@@ -554,7 +557,7 @@ class LegendSettingsGroup(PropertyItemGroup):
 
         self.setUserTristate(False)
         self.setCheckable(True)
-        self.setCheckState(Qt.Unchecked)
+        self.setCheckState(Qt.CheckState.Unchecked)
         self.setDropEnabled(False)
         self.setDragEnabled(False)
 
@@ -584,7 +587,7 @@ class LegendSettingsGroup(PropertyItemGroup):
 
     def asMap(self) -> dict:
         d = {
-            'show': self.checkState() == Qt.Checked,
+            'show': self.checkState() == Qt.CheckState.Checked,
             'text_size': self.m_textsize.text(),
             # 'max_items': self.mP_MaxProfiles.value(),
             'columns': max(1, self.m_columns.value()),
@@ -747,7 +750,7 @@ class GeneralSettingsGroup(PropertyItemGroup):
         return self.mP_MaxProfiles.value()
 
     def setShowLegend(self, value: bool):
-        state = Qt.Checked if value else Qt.Unchecked
+        state = Qt.CheckState.Checked if value else Qt.CheckState.Unchecked
         self.mLegendGroup.setCheckState(state)
 
     def setMaximumProfiles(self, n: int):
@@ -852,13 +855,13 @@ class PythonCodeItem(PropertyItem):
 
     def data(self, role: int = ...) -> Any:
 
-        if role == Qt.DisplayRole:
+        if role == Qt.ItemDataRole.DisplayRole:
             return self.mCode
 
-        if role == Qt.ToolTipRole:
+        if role == Qt.ItemDataRole.ToolTipRole:
             return self.mCode
 
-        if role == Qt.ForegroundRole:
+        if role == Qt.ItemDataRole.ForegroundRole:
             if not self.mIsValid:
                 return QColor('red')
 
@@ -1119,7 +1122,7 @@ class SpectralProfileLayerFieldItem(PropertyItem):
 
         missing_layer = self.mLayerID in ['', None]
         missing_field = self.mFieldName in ['', None]
-        if role == Qt.DisplayRole:
+        if role == Qt.ItemDataRole.DisplayRole:
 
             if missing_layer:
                 return '<select layer>'
@@ -1128,7 +1131,7 @@ class SpectralProfileLayerFieldItem(PropertyItem):
             else:
                 return self.mFieldName
 
-        if role == Qt.ToolTipRole:
+        if role == Qt.ItemDataRole.ToolTipRole:
             lyr = self.layer()
             field = self.field()
             if not isinstance(lyr, QgsVectorLayer):
@@ -1137,7 +1140,7 @@ class SpectralProfileLayerFieldItem(PropertyItem):
                 tt = f'Layer: "{lyr.name()}" Field: {field}<br>Layer ID: {lyr.id()}<br>Layer Source: {lyr.source()}'
             return tt
 
-        if role == Qt.ForegroundRole:
+        if role == Qt.ItemDataRole.ForegroundRole:
 
             if missing_field or missing_layer:
                 return QColor('red')
@@ -1153,12 +1156,12 @@ class TextItem(PropertyItem):
         self.setEditable(True)
 
     def text(self):
-        return self.data(Qt.EditRole)
+        return self.data(Qt.ItemDataRole.EditRole)
 
     def setText(self, text: str):
         if not (isinstance(text, str)):
             raise AssertionError
-        self.setData(text, Qt.EditRole)
+        self.setData(text, Qt.ItemDataRole.EditRole)
 
     def createEditor(self, parent: QWidget) -> QLineEdit:
         return QLineEdit(parent)
@@ -1217,11 +1220,11 @@ class QgsPropertyItem(PropertyItem):
         p = self.property()
         if isinstance(value, QgsProperty):
             self.setProperty(value)
-        elif p.propertyType() == QgsProperty.StaticProperty:
+        elif p.propertyType() == QgsProperty.Type.StaticProperty:
             self.setProperty(QgsProperty.fromValue(value))
-        elif p.propertyType() == QgsProperty.FieldBasedProperty:
+        elif p.propertyType() == QgsProperty.Type.FieldBasedProperty:
             self.setProperty(QgsProperty.fromField(value))
-        elif p.propertyType() == QgsProperty.ExpressionBasedProperty:
+        elif p.propertyType() == QgsProperty.Type.ExpressionBasedProperty:
             self.setProperty(QgsProperty.fromExpression(str(value)))
 
     def property(self) -> QgsProperty:
@@ -1257,10 +1260,10 @@ class QgsPropertyItem(PropertyItem):
             return None
         p = self.property()
 
-        if role == Qt.DisplayRole:
-            if p.propertyType() == QgsProperty.ExpressionBasedProperty:
+        if role == Qt.ItemDataRole.DisplayRole:
+            if p.propertyType() == QgsProperty.Type.ExpressionBasedProperty:
                 return p.expressionString()
-            elif p.propertyType() == QgsProperty.FieldBasedProperty:
+            elif p.propertyType() == QgsProperty.Type.FieldBasedProperty:
                 return p.field()
             else:
                 v, success = p.value(QgsExpressionContext())
@@ -1269,20 +1272,20 @@ class QgsPropertyItem(PropertyItem):
                         return v.name()
                     else:
                         return v
-        if role == Qt.DecorationRole:
+        if role == Qt.ItemDataRole.DecorationRole:
             if self.isColorProperty():
                 v, success = p.value(QgsExpressionContext())
                 if success and isinstance(v, QColor):
                     return v
 
-        if role == Qt.ToolTipRole:
+        if role == Qt.ItemDataRole.ToolTipRole:
             return self.definition().description()
 
         return super().data(role)
 
     def isColorProperty(self) -> bool:
-        return self.definition().standardTemplate() in [QgsPropertyDefinition.ColorWithAlpha,
-                                                        QgsPropertyDefinition.ColorNoAlpha]
+        return self.definition().standardTemplate() in [QgsPropertyDefinition.StandardPropertyTemplate.ColorWithAlpha,
+                                                        QgsPropertyDefinition.StandardPropertyTemplate.ColorNoAlpha]
 
     def createEditor(self, parent):
         # speclib: Optional[QgsVectorLayer] = self.speclib()
@@ -1385,7 +1388,7 @@ class QgsPropertyItem(PropertyItem):
 
         elif isinstance(editor, QCheckBox):
             b = self.property().valueAsBool(self.expressionContext())[0]
-            editor.setCheckState(Qt.Checked if b else Qt.Unchecked)
+            editor.setCheckState(Qt.CheckState.Checked if b else Qt.CheckState.Unchecked)
 
         elif isinstance(editor, QComboBox):
             value, success = self.property().value(self.expressionContext())
@@ -1410,7 +1413,7 @@ class QgsPropertyItem(PropertyItem):
             property = QgsProperty.fromValue(w.isChecked())
 
         elif isinstance(w, QComboBox):
-            property = QgsProperty.fromValue(w.currentData(Qt.UserRole))
+            property = QgsProperty.fromValue(w.currentData(Qt.ItemDataRole.UserRole))
 
         elif isinstance(w, (QgsSpinBox, QgsDoubleSpinBox)):
             property = QgsProperty.fromValue(w.value())
@@ -1496,8 +1499,8 @@ class RasterRendererGroup(PropertyItemGroup):
         super().__init__(*args, **kwds)
         self.mZValue = 0
         self.setIcon(QIcon(':/images/themes/default/rendererCategorizedSymbol.svg'))
-        self.setData('Renderer', Qt.DisplayRole)
-        self.setData('Raster Layer Renderer', Qt.ToolTipRole)
+        self.setData('Renderer', Qt.ItemDataRole.DisplayRole)
+        self.setData('Raster Layer Renderer', Qt.ItemDataRole.ToolTipRole)
 
         # self.mPropertyNames[LayerRendererVisualization.PIX_TYPE] = 'Renderer'
         # self.mPropertyTooltips[LayerRendererVisualization.PIX_TYPE] = 'raster layer renderer type'
@@ -1536,7 +1539,7 @@ class RasterRendererGroup(PropertyItemGroup):
 
         self.setUserTristate(False)
         self.setCheckable(True)
-        self.setCheckState(Qt.Checked)
+        self.setCheckState(Qt.CheckState.Checked)
         self.setDropEnabled(False)
         self.setDragEnabled(False)
 
@@ -1770,7 +1773,7 @@ class RasterRendererGroup(PropertyItemGroup):
 
     def setBandPosition(self, band: int, bandBar: InfiniteLine, bandItem: PropertyItem) -> bool:
         bandBar.setToolTip(bandBar.name())
-        bandItem.setData(band, Qt.DisplayRole)
+        bandItem.setData(band, Qt.ItemDataRole.DisplayRole)
         if isinstance(band, int) and band > 0:
             xValue = self.bandToXValue(band)
             if xValue:
@@ -1883,7 +1886,7 @@ class GeneralSettingsProfileStats(PropertyItemGroup):
         super().__init__(*args, **kwds)
 
         self.setCheckable(True)
-        self.setCheckState(Qt.Checked)
+        self.setCheckState(Qt.CheckState.Checked)
         self.setText('Statistics')
 
         self.mNormalized = QgsPropertyItemBool('Normalized',
@@ -1897,7 +1900,7 @@ class GeneralSettingsProfileStats(PropertyItemGroup):
 
     def asMap(self) -> dict:
 
-        d = {'show': self.checkState() == Qt.Checked}
+        d = {'show': self.checkState() == Qt.CheckState.Checked}
         for item in self._items:
             d[item.key()] = item.value()
 
@@ -1913,7 +1916,7 @@ class ProfileStatsGroup(PropertyItemGroup):
         self.setEnabled(True)
         self.setEditable(False)
 
-        self.setData('Statistics', role=Qt.DisplayRole)
+        self.setData('Statistics', role=Qt.ItemDataRole.DisplayRole)
 
         self.mMean = PlotStyleItem('Mean', tooltip='Mean')
         self.mStd = PlotStyleItem('StDev', tooltip='Standard deviation')
@@ -1933,7 +1936,7 @@ class ProfileStatsGroup(PropertyItemGroup):
         default_style = PlotStyle()
         default_style.setMarkerSymbol(None)
         default_style.setLineColor('green')
-        default_style.setLineStyle(Qt.SolidLine)
+        default_style.setLineStyle(Qt.PenStyle.SolidLine)
         default_style.setLineWidth(3)
 
         visFlags = f.Line | f.Color | f.Size | f.Type
@@ -2026,7 +2029,7 @@ class ProfileVisualizationGroup(PropertyItemGroup):
         default_candidate_style.setMarkerColor('green')
         default_candidate_style.setLineColor('green')
         default_candidate_style.setLineWidth(2)
-        default_candidate_style.setLineStyle(Qt.SolidLine)
+        default_candidate_style.setLineStyle(Qt.PenStyle.SolidLine)
 
         self.mProfileCandidates.setPlotStyle(default_candidate_style)
         self.mProfileCandidates.setItemCheckable(True)
@@ -2074,7 +2077,7 @@ class ProfileVisualizationGroup(PropertyItemGroup):
 
         self.setUserTristate(False)
         self.setCheckable(True)
-        self.setCheckState(Qt.Checked)
+        self.setCheckState(Qt.CheckState.Checked)
         self.setDropEnabled(False)
         self.setDragEnabled(False)
 
@@ -2219,10 +2222,10 @@ class ProfileVisualizationGroup(PropertyItemGroup):
             self.emitDataChanged()
 
     def data(self, role: int = ...) -> Any:
-        if role == Qt.DisplayRole:
+        if role == Qt.ItemDataRole.DisplayRole:
             if self.mAutoName:
                 return self.autoName()
-        if role == Qt.ToolTipRole:
+        if role == Qt.ItemDataRole.ToolTipRole:
             return self.mPField.toolTip()
         return super().data(role)
 

@@ -72,12 +72,12 @@ class GeoPackageSpectralLibraryWriter(SpectralProfileFileWriter):
                                                                  self.mCrs,
                                                                  transformationContext,
                                                                  options)
-        if writer.hasError() != QgsVectorFileWriter.NoError:
+        if writer.hasError() != QgsVectorFileWriter.WriterError.NoError:
             feedback.reportError(f'Error when creating {path}: {writer.errorMessage()}')
             return []
 
         if not writer.addFeatures(features):
-            if writer.hasError() != QgsVectorFileWriter.NoError:
+            if writer.hasError() != QgsVectorFileWriter.WriterError.NoError:
                 feedback.reportError(f'Error when creating feature: {writer.errorMessage()}')
                 return []
         del writer

@@ -61,7 +61,7 @@ class MyAlgModel(QgsProcessingToolboxProxyModel):
                  recentLog: QgsProcessingRecentAlgorithmLog = None):
         super().__init__(parent, registry, recentLog)
         self.setRecursiveFilteringEnabled(True)
-        self.setFilterCaseSensitivity(Qt.CaseInsensitive)
+        self.setFilterCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
 
     def is_my_alg(self, alg: QgsProcessingAlgorithm) -> bool:
         for output in alg.outputDefinitions():
@@ -88,7 +88,7 @@ class ProcessingToolsTest(TestCase):
         model = MyAlgModel(None)
         d.setAlgorithmModel(model)
         result = d.exec()
-        if result == QDialog.Accepted:
+        if result == QDialog.DialogCode.Accepted:
             alg = d.algorithm()
             self.assertIsInstance(alg, QgsProcessingAlgorithm)
 

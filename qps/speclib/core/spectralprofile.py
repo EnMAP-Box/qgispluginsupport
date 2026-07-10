@@ -196,7 +196,7 @@ class ProfileEncoding(enum.Enum):
         elif isinstance(input, QgsField):
             if input.type() == 8:
                 return ProfileEncoding.Json
-            elif input.type() == QMetaType.QByteArray:
+            elif input.type() == QMetaType.Type.QByteArray:
                 return ProfileEncoding.Bytes
             else:
                 return ProfileEncoding.Text
@@ -227,7 +227,7 @@ def noneToNan(v):
 
 def encodeProfileValueDict(d: dict,
                            encoding: Union[str, QgsField, ProfileEncoding],
-                           jsonFormat: QJsonDocument.JsonFormat = QJsonDocument.Compact) -> Any:
+                           jsonFormat: QJsonDocument.JsonFormat = QJsonDocument.JsonFormat.Compact) -> Any:
     """
     Serializes a SpectralProfile dictionary into JSON string or JSON string compressed as QByteArray
     extracted with `decodeProfileValueDict`.
@@ -255,7 +255,7 @@ def encodeProfileValueDict(d: dict,
         if isinstance(xValues[0], datetime.datetime):
             d2['x'] = [x.isoformat() for x in xValues]
         elif isinstance(xValues[0], QDateTime):
-            d2['x'] = [x.toString(Qt.ISODate) for x in xValues]
+            d2['x'] = [x.toString(Qt.DateFormat.ISODate) for x in xValues]
 
     if encoding == ProfileEncoding.Dict:
         # convert None to NaN
@@ -561,12 +561,12 @@ class SpectralProfileFileReader(object):
                 create_profile_field(SpectralProfileFileReader.KEY_Target, encoding=ProfileEncoding.Dict))
             fields.append(
                 create_profile_field(SpectralProfileFileReader.KEY_Reflectance, encoding=ProfileEncoding.Dict))
-            fields.append(QgsField(SpectralProfileFileReader.KEY_ReferenceTime, QMetaType.QDateTime))
-            fields.append(QgsField(SpectralProfileFileReader.KEY_TargetTime, QMetaType.QDateTime))
-            fields.append(QgsField(SpectralProfileFileReader.KEY_Name, QMetaType.QString))
-            fields.append(QgsField(SpectralProfileFileReader.KEY_Path, QMetaType.QString))
-            fields.append(QgsField(SpectralProfileFileReader.KEY_Metadata, QMetaType.QVariantMap,
-                                   typeName='map', subType=QMetaType.QString))
+            fields.append(QgsField(SpectralProfileFileReader.KEY_ReferenceTime, QMetaType.Type.QDateTime))
+            fields.append(QgsField(SpectralProfileFileReader.KEY_TargetTime, QMetaType.Type.QDateTime))
+            fields.append(QgsField(SpectralProfileFileReader.KEY_Name, QMetaType.Type.QString))
+            fields.append(QgsField(SpectralProfileFileReader.KEY_Path, QMetaType.Type.QString))
+            fields.append(QgsField(SpectralProfileFileReader.KEY_Metadata, QMetaType.Type.QVariantMap,
+                                   typeName='map', subType=QMetaType.Type.QString))
             SpectralProfileFileReader._STANDARD_FIELDS = fields
         return QgsFields(SpectralProfileFileReader._STANDARD_FIELDS)
 

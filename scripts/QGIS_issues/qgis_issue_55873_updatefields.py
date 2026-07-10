@@ -24,15 +24,15 @@ layer.updatedFields.connect(onFieldsUpdated)
 with edit(layer):
     # this emits the updatedFields signal
     print('Add QgsField')
-    layer.addAttribute(QgsField('info', QMetaType.QString))
+    layer.addAttribute(QgsField('info', QMetaType.Type.QString))
 
 # this does not emit the updatedFields signal
 print('Change QgsField editorWidgetSetup (no emit of updatedFields)')
 layer.setEditorWidgetSetup(0, QgsEditorWidgetSetup('Color', {}))
 
 # Example 2: editorWidgetSetup and comment not considered in field comparison
-field1 = QgsField('info', QMetaType.QString)
-field2 = QgsField('info', QMetaType.QString)
+field1 = QgsField('info', QMetaType.Type.QString)
+field2 = QgsField('info', QMetaType.Type.QString)
 if not (field1 == field2):
     raise AssertionError
 if not (field1.editorWidgetSetup().type() == field2.editorWidgetSetup().type()):

@@ -36,7 +36,7 @@ class TestProcessingAlgorithm(QgsProcessingAlgorithm):
     def initAlgorithm(self, configuration=None):
         self.addParameter(MyParameter('pathInput', 'The Input Dataset'))
         self.addParameter(
-            QgsProcessingParameterNumber('value', 'The value', QgsProcessingParameterNumber.Double, 1, False,
+            QgsProcessingParameterNumber('value', 'The value', QgsProcessingParameterNumber.Type.Double, 1, False,
                                          0.00, 999999.99))
         self.addParameter(QgsProcessingParameterRasterDestination('pathOutput', 'The Output Dataset'))
 

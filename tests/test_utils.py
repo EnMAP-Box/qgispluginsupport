@@ -25,6 +25,18 @@ from typing import Dict
 import defusedxml.ElementTree as ET  # B405 - defusedxml used to safely parse XML
 import numpy as np
 from osgeo import gdal, gdal_array, ogr, osr
+
+from qgis.PyQt.QtCore import NULL, QByteArray, QObject, QPoint, QRect, QUrl
+from qgis.PyQt.QtGui import QColor
+from qgis.PyQt.QtWidgets import QDialog, QDockWidget, QGroupBox, QMainWindow, QMenu, QWidget
+from qgis.PyQt.QtXml import QDomDocument, QDomElement
+from qgis.core import QgsCoordinateReferenceSystem, QgsFeature, QgsFeatureRequest, QgsField, QgsGeometry, \
+    QgsGeometryParameters, QgsMapLayerProxyModel, QgsMapLayerStore, QgsMapToPixel, QgsPointXY, QgsProcessingFeedback, \
+    QgsProject, QgsRaster, QgsRasterDataProvider, QgsRasterIdentifyResult, QgsRasterLayer, QgsRectangle, QgsVector, \
+    QgsVectorLayer
+from qgis.core import QgsWkbTypes, QgsExpressionContextUtils
+from qgis.gui import QgsDockWidget
+from qgis.gui import QgsFieldCalculator
 from qps.speclib.core import is_spectral_library
 from qps.speclib.core.spectralprofile import decodeProfileValueDict
 from qps.testing import start_app, TestCase, TestObjects
@@ -39,18 +51,6 @@ from qps.utils import (
     spatialPoint2px, value2str, writeAsVectorFormat, create_picture_viewer_config, xy_pair_matrix, featureSymbolScope,
     TemporaryGlobalLayerContext, stringToByteArray, stringFromByteArray)
 from qpstestdata import enmap, enmap_multipoint, enmap_multipolygon, enmap_pixel, hymap, landcover
-
-from qgis.PyQt.QtCore import NULL, QByteArray, QObject, QPoint, QRect, QUrl
-from qgis.PyQt.QtGui import QColor
-from qgis.PyQt.QtWidgets import QDialog, QDockWidget, QGroupBox, QMainWindow, QMenu, QWidget
-from qgis.PyQt.QtXml import QDomDocument, QDomElement
-from qgis.core import QgsCoordinateReferenceSystem, QgsFeature, QgsFeatureRequest, QgsField, QgsGeometry, \
-    QgsGeometryParameters, QgsMapLayerProxyModel, QgsMapLayerStore, QgsMapToPixel, QgsPointXY, QgsProcessingFeedback, \
-    QgsProject, QgsRaster, QgsRasterDataProvider, QgsRasterIdentifyResult, QgsRasterLayer, QgsRectangle, QgsVector, \
-    QgsVectorLayer
-from qgis.core import QgsWkbTypes, QgsExpressionContextUtils
-from qgis.gui import QgsDockWidget
-from qgis.gui import QgsFieldCalculator
 
 start_app()
 
@@ -556,7 +556,7 @@ class TestUtils(TestCase):
 
                 profile1 = array[:, ay, ax][:, 0].astype(float).tolist()
                 pt: QgsPointXY = f.geometry().asPoint()
-                results = dp.identify(pt, QgsRaster.IdentifyFormatValue).results()
+                results = dp.identify(pt, QgsRaster.IdentifyFormat.IdentifyFormatValue).results()
                 profile2 = list(results.values())
                 self.assertListEqual(profile1, profile2,
                                      msg=f'Wrong profile for point fid {f.id()}')
@@ -635,7 +635,7 @@ class TestUtils(TestCase):
 
                 arr1 = array[:, i]
                 arr2 = ARRAY[:, cp.y(), cp.x()]
-                ires: QgsRasterIdentifyResult = dp.identify(cg, QgsRaster.IdentifyFormatValue).results()
+                ires: QgsRasterIdentifyResult = dp.identify(cg, QgsRaster.IdentifyFormat.IdentifyFormatValue).results()
                 arr3 = np.asarray(list(ires.values()))
 
                 if not np.array_equal(arr1, arr2):
@@ -786,10 +786,10 @@ class TestUtils(TestCase):
     def test_feature_symbol_scope(self):
 
         layers = [
-            TestObjects.createVectorLayer(wkbType=QgsWkbTypes.NoGeometry),
-            TestObjects.createVectorLayer(wkbType=QgsWkbTypes.Point),
-            TestObjects.createVectorLayer(wkbType=QgsWkbTypes.Polygon),
-            TestObjects.createVectorLayer(wkbType=QgsWkbTypes.LineGeometry),
+            TestObjects.createVectorLayer(wkbType=QgsWkbTypes.Type.NoGeometry),
+            TestObjects.createVectorLayer(wkbType=QgsWkbTypes.Type.Point),
+            TestObjects.createVectorLayer(wkbType=QgsWkbTypes.Type.Polygon),
+            TestObjects.createVectorLayer(wkbType=QgsWkbTypes.GeometryType.LineGeometry),
         ]
 
         for lyr in layers:
@@ -868,7 +868,7 @@ class TestUtils(TestCase):
         e = QgsRectangle(c.x() - 0.1 * resX, c.y() + 0.1 * resY,
                          c.x() + 0.1 * resX, c.y() - 0.1 * resY)
 
-        arr1 = list(dp.identify(e.center(), QgsRaster.IdentifyFormatValue).results().values())
+        arr1 = list(dp.identify(e.center(), QgsRaster.IdentifyFormat.IdentifyFormatValue).results().values())
         arr2 = rasterArray(lyr, rect=e)
         self.assertIsInstance(arr2, np.ndarray)
         self.assertEqual(arr2.shape, (lyr.bandCount(), 1, 1))
@@ -899,7 +899,9 @@ class TestUtils(TestCase):
             rect = QgsRectangle(p.x(), p.y(), p.x(), p.y())
             arr1 = rasterArray(lyrR, rect)
             arr1 = arr1[:, 0, 0].tolist()
-            ires: QgsRasterIdentifyResult = lyrR.dataProvider().identify(p, QgsRaster.IdentifyFormatValue).results()
+            ires: QgsRasterIdentifyResult = lyrR.dataProvider().identify(
+                p, QgsRaster.IdentifyFormat.IdentifyFormatValue
+            ).results()
             arr2 = list(ires.values())
             self.assertListEqual(arr1, arr2)
 
@@ -1093,15 +1095,15 @@ class TestUtils(TestCase):
         layers = [lyrR, lyrV]
         self.assertTrue(QgsProject.instance().addMapLayers(layers))
         d = SelectMapLayersDialog()
-        d.addLayerDescription('Any Type', QgsMapLayerProxyModel.All)
+        d.addLayerDescription('Any Type', QgsMapLayerProxyModel.Filter.All)
         layers2 = d.mapLayers()
         self.assertIsInstance(layers2, list)
         self.assertTrue(len(layers2) == 1)
         for lyr in layers2:
             self.assertTrue(lyr in layers)
 
-        d.addLayerDescription('A Vector Layer', QgsMapLayerProxyModel.VectorLayer)
-        d.addLayerDescription('A Raster Layer', QgsMapLayerProxyModel.RasterLayer)
+        d.addLayerDescription('A Vector Layer', QgsMapLayerProxyModel.Filter.VectorLayer)
+        d.addLayerDescription('A Raster Layer', QgsMapLayerProxyModel.Filter.RasterLayer)
 
         self.showGui(d)
 

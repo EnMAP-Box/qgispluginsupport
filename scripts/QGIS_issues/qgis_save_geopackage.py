@@ -16,8 +16,8 @@ feedback = QgsProcessingFeedback()
 saveVectorOptions = QgsVectorFileWriter.SaveVectorOptions()
 saveVectorOptions.feedback = feedback
 saveVectorOptions.driverName = 'GPKG'
-saveVectorOptions.symbologyExport = QgsVectorFileWriter.SymbolLayerSymbology
-saveVectorOptions.actionOnExistingFile = QgsVectorFileWriter.CreateOrOverwriteLayer
+saveVectorOptions.symbologyExport = QgsVectorFileWriter.SymbologyExport.SymbolLayerSymbology
+saveVectorOptions.actionOnExistingFile = QgsVectorFileWriter.ActionOnExistingFile.CreateOrOverwriteLayer
 
 path = pathlib.Path('~').expanduser() / 'test.gpkg'
 # if path.is_file() and saveVectorOptions.actionOnExistingFile != QgsVectorFileWriter.CreateOrOverwriteLayer:
@@ -25,9 +25,9 @@ path = pathlib.Path('~').expanduser() / 'test.gpkg'
 # assert not path.is_file()
 print(f'file exists: {path}')
 fields = QgsFields()
-fields.append(QgsField('name', QMetaType.QString))
-fields.append(QgsField('num', QMetaType.Int))
-fields.append(QgsField('binary', QMetaType.QByteArray))
+fields.append(QgsField('name', QMetaType.Type.QString))
+fields.append(QgsField('num', QMetaType.Type.Int))
+fields.append(QgsField('binary', QMetaType.Type.QByteArray))
 
 features = []
 for i, n in enumerate(['A', 'B', 'C', 'D']):
@@ -42,7 +42,7 @@ transformContext = QgsProject.instance().transformContext()
 writer = QgsVectorFileWriter.create(
     fileName=path.as_posix(),
     fields=fields,
-    geometryType=QgsWkbTypes.NoGeometry,
+    geometryType=QgsWkbTypes.Type.NoGeometry,
     srs=QgsCoordinateReferenceSystem(),
     transformContext=transformContext,
     options=saveVectorOptions,
@@ -50,12 +50,12 @@ writer = QgsVectorFileWriter.create(
     # newLayer=newLayerName,
     newFilename=None
 )
-if writer.hasError() != QgsVectorFileWriter.NoError:
+if writer.hasError() != QgsVectorFileWriter.WriterError.NoError:
     raise Exception(f'Error when creating {path}: {writer.errorMessage()}')
 
 for f in features:
     if not writer.addFeature(f):
-        if writer.hasError() != QgsVectorFileWriter.NoError:
+        if writer.hasError() != QgsVectorFileWriter.WriterError.NoError:
             raise Exception(f'Error when creating feature: {writer.errorMessage()}')
 print('Done')
 exit(0)

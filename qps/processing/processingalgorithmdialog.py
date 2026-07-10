@@ -60,12 +60,12 @@ class ProcessingAlgorithmDialog(QDialog):
         alg = self.mTreeViewAlgorithms.algorithmForIndex(index)
         if isinstance(alg, QgsProcessingAlgorithm):
             self.mSelectedAlgorithm = alg
-            self.setResult(QDialog.Accepted)
-            self.buttonBox.button(QDialogButtonBox.Ok).click()
+            self.setResult(QDialog.DialogCode.Accepted)
+            self.buttonBox.button(QDialogButtonBox.StandardButton.Ok).click()
 
     def onAlgorithmTreeSelectionChanged(self, selected, deselected):
         self.mSelectedAlgorithm = self.mTreeViewAlgorithms.selectedAlgorithm()
         b = isinstance(self.mSelectedAlgorithm, QgsProcessingAlgorithm)
 
-        btnOk = self.buttonBox.button(QDialogButtonBox.Ok)
+        btnOk = self.buttonBox.button(QDialogButtonBox.StandardButton.Ok)
         btnOk.setEnabled(b)

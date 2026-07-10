@@ -65,8 +65,9 @@ def debugLog(msg: str, prefix: str = 'DEBUG:'):
         print(f'{prefix} {msg}', flush=True)
 
 
-def registerMapLayerConfigWidgetFactory(factory: QgsMapLayerConfigWidgetFactory) \
-        -> Optional[QgsMapLayerConfigWidgetFactory]:
+def registerMapLayerConfigWidgetFactory(
+    factory: QgsMapLayerConfigWidgetFactory
+) -> Optional[QgsMapLayerConfigWidgetFactory]:
     """
     Register a new tab in the map layer properties dialog.
     :param factory: QgsMapLayerConfigWidgetFactory
@@ -87,7 +88,7 @@ def registerMapLayerConfigWidgetFactory(factory: QgsMapLayerConfigWidgetFactory)
         os.environ[KEY_MAPLAYERCONFIGWIDGETFACTORIES] = '::'.join(registered)
         iface.registerMapLayerConfigWidgetFactory(factory)
 
-        QgsApplication.instance().messageLog().logMessage(f'Registered {name}', level=Qgis.Info)
+        QgsApplication.instance().messageLog().logMessage(f'Registered {name}', level=Qgis.MessageLevel.Info)
         return factory
     else:
         return None
@@ -116,7 +117,9 @@ def unregisterMapLayerConfigWidgetFactory(factory: QgsMapLayerConfigWidgetFactor
     from qgis.utils import iface
     if isinstance(iface, QgisInterface):
         iface.unregisterMapLayerConfigWidgetFactory(factory)
-        QgsApplication.instance().messageLog().logMessage(f'Unregistered {factory.__class__.__name__}', level=Qgis.Info)
+        QgsApplication.instance().messageLog().logMessage(
+            f'Unregistered {factory.__class__.__name__}', level=Qgis.MessageLevel.Info
+        )
 
 
 def mapLayerConfigWidgetFactories() -> List[QgsMapLayerConfigWidgetFactory]:

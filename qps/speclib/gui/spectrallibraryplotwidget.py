@@ -38,9 +38,9 @@ class SpectralProfilePlotView(QTreeView):
         return self.model()
 
     def selectedPropertyGroups(self) -> List[PropertyItemGroup]:
-        return [idx.data(Qt.UserRole)
+        return [idx.data(Qt.ItemDataRole.UserRole)
                 for idx in self.selectionModel().selectedIndexes()
-                if isinstance(idx.data(Qt.UserRole), PropertyItemGroup)]
+                if isinstance(idx.data(Qt.ItemDataRole.UserRole), PropertyItemGroup)]
 
     def selectPropertyGroups(self, visualizations):
         if isinstance(visualizations, ProfileVisualizationGroup):
@@ -50,9 +50,9 @@ class SpectralProfilePlotView(QTreeView):
 
         for r in range(model.rowCount()):
             idx = model.index(r, 0)
-            vis = model.data(idx, Qt.UserRole)
+            vis = model.data(idx, Qt.ItemDataRole.UserRole)
             if isinstance(vis, ProfileVisualizationGroup) and vis in visualizations:
-                self.selectionModel().select(idx, QItemSelectionModel.Rows)
+                self.selectionModel().select(idx, QItemSelectionModel.SelectionFlag.Rows)
 
     def setModel(self, model: Optional[QAbstractItemModel]) -> None:
         super().setModel(model)
@@ -67,7 +67,7 @@ class SpectralProfilePlotView(QTreeView):
                 #    self.setFirstColumnSpanned(r, idx.parent(), True)
 
     def checkColumnSpanRecursively(self, index: QModelIndex):
-        item = index.data(Qt.UserRole)
+        item = index.data(Qt.ItemDataRole.UserRole)
 
         if isinstance(item, PropertyItemBase):
             if item.firstColumnSpanned():
@@ -97,7 +97,7 @@ class SpectralProfilePlotView(QTreeView):
         menu: QMenu = QMenu()
         selected_indices = self.selectionModel().selectedRows()
         if len(selected_indices) == 1:
-            item = selected_indices[0].data(Qt.UserRole)
+            item = selected_indices[0].data(Qt.ItemDataRole.UserRole)
             if isinstance(item, PropertyLabel):
                 item = item.propertyItem()
             if isinstance(item, PropertyItemBase):
@@ -106,7 +106,7 @@ class SpectralProfilePlotView(QTreeView):
         elif len(selected_indices) > 0:
             selected_items = []
             for idx in selected_indices:
-                item = idx.data(Qt.UserRole)
+                item = idx.data(Qt.ItemDataRole.UserRole)
                 if isinstance(item, PropertyItemGroup) and item not in selected_items:
                     selected_items.append(item)
 
@@ -170,12 +170,12 @@ class SpectralProfilePlotView(QTreeView):
         md: QMimeData = QApplication.clipboard().mimeData()
 
         idx = self.currentIndex()
-        self.model().dropMimeData(md, Qt.CopyAction, idx.row(), idx.column(), idx.parent())
+        self.model().dropMimeData(md, Qt.DropAction.CopyAction, idx.row(), idx.column(), idx.parent())
 
     def vis2index(self, vis: ProfileVisualizationGroup) -> QModelIndex:
         for r in range(self.model().rowCount()):
             idx = self.model().index(r, 0)
-            if self.model().data(idx, Qt.UserRole) == vis:
+            if self.model().data(idx, Qt.ItemDataRole.UserRole) == vis:
                 return idx
         return QModelIndex()
 
@@ -197,7 +197,7 @@ class SpectralProfilePlotViewDelegate(QStyledItemDelegate):
         self.mTreeView: SpectralProfilePlotView = treeView
 
     def paint(self, painter: QPainter, option: QStyleOptionViewItem, index: QModelIndex):
-        item: PropertyItem = index.data(Qt.UserRole)
+        item: PropertyItem = index.data(Qt.ItemDataRole.UserRole)
         bc = QColor(self.plotControl().generalSettings().backgroundColor())
         total_h = self.mTreeView.rowHeight(index)
         total_w = self.mTreeView.columnWidth(index.column())
@@ -216,22 +216,25 @@ class SpectralProfilePlotViewDelegate(QStyledItemDelegate):
             elif isinstance(item, ProfileVisualizationGroup):
                 # Draw selection background and checkbox manually to avoid double text rendering
                 # Draw background
-                if option.state & QStyle.State_Selected:
+                if option.state & QStyle.StateFlag.State_Selected:
                     painter.fillRect(option.rect, option.palette.highlight())
 
                 # Draw checkbox
-                if index.flags() & Qt.ItemIsUserCheckable:
+                if index.flags() & Qt.ItemFlag.ItemIsUserCheckable:
                     opt = QStyleOptionViewItem(option)
                     self.initStyleOption(opt, index)
 
                     check_option = QStyleOptionButton()
-                    check_rect = style.subElementRect(QStyle.SE_ItemViewItemCheckIndicator, opt, self.mTreeView)
+                    check_rect = style.subElementRect(QStyle.SubElement.SE_ItemViewItemCheckIndicator, opt,
+                                                      self.mTreeView)
                     check_option.rect = check_rect
-                    check_option.state = {Qt.Unchecked: QStyle.State_Off,
-                                          Qt.Checked: QStyle.State_On,
-                                          Qt.PartiallyChecked: QStyle.State_NoChange}[item.checkState()]
-                    check_option.state = check_option.state | QStyle.State_Enabled
-                    style.drawPrimitive(QStyle.PE_IndicatorItemViewItemCheck, check_option, painter, self.mTreeView)
+                    check_option.state = {Qt.CheckState.Unchecked: QStyle.StateFlag.State_Off,
+                                          Qt.CheckState.Checked: QStyle.StateFlag.State_On,
+                                          Qt.CheckState.PartiallyChecked: QStyle.StateFlag.State_NoChange}[
+                        item.checkState()]
+                    check_option.state = check_option.state | QStyle.StateFlag.State_Enabled
+                    style.drawPrimitive(QStyle.PrimitiveElement.PE_IndicatorItemViewItemCheck, check_option, painter,
+                                        self.mTreeView)
 
                     # Start custom content after checkbox
                     x0 = check_rect.right() + margin
@@ -255,7 +258,7 @@ class SpectralProfilePlotViewDelegate(QStyledItemDelegate):
                 if not item.isComplete():
                     to_paint.append(QIcon(r':/images/themes/default/mIconWarning.svg'))
 
-                to_paint.append(item.data(Qt.DisplayRole))
+                to_paint.append(item.data(Qt.ItemDataRole.DisplayRole))
 
                 # Paint custom elements
                 for p in to_paint:
@@ -274,15 +277,16 @@ class SpectralProfilePlotViewDelegate(QStyledItemDelegate):
                         w = font_metrics.horizontalAdvance(p)
                         rect = QRect(x0, y0, w, h)
 
-                        enabled = item.checkState() == Qt.Checked
+                        enabled = item.checkState() == Qt.CheckState.Checked
                         palette = QPalette(option.palette)
                         if not enabled:
-                            palette.setCurrentColorGroup(QPalette.Disabled)
+                            palette.setCurrentColorGroup(QPalette.ColorGroup.Disabled)
 
                         # Use highlighted text color if an item is selected
-                        text_role = QPalette.HighlightedText \
-                            if (option.state & QStyle.State_Selected) else QPalette.Text
-                        style.drawItemText(painter, rect, Qt.AlignLeft | Qt.AlignVCenter, palette, enabled, p,
+                        text_role = QPalette.ColorRole.HighlightedText \
+                            if (option.state & QStyle.StateFlag.State_Selected) else QPalette.ColorRole.Text
+                        style.drawItemText(painter, rect, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
+                                           palette, enabled, p,
                                            textRole=text_role)
                         x0 = rect.x() + rect.width() + margin
 
@@ -315,7 +319,7 @@ class SpectralProfilePlotViewDelegate(QStyledItemDelegate):
         nameStyleColumn = self.bridge().cnPlotStyle
 
         for c in range(self.mTreeView.model().columnCount()):
-            cname = self.mTreeView.model().headerData(c, Qt.Horizontal, Qt.DisplayRole)
+            cname = self.mTreeView.model().headerData(c, Qt.Orientation.Horizontal, Qt.ItemDataRole.DisplayRole)
             if cname == nameStyleColumn:
                 for r in range(idx0, idx1 + 1):
                     idx = self.mTreeView.model().index(r, c, parent=parent)
@@ -328,7 +332,7 @@ class SpectralProfilePlotViewDelegate(QStyledItemDelegate):
 
         editor = None
         if index.isValid():
-            item = index.data(Qt.UserRole)
+            item = index.data(Qt.ItemDataRole.UserRole)
             if callable(getattr(item, 'createEditor', None)):
                 editor = item.createEditor(parent)
         if isinstance(editor, QWidget):
@@ -342,7 +346,7 @@ class SpectralProfilePlotViewDelegate(QStyledItemDelegate):
         if not index.isValid():
             return
 
-        item = index.data(Qt.UserRole)
+        item = index.data(Qt.ItemDataRole.UserRole)
         # if isinstance(item, PropertyItem):
         if callable(getattr(item, 'setEditorData', None)):
             item.setEditorData(editor, index)
@@ -356,7 +360,7 @@ class SpectralProfilePlotViewDelegate(QStyledItemDelegate):
 
     def setModelData(self, w, model, index):
 
-        item = index.data(Qt.UserRole)
+        item = index.data(Qt.ItemDataRole.UserRole)
         if callable(getattr(item, 'setModelData', None)):
             item.setModelData(w, model, index)
         else:
@@ -561,7 +565,7 @@ class SpectralLibraryPlotWidget(QWidget):
             idx = self.plotModel().indexFromItem(item)
             idx2 = self.treeView.model().mapFromSource(idx)
             self.treeView.setExpanded(idx2, True)
-            self.treeView.scrollTo(idx2, QAbstractItemView.PositionAtCenter)
+            self.treeView.scrollTo(idx2, QAbstractItemView.ScrollHint.PositionAtCenter)
 
             _ = QMessageBox.information(
                 self,
@@ -578,8 +582,8 @@ class SpectralLibraryPlotWidget(QWidget):
         d = SelectMapLayerDialog()
         d.setWindowTitle('Select Raster Layer')
         d.setProject(self.plotModel().project())
-        d.mapLayerComboBox().setFilters(QgsMapLayerProxyModel.RasterLayer)
-        if d.exec() == QDialog.Accepted:
+        d.mapLayerComboBox().setFilters(QgsMapLayerProxyModel.Filter.RasterLayer)
+        if d.exec() == QDialog.DialogCode.Accepted:
             layer = d.layer()
 
         existing_layers = [v.layerId() for v in self.mPlotModel.layerRendererVisualizations()]
@@ -608,7 +612,7 @@ class SpectralLibraryPlotWidget(QWidget):
         :return:
         """
         item = ProfileVisualizationGroup()
-        item.setCheckState(Qt.Checked if checked else Qt.Unchecked)
+        item.setCheckState(Qt.CheckState.Checked if checked else Qt.CheckState.Unchecked)
 
         # set defaults
 
@@ -671,7 +675,9 @@ class SpectralLibraryPlotWidget(QWidget):
                 rx3 = re.compile('fid', re.I)
                 for rx in [rx1, rx2, rx3]:
                     for field_name in layer.fields():
-                        if field_name.type() in [QMetaType.QString, QMetaType.Int] and rx.search(field_name.name()):
+                        if field_name.type() in [QMetaType.Type.QString, QMetaType.Type.Int] and rx.search(
+                            field_name.name()
+                        ):
                             name_field = field_name
                             break
                     if name_field:
@@ -703,7 +709,10 @@ class SpectralLibraryPlotWidget(QWidget):
             tv = self.treeView
             idx2 = tv.model().mapFromSource(idx)
             if idx2.isValid():
-                tv.selectionModel().setCurrentIndex(idx, QItemSelectionModel.SelectCurrent | QItemSelectionModel.Rows)
+                tv.selectionModel().setCurrentIndex(
+                    idx,
+                    QItemSelectionModel.SelectionFlag.SelectCurrent | QItemSelectionModel.SelectionFlag.Rows
+                )
 
         return item
         # self.mPlotControlModel.updatePlot()
@@ -719,7 +728,11 @@ class SpectralLibraryPlotWidget(QWidget):
 
     def removeSelectedPropertyGroups(self, *args):
         rows = self.treeView.selectionModel().selectedRows()
-        to_remove = [r.data(Qt.UserRole) for r in rows if isinstance(r.data(Qt.UserRole), PropertyItemGroup)]
+        to_remove = [
+            r.data(Qt.ItemDataRole.UserRole)
+            for r in rows
+            if isinstance(r.data(Qt.ItemDataRole.UserRole), PropertyItemGroup)
+        ]
         self.mPlotModel.removePropertyItemGroups(to_remove)
 
     # def setDualView(self, dualView):
@@ -729,7 +742,7 @@ class SpectralLibraryPlotWidget(QWidget):
     def currentVisualization(self) -> Optional[ProfileVisualizationGroup]:
 
         for idx in self.treeView.selectionModel().selectedRows():
-            node = idx.data(Qt.UserRole)
+            node = idx.data(Qt.ItemDataRole.UserRole)
 
             if isinstance(node, PropertyLabel):
                 node = node.propertyItem()
@@ -747,7 +760,7 @@ class SpectralLibraryPlotWidget(QWidget):
         implementing '.layer()->QgsMapLayer'
         """
         for idx in self.treeView.selectionModel().selectedRows():
-            node = idx.data(Qt.UserRole)
+            node = idx.data(Qt.ItemDataRole.UserRole)
 
             if isinstance(node, PropertyLabel):
                 node = node.propertyItem()

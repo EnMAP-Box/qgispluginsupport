@@ -176,7 +176,7 @@ class CursorLocationInfoModel(TreeModel):
         self.mCountFromZero = b
 
     def flags(self, index: QModelIndex):
-        return Qt.ItemIsEnabled | Qt.ItemIsSelectable
+        return Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable
 
     def addSourceValues(self, sourceValueSet: SourceValueSet):
         if not isinstance(sourceValueSet, SourceValueSet):
@@ -330,7 +330,7 @@ class ComboBoxOptionModel(QAbstractListModel):
             raise AssertionError(f'option does not exists: {option}')
         return self.mOptions.index(option)
 
-    def data(self, index, role=Qt.DisplayRole):
+    def data(self, index, role=Qt.ItemDataRole.DisplayRole):
         if not index.isValid():
             return None
 
@@ -338,13 +338,13 @@ class ComboBoxOptionModel(QAbstractListModel):
         if not (isinstance(option, ComboBoxOption)):
             raise AssertionError
         value = None
-        if role == Qt.DisplayRole:
+        if role == Qt.ItemDataRole.DisplayRole:
             value = option.name
-        if role == Qt.ToolTipRole:
+        if role == Qt.ItemDataRole.ToolTipRole:
             value = option.tooltip
-        if role == Qt.DecorationRole:
+        if role == Qt.ItemDataRole.DecorationRole:
             value = option.icon
-        if role == Qt.UserRole:
+        if role == Qt.ItemDataRole.UserRole:
             value = option
         return value
 
@@ -498,7 +498,7 @@ class CursorLocationInfoDock(QDockWidget):
                         v.bandValues.append(QColor(block.color(0, 0)))
                 else:
                     dp: QgsRasterDataProvider = lyr.dataProvider()
-                    results = dp.identify(pointLyr, QgsRaster.IdentifyFormatValue).results()
+                    results = dp.identify(pointLyr, QgsRaster.IdentifyFormat.IdentifyFormatValue).results()
                     classScheme = None
                     if isinstance(lyr.renderer(), QgsPalettedRasterRenderer):
                         classScheme = ClassificationScheme.fromRasterRenderer(lyr.renderer())
@@ -523,7 +523,7 @@ class CursorLocationInfoDock(QDockWidget):
                 # searchRadius = QgsTolerance.toleranceInMapUnits(1, lyr, self.mCanvas.mapRenderer(),
                 # QgsTolerance.Pixels)
                 searchRadius = QgsTolerance.toleranceInMapUnits(1, lyr, self.mCanvases[0].mapSettings(),
-                                                                QgsTolerance.Pixels)
+                                                                QgsTolerance.UnitType.Pixels)
                 # searchRadius = QgsTolerance.defaultTolerance(lyr, self.mCanvas.mapSettings()) searchRadius =
                 # QgsTolerance.toleranceInProjectUnits(1, self.mCanvas.mapRenderer(), QgsTolerance.Pixels)
                 searchRect = QgsRectangle()
@@ -532,7 +532,7 @@ class CursorLocationInfoDock(QDockWidget):
                 searchRect.setYMinimum(pointLyr.y() - searchRadius)
                 searchRect.setYMaximum(pointLyr.y() + searchRadius)
 
-                flags = QgsFeatureRequest.ExactIntersect
+                flags = QgsFeatureRequest.Flag.ExactIntersect
                 features = lyr.getFeatures(QgsFeatureRequest()
                                            .setFilterRect(searchRect)
                                            .setFlags(flags))

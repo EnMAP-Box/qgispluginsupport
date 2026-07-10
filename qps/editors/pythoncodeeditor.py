@@ -35,7 +35,7 @@ class PythonCodeDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
+        self.setWindowFlags(self.windowFlags() & ~Qt.WindowType.WindowContextHelpButtonHint)
         path_ui = Path(__file__).parent / 'pythoncodeeditordialog.ui'
         loadUi(path_ui, self)
         self.setWindowTitle("Edit Python Expression")

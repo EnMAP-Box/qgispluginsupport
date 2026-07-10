@@ -315,7 +315,7 @@ class GDALBandMetadataModel(QgsVectorLayer):
         return self.mMapLayer
 
     def createDomainField(self) -> QgsField:
-        DOMAIN = QgsField(BandFieldNames.Domain, type=QMetaType.QString)
+        DOMAIN = QgsField(BandFieldNames.Domain, type=QMetaType.Type.QString)
         _ = QgsFieldConstraints()
         DOMAIN.setReadOnly(True)
         DOMAIN.setDefaultValueDefinition(QgsDefaultValue(''))
@@ -377,7 +377,7 @@ class GDALBandMetadataModel(QgsVectorLayer):
         self.startEditing()
 
         # DOMAIN = self.createDomainField()
-        BANDNO = QgsField(BandFieldNames.Number, type=QMetaType.Int)
+        BANDNO = QgsField(BandFieldNames.Number, type=QMetaType.Type.Int)
         constraints = QgsFieldConstraints()
         # todo: constraint unique combination of (domain, band number, key)
         # constraints.setConstraint(QgsFieldConstraints.ConstraintUnique)
@@ -391,33 +391,33 @@ class GDALBandMetadataModel(QgsVectorLayer):
         BANDNO.setConstraints(constraints)
         BANDNO.setReadOnly(True)
 
-        bandName = QgsField(BandFieldNames.Name, type=QMetaType.QString, len=-1, )
+        bandName = QgsField(BandFieldNames.Name, type=QMetaType.Type.QString, len=-1, )
 
-        NODATA = QgsField(BandFieldNames.NoData, type=QMetaType.Double)
+        NODATA = QgsField(BandFieldNames.NoData, type=QMetaType.Type.Double)
 
-        BBL = QgsField(BandFieldNames.BadBand, type=QMetaType.Int)
+        BBL = QgsField(BandFieldNames.BadBand, type=QMetaType.Type.Int)
         BBL.setDefaultValueDefinition(QgsDefaultValue('1'))
         BBL.setEditorWidgetSetup(QgsEditorWidgetSetup())
 
-        WL = QgsField(BandFieldNames.Wavelength, type=QMetaType.Double)
+        WL = QgsField(BandFieldNames.Wavelength, type=QMetaType.Type.Double)
 
-        WLU = QgsField(BandFieldNames.WavelengthUnit, type=QMetaType.QString)
+        WLU = QgsField(BandFieldNames.WavelengthUnit, type=QMetaType.Type.QString)
         # wluConstraints = QgsFieldConstraints()
         # wluConstraints.setConstraintExpression('"{BandPropertyKeys.WavelengthUnit}" in [\'nm\', \'m\']')
         # WLU.setConstraints(wluConstraints)
 
-        FWHM = QgsField(BandFieldNames.FWHM, type=QMetaType.Double)
+        FWHM = QgsField(BandFieldNames.FWHM, type=QMetaType.Type.Double)
         FWHMConstraints = QgsFieldConstraints()
         FWHMConstraints.setConstraintExpression(f'"{BandFieldNames.FWHM}" is NULL or "{BandFieldNames.FWHM}" > 0')
         FWHM.setConstraints(FWHMConstraints)
 
-        RANGE = QgsField(BandFieldNames.Range, type=QMetaType.QString)
+        RANGE = QgsField(BandFieldNames.Range, type=QMetaType.Type.QString)
         RANGE.setReadOnly(True)
         # RANGEConstraints = QgsFieldConstraints()
         # RANGEConstraints.setConstraintExpression(f'"{BandFieldNames.BandRange}" > 0')
 
-        OFFSET = QgsField(BandFieldNames.Offset, type=QMetaType.Double)
-        SCALE = QgsField(BandFieldNames.Scale, type=QMetaType.Double)
+        OFFSET = QgsField(BandFieldNames.Offset, type=QMetaType.Type.Double)
+        SCALE = QgsField(BandFieldNames.Scale, type=QMetaType.Type.Double)
 
         # ENVI_OFFSET = QgsField(BandFieldNames.ENVIDataOffset, type=QMetaType.Double)
         # ENVI_GAIN = QgsField(BandFieldNames.ENVIDataGain, type=QMetaType.Double)
@@ -1493,7 +1493,7 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
         masterModel: QgsAttributeTableModel = dualView.masterModel()
         calc: QgsFieldCalculator = BandPropertyCalculator(dualView.masterModel().layer(), self)
 
-        if calc.exec() == QDialog.Accepted:
+        if calc.exec() == QDialog.DialogCode.Accepted:
             col = masterModel.fieldCol(calc.changedAttributeId())
             if col >= 0:
                 masterModel.reload(masterModel.index(0, col), masterModel.index(masterModel.rowCount() - 1, col))
@@ -1532,7 +1532,7 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
                                    domains=domains,
                                    major_objects=major_objects)
 
-        if d.exec() == QDialog.Accepted:
+        if d.exec() == QDialog.DialogCode.Accepted:
             item = d.metadataItem()
             # set init
             item.initialValue = None

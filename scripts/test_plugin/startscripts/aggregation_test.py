@@ -28,7 +28,7 @@ QgsProject.instance().addMapLayer(sl)
 iface.showAttributeTable(sl)
 
 with edit(sl):
-    sl.addAttribute(QgsField('class', QMetaType.QString))
+    sl.addAttribute(QgsField('class', QMetaType.Type.QString))
     for item in data:
         f = QgsFeature(sl.fields())
 

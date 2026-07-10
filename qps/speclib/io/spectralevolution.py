@@ -74,7 +74,7 @@ class SEDAttributes(object):
 
 
 KEY2TYPE = {
-    'Comment': QMetaType.QString,
+    'Comment': QMetaType.Type.QString,
     'Version': SEDAttributes.Version,
     'File Name': SEDAttributes.FileName,
     'Instrument': SEDAttributes.Instrument,

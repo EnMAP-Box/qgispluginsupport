@@ -686,37 +686,37 @@ class SpectralProfileSourceModel(QAbstractListModel):
 
     def flags(self, index: QModelIndex):
         if not index.isValid():
-            return Qt.NoItemFlags
-        flags = Qt.ItemIsEnabled | Qt.ItemIsSelectable
+            return Qt.ItemFlag.NoItemFlags
+        flags = Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable
         return flags
 
-    def headerData(self, section: int, orientation: Qt.Orientation, role: int = Qt.DisplayRole):
+    def headerData(self, section: int, orientation: Qt.Orientation, role: int = Qt.ItemDataRole.DisplayRole):
 
-        if role == Qt.DisplayRole:
-            if orientation == Qt.Horizontal:
+        if role == Qt.ItemDataRole.DisplayRole:
+            if orientation == Qt.Orientation.Horizontal:
                 return 'Raster Source'
         return super(SpectralProfileSourceModel, self).headerData(section, orientation, role)
 
-    def data(self, index: QModelIndex, role: int = Qt.DisplayRole):
+    def data(self, index: QModelIndex, role: int = Qt.ItemDataRole.DisplayRole):
 
         if not index.isValid():
             return None
 
         source = self.mSources[index.row()]
         if isinstance(source, SpectralProfileSource):
-            if role == Qt.DisplayRole:
+            if role == Qt.ItemDataRole.DisplayRole:
                 return source.name()
-            elif role == Qt.DecorationRole:
+            elif role == Qt.ItemDataRole.DecorationRole:
                 pass
                 # return QIcon(r':/images/themes/default/mIconRaster.svg')
-            elif role == Qt.ToolTipRole:
+            elif role == Qt.ItemDataRole.ToolTipRole:
                 return source.toolTip()
-            elif role == Qt.UserRole:
+            elif role == Qt.ItemDataRole.UserRole:
                 return source
         elif source is None:
-            if role == Qt.DisplayRole:
+            if role == Qt.ItemDataRole.DisplayRole:
                 return 'None'
-            elif role == Qt.ToolTipRole:
+            elif role == Qt.ItemDataRole.ToolTipRole:
                 return 'No raster source selected.'
 
         return None
@@ -727,7 +727,7 @@ class SpectralProfileSourceProxyModel(QSortFilterProxyModel):
     def __init__(self, *args, **kwds):
         super(SpectralProfileSourceProxyModel, self).__init__(*args, **kwds)
         self.setRecursiveFilteringEnabled(True)
-        self.setFilterCaseSensitivity(Qt.CaseInsensitive)
+        self.setFilterCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
 
 
 class SpectralProfileSourceNode(ValidateNode):
@@ -1000,7 +1000,7 @@ class FieldGeneratorNode(ValidateNode):
         super().__init__(*args, **kwds)
         self.mField: QgsField = None
         self.setCheckable(True)
-        self.setCheckState(Qt.Unchecked)
+        self.setCheckState(Qt.CheckState.Unchecked)
 
     def setField(self, field: QgsField):
         """
@@ -1033,7 +1033,7 @@ class FieldGeneratorNode(ValidateNode):
         name = self.name()
         if not isinstance(self.field(), QgsField):
             yield f'{name}: Field is undefined.'
-        if self.isCheckable() and self.checkState() == Qt.Checked or not self.isCheckable():
+        if self.isCheckable() and self.checkState() == Qt.CheckState.Checked or not self.isCheckable():
             if self.value() in [None, NULL, '']:
                 yield f'{name}: Value is undefined. Needs a value/expression or uncheck the field.'
 
@@ -1061,7 +1061,7 @@ class SpectralProfileGeneratorNode(FieldGeneratorNode):
     def __init__(self, *args, **kwds):
         super(SpectralProfileGeneratorNode, self).__init__(*args, **kwds)
 
-        self.setCheckState(Qt.Checked)
+        self.setCheckState(Qt.CheckState.Checked)
         self.sigUpdated.connect(self.onChildNodeUpdate)
 
         self.mSourceNode = SpectralProfileSourceNode('Source')
@@ -1258,7 +1258,7 @@ class SpectralFeatureGeneratorNode(ValidateNode):
         self.setIcon(QIcon(r':/qps/ui/icons/speclib.svg'))
         self.mSpeclib: Optional[QgsVectorLayer] = None
         self.setCheckable(True)
-        self.setCheckState(Qt.Checked)
+        self.setCheckState(Qt.CheckState.Checked)
         self.mExpressionContextGenerator = SpectralFeatureGeneratorExpressionContextGenerator()
         self.mExpressionContextGenerator.mNode = self
 
@@ -1657,7 +1657,7 @@ class SpectralProfileBridge(TreeModel):
             idx_parent = self.node2idx(fgnode)
             idx0 = self.index(0, 0, idx_parent)
             idx1 = self.index(self.rowCount(idx_parent) - 1, 0, idx_parent)
-            self.dataChanged.emit(idx0, idx1, [Qt.BackgroundColorRole])
+            self.dataChanged.emit(idx0, idx1, [Qt.ItemDataRole.BackgroundRole])
 
         # 3. generate features from feature generators
         #    multiple feature generators can create features for the same speclib
@@ -1808,17 +1808,17 @@ class SpectralProfileBridge(TreeModel):
                 prop = QgsProperty.fromExpression(node.expressionString())
                 t = field.type()
                 b = False
-                if t == QMetaType.Int:
+                if t == QMetaType.Type.Int:
                     v, b = prop.valueAsInt(context)
-                elif t == QMetaType.Bool:
+                elif t == QMetaType.Type.Bool:
                     v, b = prop.valueAsBool(context)
-                elif t == QMetaType.Double:
+                elif t == QMetaType.Type.Double:
                     v, b = prop.valueAsDouble(context)
-                elif t == QMetaType.QDateTime:
+                elif t == QMetaType.Type.QDateTime:
                     v, b = prop.valueAsDateTime(context)
-                elif t == QMetaType.QString:
+                elif t == QMetaType.Type.QString:
                     v, b = prop.valueAsString(context)
-                elif t == QMetaType.QColor:
+                elif t == QMetaType.Type.QColor:
                     v, b = prop.valueAsColor(context)
                 else:
                     continue
@@ -1884,17 +1884,17 @@ class SpectralProfileBridge(TreeModel):
     def flags(self, index: QModelIndex):
 
         if not index.isValid():
-            return Qt.NoItemFlags
+            return Qt.ItemFlag.NoItemFlags
         col = index.column()
 
-        flags = Qt.ItemIsSelectable | Qt.ItemIsEnabled
-        node = index.data(Qt.UserRole)
+        flags = Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled
+        node = index.data(Qt.ItemDataRole.UserRole)
 
         if col == 0:
             if isinstance(node, TreeNode) and node.isCheckable():
-                flags = flags | Qt.ItemIsUserCheckable
+                flags = flags | Qt.ItemFlag.ItemIsUserCheckable
             if isinstance(node, (SpectralFeatureGeneratorNode,)):
-                flags = flags | Qt.ItemIsEditable
+                flags = flags | Qt.ItemFlag.ItemIsEditable
 
         if col == 1:
 
@@ -1902,11 +1902,11 @@ class SpectralProfileBridge(TreeModel):
                                  SpectralProfileGeneratorNode,
                                  SpectralProfileSamplingModeNode, StandardFieldGeneratorNode,
                                  FloatValueNode, ColorNode, OptionTreeNode, PlotStyleNode)):
-                flags = flags | Qt.ItemIsEditable
+                flags = flags | Qt.ItemFlag.ItemIsEditable
 
         return flags
 
-    def data(self, index: QModelIndex, role=Qt.DisplayRole):
+    def data(self, index: QModelIndex, role=Qt.ItemDataRole.DisplayRole):
 
         cError = 'red'
         # cValid = 'black'
@@ -1914,7 +1914,7 @@ class SpectralProfileBridge(TreeModel):
 
         # handle missing data appearances
         value = super().data(index, role)
-        node = super().data(index, role=Qt.UserRole)
+        node = super().data(index, role=Qt.ItemDataRole.UserRole)
         c = index.column()
 
         if index.isValid():
@@ -1933,26 +1933,26 @@ class SpectralProfileBridge(TreeModel):
                 speclib = node.speclib()
 
                 if c == 0:
-                    if role == Qt.DisplayRole:
+                    if role == Qt.ItemDataRole.DisplayRole:
                         if not isinstance(speclib, QgsVectorLayer):
                             return 'Missing Spectral Library'
                         else:
                             return speclib.name()
 
-                    if False and role == Qt.ForegroundRole:
+                    if False and role == Qt.ItemDataRole.ForegroundRole:
                         if not node.checked():
                             return QColor(cNotUsed)
 
                         if node.hasErrors(True):
                             return QColor(cError)
 
-                    if role == Qt.FontRole:
+                    if role == Qt.ItemDataRole.FontRole:
                         if not isinstance(speclib, QgsVectorLayer):
                             f = QFont()
                             f.setItalic(True)
                             return f
 
-                    if role == Qt.ToolTipRole:
+                    if role == Qt.ItemDataRole.ToolTipRole:
                         if not isinstance(speclib, QgsVectorLayer):
                             return 'Select a Spectral Library View'
                         else:
@@ -1963,22 +1963,22 @@ class SpectralProfileBridge(TreeModel):
 
             if isinstance(node, ColorNode):
                 if c == 0:
-                    if role == Qt.ToolTipRole:
+                    if role == Qt.ItemDataRole.ToolTipRole:
                         return node.toolTip()
 
                 if c == 1:
-                    if role == Qt.DisplayRole:
-                        return node.color().name(QColor.HexArgb)
+                    if role == Qt.ItemDataRole.DisplayRole:
+                        return node.color().name(QColor.NameFormat.HexArgb)
 
-                    if role == Qt.DecorationRole:
+                    if role == Qt.ItemDataRole.DecorationRole:
                         return node.color()
 
-                    if role == Qt.ToolTipRole:
+                    if role == Qt.ItemDataRole.ToolTipRole:
                         return str(node.value())
 
             if isinstance(node, PlotStyleNode):
                 if c == 0:
-                    if role == Qt.ToolTipRole:
+                    if role == Qt.ItemDataRole.ToolTipRole:
                         return node.toolTip()
 
             if isinstance(node, SpectralProfileSourceNode):
@@ -1990,7 +1990,7 @@ class SpectralProfileBridge(TreeModel):
                 #         if not has_source and p.checked():
                 #             return QColor(cError)
 
-                if c == 1 and role == Qt.DisplayRole:
+                if c == 1 and role == Qt.ItemDataRole.DisplayRole:
                     for err in node.errors():
                         return f'<span style="">{err}</span>'
 
@@ -2000,7 +2000,7 @@ class SpectralProfileBridge(TreeModel):
                 mode = node.profileSamplingMode()
 
                 if c == 1:
-                    if role == Qt.DisplayRole:
+                    if role == Qt.ItemDataRole.DisplayRole:
                         if mode.kernelSize() == QSize(1, 1):
                             return 'Single Pixel'
                         else:
@@ -2014,9 +2014,9 @@ class SpectralProfileBridge(TreeModel):
                 has_errors = node.hasErrors(recursive=True)
 
                 if c == 0:
-                    if role == Qt.DisplayRole:
+                    if role == Qt.ItemDataRole.DisplayRole:
                         return value
-                    if role == Qt.ToolTipRole:
+                    if role == Qt.ItemDataRole.ToolTipRole:
                         tt = ''
                         if isinstance(field, QgsField):
                             tt += f'"{field.displayName()}" {field.displayType(False)} {editor}'
@@ -2028,7 +2028,7 @@ class SpectralProfileBridge(TreeModel):
                     #     return QColor(cstring)
 
                 if c == 1:
-                    if role == Qt.DisplayRole:
+                    if role == Qt.ItemDataRole.DisplayRole:
                         if isinstance(node, StandardFieldGeneratorNode):
                             expr = node.expressionString()
                             if isinstance(expr, str):
@@ -2037,7 +2037,7 @@ class SpectralProfileBridge(TreeModel):
                                 else:
                                     return f'<span style="font-style:italic">{expr}</span>'
 
-                    if role == Qt.ToolTipRole:
+                    if role == Qt.ItemDataRole.ToolTipRole:
                         tt = ''
                         if isinstance(node, StandardFieldGeneratorNode):
                             tt += node.expressionString().strip() + '<br>'
@@ -2045,22 +2045,22 @@ class SpectralProfileBridge(TreeModel):
                             tt += '<span style="color:red">' + '<br>'.join(node.errors(recursive=True)) + '</span>'
                         return tt
 
-                    if role == Qt.FontRole:
+                    if role == Qt.ItemDataRole.FontRole:
                         f = QFont()
                         f.setItalic(True)
 
-                    if role == Qt.EditRole:
+                    if role == Qt.ItemDataRole.EditRole:
                         if isinstance(node, StandardFieldGeneratorNode):
                             return node.expressionString()
 
         return value
 
-    def setData(self, index: QModelIndex, value: Any, role: int = Qt.DisplayRole):
+    def setData(self, index: QModelIndex, value: Any, role: int = Qt.ItemDataRole.DisplayRole):
         if not index.isValid():
             return None
         col = index.column()
 
-        node = index.data(Qt.UserRole)
+        node = index.data(Qt.ItemDataRole.UserRole)
         c0 = c1 = col
         r0 = r1 = index.row()
         roles = [role]
@@ -2069,8 +2069,8 @@ class SpectralProfileBridge(TreeModel):
         update_parent = None
 
         if (
-            role == Qt.CheckStateRole and isinstance(node, TreeNode)
-            and node.isCheckable() and value in [Qt.Checked, Qt.Unchecked]  # noqa: W503
+            role == Qt.ItemDataRole.CheckStateRole and isinstance(node, TreeNode)
+            and node.isCheckable() and value in [Qt.CheckState.Checked, Qt.CheckState.Unchecked]  # noqa: W503
         ):
             changed = node.checkState() != value
             if changed:
@@ -2079,16 +2079,16 @@ class SpectralProfileBridge(TreeModel):
                 # return True
                 c0 = 1
                 c1 = 1
-                roles.append(Qt.DisplayRole)
+                roles.append(Qt.ItemDataRole.DisplayRole)
 
         elif isinstance(node, SpectralFeatureGeneratorNode):
-            if col in [0, 1] and role == Qt.EditRole:
+            if col in [0, 1] and role == Qt.ItemDataRole.EditRole:
                 if isinstance(value, QgsVectorLayer) and node.speclib() != value:
                     changed = True
                     node.setSpeclib(value)
                     c0 = 0
                     c1 = 1
-                    roles = [Qt.DisplayRole, Qt.ForegroundRole, Qt.FontRole]
+                    roles = [Qt.ItemDataRole.DisplayRole, Qt.ItemDataRole.ForegroundRole, Qt.ItemDataRole.FontRole]
 
         elif isinstance(node, SpectralProfileGeneratorNode):
             if isinstance(value, ProfileSamplingMode):
@@ -2300,7 +2300,7 @@ class SpectralProfileBridgeViewDelegate(QStyledItemDelegate):
         self.mSpectralProfileBridge: Optional[SpectralProfileBridge] = None
 
     def sizeHint(self, option, index):
-        node = index.data(Qt.UserRole)
+        node = index.data(Qt.ItemDataRole.UserRole)
         if index.column() == 1 and isinstance(node, PlotStyleNode):
             plotStyle: PlotStyle = node.value()
             w = self.mTreeView.columnWidth(index.column())
@@ -2316,7 +2316,7 @@ class SpectralProfileBridgeViewDelegate(QStyledItemDelegate):
 
     def paint(self, painter: QPainter, option: QStyleOptionViewItem, index: QModelIndex):
 
-        node = index.data(Qt.UserRole)
+        node = index.data(Qt.ItemDataRole.UserRole)
 
         if index.column() == 1 and isinstance(node, PlotStyleNode):
             plotStyle: PlotStyle = node.value()
@@ -2335,7 +2335,7 @@ class SpectralProfileBridgeViewDelegate(QStyledItemDelegate):
             doc = QTextDocument()
             doc.setHtml(option.text)
             option.text = ""
-            option.widget.style().drawControl(QStyle.CE_ItemViewItem, option, painter)
+            option.widget.style().drawControl(QStyle.ControlElement.CE_ItemViewItem, option, painter)
 
             # shift text right to make the icon visible
             iconSize: QSize = option.icon.actualSize(option.rect.size())
@@ -2355,9 +2355,12 @@ class SpectralProfileBridgeViewDelegate(QStyledItemDelegate):
             ctx.clip = clip
             if isinstance(node, ValidateNode):
                 if node.hasErrors():
-                    ctx.palette.setColor(QPalette.Text, QColor("red"))
+                    ctx.palette.setColor(QPalette.ColorRole.Text, QColor("red"))
                 elif node.isCheckable() and not node.checked():
-                    ctx.palette.setColor(QPalette.Text, option.palette.color(QPalette.Disabled, QPalette.Text))
+                    ctx.palette.setColor(
+                        QPalette.ColorRole.Text,
+                        option.palette.color(QPalette.ColorGroup.Disabled, QPalette.ColorRole.Text)
+                    )
             doc.documentLayout().draw(painter, ctx)
             painter.restore()
         else:
@@ -2380,7 +2383,7 @@ class SpectralProfileBridgeViewDelegate(QStyledItemDelegate):
 
         w = None
         if index.isValid():
-            node = index.data(Qt.UserRole)
+            node = index.data(Qt.ItemDataRole.UserRole)
             if isinstance(node, SpectralFeatureGeneratorNode) and index.column() in [0, 1]:
                 w = HTMLComboBox(parent=parent)
                 model = bridge.spectralLibraryModel()
@@ -2435,7 +2438,7 @@ class SpectralProfileBridgeViewDelegate(QStyledItemDelegate):
         if not index.isValid():
             return
         # bridge = self.bridge()
-        node = index.data(Qt.UserRole)
+        node = index.data(Qt.ItemDataRole.UserRole)
         if isinstance(node, SpectralFeatureGeneratorNode) and index.column() in [0, 1]:
             if not (isinstance(editor, QComboBox)):
                 raise AssertionError
@@ -2490,35 +2493,35 @@ class SpectralProfileBridgeViewDelegate(QStyledItemDelegate):
             return
 
         bridge = self.bridge()
-        node = index.data(Qt.UserRole)
+        node = index.data(Qt.ItemDataRole.UserRole)
         if isinstance(node, SpectralFeatureGeneratorNode):
             if index.column() in [0, 1]:
                 if not (isinstance(w, QComboBox)):
                     raise AssertionError
-                bridge.setData(index, w.currentData(QgsMapLayerModel.CustomRole.Layer), Qt.EditRole)
+                bridge.setData(index, w.currentData(QgsMapLayerModel.CustomRole.Layer), Qt.ItemDataRole.EditRole)
         elif isinstance(node, (SpectralProfileGeneratorNode, SpectralProfileSourceNode,
                                SpectralProfileSamplingModeNode, OptionTreeNode)):
             if index.column() in [1]:
                 if not (isinstance(w, QComboBox)):
                     raise AssertionError
-                bridge.setData(index, w.currentData(Qt.UserRole), Qt.EditRole)
+                bridge.setData(index, w.currentData(Qt.ItemDataRole.UserRole), Qt.ItemDataRole.EditRole)
 
         elif isinstance(node, StandardFieldGeneratorNode) and index.column() == 1:
             if not (isinstance(w, QgsFieldExpressionWidget)):
                 raise AssertionError
             expr = w.expression()
-            bridge.setData(index, expr, Qt.EditRole)
+            bridge.setData(index, expr, Qt.ItemDataRole.EditRole)
         elif isinstance(node, FloatValueNode) and index.column() == 1:
             if isinstance(w, (QDoubleSpinBox, QSpinBox)):
-                bridge.setData(index, w.value(), Qt.EditRole)
+                bridge.setData(index, w.value(), Qt.ItemDataRole.EditRole)
 
         elif isinstance(node, ColorNode) and index.column() == 1:
             if isinstance(w, QgsColorButton):
-                bridge.setData(index, w.color(), Qt.EditRole)
+                bridge.setData(index, w.color(), Qt.ItemDataRole.EditRole)
 
         elif isinstance(node, PlotStyleNode) and index.column() == 1:
             if isinstance(w, PlotStyleButton):
-                bridge.setData(index, w.plotStyle(), Qt.EditRole)
+                bridge.setData(index, w.plotStyle(), Qt.ItemDataRole.EditRole)
 
 
 class SpectralProfileBridgeTreeView(TreeView):

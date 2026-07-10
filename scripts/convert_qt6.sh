@@ -8,4 +8,4 @@ docker run --rm --pull always \
   --workdir /workspace/ \
   -v "$REPO_ROOT:/workspace/" \
   ghcr.io/qgis/pyqgis4-checker:main-ubuntu \
-  pyqt5_to_pyqt6.py --dry_run --logfile /workspace/pyqt6_checker.log .
+  pyqt5_to_pyqt6.py --logfile /workspace/pyqt6_checker.log .
