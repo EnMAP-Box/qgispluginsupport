@@ -171,7 +171,7 @@ class LayerConfigWidgetsTests(TestCase):
         v.setModel(m)
 
         self.assertTrue(lyr.startEditing())
-        f = QgsField('newField', QMetaType.QString, 'String')
+        f = QgsField('newField', QMetaType.Type.QString, 'String')
         lyr.addAttribute(f)
         self.assertTrue(lyr.commitChanges())
         self.showGui(v)

@@ -30,8 +30,8 @@ class TestCasesTestObject(TestCase):
     def test_EmptyMemoryLayer(self):
 
         fields = QgsFields()
-        fields.append(QgsField('f1', QMetaType.QString))
-        fields.append(QgsField('f2', QMetaType.Double))
+        fields.append(QgsField('f1', QMetaType.Type.QString))
+        fields.append(QgsField('f2', QMetaType.Type.Double))
         fields.append(create_profile_field('profilesB', 'bytes'))
         fields.append(create_profile_field('profilesJ', 'json'))
         fields.append(create_profile_field('profilesS', 'text'))
@@ -65,9 +65,9 @@ class TestCasesTestObject(TestCase):
         self.assertTrue(lyr.GetFeatureCount() > 0)
         self.assertEqual(lyr.GetGeomType(), ogr.wkbLineString)
 
-        geomTypes = [QgsWkbTypes.PointGeometry, QgsWkbTypes.Point,
-                     QgsWkbTypes.LineGeometry, QgsWkbTypes.LineString,
-                     QgsWkbTypes.PolygonGeometry, QgsWkbTypes.Polygon]
+        geomTypes = [QgsWkbTypes.GeometryType.PointGeometry, QgsWkbTypes.Type.Point,
+                     QgsWkbTypes.GeometryType.LineGeometry, QgsWkbTypes.Type.LineString,
+                     QgsWkbTypes.GeometryType.PolygonGeometry, QgsWkbTypes.Type.Polygon]
         for i, geomType in enumerate(geomTypes):
             lyr = TestObjects.createVectorLayer(geomType)
             self.assertIsInstance(lyr, QgsVectorLayer)

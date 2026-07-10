@@ -75,7 +75,7 @@ class MyParameterType(QgsProcessingParameterType):
         return {}
 
     def flags(self):
-        return QgsProcessingParameterType.ExposeToModeler
+        return QgsProcessingParameterType.ParameterFlag.ExposeToModeler
 
     def id(self):
         return MY_TYPE_ID

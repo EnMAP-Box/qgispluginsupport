@@ -89,8 +89,8 @@ class SpectralLibraryWidget(QWidget):
         self.actionSelectProfilesFromMap.setVisible(False)
         self.actionSelectProfilesFromMap.triggered.connect(self.sigLoadFromMapRequest.emit)
 
-        self.actionAddCurrentProfiles.setShortcut(Qt.CTRL + Qt.Key_A)
-        self.actionAddCurrentProfiles.setShortcutContext(Qt.WidgetWithChildrenShortcut)
+        self.actionAddCurrentProfiles.setShortcut(Qt.Modifier.CTRL + Qt.Key.Key_A)
+        self.actionAddCurrentProfiles.setShortcutContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
         self.actionAddCurrentProfiles.triggered.connect(self.addCurrentProfilesToSpeclib)
 
         self.optionAddCurrentProfilesAutomatically.setCheckable(True)
@@ -98,8 +98,8 @@ class SpectralLibraryWidget(QWidget):
         self.optionAddCurrentProfilesAutomatically.toggled.connect(
             self.plotModel().setAddProfileCandidatesAutomatically)
 
-        self.actionRejectCurrentProfiles.setShortcut(Qt.CTRL + Qt.Key_Z)
-        self.actionRejectCurrentProfiles.setShortcutContext(Qt.WidgetWithChildrenShortcut)
+        self.actionRejectCurrentProfiles.setShortcut(Qt.Modifier.CTRL + Qt.Key.Key_Z)
+        self.actionRejectCurrentProfiles.setShortcutContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
         self.actionRejectCurrentProfiles.triggered.connect(self.rejectCurrentProfiles)
 
         m = QMenu()
@@ -434,7 +434,10 @@ class SpectralLibraryWidget(QWidget):
 
     def dragEnterEvent(self, event: QDragEnterEvent):
 
-        if event.proposedAction() == Qt.CopyAction and SpectralLibraryUtils.canReadFromMimeData(event.mimeData()):
+        if (
+            event.proposedAction() == Qt.DropAction.CopyAction
+            and SpectralLibraryUtils.canReadFromMimeData(event.mimeData())  # noqa: W503
+        ):
             event.acceptProposedAction()
 
     def onExtractProfiles(self):

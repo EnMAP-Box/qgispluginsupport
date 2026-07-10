@@ -146,13 +146,18 @@ class TestSpeclibWidgets(TestCase):
         # self.assertTrue(m.columnCount() == 2)
         hdr = ['#', 'x', 'y', 'bbl']
         for i, n in enumerate(hdr):
-            self.assertEqual(n, m.headerData(i, orientation=Qt.Horizontal, role=Qt.DisplayRole))
+            self.assertEqual(
+                n,
+                m.headerData(i, orientation=Qt.Orientation.Horizontal, role=Qt.ItemDataRole.DisplayRole)
+            )
 
         m.setProfileDict(d)
         self.assertTrue(m.rowCount() == len(d.get('x', [])))
 
         for i, n in enumerate(hdr):
-            self.assertEqual(n, m.headerData(i, orientation=Qt.Horizontal, role=Qt.DisplayRole))
+            self.assertEqual(
+                n, m.headerData(i, orientation=Qt.Orientation.Horizontal, role=Qt.ItemDataRole.DisplayRole)
+            )
 
     def test_SpectralProfileEditorWidgetFactory(self):
 
@@ -176,16 +181,16 @@ class TestSpeclibWidgets(TestCase):
 
         dv = QgsDualView()
         dv.init(speclib, c)
-        dv.setView(QgsDualView.AttributeEditor)
+        dv.setView(QgsDualView.ViewMode.AttributeEditor)
         dv.setAttributeTableConfig(speclib.attributeTableConfig())
         cb = QCheckBox()
         cb.setText('Show Editor')
 
         def onClicked(b: bool):
             if b:
-                dv.setView(QgsDualView.AttributeEditor)
+                dv.setView(QgsDualView.ViewMode.AttributeEditor)
             else:
-                dv.setView(QgsDualView.AttributeTable)
+                dv.setView(QgsDualView.ViewMode.AttributeTable)
 
         cb.clicked.connect(onClicked)
         w.layout().addWidget(dv)

@@ -28,7 +28,7 @@ class TestQgsRangeWidgetSetup(TestCase):
             lyr = QgsVectorLayer(uri, 'scratch layer', 'memory')
             result, msg = QgsVectorLayerExporter.exportLayer(lyr, path_lyr.as_posix(), 'ogr',
                                                              lyr.crs(), options={'overwrite': True})
-            if not result == QgsVectorLayerExporter.NoError:
+            if not result == QgsVectorLayerExporter.ExportError.NoError:
                 raise Exception(msg)
 
         return path_lyr

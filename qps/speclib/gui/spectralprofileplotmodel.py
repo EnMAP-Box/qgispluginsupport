@@ -43,7 +43,7 @@ class SpectralProfilePlotModelProxyModel(QSortFilterProxyModel):
     def __init__(self, *args, **kwds):
         super(SpectralProfilePlotModelProxyModel, self).__init__(*args, **kwds)
         self.setRecursiveFilteringEnabled(True)
-        self.setFilterCaseSensitivity(Qt.CaseInsensitive)
+        self.setFilterCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
 
 
 def func_mean(x, Y):
@@ -253,7 +253,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
         ]
 
         style = PlotStyle()
-        style.linePen.setStyle(Qt.SolidLine)
+        style.linePen.setStyle(Qt.PenStyle.SolidLine)
         fg = self.generalSettings().foregroundColor()
         style.setLineColor(fg)
         style.setMarkerColor(fg)
@@ -264,7 +264,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
         self.mDefaultProfileStyle = style
 
         style = PlotStyle()
-        style.linePen.setStyle(Qt.SolidLine)
+        style.linePen.setStyle(Qt.PenStyle.SolidLine)
         style.linePen.setWidth(2)
         style.setLineColor('green')
         style.setAntialias(self.mGeneralSettings.antialias())
@@ -672,7 +672,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
             self.mXUnit = unit
 
             #  baseUnit = UnitLookup.baseUnit(unit_)
-            labelName = self.mXUnitModel.unitData(unit, Qt.DisplayRole)
+            labelName = self.mXUnitModel.unitData(unit, Qt.ItemDataRole.DisplayRole)
             self.mPlotWidget.xAxis().setUnit(unit, labelName=labelName)
             # self.mPlotWidget.clearInfoScatterPoints()
             # self.mPlotWidget.xAxis().setLabel(text='x values', unit=unit_)
@@ -953,7 +953,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
         curves = [
             item
-            for item in scene.items(srect2, Qt.IntersectsItemShape, Qt.AscendingOrder)
+            for item in scene.items(srect2, Qt.ItemSelectionMode.IntersectsItemShape, Qt.SortOrder.AscendingOrder)
             if isinstance(item, PlotCurveItem) and isinstance(
                 item.parentItem(), SpectralProfilePlotDataItem)
         ]
@@ -1381,7 +1381,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
             request = QgsFeatureRequest()
             request.setLimit(max_profiles)
-            request.setFlags(QgsFeatureRequest.NoGeometry)
+            request.setFlags(QgsFeatureRequest.Flag.NoGeometry)
 
             if filter_expression:
                 request.setFilterExpression(filter_expression.expression())
@@ -1619,18 +1619,18 @@ class SpectralProfilePlotModel(QStandardItemModel):
         else:
             fg = None
             tt = propertyItem.definition().description()
-        propertyItem.setData(tt, Qt.ToolTipRole)
-        propertyItem.setData(fg, Qt.ForegroundRole)
+        propertyItem.setData(tt, Qt.ItemDataRole.ToolTipRole)
+        propertyItem.setData(fg, Qt.ItemDataRole.ForegroundRole)
         propertyItem.emitDataChanged()
 
         if limit_reached:
             self.sigMaxProfilesExceeded.emit()
 
     def supportedDragActions(self) -> Qt.DropActions:
-        return Qt.CopyAction | Qt.MoveAction
+        return Qt.DropAction.CopyAction | Qt.DropAction.MoveAction
 
     def supportedDropActions(self) -> Qt.DropActions:
-        return Qt.CopyAction | Qt.MoveAction
+        return Qt.DropAction.CopyAction | Qt.DropAction.MoveAction
 
     def profileDataToXUnit(self, profileData: dict, xUnit: str) -> Optional[dict]:
         """
@@ -1941,7 +1941,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
         for field in profilefields:
             name = field.name()
             if name not in self.mINITIALIZED_VISUALIZATIONS:
-                has_checked_vis = any([v.checkState() == Qt.Checked for v in self.profileVisualizations()])
+                has_checked_vis = any([v.checkState() == Qt.CheckState.Checked for v in self.profileVisualizations()])
 
                 self.createProfileVisualization(field=field, checked=not has_checked_vis)
                 # keep in mind if a visualization was created at least once for a profile field
@@ -1985,9 +1985,9 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
             if isinstance(speclib, QgsVectorLayer):
                 fids = self.speclib().selectedFeatureIds()
-                if modifiers == Qt.NoModifier:
+                if modifiers == Qt.KeyboardModifier.NoModifier:
                     fids = [fid]
-                elif modifiers == Qt.ShiftModifier or modifiers == Qt.ControlModifier:
+                elif modifiers == Qt.KeyboardModifier.ShiftModifier or modifiers == Qt.KeyboardModifier.ControlModifier:
                     if fid in fids:
                         fids.remove(fid)
                     else:
@@ -2006,9 +2006,9 @@ class SpectralProfilePlotModel(QStandardItemModel):
     def profileFieldNames(self) -> List[str]:
         return profile_field_indices()
 
-    PropertyIndexRole = Qt.UserRole + 1
-    PropertyDefinitionRole = Qt.UserRole + 2
-    PropertyRole = Qt.UserRole + 3
+    PropertyIndexRole = Qt.ItemDataRole.UserRole + 1
+    PropertyDefinitionRole = Qt.ItemDataRole.UserRole + 2
+    PropertyRole = Qt.ItemDataRole.UserRole + 3
 
 
 def copy_items(items: List[SpectralProfilePlotDataItem],

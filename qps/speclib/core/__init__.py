@@ -21,9 +21,9 @@ def can_store_spectral_profiles(field: QgsField) -> bool:
     """
     if not (isinstance(field, QgsField) and field.length() in [0, -1, 2 ** 16 - 1]):
         return False
-    b = field.type() in [QMetaType.QByteArray,
-                         QMetaType.QString,
-                         QMetaType.QVariantMap  # JSON
+    b = field.type() in [QMetaType.Type.QByteArray,
+                         QMetaType.Type.QString,
+                         QMetaType.Type.QVariantMap  # JSON
                          ]
 
     return b
@@ -168,7 +168,7 @@ def first_profile_field_index(source: Union[QgsFields, QgsFeature, QgsVectorLaye
         return first_profile_field_index(source.fields())
     elif isinstance(source, QgsFields):
         for f in source:
-            if f.type() == QMetaType.QByteArray:
+            if f.type() == QMetaType.Type.QByteArray:
                 return source.lookupField(f.name())
     return -1
 

@@ -64,7 +64,7 @@ class ExampleRasterProcessing(QgsProcessingAlgorithm):
             QgsProcessingParameterNumber(
                 self.N_BANDS,
                 'Number of output bands',
-                type=QgsProcessingParameterNumber.Integer,
+                type=QgsProcessingParameterNumber.Type.Integer,
                 defaultValue=3,
                 minValue=1
             )
@@ -436,7 +436,7 @@ class SpectralProcessingTests(TestCase):
         wrappers = dict()
         widgets = []
         for i, param in enumerate(parameters):
-            wrapper = SpectralProcessingRasterLayerWidgetWrapper(param, QgsProcessingGui.Standard)
+            wrapper = SpectralProcessingRasterLayerWidgetWrapper(param, QgsProcessingGui.WidgetType.Standard)
             wrapper.setWidgetContext(widget_context)
             wrapper.registerProcessingContextGenerator(context_generator)
             wrapper.registerProcessingParametersGenerator(parameters_generator)

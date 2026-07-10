@@ -34,7 +34,11 @@ from typing import Any, Generator, List, Optional, Union
 from qgis.PyQt.QtCore import QAbstractTableModel, QDirIterator, QFile, QModelIndex, QSortFilterProxyModel, Qt, \
     QTextStream, QT_VERSION_STR
 from qgis.PyQt.QtGui import QContextMenuEvent, QIcon, QPixmap
-from qgis.PyQt.QtSvg import QGraphicsSvgItem
+
+try:
+    from PyQt6.QtSvgWidgets import QGraphicsSvgItem  # noqa: QGS103
+except ImportError:
+    from qgis.PyQt.QtSvg import QGraphicsSvgItem
 from qgis.PyQt.QtWidgets import QAction, QApplication, QGraphicsPixmapItem, QGraphicsScene, QGraphicsView, QLabel, \
     QLineEdit, QMenu, QTableView, QTextBrowser, QToolButton, QWidget
 from qgis.PyQt.QtXml import QDomDocument, QDomElement
@@ -393,12 +397,12 @@ class ResourceTableModel(QAbstractTableModel):
         return [self.cnUri, self.cnIcon]
 
     def headerData(self, section: int, orientation: Qt.Orientation, role: int = ...) -> Any:
-        if role == Qt.DisplayRole:
-            if orientation == Qt.Horizontal:
+        if role == Qt.ItemDataRole.DisplayRole:
+            if orientation == Qt.Orientation.Horizontal:
                 return self.columnNames()[section]
 
-        if role == Qt.TextAlignmentRole and orientation == Qt.Vertical:
-            return Qt.AlignRight
+        if role == Qt.ItemDataRole.TextAlignmentRole and orientation == Qt.Orientation.Vertical:
+            return Qt.AlignmentFlag.AlignRight
 
         return super().headerData(section, orientation, role)
 
@@ -409,20 +413,20 @@ class ResourceTableModel(QAbstractTableModel):
         uri = self.RESOURCES[index.row()]
         cn = self.columnNames()[index.column()]
 
-        if role == Qt.DisplayRole:
+        if role == Qt.ItemDataRole.DisplayRole:
             if cn == self.cnUri:
                 return uri
             else:
                 return os.path.basename(uri)
-        if role == Qt.DecorationRole:
+        if role == Qt.ItemDataRole.DecorationRole:
             if cn == self.cnIcon:
                 return QIcon(uri)
 
-        if role == Qt.ToolTipRole:
+        if role == Qt.ItemDataRole.ToolTipRole:
             if cn == self.cnUri:
                 return uri
 
-        if role == Qt.UserRole:
+        if role == Qt.ItemDataRole.UserRole:
             return uri
 
         return None
@@ -436,7 +440,7 @@ class ResourceTableView(QTableView):
     def contextMenuEvent(self, event: QContextMenuEvent) -> None:
         idx = self.indexAt(event.pos())
         if isinstance(idx, QModelIndex) and idx.isValid():
-            uri = idx.data(Qt.UserRole)
+            uri = idx.data(Qt.ItemDataRole.UserRole)
             m = QMenu()
             a = m.addAction('Copy Name')
             a.triggered.connect(lambda *args, n=os.path.basename(uri): QApplication.clipboard().setText(n))
@@ -477,7 +481,7 @@ class ResourceBrowser(QWidget):
         self.resourceModel: ResourceTableModel = ResourceTableModel()
         self.resourceProxyModel = QSortFilterProxyModel()
         self.resourceProxyModel.setFilterKeyColumn(0)
-        self.resourceProxyModel.setFilterRole(Qt.UserRole)
+        self.resourceProxyModel.setFilterRole(Qt.ItemDataRole.UserRole)
         self.resourceProxyModel.setSourceModel(self.resourceModel)
 
         self.tableView.setSortingEnabled(True)
@@ -505,9 +509,9 @@ class ResourceBrowser(QWidget):
             expr.setPatternSyntax(QRegularExpression.Wildcard)
 
         if self.optionCaseSensitive.isChecked():
-            expr.setCaseSensitivity(Qt.CaseSensitive)
+            expr.setCaseSensitivity(Qt.CaseSensitivity.CaseSensitive)
         else:
-            expr.setCaseSensitivity(Qt.CaseInsensitive)
+            expr.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
 
         if expr.isValid():
             self.resourceProxyModel.setFilterRegExp(expr)
@@ -526,7 +530,7 @@ class ResourceBrowser(QWidget):
             if not (isinstance(idx1, QModelIndex)):
                 raise AssertionError
 
-            uri = idx1.data(Qt.UserRole)
+            uri = idx1.data(Qt.ItemDataRole.UserRole)
             self.updatePreview(uri)
 
     def updatePreview(self, uri: str):
@@ -550,11 +554,11 @@ class ResourceBrowser(QWidget):
             if item:
                 hasImage = True
                 self.graphicsScene.addItem(item)
-                self.graphicsView.fitInView(item, Qt.KeepAspectRatio)
+                self.graphicsView.fitInView(item, Qt.AspectRatioMode.KeepAspectRatio)
 
             if re.search(r'\.(svg|html|xml|txt)$', uri, re.I) is not None:
                 file = QFile(uri)
-                if file.open(QFile.ReadOnly | QFile.Text):
+                if file.open(QFile.OpenModeFlag.ReadOnly | QFile.OpenModeFlag.Text):
                     stream = QTextStream(file)
                     stream.setAutoDetectUnicode(True)
                     txt = stream.readAll()

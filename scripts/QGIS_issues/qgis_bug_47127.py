@@ -17,7 +17,7 @@ class TestCase(TestCase):
     def test_QgsProperty_XML(self):
         p1 = QgsProperty()
         p1.setExpressionString('')
-        self.assertEqual(p1.propertyType(), QgsProperty.ExpressionBasedProperty)
+        self.assertEqual(p1.propertyType(), QgsProperty.Type.ExpressionBasedProperty)
         self.assertTrue(p1.isActive())
 
         doc = QDomDocument()

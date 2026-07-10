@@ -69,7 +69,7 @@ class TestSpeclibIOGeoJSON(TestCase):
         for field in sl.fields():
             field2 = converter.fieldDefinition(field)
             self.assertIsInstance(field2, QgsField)
-            self.assertTrue(field2.type() not in [QMetaType.QByteArray, 8])
+            self.assertTrue(field2.type() not in [QMetaType.Type.QByteArray, 8])
             fieldc = cloned.fieldDefinition(field)
             self.assertEqual(field2, fieldc)
 

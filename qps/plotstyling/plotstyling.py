@@ -316,7 +316,7 @@ def createSetPlotStyleAction(field, mapLayerStore='QgsProject.instance()'):
     """
     if not (isinstance(field, QgsField)):
         raise AssertionError
-    if not (field.type() == QMetaType.QString):
+    if not (field.type() == QMetaType.Type.QString):
         raise AssertionError
 
     iconPath = ':/qt-project.org/styles/commonstyle/images/standardbutton-clear-128.png'
@@ -1482,9 +1482,9 @@ class PlotStyleEditorWidgetFactory(QgsEditorWidgetFactory):
         field = vl.fields().at(fieldIdx)
         if not (isinstance(field, QgsField)):
             raise AssertionError
-        if field.type() == QMetaType.QString and field.length() > 400 and field.name().upper() == 'STYLE':
+        if field.type() == QMetaType.Type.QString and field.length() > 400 and field.name().upper() == 'STYLE':
             return 20
-        elif field.type() == QMetaType.QString:
+        elif field.type() == QMetaType.Type.QString:
             return 5
         else:
             return 0  # no support

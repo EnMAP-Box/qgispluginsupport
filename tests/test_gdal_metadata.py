@@ -352,7 +352,7 @@ class TestsGdalMetadata(TestCase):
 
         calc = BandPropertyCalculator(mdm)
 
-        if calc.exec() == QDialog.Accepted:
+        if calc.exec() == QDialog.DialogCode.Accepted:
             pass
 
     def test_alpha_band(self):

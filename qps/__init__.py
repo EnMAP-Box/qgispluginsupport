@@ -38,8 +38,8 @@ from qgis.gui import QgisInterface, QgsMapLayerConfigWidgetFactory
 os.environ.setdefault('PYQTGRAPH_QT_LIB', f'PyQt{PYQT_VERSION_STR[0]}')
 # Qt version used by matplotlib
 os.environ.setdefault('QT_API', f'PyQt{PYQT_VERSION_STR[0]}')
-MIN_QGIS_VERSION = '3.38'
-__version__ = '1.8'
+MIN_QGIS_VERSION = '3.40'
+__version__ = '1.9'
 
 DIR_QPS = pathlib.Path(__file__).parent
 DIR_REPO = DIR_QPS.parent
@@ -65,8 +65,9 @@ def debugLog(msg: str, prefix: str = 'DEBUG:'):
         print(f'{prefix} {msg}', flush=True)
 
 
-def registerMapLayerConfigWidgetFactory(factory: QgsMapLayerConfigWidgetFactory) \
-        -> Optional[QgsMapLayerConfigWidgetFactory]:
+def registerMapLayerConfigWidgetFactory(
+    factory: QgsMapLayerConfigWidgetFactory
+) -> Optional[QgsMapLayerConfigWidgetFactory]:
     """
     Register a new tab in the map layer properties dialog.
     :param factory: QgsMapLayerConfigWidgetFactory
@@ -87,7 +88,7 @@ def registerMapLayerConfigWidgetFactory(factory: QgsMapLayerConfigWidgetFactory)
         os.environ[KEY_MAPLAYERCONFIGWIDGETFACTORIES] = '::'.join(registered)
         iface.registerMapLayerConfigWidgetFactory(factory)
 
-        QgsApplication.instance().messageLog().logMessage(f'Registered {name}', level=Qgis.Info)
+        QgsApplication.instance().messageLog().logMessage(f'Registered {name}', level=Qgis.MessageLevel.Info)
         return factory
     else:
         return None
@@ -116,7 +117,9 @@ def unregisterMapLayerConfigWidgetFactory(factory: QgsMapLayerConfigWidgetFactor
     from qgis.utils import iface
     if isinstance(iface, QgisInterface):
         iface.unregisterMapLayerConfigWidgetFactory(factory)
-        QgsApplication.instance().messageLog().logMessage(f'Unregistered {factory.__class__.__name__}', level=Qgis.Info)
+        QgsApplication.instance().messageLog().logMessage(
+            f'Unregistered {factory.__class__.__name__}', level=Qgis.MessageLevel.Info
+        )
 
 
 def mapLayerConfigWidgetFactories() -> List[QgsMapLayerConfigWidgetFactory]:

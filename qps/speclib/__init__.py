@@ -53,7 +53,7 @@ def createStandardFields() -> QgsFields:
     from .core import create_profile_field
     fields = QgsFields()
     fields.append(create_profile_field('profiles'))
-    fields.append(QgsField('name', QMetaType.QString))
+    fields.append(QgsField('name', QMetaType.Type.QString))
     return fields
 
 

@@ -5,7 +5,7 @@ from qps.testing import TestObjects
 
 start_app()
 
-vl = TestObjects.createVectorLayer(wkbType=QgsWkbTypes.Point)
+vl = TestObjects.createVectorLayer(wkbType=QgsWkbTypes.Type.Point)
 
 for feature in vl.getFeatures():
     print(feature.geometry().get().z())

@@ -22,7 +22,7 @@ class SelectProjectLayersDialog(QDialog):
         self.mProxyModel = QSortFilterProxyModel()
         self.mProxyModel.setSourceModel(self.mModel)
         self.mProxyModel.setDynamicSortFilter(True)
-        self.mProxyModel.setFilterCaseSensitivity(Qt.CaseInsensitive)
+        self.mProxyModel.setFilterCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
         self.mProxyModel.setFilterKeyColumn(-1)
 
         self.tableView = QTableView()
@@ -32,11 +32,15 @@ class SelectProjectLayersDialog(QDialog):
         self.tableView.selectionModel().selectionChanged.connect(self.validate)
 
         # self.tableView.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
-        self.buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel | QDialogButtonBox.Reset)
-        self.buttonBox.button(QDialogButtonBox.Ok).clicked.connect(self.accept)
-        self.buttonBox.button(QDialogButtonBox.Cancel).clicked.connect(self.reject)
-        self.buttonBox.button(QDialogButtonBox.Reset).clicked.connect(self.clearSelection)
-        self.buttonBox.button(QDialogButtonBox.Reset).setText('Clear Selection')
+        self.buttonBox = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok  # noqa: W503
+            | QDialogButtonBox.StandardButton.Cancel  # noqa: W503
+            | QDialogButtonBox.StandardButton.Reset  # noqa: W503
+        )
+        self.buttonBox.button(QDialogButtonBox.StandardButton.Ok).clicked.connect(self.accept)
+        self.buttonBox.button(QDialogButtonBox.StandardButton.Cancel).clicked.connect(self.reject)
+        self.buttonBox.button(QDialogButtonBox.StandardButton.Reset).clicked.connect(self.clearSelection)
+        self.buttonBox.button(QDialogButtonBox.StandardButton.Reset).setText('Clear Selection')
         self.setProject(project)
         self.tbFilter = QgsFilterLineEdit()
         self.tbFilter.setPlaceholderText('Filter Layers')
@@ -53,8 +57,8 @@ class SelectProjectLayersDialog(QDialog):
 
         selection = self.tableView.selectionModel().selection()
         b = selection.count() > 0
-        self.buttonBox.button(QDialogButtonBox.Ok).setEnabled(b)
-        self.buttonBox.button(QDialogButtonBox.Reset).setEnabled(b)
+        self.buttonBox.button(QDialogButtonBox.StandardButton.Ok).setEnabled(b)
+        self.buttonBox.button(QDialogButtonBox.StandardButton.Reset).setEnabled(b)
 
     def clearSelection(self):
         self.tableView.clearSelection()
@@ -159,7 +163,7 @@ class ProjectLayerTableModel(QAbstractTableModel):
 
     def headerData(self, section, orientation, role=None):
         if role == Qt.ItemDataRole.DisplayRole:
-            if orientation == Qt.Horizontal:
+            if orientation == Qt.Orientation.Horizontal:
                 return self.mColumNames[section]
             # elif orientation == Qt.Vertical:
             #    return section + 1

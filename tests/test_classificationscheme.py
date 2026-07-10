@@ -65,11 +65,11 @@ class TestsClassificationScheme(TestCase):
         vl = QgsVectorLayer("Point", "temporary_points", "memory")
         vl.startEditing()
         # add fields
-        vl.addAttribute(QgsField("name", QMetaType.QString))
+        vl.addAttribute(QgsField("name", QMetaType.Type.QString))
         nameL1 = 'field1'
         nameL2 = 'field2'
-        vl.addAttribute(QgsField(nameL1, QMetaType.Int))
-        vl.addAttribute(QgsField(nameL2, QMetaType.QString))
+        vl.addAttribute(QgsField(nameL1, QMetaType.Type.Int))
+        vl.addAttribute(QgsField(nameL2, QMetaType.Type.QString))
         f = QgsFeature(vl.fields())
         f.setAttribute('name', 'an example')
         f.setAttribute(nameL1, 2)
@@ -114,7 +114,7 @@ class TestsClassificationScheme(TestCase):
 
     def test_ClassificationSchemeFromField(self):
 
-        lyr = TestObjects.createVectorLayer(QgsWkbTypes.Point)
+        lyr = TestObjects.createVectorLayer(QgsWkbTypes.Type.Point)
         for name in lyr.fields().names():
             cs = ClassificationScheme.fromUniqueFieldValues(lyr, name)
             values = list(lyr.uniqueValues(lyr.fields().lookupField(name)))
@@ -153,16 +153,16 @@ class TestsClassificationScheme(TestCase):
         cs._updateLabels()
         self.assertEqual(cs[3].label(), 3)
 
-        self.assertEqual(cs.headerData(0, Qt.Horizontal, Qt.DisplayRole), 'Label')
-        self.assertEqual(cs.headerData(1, Qt.Horizontal, Qt.DisplayRole), 'Name')
-        self.assertEqual(cs.headerData(2, Qt.Horizontal, Qt.DisplayRole), 'Color')
+        self.assertEqual(cs.headerData(0, Qt.Orientation.Horizontal, Qt.ItemDataRole.DisplayRole), 'Label')
+        self.assertEqual(cs.headerData(1, Qt.Orientation.Horizontal, Qt.ItemDataRole.DisplayRole), 'Name')
+        self.assertEqual(cs.headerData(2, Qt.Orientation.Horizontal, Qt.ItemDataRole.DisplayRole), 'Color')
 
-        self.assertEqual(cs.data(cs.createIndex(0, 0), Qt.DisplayRole), 0)
-        self.assertEqual(cs.data(cs.createIndex(0, 1), Qt.DisplayRole), cs[0].name())
-        self.assertEqual(cs.data(cs.createIndex(0, 2), Qt.DisplayRole), cs[0].color().name())
-        self.assertEqual(cs.data(cs.createIndex(0, 2), Qt.BackgroundColorRole), cs[0].color())
+        self.assertEqual(cs.data(cs.createIndex(0, 0), Qt.ItemDataRole.DisplayRole), 0)
+        self.assertEqual(cs.data(cs.createIndex(0, 1), Qt.ItemDataRole.DisplayRole), cs[0].name())
+        self.assertEqual(cs.data(cs.createIndex(0, 2), Qt.ItemDataRole.DisplayRole), cs[0].color().name())
+        self.assertEqual(cs.data(cs.createIndex(0, 2), Qt.ItemDataRole.BackgroundRole), cs[0].color())
 
-        self.assertIsInstance(cs.data(cs.createIndex(0, 0), role=Qt.UserRole), ClassInfo)
+        self.assertIsInstance(cs.data(cs.createIndex(0, 0), role=Qt.ItemDataRole.UserRole), ClassInfo)
 
         with self.assertRaises(AssertionError):
             cs.insertClass(c)
@@ -233,7 +233,7 @@ class TestsClassificationScheme(TestCase):
         w.setLayout(QVBoxLayout())
         dv = QgsDualView()
         dv.init(vl, c)
-        dv.setView(QgsDualView.AttributeTable)
+        dv.setView(QgsDualView.ViewMode.AttributeTable)
         dv.setAttributeTableConfig(vl.attributeTableConfig())
 
         cb = QCheckBox()
@@ -241,9 +241,9 @@ class TestsClassificationScheme(TestCase):
 
         def onClicked(b: bool):
             if b:
-                dv.setView(QgsDualView.AttributeEditor)
+                dv.setView(QgsDualView.ViewMode.AttributeEditor)
             else:
-                dv.setView(QgsDualView.AttributeTable)
+                dv.setView(QgsDualView.ViewMode.AttributeTable)
 
         cb.clicked.connect(onClicked)
         w.layout().addWidget(dv)
@@ -324,7 +324,7 @@ class TestsClassificationScheme(TestCase):
         newClasses = [ClassInfo(name='New 1'), ClassInfo(name='New 2')]
         cs.insertClasses(newClasses, index=0)
         self.assertTrue(w.count() == 4)
-        self.assertTrue(w.itemData(0, Qt.UserRole) == newClasses[0])
+        self.assertTrue(w.itemData(0, Qt.ItemDataRole.UserRole) == newClasses[0])
 
         for i, classInfo in enumerate(w.classificationScheme()):
             self.assertTrue(classInfo.label() == i)
@@ -335,10 +335,10 @@ class TestsClassificationScheme(TestCase):
         for i, classInfo in enumerate(w.classificationScheme()):
             self.assertIsInstance(classInfo, ClassInfo)
             self.assertTrue(classInfo.label() == i)
-            text = w.itemData(i, role=Qt.DisplayRole)
+            text = w.itemData(i, role=Qt.ItemDataRole.DisplayRole)
             self.assertTrue(text.startswith('{}'.format(classInfo.label())))
         self.assertTrue(w.count() == 4 + 2)
-        self.assertTrue(w.itemData(3, Qt.UserRole) == newClasses2[0])
+        self.assertTrue(w.itemData(3, Qt.ItemDataRole.UserRole) == newClasses2[0])
 
         w2 = QWidget()
         cs = ClassificationScheme.create(5)
