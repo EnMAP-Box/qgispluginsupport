@@ -147,7 +147,7 @@ class SpectralProfileTableModel(QAbstractTableModel):
     def columnCount(self, parent=QModelIndex()) -> int:
         return len(self.mColumnNames)
 
-    def data(self, index, role=Qt.DisplayRole):
+    def data(self, index, role=Qt.ItemDataRole.DisplayRole):
         if role is None or not index.isValid():
             return None
         if index.row() >= len(self.mValues):
@@ -158,7 +158,7 @@ class SpectralProfileTableModel(QAbstractTableModel):
 
         item = self.mValues[i]
 
-        if role in [Qt.DisplayRole, Qt.EditRole]:
+        if role in [Qt.ItemDataRole.DisplayRole, Qt.ItemDataRole.EditRole]:
             if c == 0:
                 return i + 1
 
@@ -201,7 +201,7 @@ class SpectralProfileTableModel(QAbstractTableModel):
         itemOld = copy(item)
         modified = False
 
-        if role == Qt.EditRole:
+        if role == Qt.ItemDataRole.EditRole:
             if c in [1, 2]:
                 # x / y values
                 item[c] = self.stringToType(value)
@@ -223,18 +223,20 @@ class SpectralProfileTableModel(QAbstractTableModel):
     def flags(self, index):
         if index.isValid():
             c = index.column()
-            flags = Qt.ItemIsEnabled | Qt.ItemIsSelectable
+            flags = Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable
             if c in [1, 2, 3] and not self.mIsReadOnly:
-                flags = flags | Qt.ItemIsEditable
+                flags = flags | Qt.ItemFlag.ItemIsEditable
             return flags
         return None
 
     def headerData(self, col: int, orientation: Qt.Orientation, role: int):
 
-        if orientation == Qt.Horizontal and role in [Qt.DisplayRole, Qt.ToolTipRole]:
+        if orientation == Qt.Orientation.Horizontal and role in [
+            Qt.ItemDataRole.DisplayRole, Qt.ItemDataRole.ToolTipRole
+        ]:
             return self.mColumnNames.get(col, f'{col + 1}')
-        if orientation == Qt.Vertical:
-            if role == Qt.ToolTipRole:
+        if orientation == Qt.Orientation.Vertical:
+            if role == Qt.ItemDataRole.ToolTipRole:
                 return f'Band {col + 1}'
         return None
 
@@ -312,9 +314,9 @@ class SpectralProfileTableEditor(QFrame):
         self.proxyModel.setSourceModel(self.tableModel)
         self.tableView.setModel(self.proxyModel)
         self.tableView.setSortingEnabled(True)
-        self.tableView.sortByColumn(0, Qt.AscendingOrder)
-        self.tableView.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
-        self.tableView.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeToContents)
+        self.tableView.sortByColumn(0, Qt.SortOrder.AscendingOrder)
+        self.tableView.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
+        self.tableView.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
 
         self.mXUnitModel: SpectralProfilePlotXAxisUnitModel = SpectralProfilePlotXAxisUnitModel.instance()
         self.mXUnitModel.setAllowEmptyUnit(False)
@@ -326,7 +328,7 @@ class SpectralProfileTableEditor(QFrame):
 
         model = SpectralProfilePlotXAxisUnitModel.instance()
         for i in range(2, model.rowCount()):
-            unit_wrapper: UnitWrapper = model.data(model.index(i, 0), Qt.UserRole + 1)
+            unit_wrapper: UnitWrapper = model.data(model.index(i, 0), Qt.ItemDataRole.UserRole + 1)
             a: QAction = m.addAction(unit_wrapper.unit)
             a.setText(unit_wrapper.description)
             a.setToolTip(unit_wrapper.tooltip)
@@ -340,7 +342,7 @@ class SpectralProfileTableEditor(QFrame):
         a.triggered.connect(lambda *args: self.setXUnit(None))
 
         self.btnXUnits = QToolButton()
-        self.btnXUnits.setPopupMode(QToolButton.InstantPopup)
+        self.btnXUnits.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
         self.btnXUnits.setMenu(m)
 
         # self.cbXUnit.setModel(self.mXUnitModel)
@@ -493,7 +495,7 @@ class SpectralProfileEditorWidget(QGroupBox):
         self.controlBar.addWidget(self.btnJson)
         self.controlBar.addWidget(self.btnTable)
         # self.controlBar.addWidget(self.messageBar)
-        self.controlBar.addSpacerItem(QSpacerItem(0, 0, hPolicy=QSizePolicy.Expanding))
+        self.controlBar.addSpacerItem(QSpacerItem(0, 0, hPolicy=QSizePolicy.Policy.Expanding))
         self.controlBar.addWidget(self.btnClear)
         self.controlBar.addWidget(self.btnReset)
 
@@ -603,7 +605,7 @@ class SpectralProfileEditorWidget(QGroupBox):
                 w.addSyntaxWarning(eline, ecol, emsg)
 
             else:
-                QgsApplication.messageLog().logMessage(error, 'SpectralProfileEditorWidget', Qgis.Critical)
+                QgsApplication.messageLog().logMessage(error, 'SpectralProfileEditorWidget', Qgis.MessageLevel.Critical)
                 # self.messageBar.pushMessage('Error', error.splitlines()[0], error, Qgis.Warning)
         else:
             self.profileChanged.emit()

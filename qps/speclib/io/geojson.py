@@ -30,8 +30,8 @@ class GeoJsonFieldValueConverter(QgsVectorFileWriter.FieldValueConverter):
         for field in self.mFields:
             name = field.name()
             idx = self.mFields.lookupField(name)
-            if field.type() != QMetaType.QString and is_profile_field(field):
-                converted_field = QgsField(name=name, type=QMetaType.QString, typeName='string', len=-1)
+            if field.type() != QMetaType.Type.QString and is_profile_field(field):
+                converted_field = QgsField(name=name, type=QMetaType.Type.QString, typeName='string', len=-1)
                 self.mFieldDefinitions[name] = converted_field
                 self.mFieldConverters[idx] = lambda v, f=converted_field: self.convertProfileField(v, f)
 
@@ -164,7 +164,7 @@ class GeoJSONSpectralLibraryWriter(SpectralProfileFileWriter):
         featureSink.setExpressionContext(expressionContext)
         featureSink.setTransformContext(transformationContext)
 
-        if writer.hasError() != QgsVectorFileWriter.NoError:
+        if writer.hasError() != QgsVectorFileWriter.WriterError.NoError:
             feedback.reportError(f'Error when creating {path}: {writer.errorMessage()}')
             return []
 

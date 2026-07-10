@@ -112,12 +112,12 @@ class TestSpeclibIO_SpectralProfileReaders(TestCase):
 
         _ = collect_native_types()
         with edit(vl):
-            self.assertTrue(vl.addAttribute(QgsField('datetime', QMetaType.QDateTime)))
-            self.assertTrue(vl.addAttribute(QgsField('date', QMetaType.QDate)))
+            self.assertTrue(vl.addAttribute(QgsField('datetime', QMetaType.Type.QDateTime)))
+            self.assertTrue(vl.addAttribute(QgsField('date', QMetaType.Type.QDate)))
 
         f = QgsFeature(vl.fields())
         dt = datetime.now()
-        qdt = QDateTime.fromString(dt.isoformat(), Qt.ISODate)
+        qdt = QDateTime.fromString(dt.isoformat(), Qt.DateFormat.ISODate)
         f.setAttribute('datetime', qdt)
         f.setAttribute('date', qdt.date())
         # f.setAttribute('time', QDateTime.fromString(dt.isoformat(), Qt.ISODate).time())

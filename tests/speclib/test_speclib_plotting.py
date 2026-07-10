@@ -231,9 +231,9 @@ class TestSpeclibPlotting(TestCase):
         speclib = TestObjects.createSpectralLibrary()
         with edit(speclib):
             n = speclib.featureCount()
-            speclib.addAttribute(QgsField('class', QMetaType.QString))
-            speclib.addAttribute(QgsField('float', QMetaType.Double))
-            speclib.addAttribute(QgsField('int', QMetaType.Int))
+            speclib.addAttribute(QgsField('class', QMetaType.Type.QString))
+            speclib.addAttribute(QgsField('float', QMetaType.Type.Double))
+            speclib.addAttribute(QgsField('int', QMetaType.Type.Int))
             for i, feature in enumerate(speclib.getFeatures()):
                 vclass = 'cat1' if i % 2 else 'cat2'
                 vfloat = (i + 1) / n
@@ -277,7 +277,7 @@ class TestSpeclibPlotting(TestCase):
     def test_SpectralProfileColorProperty(self):
         speclib: QgsVectorLayer = TestObjects.createSpectralLibrary()
         speclib.startEditing()
-        colorField = QgsField('color', type=QMetaType.QString)
+        colorField = QgsField('color', type=QMetaType.Type.QString)
         colorField.setEditorWidgetSetup(QgsEditorWidgetSetup('color', {}))
         speclib.addAttribute(colorField)
         speclib.commitChanges(False)
@@ -379,11 +379,18 @@ class TestSpeclibPlotting(TestCase):
         pw.show()
         w, h = pw.width(), pw.height()
         # event = QDropEvent(QPoint(0, 0), Qt.CopyAction, md, Qt.LeftButton, Qt.NoModifier)
-        event = QMouseEvent(QEvent.MouseMove, QPointF(0.5 * w, 0.5 * h), Qt.NoButton, Qt.NoButton, Qt.NoModifier)
+        event = QMouseEvent(
+            QEvent.Type.MouseMove, QPointF(0.5 * w, 0.5 * h),
+            Qt.MouseButton.NoButton, Qt.MouseButton.NoButton, Qt.KeyboardModifier.NoModifier
+        )
         pw.mouseMoveEvent(event)
 
-        event = QMouseEvent(QEvent.MouseButtonPress, QPointF(0.5 * w, 0.5 * h), Qt.RightButton, Qt.RightButton,
-                            Qt.NoModifier)
+        event = QMouseEvent(
+            QEvent.Type.MouseButtonPress,
+            QPointF(0.5 * w, 0.5 * h),
+            Qt.MouseButton.RightButton, Qt.MouseButton.RightButton,
+            Qt.KeyboardModifier.NoModifier
+        )
         pw.mouseReleaseEvent(event)
 
         self.showGui(pw)
@@ -550,9 +557,9 @@ class TestSpeclibPlotting(TestCase):
 
         g.setLayerField(sl, 'p1')
 
-        self.assertEqual('SL_A:p1', g.data(Qt.DisplayRole), )
+        self.assertEqual('SL_A:p1', g.data(Qt.ItemDataRole.DisplayRole), )
         g.setLayerField(sl, 'p2')
-        self.assertEqual('SL_A:p2', g.data(Qt.DisplayRole))
+        self.assertEqual('SL_A:p2', g.data(Qt.ItemDataRole.DisplayRole))
 
     def test_PlotStyleItem(self):
 
@@ -591,7 +598,7 @@ class TestSpeclibPlotting(TestCase):
         sl1 = TestObjects.createSpectralLibrary(n=10, n_bands=[5, 12],
                                                 name='Speclib A', profile_field_names=['A1', 'A2'])
         with edit(sl1):
-            sl1.addAttribute(QgsField('color', QMetaType.QString))
+            sl1.addAttribute(QgsField('color', QMetaType.Type.QString))
 
         sl2 = TestObjects.createSpectralLibrary(n=3, n_bands=[50, 200],
                                                 name='Speclib B', profile_field_names=['B1', 'B2'])

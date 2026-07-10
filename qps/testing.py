@@ -174,7 +174,7 @@ class QgisMockup(QgisInterface):
         extent = SpatialExtent.world()
         self.mCanvas.setDestinationCrs(extent.crs())
         self.mCanvas.setExtent(extent)
-        self.mCanvas.setCanvasColor(Qt.black)
+        self.mCanvas.setCanvasColor(Qt.GlobalColor.black)
         self.mLayerTreeView = QgsLayerTreeView()
         self.mLayerTreeView.currentLayerChanged.connect(self.activateDeactivateLayerRelatedActions)
         self.mMapToolHandler: List[QgsAbstractMapToolHandler] = []
@@ -979,7 +979,10 @@ class TestObjects(object):
     @staticmethod
     def createDropEvent(mimeData: QMimeData) -> QDropEvent:
         """Creates a QDropEvent containing the provided QMimeData ``mimeData``"""
-        return QDropEvent(QPointF(0, 0), Qt.CopyAction, mimeData, Qt.LeftButton, Qt.NoModifier)
+        return QDropEvent(
+            QPointF(0, 0), Qt.DropAction.CopyAction, mimeData, Qt.MouseButton.LeftButton,
+            Qt.KeyboardModifier.NoModifier
+        )
 
     @staticmethod
     def spectralProfileData(n: int = 10,
@@ -1627,7 +1630,7 @@ class TestObjects(object):
         return lyr
 
     @classmethod
-    def createVectorLayer(cls, wkbType: QgsWkbTypes = QgsWkbTypes.Polygon,
+    def createVectorLayer(cls, wkbType: QgsWkbTypes = QgsWkbTypes.Type.Polygon,
                           n_features: int = None,
                           path: Union[str, Path] = None,
                           name: Optional[str] = None,
@@ -1640,13 +1643,13 @@ class TestObjects(object):
 
         wkb = None
 
-        if wkbType in [QgsWkbTypes.Point, QgsWkbTypes.PointGeometry]:
+        if wkbType in [QgsWkbTypes.Type.Point, QgsWkbTypes.GeometryType.PointGeometry]:
             wkb = ogr.wkbPoint
-        elif wkbType in [QgsWkbTypes.LineString, QgsWkbTypes.LineGeometry]:
+        elif wkbType in [QgsWkbTypes.Type.LineString, QgsWkbTypes.GeometryType.LineGeometry]:
             wkb = ogr.wkbLineString
-        elif wkbType in [QgsWkbTypes.Polygon, QgsWkbTypes.PolygonGeometry]:
+        elif wkbType in [QgsWkbTypes.Type.Polygon, QgsWkbTypes.GeometryType.PolygonGeometry]:
             wkb = ogr.wkbPolygon
-        elif wkbType == QgsWkbTypes.NoGeometry:
+        elif wkbType == QgsWkbTypes.Type.NoGeometry:
             wkb = ogr.wkbNone
 
         if not (wkb is not None):
@@ -1722,8 +1725,11 @@ class TestObjects(object):
             def initAlgorithm(self, configuration=None):
                 self.addParameter(QgsProcessingParameterRasterLayer('pathInput', 'The Input Dataset'))
                 self.addParameter(
-                    QgsProcessingParameterNumber('value', 'The value', QgsProcessingParameterNumber.Double, 1, False,
-                                                 0.00, 999999.99))
+                    QgsProcessingParameterNumber(
+                        'value', 'The value', QgsProcessingParameterNumber.Type.Double, 1, False,
+                        0.00, 999999.99
+                    )
+                )
                 self.addParameter(QgsProcessingParameterRasterDestination('pathOutput', 'The Output Dataset'))
 
             def processAlgorithm(self, parameters, context, feedback):

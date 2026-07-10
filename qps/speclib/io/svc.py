@@ -29,9 +29,9 @@ rx_moc_suffix = re.compile(r'_moc$')
 
 def toQDateTime(value) -> QDateTime:
     if isinstance(value, str):
-        return QDateTime.fromString(value, Qt.ISODate)
+        return QDateTime.fromString(value, Qt.DateFormat.ISODate)
     elif isinstance(value, datetime.datetime):
-        return QDateTime.fromString(value.isoformat(), Qt.ISODate)
+        return QDateTime.fromString(value.isoformat(), Qt.DateFormat.ISODate)
     raise NotImplementedError()
 
 
@@ -127,10 +127,10 @@ class SVCSigFile(SpectralProfileFileReader):
 
         fields = super().standardFields()
 
-        gpsTimeTField = QgsField('gpsTimeT', type=QMetaType.QDateTime)
-        gpsTimeRField = QgsField('gpsTimeR', type=QMetaType.QDateTime)
+        gpsTimeTField = QgsField('gpsTimeT', type=QMetaType.Type.QDateTime)
+        gpsTimeRField = QgsField('gpsTimeR', type=QMetaType.Type.QDateTime)
 
-        pictureField = QgsField(self.KEY_Picture, type=QMetaType.QString)
+        pictureField = QgsField(self.KEY_Picture, type=QMetaType.Type.QString)
 
         # setup attachment widget
         config = {'DocumentViewer': 1,

@@ -11,8 +11,8 @@ class ECOSTRESSSpectralProfileReader(SpectralProfileFileReader):
     _fields = QgsFields()
     for f in [
         create_profile_field(SpectralProfileFileReader.KEY_Target, encoding=ProfileEncoding.Dict),
-        QgsField(SpectralProfileFileReader.KEY_Name, QMetaType.QString),
-        QgsField(SpectralProfileFileReader.KEY_Path, QMetaType.QString)
+        QgsField(SpectralProfileFileReader.KEY_Name, QMetaType.Type.QString),
+        QgsField(SpectralProfileFileReader.KEY_Path, QMetaType.Type.QString)
     ]:
         _fields.append(f)
 
@@ -135,11 +135,11 @@ class ECOSTRESSSpectralProfileReader(SpectralProfileFileReader):
 
         for k in MD.keys():
             if k in to_int:
-                fields.append(QgsField(k, QMetaType.Int))
+                fields.append(QgsField(k, QMetaType.Type.Int))
             elif k in to_float:
-                fields.append(QgsField(k, QMetaType.Double))
+                fields.append(QgsField(k, QMetaType.Type.Double))
             elif k not in to_skip:
-                fields.append(QgsField(k, QMetaType.QString))
+                fields.append(QgsField(k, QMetaType.Type.QString))
 
         f = QgsFeature(fields)
 

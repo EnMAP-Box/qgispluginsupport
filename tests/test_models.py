@@ -60,7 +60,7 @@ def findNode(view, path: Union[str, List[str]], parent: QModelIndex = QModelInde
             raise AssertionError
         CHILD_NAMES[row] = [model.index(r2, 0, parent).data() for r2 in range(row)]
         child: QModelIndex = model.index(row, 0, parent)
-        child_name = child.data(Qt.DisplayRole)
+        child_name = child.data(Qt.ItemDataRole.DisplayRole)
 
         child_names.append(child_name)
         if fnmatch.fnmatch(child_name, expression):
@@ -262,7 +262,7 @@ class ModelTests(TestCase):
         _ = QAbstractItemModelTester(TM, QAbstractItemModelTester.FailureReportingMode.Fatal)
 
         def onRowsInserted(p, first, last):
-            print(f'ROWS INSERTED {p.data(Qt.UserRole).name()} {first} to {last}')
+            print(f'ROWS INSERTED {p.data(Qt.ItemDataRole.UserRole).name()} {first} to {last}')
 
         TM.rowsInserted.connect(onRowsInserted)
         TV.setModel(TM)
@@ -505,10 +505,10 @@ class ModelTests(TestCase):
         if False:
             idx = model.setting_key_node('Group2/Group2Options')
             self.assertIsInstance(idx, QModelIndex)
-            node = idx.data(Qt.UserRole)
+            node = idx.data(Qt.ItemDataRole.UserRole)
             self.assertIsInstance(node, SettingsNode)
-            options = idx.data(Qt.UserRole + 1)
-            ranges = idx.data(Qt.UserRole + 2)
+            options = idx.data(Qt.ItemDataRole.UserRole + 1)
+            ranges = idx.data(Qt.ItemDataRole.UserRole + 2)
             self.assertListEqual(OPTIONS['Group2/Group2Options'], options)
             self.assertEqual(RANGES['Group2/RangedValue'], ranges)
 

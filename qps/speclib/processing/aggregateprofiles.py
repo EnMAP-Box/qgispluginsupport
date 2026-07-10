@@ -70,7 +70,9 @@ class AggregateProfilesCalculator(QgsAggregateCalculator):
 
         request = QgsFeatureRequest()
         request.setFlags(
-            QgsFeatureRequest.NoFlags if expression and expression.needsGeometry() else QgsFeatureRequest.NoGeometry)
+            QgsFeatureRequest.Flag.NoFlags
+            if expression and expression.needsGeometry() else QgsFeatureRequest.Flag.NoGeometry
+        )
         request.setSubsetOfAttributes(lst, self.layer().fields())
         if self.mFIDs:
             request.setFilterFids(self.mFIDs[:])
@@ -147,16 +149,16 @@ class AggregateProfilesCalculator(QgsAggregateCalculator):
 
 
 class AggregateMemoryLayer(QgsVectorLayer):
-    memoryLayerFieldType = {QMetaType.Int: 'integer',
-                            QMetaType.Long: 'long',
-                            QMetaType.LongLong: 'long',
-                            QMetaType.Double: 'double',
-                            QMetaType.QString: 'string',
-                            QMetaType.QDate: 'date',
-                            QMetaType.QTime: 'time',
-                            QMetaType.QDateTime: 'datetime',
-                            QMetaType.QByteArray: 'binary',
-                            QMetaType.Bool: 'boolean'}
+    memoryLayerFieldType = {QMetaType.Type.Int: 'integer',
+                            QMetaType.Type.Long: 'long',
+                            QMetaType.Type.LongLong: 'long',
+                            QMetaType.Type.Double: 'double',
+                            QMetaType.Type.QString: 'string',
+                            QMetaType.Type.QDate: 'date',
+                            QMetaType.Type.QTime: 'time',
+                            QMetaType.Type.QDateTime: 'datetime',
+                            QMetaType.Type.QByteArray: 'binary',
+                            QMetaType.Type.Bool: 'boolean'}
     uri = 'memory:'
 
     def __init__(self,
@@ -182,11 +184,11 @@ class AggregateMemoryLayer(QgsVectorLayer):
             if crs.authid() != '':
                 parts.append(f'crs={crs.authid()}')
             else:
-                parts.append(f'crs=wkt:{crs.toWkt(QgsCoordinateReferenceSystem.WKT_PREFERRED)}')
+                parts.append(f'crs=wkt:{crs.toWkt(QgsCoordinateReferenceSystem.WktVariant.WKT_PREFERRED)}')
         for field in fields:
             field: QgsField
             lengthPrecission = f'({field.length()},{field.precision()})'
-            if field.type() in [QMetaType.QVariantList, QMetaType.QStringList]:
+            if field.type() in [QMetaType.Type.QVariantList, QMetaType.Type.QStringList]:
                 ftype = field.subType()
                 ltype = '[]'
             else:
@@ -270,7 +272,7 @@ Please not that not each aggregate function might be available for each field ty
         self.addParameter(
             QgsProcessingParameterFeatureSource(self.P_INPUT,
                                                 'Input spectral library',
-                                                [QgsProcessing.TypeVector],
+                                                [QgsProcessing.SourceType.TypeVector],
                                                 defaultValue=configuration.get(self.P_INPUT)))
         self.addParameter(
             QgsProcessingParameterExpression(self.P_GROUP_BY,
@@ -406,7 +408,7 @@ Please not that not each aggregate function might be available for each field ty
                 keys.append(key)
 
             group: Group = groups[key]
-            if not group.sink.addFeature(feature, flags=QgsFeatureSink.FastInsert):
+            if not group.sink.addFeature(feature, flags=QgsFeatureSink.Flag.FastInsert):
                 raise QgsProcessingException(self.writeFeatureError(sink, parameters, ''))
             group.lastFeature = feature
             feedback.setProgress(current * progressStep)
@@ -468,7 +470,7 @@ Please not that not each aggregate function might be available for each field ty
             outFeat = QgsFeature(self.mFields)
             outFeat.setGeometry(geometry)
             outFeat.setAttributes(attributes)
-            if not sink.addFeature(outFeat, QgsFeatureSink.FastInsert):
+            if not sink.addFeature(outFeat, QgsFeatureSink.Flag.FastInsert):
                 raise QgsProcessingException(self.writeFeatureError(sink, parameters, self.P_OUTPUT))
 
             feedback.setProgress(50.0 + current * progressStep)
@@ -751,7 +753,7 @@ def spfcnAggregateGeneric(
         if parameters.filter != '':
             request = QgsFeatureRequest()
             request.setFilterExpression(parameters.filter)
-            request.setFlags(QgsFeatureRequest.NoGeometry)
+            request.setFlags(QgsFeatureRequest.Flag.NoGeometry)
             request.setSubsetOfAttributes([])
             fids = [f.id() for f in vl.getFeatures(request)]
 

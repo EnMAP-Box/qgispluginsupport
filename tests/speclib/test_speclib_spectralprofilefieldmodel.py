@@ -23,9 +23,9 @@ class TestSpectralProfileFieldModel(TestCase):
         vl = TestObjects.createSpectralLibrary()
 
         with edit(vl):
-            vl.addAttribute(QgsField('nofield1', QMetaType.Int))
-            vl.addAttribute(QgsField('nofield2', QMetaType.Double))
-            vl.addAttribute(QgsField('nofield3', QMetaType.QString, len=255))
+            vl.addAttribute(QgsField('nofield1', QMetaType.Type.Int))
+            vl.addAttribute(QgsField('nofield2', QMetaType.Type.Double))
+            vl.addAttribute(QgsField('nofield3', QMetaType.Type.QString, len=255))
             _ = SpectralLibraryUtils.addSpectralProfileField(vl, 'profile1')
             _ = SpectralLibraryUtils.addSpectralProfileField(vl, 'profile2')
 
@@ -72,12 +72,12 @@ class TestSpectralProfileFieldModel(TestCase):
         vl = TestObjects.createSpectralLibrary()
 
         with edit(vl):
-            vl.addAttribute(QgsField('nofield1', QMetaType.Int))
-            vl.addAttribute(QgsField('nofield2', QMetaType.Double))
-            vl.addAttribute(QgsField('nofield3', QMetaType.QString, len=255))
-            vl.addAttribute(QgsField('profile1', QMetaType.QString, len=0))
-            vl.addAttribute(QgsField('profile2', QMetaType.QString, len=-1))
-            vl.addAttribute(QgsField('profile3', QMetaType.QByteArray))
+            vl.addAttribute(QgsField('nofield1', QMetaType.Type.Int))
+            vl.addAttribute(QgsField('nofield2', QMetaType.Type.Double))
+            vl.addAttribute(QgsField('nofield3', QMetaType.Type.QString, len=255))
+            vl.addAttribute(QgsField('profile1', QMetaType.Type.QString, len=0))
+            vl.addAttribute(QgsField('profile2', QMetaType.Type.QString, len=-1))
+            vl.addAttribute(QgsField('profile3', QMetaType.Type.QByteArray))
 
         model = SpectralProfileFieldActivatorModel()
         model.setLayer(vl)
@@ -93,12 +93,12 @@ class TestSpectralProfileFieldModel(TestCase):
         vl = TestObjects.createSpectralLibrary()
 
         with edit(vl):
-            vl.addAttribute(QgsField('nofield1', QMetaType.Int))
-            vl.addAttribute(QgsField('nofield2', QMetaType.Double))
-            vl.addAttribute(QgsField('nofield3', QMetaType.QString, len=255))
-            vl.addAttribute(QgsField('profile1', QMetaType.QString, len=0))
-            vl.addAttribute(QgsField('profile2', QMetaType.QString, len=-1))
-            vl.addAttribute(QgsField('profile3', QMetaType.QByteArray))
+            vl.addAttribute(QgsField('nofield1', QMetaType.Type.Int))
+            vl.addAttribute(QgsField('nofield2', QMetaType.Type.Double))
+            vl.addAttribute(QgsField('nofield3', QMetaType.Type.QString, len=255))
+            vl.addAttribute(QgsField('profile1', QMetaType.Type.QString, len=0))
+            vl.addAttribute(QgsField('profile2', QMetaType.Type.QString, len=-1))
+            vl.addAttribute(QgsField('profile3', QMetaType.Type.QByteArray))
 
         d = SpectralProfileFieldActivatorDialog()
 

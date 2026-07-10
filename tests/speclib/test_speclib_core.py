@@ -61,15 +61,15 @@ class SpeclibCoreTests(TestCase):
         f1 = createQgsField('foo', 9999)
 
         self.assertEqual(f1.name(), 'foo')
-        self.assertEqual(f1.type(), QMetaType.Int)
+        self.assertEqual(f1.type(), QMetaType.Type.Int)
         self.assertEqual(f1.typeName(), 'int')
 
         f2 = createQgsField('bar', 9999.)
-        self.assertEqual(f2.type(), QMetaType.Double)
+        self.assertEqual(f2.type(), QMetaType.Type.Double)
         self.assertEqual(f2.typeName(), 'double')
 
         f3 = createQgsField('text', 'Hello World')
-        self.assertEqual(f3.type(), QMetaType.QString)
+        self.assertEqual(f3.type(), QMetaType.Type.QString)
         self.assertEqual(f3.typeName(), 'varchar')
 
         fields = QgsFields()
@@ -206,7 +206,7 @@ class SpeclibCoreTests(TestCase):
         SpectralLibraryUtils.setProfileValues(feature, field=pField, x=x, y=y, bbl=bbl, xUnit=xUnit, yUnit=yUnit)
 
         vd1 = decodeProfileValueDict(feature.attribute(pField.name()))
-        dump = encodeProfileValueDict(vd1, QgsField('test', QMetaType.QByteArray))
+        dump = encodeProfileValueDict(vd1, QgsField('test', QMetaType.Type.QByteArray))
         self.assertIsInstance(dump, QByteArray)
 
         vd2 = decodeProfileValueDict(dump)
@@ -216,7 +216,7 @@ class SpeclibCoreTests(TestCase):
         self.assertTrue(sl.commitChanges())
 
         # serialize to text formats
-        field = QgsField('text', QMetaType.QString)
+        field = QgsField('text', QMetaType.Type.QString)
         dump = encodeProfileValueDict(vd1, field)
         self.assertIsInstance(dump, str)
 
@@ -253,13 +253,13 @@ class SpeclibCoreTests(TestCase):
         # test encoding
 
         for e in ['ByTeS', ProfileEncoding.Bytes,
-                  QgsField('dummy', type=QMetaType.QByteArray)]:
+                  QgsField('dummy', type=QMetaType.Type.QByteArray)]:
             dump = encodeProfileValueDict(d, e)
             self.assertIsInstance(dump, QByteArray)
 
         for e in [None, 'TeXt',
                   ProfileEncoding.Text,
-                  QgsField('dummy', type=QMetaType.QString),
+                  QgsField('dummy', type=QMetaType.Type.QString),
                   ]:
             dump = encodeProfileValueDict(d, e)
             self.assertIsInstance(dump, str)
@@ -512,7 +512,7 @@ class SpeclibCoreTests(TestCase):
 
     # @unittest.skip('')
     def test_example_profile_fields(self):
-        fieldNP = QgsField('no profile', type=QMetaType.QByteArray)
+        fieldNP = QgsField('no profile', type=QMetaType.Type.QByteArray)
         self.assertFalse(is_profile_field(fieldNP))
 
         fieldP = create_profile_field('profiles')
@@ -583,7 +583,7 @@ class SpeclibCoreTests(TestCase):
 
     def test_save_gpkg_crs(self):
         crs = QgsCoordinateReferenceSystem('EPSG:32632')
-        lyr = TestObjects.createVectorLayer(QgsWkbTypes.Point, crs=crs)
+        lyr = TestObjects.createVectorLayer(QgsWkbTypes.Type.Point, crs=crs)
         self.assertEqual(lyr.crs(), crs)
         TESTDIR = self.createTestOutputDirectory()
         filenameCopy = TESTDIR / 'copy.gpkg'

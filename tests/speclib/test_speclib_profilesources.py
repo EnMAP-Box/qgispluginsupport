@@ -179,7 +179,7 @@ class SpectralProcessingTests(TestCase):
         n1.appendChildNodes([n2])
 
         for n in [n1, n2, n3a, n3b]:
-            n.setCheckState(Qt.Checked)
+            n.setCheckState(Qt.CheckState.Checked)
 
         self.assertListEqual(list(n3a.errors()),
                              ['n3a: Field is undefined.',
@@ -231,7 +231,7 @@ class SpectralProcessingTests(TestCase):
         w.setLayout(vl)
 
         splitV = QSplitter()
-        splitV.setOrientation(Qt.Vertical)
+        splitV.setOrientation(Qt.Orientation.Vertical)
         splitV.addWidget(slw1)
         splitV.addWidget(slw2)
 
@@ -363,7 +363,7 @@ class SpectralProcessingTests(TestCase):
             pgnode.setScaling(o * 10, 1)
 
         for n in fgnode1.fieldNodes():
-            n.setCheckState(Qt.Checked)
+            n.setCheckState(Qt.CheckState.Checked)
 
         n = fgnode1.fieldNode('color')
         n.setValue("'yellow'")
@@ -382,7 +382,7 @@ class SpectralProcessingTests(TestCase):
         for speclib_ids, features in RESULTS.items():
             for feature in features:
                 self.assertIsInstance(feature, QgsFeature)
-                self.assertTrue(feature.geometry().type() == QgsWkbTypes.PointGeometry)
+                self.assertTrue(feature.geometry().type() == QgsWkbTypes.GeometryType.PointGeometry)
 
         btnAdd = QPushButton('Random click')
 
@@ -415,7 +415,7 @@ class SpectralProcessingTests(TestCase):
         w.setLayout(vl)
 
         splitV = QSplitter()
-        splitV.setOrientation(Qt.Vertical)
+        splitV.setOrientation(Qt.Orientation.Vertical)
         splitV.addWidget(slw1)
         splitV.addWidget(slw2)
 
@@ -566,7 +566,7 @@ class SpectralProcessingTests(TestCase):
                     self.assertIsInstance(c, QgsExpressionContext)
                     self.assertIsInstance(c.geometry(), QgsGeometry)
                     if Qgis.versionInt() < 33000:
-                        self.assertEqual(c.geometry().type(), QgsWkbTypes.PointGeometry)
+                        self.assertEqual(c.geometry().type(), QgsWkbTypes.GeometryType.PointGeometry)
                     else:
                         self.assertEqual(c.geometry().type(), Qgis.GeometryType.Point)
 
@@ -622,12 +622,12 @@ class SpectralProcessingTests(TestCase):
             for oldName, newName in RENAME.items():
                 idx = sl.fields().lookupField(oldName)
                 sl.renameAttribute(idx, newName)
-            sl.addAttribute(QgsField('px_x', QMetaType.Int))
-            sl.addAttribute(QgsField('px_y', QMetaType.Int))
-            sl.addAttribute(QgsField('geo_x', QMetaType.Double))
-            sl.addAttribute(QgsField('geo_y', QMetaType.Double))
-            sl.addAttribute(QgsField('text', QMetaType.QString))
-            sl.addAttribute(QgsField('color', QMetaType.QString))
+            sl.addAttribute(QgsField('px_x', QMetaType.Type.Int))
+            sl.addAttribute(QgsField('px_y', QMetaType.Type.Int))
+            sl.addAttribute(QgsField('geo_x', QMetaType.Type.Double))
+            sl.addAttribute(QgsField('geo_y', QMetaType.Type.Double))
+            sl.addAttribute(QgsField('text', QMetaType.Type.QString))
+            sl.addAttribute(QgsField('color', QMetaType.Type.QString))
 
         sl.commitChanges()
 
@@ -643,14 +643,14 @@ class SpectralProcessingTests(TestCase):
 
         n1 = StandardFieldGeneratorNode()
         n1.setName('n1')
-        n1.setCheckState(Qt.Unchecked)
+        n1.setCheckState(Qt.CheckState.Unchecked)
         self.assertFalse(n1.hasErrors())
-        n1.setCheckState(Qt.Checked)
+        n1.setCheckState(Qt.CheckState.Checked)
         errors = list(n1.errors(recursive=True))
 
         self.assertTrue(n1.hasErrors())
         self.assertTrue(len(errors) > 0)
-        field = QgsField('n1field', QMetaType.QString)
+        field = QgsField('n1field', QMetaType.Type.QString)
         n1.setField(field)
         n1.setExpression("'foobar'")
         _ = list(n1.errors(recursive=True))

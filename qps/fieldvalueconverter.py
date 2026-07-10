@@ -31,8 +31,8 @@ def create_vsimemfile(extension: str, path: Optional[Union[str, Path]] = None) -
 
     # Define fields
     fields = QgsFields()
-    fields.append(QgsField('name', QMetaType.QString))
-    fields.append(QgsField('num', QMetaType.Int))
+    fields.append(QgsField('name', QMetaType.Type.QString))
+    fields.append(QgsField('num', QMetaType.Type.Int))
 
     # Create a QgsVectorFileWriter to write the shapefile
     f: QgsFeature = QgsFeature()
@@ -63,7 +63,7 @@ def create_vsimemfile(extension: str, path: Optional[Union[str, Path]] = None) -
     if not writer.flushBuffer():
         raise Exception(writer.errorMessage())
     # Check if the writer was created successfully
-    if writer.hasError() != QgsVectorFileWriter.NoError:
+    if writer.hasError() != QgsVectorFileWriter.WriterError.NoError:
         raise Exception(f"Error when creating vector file: {writer.errorMessage()}")
 
     if hasattr(writer, 'finalize'):
@@ -128,17 +128,17 @@ class GenericPropertyTransformer(QgsPropertyTransformer):
         if is_profile_field(dstField):
             encoding = ProfileEncoding.fromInput(dstField)
             return lambda v, e=encoding: encodeProfileValueDict(decodeProfileValueDict(v), encoding)
-        elif dstField.type() == QMetaType.QString:
+        elif dstField.type() == QMetaType.Type.QString:
             if dstField.typeName() == 'JSON':
                 return lambda value: GenericPropertyTransformer.toJson(value)
             return lambda v: GenericPropertyTransformer.toString(v)
-        elif dstField.type() == QMetaType.QDateTime:
+        elif dstField.type() == QMetaType.Type.QDateTime:
             return lambda v: GenericPropertyTransformer.toDateTime(v)
-        elif dstField.type() == QMetaType.QDate:
+        elif dstField.type() == QMetaType.Type.QDate:
             return lambda v: GenericPropertyTransformer.toDate(v)
-        elif dstField.type() == QMetaType.QTime:
+        elif dstField.type() == QMetaType.Type.QTime:
             return lambda v: GenericPropertyTransformer.toTime(v)
-        elif dstField.type() == QMetaType.QVariantMap:
+        elif dstField.type() == QMetaType.Type.QVariantMap:
             return lambda v: GenericPropertyTransformer.toMap(v)
         return lambda v: v
 
@@ -162,7 +162,7 @@ class GenericPropertyTransformer(QgsPropertyTransformer):
         if value is None:
             return None
         if isinstance(value, (QDateTime, QDate, QTime)):
-            return value.toString(Qt.ISODate)
+            return value.toString(Qt.DateFormat.ISODate)
         elif isinstance(value, (dict, list)):
             return str(value)
         return str(value)
@@ -172,18 +172,27 @@ class GenericPropertyTransformer(QgsPropertyTransformer):
         if isinstance(v, QDateTime):
             return v
         elif isinstance(v, datetime.datetime):
-            return QDateTime.fromString(v.isoformat(), Qt.ISODateWithMs)
+            return QDateTime.fromString(v.isoformat(), Qt.DateFormat.ISODateWithMs)
         elif isinstance(v, datetime.date):
-            return QDateTime(QDate.fromString(v.isoformat(), Qt.ISODate), QTime())
+            return QDateTime(QDate.fromString(v.isoformat(), Qt.DateFormat.ISODate), QTime())
         elif isinstance(v, QDate):
             return QDateTime(v, QTime())
         elif isinstance(v, str):
             # try to parse datetime from string
-            for fmt in [Qt.ISODate, Qt.ISODateWithMs, Qt.TextDate, Qt.RFC2822Date]:
+            for fmt in [
+                Qt.DateFormat.ISODate,
+                Qt.DateFormat.ISODateWithMs,
+                Qt.DateFormat.TextDate,
+                Qt.DateFormat.RFC2822Date
+            ]:
                 if (r := QDateTime.fromString(v, fmt)).isValid():
                     return r
             locale = QLocale()
-            for fmt in [QLocale.LongFormat, QLocale.ShortFormat, QLocale.NarrowFormat]:
+            for fmt in [
+                QLocale.FormatType.LongFormat,
+                QLocale.FormatType.ShortFormat,
+                QLocale.FormatType.NarrowFormat
+            ]:
                 if (r := locale.toDateTime(v, fmt)).isValid():
                     return r
         return None
@@ -206,13 +215,13 @@ class GenericPropertyTransformer(QgsPropertyTransformer):
         elif isinstance(v, (datetime.datetime, QDateTime)):
             return GenericPropertyTransformer.toDateTime(v).date()
         elif isinstance(v, datetime.date):
-            return QDate.fromString(v.isoformat(), Qt.ISODate)
+            return QDate.fromString(v.isoformat(), Qt.DateFormat.ISODate)
         elif isinstance(v, str):
-            for fmt in [Qt.ISODate, Qt.ISODateWithMs, Qt.RFC2822Date]:
+            for fmt in [Qt.DateFormat.ISODate, Qt.DateFormat.ISODateWithMs, Qt.DateFormat.RFC2822Date]:
                 if (r := QDate.fromString(v, fmt)).isValid():
                     return r
             locale = QLocale()
-            for fmt in [QLocale.LongFormat, QLocale.ShortFormat, QLocale.NarrowFormat]:
+            for fmt in [QLocale.FormatType.LongFormat, QLocale.FormatType.ShortFormat, QLocale.FormatType.NarrowFormat]:
                 if (r := locale.toDate(v, fmt)).isValid():
                     return r
 
@@ -226,15 +235,15 @@ class GenericPropertyTransformer(QgsPropertyTransformer):
         if isinstance(v, QTime):
             return v
         elif isinstance(v, datetime.time):
-            return QTime.fromString(v.isoformat(), Qt.ISODateWithMs)
+            return QTime.fromString(v.isoformat(), Qt.DateFormat.ISODateWithMs)
         elif isinstance(v, (QDateTime, datetime.datetime)):
             return GenericPropertyTransformer.toDateTime(v).time()
         elif isinstance(v, str):
-            for fmt in [Qt.ISODate, Qt.ISODateWithMs, Qt.RFC2822Date]:
+            for fmt in [Qt.DateFormat.ISODate, Qt.DateFormat.ISODateWithMs, Qt.DateFormat.RFC2822Date]:
                 if (r := QTime.fromString(v, fmt)).isValid():
                     return r
             locale = QLocale()
-            for fmt in [QLocale.LongFormat, QLocale.ShortFormat, QLocale.NarrowFormat]:
+            for fmt in [QLocale.FormatType.LongFormat, QLocale.FormatType.ShortFormat, QLocale.FormatType.NarrowFormat]:
                 if (r := locale.toTime(v, fmt)).isValid():
                     return r
 
@@ -266,21 +275,21 @@ class GenericFieldValueConverter(QgsVectorFileWriter.FieldValueConverter):
 
     def conversionFunction(self, fDst: QgsField, fSrc: QgsField):
         if is_profile_field(fSrc):
-            if fDst.type() in [QMetaType.QVariantMap, QMetaType.QString]:
+            if fDst.type() in [QMetaType.Type.QVariantMap, QMetaType.Type.QString]:
                 return lambda value, f=fDst: self.convertProfileField(value, f)
 
-        elif fDst.type() == QMetaType.QString:
+        elif fDst.type() == QMetaType.Type.QString:
             if fDst.typeName() == 'JSON':
                 return lambda value: GenericPropertyTransformer.toJson(value)
             else:
                 return lambda value: GenericPropertyTransformer.toString(value)
-        elif fDst.type() == QMetaType.QDateTime:
+        elif fDst.type() == QMetaType.Type.QDateTime:
             return lambda value: GenericPropertyTransformer.toDateTime(value)
-        elif fDst.type() == QMetaType.QDate:
+        elif fDst.type() == QMetaType.Type.QDate:
             return lambda value: GenericPropertyTransformer.toDate(value)
-        elif fDst.type() == QMetaType.QTime:
+        elif fDst.type() == QMetaType.Type.QTime:
             return lambda value: GenericPropertyTransformer.toTime(value)
-        elif fDst.type() == QMetaType.QVariantMap:
+        elif fDst.type() == QMetaType.Type.QVariantMap:
             return lambda value: GenericPropertyTransformer.toMap(value)
         else:
             # default: don't convert
@@ -307,7 +316,7 @@ class GenericFieldValueConverter(QgsVectorFileWriter.FieldValueConverter):
         supports_json: QgsVectorDataProvider.NativeType = None
         supports_map: QgsVectorDataProvider.NativeType = None
 
-        string_types = [n for n in native_types if n.mType == QMetaType.QString]
+        string_types = [n for n in native_types if n.mType == QMetaType.Type.QString]
         if len(string_types) == 0:
             warnings.warn('Unable to convert to string')
             return QgsFields(srcFields)
@@ -319,7 +328,7 @@ class GenericFieldValueConverter(QgsVectorFileWriter.FieldValueConverter):
             supports_string: QgsVectorDataProvider.NativeType = string_types[0]
 
         for n in native_types:
-            if supports_string is None and n.mType == QMetaType.QString:
+            if supports_string is None and n.mType == QMetaType.Type.QString:
                 supports_string = n
             if n.mTypeName.lower() == 'json':
                 supports_json = n
@@ -353,7 +362,7 @@ class GenericFieldValueConverter(QgsVectorFileWriter.FieldValueConverter):
                         dstF = fieldFromNativeType(supports_string, srcF.name(), comment=srcF.comment())
                     dstF.setEditorWidgetSetup(QgsEditorWidgetSetup(EDITOR_WIDGET_REGISTRY_KEY, {}))
 
-                elif srcF.type() == QMetaType.QVariantMap:
+                elif srcF.type() == QMetaType.Type.QVariantMap:
                     if supports_json:
                         dstF = fieldFromNativeType(supports_json, srcF.name(), comment=srcF.comment())
                     elif supports_map:

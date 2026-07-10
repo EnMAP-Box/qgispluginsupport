@@ -87,43 +87,43 @@ REMOVE_setShortcutVisibleInContextMenu = hasattr(QAction, 'setShortcutVisibleInC
 jp = os.path.join
 dn = os.path.dirname
 
-QGIS2NUMPY_DATA_TYPES = {Qgis.Byte: np.uint8,
-                         Qgis.UInt16: np.uint16,
-                         Qgis.Int16: np.int16,
-                         Qgis.UInt32: np.uint32,
-                         Qgis.Int32: np.int32,
-                         Qgis.Float32: np.float32,
-                         Qgis.Float64: np.float64,
-                         Qgis.CFloat32: complex,
-                         Qgis.CFloat64: np.complex64,
-                         Qgis.ARGB32: np.uint32,
-                         Qgis.ARGB32_Premultiplied: np.uint32
+QGIS2NUMPY_DATA_TYPES = {Qgis.DataType.Byte: np.uint8,
+                         Qgis.DataType.UInt16: np.uint16,
+                         Qgis.DataType.Int16: np.int16,
+                         Qgis.DataType.UInt32: np.uint32,
+                         Qgis.DataType.Int32: np.int32,
+                         Qgis.DataType.Float32: np.float32,
+                         Qgis.DataType.Float64: np.float64,
+                         Qgis.DataType.CFloat32: complex,
+                         Qgis.DataType.CFloat64: np.complex64,
+                         Qgis.DataType.ARGB32: np.uint32,
+                         Qgis.DataType.ARGB32_Premultiplied: np.uint32
                          }
 
-NUMPY2QGIS_DATA_TYPES = {np.uint8: Qgis.Byte,
-                         bool: Qgis.Byte,
-                         np.uint16: Qgis.UInt16,
-                         np.uint32: Qgis.UInt32,
-                         np.int16: Qgis.Int16,
-                         np.int32: Qgis.Int32,
-                         np.float32: Qgis.Float32,
-                         np.float64: Qgis.Float64,
-                         complex: Qgis.CFloat32,
-                         np.complex64: Qgis.CFloat64,
+NUMPY2QGIS_DATA_TYPES = {np.uint8: Qgis.DataType.Byte,
+                         bool: Qgis.DataType.Byte,
+                         np.uint16: Qgis.DataType.UInt16,
+                         np.uint32: Qgis.DataType.UInt32,
+                         np.int16: Qgis.DataType.Int16,
+                         np.int32: Qgis.DataType.Int32,
+                         np.float32: Qgis.DataType.Float32,
+                         np.float64: Qgis.DataType.Float64,
+                         complex: Qgis.DataType.CFloat32,
+                         np.complex64: Qgis.DataType.CFloat64,
                          }
 
 QGIS_DATATYPE_NAMES = {
-    Qgis.Byte: 'Byte',
-    Qgis.UInt16: 'UInt16',
-    Qgis.Int16: 'Int16',
-    Qgis.UInt32: 'UInt32',
-    Qgis.Int32: 'Int32',
-    Qgis.Float32: 'Float32',
-    Qgis.Float64: 'Float64',
-    Qgis.CFloat32: 'Complex',
-    Qgis.CFloat64: 'Complex64',
-    Qgis.ARGB32: 'UInt32',
-    Qgis.ARGB32_Premultiplied: 'Int32'}
+    Qgis.DataType.Byte: 'Byte',
+    Qgis.DataType.UInt16: 'UInt16',
+    Qgis.DataType.Int16: 'Int16',
+    Qgis.DataType.UInt32: 'UInt32',
+    Qgis.DataType.Int32: 'Int32',
+    Qgis.DataType.Float32: 'Float32',
+    Qgis.DataType.Float64: 'Float64',
+    Qgis.DataType.CFloat32: 'Complex',
+    Qgis.DataType.CFloat64: 'Complex64',
+    Qgis.DataType.ARGB32: 'UInt32',
+    Qgis.DataType.ARGB32_Premultiplied: 'Int32'}
 
 
 def rm(p):
@@ -145,9 +145,9 @@ def _geometryIsEmpty(g: QgsGeometry) -> bool:
                         Qgis.GeometryType.Unknown]:
             return True
     else:
-        if g.type() in [QgsWkbTypes.NoGeometry,
-                        QgsWkbTypes.NullGeometry,
-                        QgsWkbTypes.UnknownGeometry
+        if g.type() in [QgsWkbTypes.Type.NoGeometry,
+                        QgsWkbTypes.GeometryType.NullGeometry,
+                        QgsWkbTypes.GeometryType.UnknownGeometry
                         ]:
             return True
     return False
@@ -165,35 +165,35 @@ def variant_type_to_ogr_field_type(variant_type):
     :return:
     """
     ogr_sub_type = OFSTNone
-    if variant_type == QMetaType.Bool:
+    if variant_type == QMetaType.Type.Bool:
         ogr_type = OFTInteger
         ogr_sub_type = OFSTBoolean
 
-    elif variant_type == QMetaType.Int:
+    elif variant_type == QMetaType.Type.Int:
         ogr_type = OFTInteger
 
-    elif variant_type == QMetaType.LongLong:
+    elif variant_type == QMetaType.Type.LongLong:
         ogr_type = OFTInteger64
 
-    elif variant_type == QMetaType.Double:
+    elif variant_type == QMetaType.Type.Double:
         ogr_type = OFTReal
 
-    elif variant_type in [QMetaType.QChar, QMetaType.QString]:
+    elif variant_type in [QMetaType.Type.QChar, QMetaType.Type.QString]:
         ogr_type = OFTString
 
     elif variant_type == QMetaType.QStringLIST:
         ogr_type = OFTStringList
 
-    elif variant_type == QMetaType.QByteArray:
+    elif variant_type == QMetaType.Type.QByteArray:
         ogr_type = OFTBinary
 
-    elif variant_type == QMetaType.QDate:
+    elif variant_type == QMetaType.Type.QDate:
         ogr_type = OFTDate
 
-    elif variant_type == QMetaType.QTime:
+    elif variant_type == QMetaType.Type.QTime:
         ogr_type = OFTTime
 
-    elif variant_type == QMetaType.QDateTime:
+    elif variant_type == QMetaType.Type.QDateTime:
         ogr_type = OFTDateTime
 
     else:
@@ -657,21 +657,21 @@ def createQgsField(name: str, exampleValue: Any, comment: str = None) -> QgsFiel
     :return: QgsField
     """
     if isinstance(exampleValue, str):
-        return QgsField(name, QMetaType.QString, 'varchar', comment=comment)
+        return QgsField(name, QMetaType.Type.QString, 'varchar', comment=comment)
     elif isinstance(exampleValue, bool):
-        return QgsField(name, QMetaType.Bool, 'int', len=1, comment=comment)
+        return QgsField(name, QMetaType.Type.Bool, 'int', len=1, comment=comment)
     elif isinstance(exampleValue, (int, np.int8, np.int16, np.int32, np.int64)):
-        return QgsField(name, QMetaType.Int, 'int', comment=comment)
+        return QgsField(name, QMetaType.Type.Int, 'int', comment=comment)
     elif isinstance(exampleValue, (np.uint, np.uint8, np.uint16, np.uint32, np.uint64)):
-        return QgsField(name, QMetaType.UInt, 'uint', comment=comment)
+        return QgsField(name, QMetaType.Type.UInt, 'uint', comment=comment)
     elif isinstance(exampleValue, (float, np.double, np.float16, np.float32, np.float64)):
-        return QgsField(name, QMetaType.Double, 'double', comment=comment)
+        return QgsField(name, QMetaType.Type.Double, 'double', comment=comment)
     elif isinstance(exampleValue, np.ndarray):
-        return QgsField(name, QMetaType.QString, 'varchar', comment=comment)
+        return QgsField(name, QMetaType.Type.QString, 'varchar', comment=comment)
     elif isinstance(exampleValue, np.datetime64):
-        return QgsField(name, QMetaType.QDateTime, comment=comment)
+        return QgsField(name, QMetaType.Type.QDateTime, comment=comment)
     elif isinstance(exampleValue, (bytes, QByteArray)):
-        return QgsField(name, QMetaType.QByteArray, 'Binary', comment=comment)
+        return QgsField(name, QMetaType.Type.QByteArray, 'Binary', comment=comment)
     elif isinstance(exampleValue, list):
         if not len(exampleValue) > 0:
             raise AssertionError('need at least one value in provided list')
@@ -680,7 +680,7 @@ def createQgsField(name: str, exampleValue: Any, comment: str = None) -> QgsFiel
         prototype = createQgsField(name, v)
         subType = prototype.type()
         typeName = prototype.typeName()
-        return QgsField(name, QMetaType.QVariantList, typeName, comment=comment, subType=subType)
+        return QgsField(name, QMetaType.Type.QVariantList, typeName, comment=comment, subType=subType)
     elif isinstance(exampleValue, type):
         return createQgsField(name, exampleValue(1), comment=comment)
     else:
@@ -756,11 +756,11 @@ def setQgsFieldValue(feature: QgsFeature, field: Union[int, str, QgsField], valu
 
     if value is None:
         value = QMetaType.NULL
-    if field.type() == QMetaType.QString:
+    if field.type() == QMetaType.Type.QString:
         value = str(value)
-    elif field.type() in [QMetaType.Int, QMetaType.Bool]:
+    elif field.type() in [QMetaType.Type.Int, QMetaType.Type.Bool]:
         value = int(value)
-    elif field.type() in [QMetaType.Double]:
+    elif field.type() in [QMetaType.Type.Double]:
         value = float(value)
 
     feature.setAttribute(field.name(), value)
@@ -778,7 +778,9 @@ def showMessage(message: str, title: str, level):
     v.setTitle(title)
 
     isHtml = message.startswith('<html>')
-    v.setMessage(message, QgsMessageOutput.MessageHtml if isHtml else QgsMessageOutput.MessageText)
+    v.setMessage(message,
+                 QgsMessageOutput.MessageType.MessageHtml
+                 if isHtml else QgsMessageOutput.MessageType.MessageText)
     v.showMessage(True)
 
 
@@ -1022,7 +1024,10 @@ def qgsVectorLayer(source) -> QgsVectorLayer:
     if isinstance(source, ogr.DataSource):
         return QgsVectorLayer(source.GetDescription())
     if isinstance(source, QUrl):
-        return qgsVectorLayer(Path(source.toString(QUrl.PreferLocalFile | QUrl.RemoveQuery)).resolve())
+        return qgsVectorLayer(Path(
+            source.toString(
+                QUrl.UrlFormattingOption.PreferLocalFile | QUrl.UrlFormattingOption.RemoveQuery
+            )).resolve())
 
     raise ValueError('Unable to transform {} into QgsVectorLayer'.format(source))
 
@@ -1089,7 +1094,11 @@ def qgsRasterLayer(source) -> QgsRasterLayer:
     if isinstance(source, gdal.Dataset):
         return QgsRasterLayer(source.GetDescription())
     if isinstance(source, QUrl):
-        return qgsRasterLayer(Path(source.toString(QUrl.PreferLocalFile | QUrl.RemoveQuery)).resolve())
+        return qgsRasterLayer(
+            Path(source.toString(
+                QUrl.UrlFormattingOption.PreferLocalFile | QUrl.UrlFormattingOption.RemoveQuery
+            )
+            ).resolve())
 
     raise ValueError('Unable to transform {} into QgsRasterLayer'.format(source))
 
@@ -1498,7 +1507,7 @@ def writeAsVectorFormat(layer: QgsVectorLayer,
         QgsProject.instance().transformContext(),
         options,
     )
-    if err != QgsVectorFileWriter.NoError:
+    if err != QgsVectorFileWriter.WriterError.NoError:
         raise AssertionError(errMsg)
 
     lyr2 = QgsVectorLayer(path.as_posix(), layer.name())
@@ -1712,9 +1721,10 @@ def as_py_value(value, datatype: Qgis.DataType):
     """
     if value in [None, NULL]:
         return None
-    if datatype in [Qgis.Byte, Qgis.Int16, Qgis.Int32, Qgis.UInt16, Qgis.UInt32]:
+    if datatype in [Qgis.DataType.Byte, Qgis.DataType.Int16, Qgis.DataType.Int32, Qgis.DataType.UInt16,
+                    Qgis.DataType.UInt32]:
         return int(value)
-    elif datatype in [Qgis.Float32, Qgis.Float64, Qgis.CFloat32, Qgis.CFloat64]:
+    elif datatype in [Qgis.DataType.Float32, Qgis.DataType.Float64, Qgis.DataType.CFloat32, Qgis.DataType.CFloat64]:
         return float(value)
     return value
 
@@ -3755,7 +3765,7 @@ def rasterArray(rasterInterface: Union[QgsRasterInterface, str, QgsRasterLayer],
         # single point -> return single profile.
         # Use identify, which is faster for single pixels
         ires: QgsRasterIdentifyResult = dp.identify(boundingBox.center(),
-                                                    QgsRaster.IdentifyFormatValue).results()
+                                                    QgsRaster.IdentifyFormat.IdentifyFormatValue).results()
 
         arr = np.asarray([ires[b] for b in bands]).reshape((len(bands), 1, 1))
 
@@ -3815,7 +3825,7 @@ def setToolButtonDefaultActionMenu(toolButton: QToolButton, actions: List[QActio
                 toolButton = btn
                 break
 
-    toolButton.setPopupMode(QToolButton.MenuButtonPopup)
+    toolButton.setPopupMode(QToolButton.ToolButtonPopupMode.MenuButtonPopup)
     menu = QMenu(toolButton)
     for i, a in enumerate(actions):
         a: QAction
@@ -3831,9 +3841,10 @@ def setToolButtonDefaultActionMenu(toolButton: QToolButton, actions: List[QActio
 class SelectMapLayerDialog(QgsDialog):
 
     def __init__(self, *args, **kwds):
-        super().__init__(*args, buttons=QDialogButtonBox.Cancel | QDialogButtonBox.Ok, **kwds)
+        super().__init__(*args, buttons=QDialogButtonBox.StandardButton.Cancel | QDialogButtonBox.StandardButton.Ok,
+                         **kwds)
         self.setWindowTitle('Select Layer')
-        self.setWindowFlag(Qt.WindowContextHelpButtonHint, False)
+        self.setWindowFlag(Qt.WindowType.WindowContextHelpButtonHint, False)
         self.mBox = QgsMapLayerComboBox(parent=self)
         self.mLabel = QLabel('Layer', parent=self)
         self.hl = QHBoxLayout()
@@ -3863,7 +3874,9 @@ class SelectMapLayersDialog(QgsDialog):
             self.allowEmptyLayer = allowEmptyLayer
 
     def __init__(self, *args, layerDescriptions: list = None, **kwds):
-        super(SelectMapLayersDialog, self).__init__(buttons=QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        super(SelectMapLayersDialog, self).__init__(
+            buttons=QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
         self.setWindowTitle('Select layer(s)')
 
         gl: QGridLayout = QGridLayout()
@@ -3875,13 +3888,13 @@ class SelectMapLayersDialog(QgsDialog):
 
         self.mMapLayerBoxes = []
 
-        self.buttonBox().button(QDialogButtonBox.Ok).clicked.connect(self.accept)
-        self.buttonBox().button(QDialogButtonBox.Cancel).clicked.connect(self.reject)
+        self.buttonBox().button(QDialogButtonBox.StandardButton.Ok).clicked.connect(self.accept)
+        self.buttonBox().button(QDialogButtonBox.StandardButton.Cancel).clicked.connect(self.reject)
 
     def exec(self):
 
         if len(self.mMapLayerBoxes) == 0:
-            self.addLayerDescription('Map Layer', QgsMapLayerProxyModel.All)
+            self.addLayerDescription('Map Layer', QgsMapLayerProxyModel.Filter.All)
         super(SelectMapLayersDialog, self).exec()
 
     def addLayerDescription(self, info: str,

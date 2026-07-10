@@ -54,10 +54,10 @@ class SpectralProfileFieldListModel(QgsFieldModel):
     def data(self, index: QModelIndex, role):
         field = self.field(index)
 
-        if role == Qt.DisplayRole:
+        if role == Qt.ItemDataRole.DisplayRole:
             return field.name()
 
-        if role == Qt.ToolTipRole:
+        if role == Qt.ItemDataRole.ToolTipRole:
             return QgsFieldModel.fieldToolTip(field)
 
         return super().data(index, role)
@@ -103,12 +103,12 @@ class SpectralProfileFieldActivatorModel(QgsFieldModel):
         for i, field in enumerate(layer.fields()):
             self.mDefaultEditorWidgets[field.name()] = layer.editorWidgetSetup(i)
 
-    def headerData(self, section: int, orientation: Qt.Orientation, role: int = Qt.DisplayRole):
+    def headerData(self, section: int, orientation: Qt.Orientation, role: int = Qt.ItemDataRole.DisplayRole):
 
-        if orientation == Qt.Horizontal:
-            if role == Qt.DisplayRole:
+        if orientation == Qt.Orientation.Horizontal:
+            if role == Qt.ItemDataRole.DisplayRole:
                 return self.mColNames[section]
-            if role == Qt.ToolTipRole:
+            if role == Qt.ItemDataRole.ToolTipRole:
                 return self.mColTooltip[section]
 
         return super().headerData(section, orientation, role)
@@ -127,11 +127,11 @@ class SpectralProfileFieldActivatorModel(QgsFieldModel):
     def flags(self, index: QModelIndex) -> Qt.ItemFlags:
 
         # flags = super().flags(index)
-        flags = Qt.NoItemFlags
+        flags = Qt.ItemFlag.NoItemFlags
         if can_store_spectral_profiles(self.field(index)):
-            flags = flags | Qt.ItemIsEnabled
+            flags = flags | Qt.ItemFlag.ItemIsEnabled
             if index.column() == 0:
-                flags = flags | Qt.ItemIsUserCheckable
+                flags = flags | Qt.ItemFlag.ItemIsUserCheckable
 
         return flags
 
@@ -144,15 +144,15 @@ class SpectralProfileFieldActivatorModel(QgsFieldModel):
     def setData(self, index: QModelIndex, value, role):
 
         changed = False
-        if index.column() == 0 and role == Qt.CheckStateRole:
+        if index.column() == 0 and role == Qt.ItemDataRole.CheckStateRole:
             field = self.field(index)
             i = index.row()
             layer = self.layer()
 
-            if value == Qt.Checked:
+            if value == Qt.CheckState.Checked:
                 changed = SpectralLibraryUtils.makeToProfileField(layer, field)
 
-            elif value == Qt.Unchecked:
+            elif value == Qt.CheckState.Unchecked:
                 last: QgsEditorWidgetSetup = self.mDefaultEditorWidgets[field.name()]
                 if last.type() == EDITOR_WIDGET_REGISTRY_KEY:
                     last = QgsEditorWidgetSetup()
@@ -163,7 +163,15 @@ class SpectralProfileFieldActivatorModel(QgsFieldModel):
                 # update entire row
                 i0 = self.index(index.row(), 0)
                 i1 = self.index(index.row(), self.columnCount() - 1)
-                self.dataChanged.emit(i0, i1, [Qt.DisplayRole, Qt.CheckStateRole, Qt.ToolTipRole, Qt.DecorationRole])
+                self.dataChanged.emit(
+                    i0, i1,
+                    [
+                        Qt.ItemDataRole.DisplayRole,
+                        Qt.ItemDataRole.CheckStateRole,
+                        Qt.ItemDataRole.ToolTipRole,
+                        Qt.ItemDataRole.DecorationRole
+                    ]
+                )
                 self.editorWidgetChanged.emit(index)
 
         return changed
@@ -175,7 +183,7 @@ class SpectralProfileFieldActivatorModel(QgsFieldModel):
         field: QgsField = self.field(index)
         layer: QgsVectorLayer = self.layer()
 
-        if role == Qt.DisplayRole:
+        if role == Qt.ItemDataRole.DisplayRole:
             if col == self.CN_Field:
                 return field.name()
             if col == self.CN_Type:
@@ -185,7 +193,7 @@ class SpectralProfileFieldActivatorModel(QgsFieldModel):
             if col == self.CN_Comment:
                 return field.comment()
 
-        if role == Qt.ToolTipRole:
+        if role == Qt.ItemDataRole.ToolTipRole:
 
             tt = QgsFieldModel.fieldToolTipExtended(field, layer)
 
@@ -193,7 +201,7 @@ class SpectralProfileFieldActivatorModel(QgsFieldModel):
                 tt += '<br><i>Field type can not store spectral profiles.<i>'
             return tt
 
-        if role == Qt.DecorationRole:
+        if role == Qt.ItemDataRole.DecorationRole:
             if col == self.CN_Type:
                 if is_profile_field(field):
                     return QIcon(r':/qps/ui/icons/profile.svg')
@@ -203,12 +211,12 @@ class SpectralProfileFieldActivatorModel(QgsFieldModel):
             else:
                 return None
 
-        if role == Qt.CheckStateRole and col == 0:
-            if self.flags(index) & Qt.ItemIsUserCheckable != 0:
+        if role == Qt.ItemDataRole.CheckStateRole and col == 0:
+            if self.flags(index) & Qt.ItemFlag.ItemIsUserCheckable != 0:
                 if is_profile_field(field):
-                    return Qt.Checked
+                    return Qt.CheckState.Checked
                 else:
-                    return Qt.Unchecked
+                    return Qt.CheckState.Unchecked
 
         return None
 
@@ -220,7 +228,7 @@ class SpectralProfileFieldActivatorDialog(QDialog):
 
         loadUi(speclibUiPath(self), self)
         self.mTitleBase = self.windowTitle()
-        self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
+        self.setWindowFlags(self.windowFlags() & ~Qt.WindowType.WindowContextHelpButtonHint)
         self.mModel = SpectralProfileFieldActivatorModel()
         self.tableView().setModel(self.mModel)
 

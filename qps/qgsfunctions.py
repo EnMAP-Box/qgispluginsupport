@@ -1096,17 +1096,20 @@ def registerQgsExpressionFunctions():
         if QgsExpression.isFunctionName(func.name()):
             msg = QCoreApplication.translate("UserExpressions",
                                              "User expression {0} already exists").format(func.name())
-            QgsMessageLog.logMessage(msg + "\n", level=Qgis.Info)
+            QgsMessageLog.logMessage(msg + "\n", level=Qgis.MessageLevel.Info)
         else:
             if func.name() in QGIS_FUNCTION_INSTANCES.keys():
-                QgsMessageLog.logMessage(f'{func.name()} not registered, but python instance exists', level=Qgis.Info)
+                QgsMessageLog.logMessage(
+                    f'{func.name()} not registered, but python instance exists',
+                    level=Qgis.MessageLevel.Info
+                )
                 func = QGIS_FUNCTION_INSTANCES[func.name()]
 
             if QgsExpression.registerFunction(func):
-                QgsMessageLog.logMessage(f'Registered {func.name()}', level=Qgis.Info)
+                QgsMessageLog.logMessage(f'Registered {func.name()}', level=Qgis.MessageLevel.Info)
                 QGIS_FUNCTION_INSTANCES[func.name()] = func
             else:
-                QgsMessageLog.logMessage(f'Failed to register {func.name()}', level=Qgis.Warning)
+                QgsMessageLog.logMessage(f'Failed to register {func.name()}', level=Qgis.MessageLevel.Warning)
 
 
 def unregisterQgsExpressionFunctions():
@@ -1115,6 +1118,6 @@ def unregisterQgsExpressionFunctions():
             raise AssertionError
         if QgsExpression.isFunctionName(name):
             if QgsExpression.unregisterFunction(name):
-                QgsMessageLog.logMessage(f'Unregistered {name}', level=Qgis.Info)
+                QgsMessageLog.logMessage(f'Unregistered {name}', level=Qgis.MessageLevel.Info)
             else:
-                QgsMessageLog.logMessage(f'Unable to unregister {name}', level=Qgis.Warning)
+                QgsMessageLog.logMessage(f'Unable to unregister {name}', level=Qgis.MessageLevel.Warning)

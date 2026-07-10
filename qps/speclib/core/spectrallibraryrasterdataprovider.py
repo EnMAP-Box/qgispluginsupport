@@ -203,16 +203,16 @@ class FieldToRasterValueConverter(QObject):
     This class converts QgsFeature values of a field from / to 3D-array raster layer values
     """
     LUT_FIELD_TYPES = {
-        QMetaType.Bool: Qgis.DataType.Byte,
-        QMetaType.Int: Qgis.DataType.Int32,
-        QMetaType.UInt: Qgis.DataType.UInt32,
-        QMetaType.LongLong: Qgis.DataType.Int32,
-        QMetaType.ULong: Qgis.DataType.UInt32,
-        QMetaType.Double: Qgis.DataType.Float32,
-        QMetaType.QString: Qgis.DataType.Int32,
-        QMetaType.QDateTime: Qgis.DataType.Int32,
-        QMetaType.QDate: Qgis.DataType.Int32,
-        QMetaType.QTime: Qgis.DataType.Int32,
+        QMetaType.Type.Bool: Qgis.DataType.Byte,
+        QMetaType.Type.Int: Qgis.DataType.Int32,
+        QMetaType.Type.UInt: Qgis.DataType.UInt32,
+        QMetaType.Type.LongLong: Qgis.DataType.Int32,
+        QMetaType.Type.ULong: Qgis.DataType.UInt32,
+        QMetaType.Type.Double: Qgis.DataType.Float32,
+        QMetaType.Type.QString: Qgis.DataType.Int32,
+        QMetaType.Type.QDateTime: Qgis.DataType.Int32,
+        QMetaType.Type.QDate: Qgis.DataType.Int32,
+        QMetaType.Type.QTime: Qgis.DataType.Int32,
     }
 
     NO_DATA_CANDIDATES = [-1, -9999]
@@ -262,7 +262,7 @@ class FieldToRasterValueConverter(QObject):
 
     def isClassification(self) -> bool:
 
-        return self.field().type() == QMetaType.QString
+        return self.field().type() == QMetaType.Type.QString
 
     def colorInterpretation(self, bandNo: int) -> int:
 
@@ -329,7 +329,7 @@ class FieldToRasterValueConverter(QObject):
         noData = None
         numericValues = None
 
-        if field.type() == QMetaType.QString:
+        if field.type() == QMetaType.Type.QString:
             # convert text values to raster class values
             noData = 0
             uniqueValues = set(fieldValues)
@@ -349,10 +349,10 @@ class FieldToRasterValueConverter(QObject):
 
             numericValues = [LUT[v] for v in fieldValues]
 
-        elif field.type() in [QMetaType.Bool,
-                              QMetaType.Int, QMetaType.UInt,
-                              QMetaType.LongLong, QMetaType.ULongLong,
-                              QMetaType.Double, QMetaType.Double]:
+        elif field.type() in [QMetaType.Type.Bool,
+                              QMetaType.Type.Int, QMetaType.Type.UInt,
+                              QMetaType.Type.LongLong, QMetaType.Type.ULongLong,
+                              QMetaType.Type.Double, QMetaType.Type.Double]:
             # convert int/bool/floats to 1-D raster class valuess
             for c in self.NO_DATA_CANDIDATES:
                 if c not in fieldValues:
@@ -370,7 +370,7 @@ class FieldToRasterValueConverter(QObject):
                     numericValues.append(noData)
                 else:
                     numericValues.append(v)
-        elif field.type() == QMetaType.QDateTime:
+        elif field.type() == QMetaType.Type.QDateTime:
             # convert datetime values to raster class values
             numericValues = []
             noData = -9999

@@ -28,7 +28,7 @@ param2 = QgsProcessingParameterMultipleLayers('MULTIPLE_LAYERS', 'Multiple Layer
 
 layout = QGridLayout()
 for row, param in enumerate([param1, param2]):
-    wrapper = QgsGui.processingGuiRegistry().createParameterWidgetWrapper(param, QgsProcessingGui.Standard)
+    wrapper = QgsGui.processingGuiRegistry().createParameterWidgetWrapper(param, QgsProcessingGui.WidgetType.Standard)
     wrapper.setWidgetContext(localWidgetContext)
     layout.addWidget(wrapper.createWrappedLabel(), row, 0)
     layout.addWidget(wrapper.createWrappedWidget(localProcessingContext), row, 1)

@@ -20,19 +20,19 @@ class GenericFieldValueConverterTests(TestCase):
 
         # convert to QDateTime
         for v in [str(dtgPy), dtgPy, dtgPy.date(),
-                  dtgQt, dtgQt.toString(Qt.ISODate), dtgQt.date()]:
+                  dtgQt, dtgQt.toString(Qt.DateFormat.ISODate), dtgQt.date()]:
             result = GenericPropertyTransformer.toDateTime(v)
             self.assertIsInstance(result, QDateTime, msg=f'Unable to convert {v} to QDateTime')
 
         # convert to QDate
         for v in [str(dtgPy), dtgPy, dtgPy.date(),
-                  dtgQt, dtgQt.toString(Qt.ISODate), dtgQt.date(), dtgQt.date().toString()]:
+                  dtgQt, dtgQt.toString(Qt.DateFormat.ISODate), dtgQt.date(), dtgQt.date().toString()]:
             result = GenericPropertyTransformer.toDate(v)
             self.assertIsInstance(result, QDate, msg=f'Unable to convert {v} to QDate')
 
         # convert to QTime
         for v in [str(dtgPy), dtgPy, dtgPy.time(), dtgPy.time().isoformat(),
-                  dtgQt, dtgQt.time(), dtgQt.toString(Qt.ISODate), dtgQt.time().toString()]:
+                  dtgQt, dtgQt.time(), dtgQt.toString(Qt.DateFormat.ISODate), dtgQt.time().toString()]:
             result = GenericPropertyTransformer.toTime(v)
             self.assertIsInstance(result, QTime, msg=f'Unable to convert {v} to QTime')
 
@@ -79,12 +79,19 @@ class GenericFieldValueConverterTests(TestCase):
         #
 
         fields = QgsFields()
-        fields.append(QgsField('json', type=QMetaType.QVariantMap, subType=QMetaType.QString, typeName='JSON'))
-        fields.append(QgsField('map', type=QMetaType.QVariantMap, subType=0, typeName='map'))
-        fields.append(QgsField('text', type=QMetaType.QString))
-        fields.append(QgsField('datetime', type=QMetaType.QDateTime))
-        fields.append(QgsField('date', type=QMetaType.QDate))
-        fields.append(QgsField('time', type=QMetaType.QTime))
+        fields.append(
+            QgsField(
+                'json',
+                type=QMetaType.Type.QVariantMap,
+                subType=QMetaType.Type.QString,
+                typeName='JSON'
+            )
+        )
+        fields.append(QgsField('map', type=QMetaType.Type.QVariantMap, subType=0, typeName='map'))
+        fields.append(QgsField('text', type=QMetaType.Type.QString))
+        fields.append(QgsField('datetime', type=QMetaType.Type.QDateTime))
+        fields.append(QgsField('date', type=QMetaType.Type.QDate))
+        fields.append(QgsField('time', type=QMetaType.Type.QTime))
 
         for driverName in ['memory', 'GeoJSON', 'GPKG', 'ESRI Shapefile', 'CSV', 'SQLite',
                            QgsVectorFileWriter.driverForExtension('.kml')
@@ -105,10 +112,10 @@ class GenericFieldValueConverterTests(TestCase):
 
         lyr: QgsVectorLayer = TestObjects.createSpectralLibrary(n=2)
         with edit(lyr):
-            lyr.addAttribute(QgsField('datetime', type=QMetaType.QDateTime))
-            lyr.addAttribute(QgsField('time', type=QMetaType.QTime))
-            lyr.addAttribute(QgsField('date', type=QMetaType.QDate))
-            lyr.addAttribute(QgsField('map', type=QMetaType.QVariantMap))
+            lyr.addAttribute(QgsField('datetime', type=QMetaType.Type.QDateTime))
+            lyr.addAttribute(QgsField('time', type=QMetaType.Type.QTime))
+            lyr.addAttribute(QgsField('date', type=QMetaType.Type.QDate))
+            lyr.addAttribute(QgsField('map', type=QMetaType.Type.QVariantMap))
 
             dtg = QDateTime.currentDateTime()
             f1 = lyr.getFeature(lyr.allFeatureIds()[0])

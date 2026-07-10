@@ -10,7 +10,7 @@ from qgis.testing import start_app
 class MyTask(QgsTask):
 
     def __init__(self, description='MyTask', callback=None):
-        super(MyTask, self).__init__(description, QgsTask.CanCancel)
+        super(MyTask, self).__init__(description, QgsTask.Flag.CanCancel)
         self.mWasCanceled = False
         self.mSeconds = 5
         self.mCount = 0
@@ -74,16 +74,16 @@ class MyTaskDialog(QDialog):
 
     def onStatusChanged(self, taskID, status):
 
-        if status == QgsTask.Queued:
+        if status == QgsTask.TaskStatus.Queued:
             print('{} Queued'.format(taskID))
-        elif status == QgsTask.OnHold:
+        elif status == QgsTask.TaskStatus.OnHold:
             print('{} On Hold'.format(taskID))
-        elif status == QgsTask.Running:
+        elif status == QgsTask.TaskStatus.Running:
             print('{} Running'.format(taskID))
-        elif status == QgsTask.Complete:
+        elif status == QgsTask.TaskStatus.Complete:
             print('{} Complete'.format(taskID))
             self.pbar.setValue(self.pbar.value() + 1)
-        elif status == QgsTask.Terminated:
+        elif status == QgsTask.TaskStatus.Terminated:
             print('{} Terminated'.format(taskID))
             self.pbar.setValue(self.pbar.value() + 1)
 

@@ -450,17 +450,17 @@ class EnviSpectralLibraryReader(SpectralProfileFileReader):
         n_profiles = md.get('lines')
 
         fields.append(create_profile_field(FIELD_VALUES))
-        fields.append(QgsField(FIELD_NAME, QMetaType.QString))
+        fields.append(QgsField(FIELD_NAME, QMetaType.Type.QString))
         # add ENVI Header fields
         to_exclude = SINGLE_VALUE_TAGS
         for k, v in md.items():
             if isinstance(v, list) and k not in to_exclude and len(v) == n_profiles:
                 if isinstance(v[0], float):
-                    fields.append(QgsField(k, QMetaType.Double))
+                    fields.append(QgsField(k, QMetaType.Type.Double))
                 elif isinstance(v[0], int):
-                    fields.append(QgsField(k, QMetaType.Int))
+                    fields.append(QgsField(k, QMetaType.Type.Int))
                 else:
-                    fields.append(QgsField(k, QMetaType.QString))
+                    fields.append(QgsField(k, QMetaType.Type.QString))
 
         # add CSV fields
         lyrCSV = readCSVMetadata(source)

@@ -32,8 +32,8 @@ class ResizableImageLabel(QLabel):
         if self._pixmap:
             scaled_pixmap = self._pixmap.scaled(
                 self.size(),
-                Qt.KeepAspectRatio,  # maintains the aspect ratio of the image
-                Qt.SmoothTransformation  # makes resizing look smooth
+                Qt.AspectRatioMode.KeepAspectRatio,  # maintains the aspect ratio of the image
+                Qt.TransformationMode.SmoothTransformation  # makes resizing look smooth
             )
             super().setPixmap(scaled_pixmap)
 
@@ -66,13 +66,13 @@ class FlowLayout(QLayout):
         if self.m_hSpace >= 0:
             return self.m_hSpace
         else:
-            return self.smartSpacing(QStyle.PM_LayoutHorizontalSpacing)
+            return self.smartSpacing(QStyle.PixelMetric.PM_LayoutHorizontalSpacing)
 
     def verticalSpacing(self) -> int:
         if self.m_vSpace >= 0:
             return self.m_vSpace
         else:
-            return self.smartSpacing(QStyle.PM_LayoutVerticalSpacing)
+            return self.smartSpacing(QStyle.PixelMetric.PM_LayoutVerticalSpacing)
 
     def count(self) -> int:
         return len(self.m_itemlist)
@@ -88,7 +88,7 @@ class FlowLayout(QLayout):
         return None
 
     def expandingDirections(self) -> Qt.Orientations:
-        return Qt.Horizontal | Qt.Vertical
+        return Qt.Orientation.Horizontal | Qt.Orientation.Vertical
 
     def hasHeightForWidth(self) -> bool:
         return True
@@ -125,10 +125,16 @@ class FlowLayout(QLayout):
             wid = item.widget()
             spaceX = self.horizontalSpacing()
             if spaceX == -1:
-                spaceX = wid.style().layoutSpacing(QSizePolicy.PushButton, QSizePolicy.PushButton, Qt.Horizontal)
+                spaceX = wid.style().layoutSpacing(
+                    QSizePolicy.ControlType.PushButton,
+                    QSizePolicy.ControlType.PushButton, Qt.Orientation.Horizontal
+                )
             spaceY = self.verticalSpacing()
             if spaceY == -1:
-                spaceY = wid.style().layoutSpacing(QSizePolicy.PushButton, QSizePolicy.PushButton, Qt.Vertical)
+                spaceY = wid.style().layoutSpacing(
+                    QSizePolicy.ControlType.PushButton,
+                    QSizePolicy.ControlType.PushButton, Qt.Orientation.Vertical
+                )
 
             nextX = x + item.sizeHint().width() + spaceX
             if (nextX - spaceX > effectiveRect.right()) and lineHeight > 0:
@@ -160,7 +166,7 @@ class SliderSpinBox(QWidget):
 
     def __init__(self, *args,
                  spinbox: QAbstractSpinBox = None,
-                 spinbox_position: Qt.Alignment = Qt.AlignLeft,
+                 spinbox_position: Qt.Alignment = Qt.AlignmentFlag.AlignLeft,
                  **kwds):
 
         if not isinstance(spinbox, QAbstractSpinBox):
@@ -173,18 +179,18 @@ class SliderSpinBox(QWidget):
         super().__init__(*args, **kwds)
 
         self.spinbox: QAbstractSpinBox = spinbox
-        self.slider: QSlider = QSlider(Qt.Horizontal)
+        self.slider: QSlider = QSlider(Qt.Orientation.Horizontal)
         self.slider.valueChanged.connect(self.onSliderValueChanged)
         self.spinbox.valueChanged.connect(self.onSpinboxValueChanged)
 
-        if spinbox_position in [Qt.AlignLeft, Qt.AlignRight]:
+        if spinbox_position in [Qt.AlignmentFlag.AlignLeft, Qt.AlignmentFlag.AlignRight]:
             layout = QHBoxLayout()
-        elif spinbox_position in [Qt.AlignTop, Qt.AlignBottom]:
+        elif spinbox_position in [Qt.AlignmentFlag.AlignTop, Qt.AlignmentFlag.AlignBottom]:
             layout = QVBoxLayout()
         else:
             raise NotImplementedError()
 
-        if spinbox_position in [Qt.AlignLeft, Qt.AlignTop]:
+        if spinbox_position in [Qt.AlignmentFlag.AlignLeft, Qt.AlignmentFlag.AlignTop]:
             layout.addWidget(self.spinbox)
             layout.addWidget(self.slider)
         else:
