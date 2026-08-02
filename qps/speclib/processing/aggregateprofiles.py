@@ -318,7 +318,13 @@ Please not that not each aggregate function might be available for each field ty
             flength = int(aggregateDef['length'])
             fprecision = int(aggregateDef['precision'])
 
-            field: QgsField = QgsField(fname, ftype, ftypeName, flength, fprecision, '', fsubType)
+            #  field: QgsField = QgsField(fname, ftype, ftypeName, flength, fprecision, '', fsubType)
+            field: QgsField = QgsField(
+                fname,
+                QMetaType.Type(ftype), ftypeName,
+                flength, fprecision,
+                '', QMetaType.Type(fsubType)
+            )
 
             aggregateType = str(aggregateDef['aggregate'])
             source = str(aggregateDef['input'])
