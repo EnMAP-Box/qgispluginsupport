@@ -27,6 +27,7 @@
 
 import os
 import re
+import shutil
 import sys
 from pathlib import Path
 from typing import Any, Generator, List, Optional, Union
@@ -34,7 +35,11 @@ from typing import Any, Generator, List, Optional, Union
 from qgis.PyQt.QtCore import QAbstractTableModel, QDirIterator, QFile, QModelIndex, QSortFilterProxyModel, Qt, \
     QTextStream, QT_VERSION_STR
 from qgis.PyQt.QtGui import QContextMenuEvent, QIcon, QPixmap
-from qgis.PyQt.QtSvg import QGraphicsSvgItem
+
+try:
+    from PyQt6.QtSvgWidgets import QGraphicsSvgItem  # noqa: QGS103
+except ImportError:
+    from qgis.PyQt.QtSvg import QGraphicsSvgItem
 from qgis.PyQt.QtWidgets import QAction, QApplication, QGraphicsPixmapItem, QGraphicsScene, QGraphicsView, QLabel, \
     QLineEdit, QMenu, QTableView, QTextBrowser, QToolButton, QWidget
 from qgis.PyQt.QtXml import QDomDocument, QDomElement
@@ -165,7 +170,7 @@ def compileResourceFile(pathQrc, targetDir=None, suffix: str = '_rc.py', compres
     :param pathQrc:
     :return:
     """
-    import PyQt5.pyrcc_main  # noqa: QGS104 # cannot be imported from qgis.PyQt.pyrcc_main
+
     if not isinstance(pathQrc, Path):
         pathQrc = Path(pathQrc)
 
@@ -190,15 +195,44 @@ def compileResourceFile(pathQrc, targetDir=None, suffix: str = '_rc.py', compres
     last_cwd = os.getcwd()
     os.chdir(cwd)
 
-    last_level = PyQt5.pyrcc_main.compressLevel
-    last_threshold = PyQt5.pyrcc_main.compressThreshold
+    from qgis.PyQt.QtCore import PYQT_VERSION_STR
 
-    # increase compression level and move to *.qrc's directory
-    PyQt5.pyrcc_main.compressLevel = compressLevel
-    PyQt5.pyrcc_main.compressThreshold = compressThreshold
+    if PYQT_VERSION_STR[0] == '5':
 
-    if not (PyQt5.pyrcc_main.processResourceFile([pathQrc.name], pathPy.as_posix(), False)):
-        raise AssertionError
+        import PyQt5.pyrcc_main  # noqa: QGS104
+
+        last_level = PyQt5.pyrcc_main.compressLevel
+        last_threshold = PyQt5.pyrcc_main.compressThreshold
+
+        # increase compression level and move to *.qrc's directory
+        PyQt5.pyrcc_main.compressLevel = compressLevel
+        PyQt5.pyrcc_main.compressThreshold = compressThreshold
+
+        if not (PyQt5.pyrcc_main.processResourceFile([pathQrc.name], pathPy.as_posix(), False)):
+            raise AssertionError
+
+        # restore previous settings
+        PyQt5.pyrcc_main.compressLevel = last_level
+        PyQt5.pyrcc_main.compressThreshold = last_threshold
+
+    else:
+
+        rcc_exe = 'rcc'
+        if not shutil.which(rcc_exe):
+            raise FileNotFoundError(f'{rcc_exe}')
+
+        cmd = [
+            rcc_exe, str(pathQrc),
+            '-o', str(pathPy),
+            '-g', 'python',
+            '--compress', str(compressLevel),
+            '--threshold', str(compressThreshold)
+        ]
+        # with Qt6 there is simply no other way to compile resource files
+        import subprocess  # nosec B404
+        result = subprocess.run(cmd, capture_output=True, text=True)  # nosec B603
+        if result.returncode != 0:
+            raise RuntimeError(f"Resource compilation failed: {result.stderr}")
 
     with open(pathPy, 'r') as f:
         content = f.read()
@@ -209,10 +243,6 @@ def compileResourceFile(pathQrc, targetDir=None, suffix: str = '_rc.py', compres
 
     with open(pathPy, 'w') as f:
         f.write(content)
-
-    # restore previous settings
-    PyQt5.pyrcc_main.compressLevel = last_level
-    PyQt5.pyrcc_main.compressThreshold = last_threshold
 
     os.chdir(last_cwd)
 

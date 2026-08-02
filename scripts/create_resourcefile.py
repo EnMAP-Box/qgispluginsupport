@@ -14,3 +14,5 @@ def create_resource_files():
 if __name__ == '__main__':
     app = start_app()
     create_resource_files()
+    app.quit()
+    exit(0)
