@@ -234,8 +234,6 @@ class SpeclibCoreTests(TestCase):
 
             'QJsonDocument': QJsonDocument.fromVariant(d),
             'QJsonDocument->toJson': QJsonDocument.fromVariant(d).toJson(),
-            'QJsonDocument->toBinaryData': QJsonDocument.fromVariant(d).toBinaryData(),
-
         }
         for i, (info, v) in enumerate(valid_inputs.items()):
             d2 = decodeProfileValueDict(v)
@@ -268,7 +266,7 @@ class SpeclibCoreTests(TestCase):
             dump = encodeProfileValueDict(d, e)
             self.assertIsInstance(dump, dict)
 
-        for e in ['jSoN', ProfileEncoding.Json, QgsField('dummy', type=8)]:
+        for e in ['jSoN', ProfileEncoding.Json, QgsField('dummy', type=QMetaType.Type.QVariantMap)]:
             dump = encodeProfileValueDict(d, e)
             self.assertIsInstance(dump, dict)
 
