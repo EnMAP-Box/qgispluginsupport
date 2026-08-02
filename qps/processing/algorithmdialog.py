@@ -24,13 +24,14 @@ from typing import Optional, Tuple, Callable, Union
 import qgis.utils
 from processing import getTempFilename, ProcessingConfig
 from processing.core.ProcessingResults import resultsList
-from processing.gui.AlgorithmDialogBase import AlgorithmDialogBase
+from processing.core.exceptions import InvalidParameterValue, InvalidOutputExtension
 from processing.gui.AlgorithmExecutor import execute, execute_in_place, executeIterating
 from processing.gui.BatchOutputSelectionPanel import BatchOutputSelectionPanel
 from processing.gui.BatchPanel import BatchPanelFillWidget, WIDGET
 from processing.gui.MessageBarProgress import MessageBarProgress
 from processing.gui.MessageDialog import MessageDialog
 from processing.gui.Postprocessing import determine_output_name, post_process_layer
+from processing.gui.algorithm_widget import AlgorithmWidget
 from processing.gui.wrappers import WidgetWrapper, WidgetWrapperFactory
 from processing.tools import dataobjects
 from qgis.PyQt.QtCore import QCoreApplication, QDir, QFileInfo
@@ -47,7 +48,7 @@ from qgis.core import (
     QgsProcessingParameterFeatureSink, QgsProcessingParameterRasterDestination, QgsProcessingParameterVectorDestination,
     QgsProcessingUtils, QgsProject, QgsProxyProgressTask, QgsSettings)
 from qgis.gui import (
-    QgisInterface, QgsGui, QgsPanelWidget, QgsProcessingAlgorithmDialogBase,
+    QgisInterface, QgsGui, QgsPanelWidget, QgsProcessingAlgorithmWidgetBase,
     QgsProcessingBatchAlgorithmDialogBase, QgsProcessingContextGenerator, QgsProcessingGui,
     QgsProcessingHiddenWidgetWrapper, QgsProcessingParametersGenerator, QgsProcessingParametersWidget,
     QgsProcessingParameterWidgetContext)
@@ -309,7 +310,7 @@ def createExpressionContext(  # noqa: QGS105
     return context
 
 
-class AlgorithmDialog(QgsProcessingAlgorithmDialogBase):
+class AlgorithmDialog(QgsProcessingAlgorithmWidgetBase):
 
     def __init__(  # noqa: QGS105
         self,
@@ -450,9 +451,9 @@ class AlgorithmDialog(QgsProcessingAlgorithmDialogBase):
 
         try:
             return self.mainWidget().createProcessingParameters(flags)
-        except AlgorithmDialogBase.InvalidParameterValue as e:
+        except AlgorithmWidget.InvalidParameterValue as e:
             self.flag_invalid_parameter_value(e.parameter.description(), e.widget)
-        except AlgorithmDialogBase.InvalidOutputExtension as e:
+        except AlgorithmWidget.InvalidOutputExtension as e:
             self.flag_invalid_output_extension(e.message, e.widget)
         return {}
 
@@ -713,9 +714,9 @@ class AlgorithmDialog(QgsProcessingAlgorithmDialogBase):
                     self.proxy_progress.finalize(ok)
                     on_complete(ok, results)
 
-        except AlgorithmDialogBase.InvalidParameterValue as e:
+        except InvalidParameterValue as e:
             self.flag_invalid_parameter_value(e.parameter.description(), e.widget)
-        except AlgorithmDialogBase.InvalidOutputExtension as e:
+        except InvalidOutputExtension as e:
             self.flag_invalid_output_extension(e.message, e.widget)
 
     def closeEvent(self, e):
@@ -996,7 +997,7 @@ class ParametersPanel(QgsProcessingParametersWidget):
                     parameters[param.name()] = value
 
                 if not param.checkValueIsAcceptable(value):
-                    raise AlgorithmDialogBase.InvalidParameterValue(param, widget)
+                    raise InvalidParameterValue(param, widget)
             else:
                 if self.in_place and param.name() == "OUTPUT":
                     parameters[param.name()] = "memory:"
@@ -1022,7 +1023,7 @@ class ParametersPanel(QgsProcessingParametersWidget):
                     context = createContext()
                     ok, error = param.isSupportedOutputValue(value, context)
                     if not ok:
-                        raise AlgorithmDialogBase.InvalidOutputExtension(widget, error)
+                        raise InvalidOutputExtension(widget, error)
 
         return self.algorithm().preprocessParameters(parameters)
 
