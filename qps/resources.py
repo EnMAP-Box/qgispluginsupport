@@ -65,13 +65,14 @@ def getDOMAttributes(elem):
     return values
 
 
-def compileResourceFiles(dirRoot: Union[str, Path],
-                         targetDir: Optional[Union[str, Path]] = None,
-                         suffix: str = '_rc.py',
-                         skip_qgis_images: bool = True,
-                         compressLevel=19,
-                         compressThreshold=100
-                         ):
+def compileResourceFiles(
+    dirRoot: Union[str, Path],
+    targetDir: Optional[Union[str, Path]] = None,
+    suffix: str = '_rc.py',
+    skip_qgis_images: bool = True,
+    compressLevel=19,
+    compressThreshold=100
+) -> List[Path]:
     """
     Searches for *.ui files and compiles the *.qrc files they use.
     :param compressLevel:
@@ -93,6 +94,7 @@ def compileResourceFiles(dirRoot: Union[str, Path],
 
     qrc_files = []
     qrc_files_skipped = []
+    py_files = []
     doc = QDomDocument()
 
     for ui_file in ui_files:
@@ -128,7 +130,7 @@ def compileResourceFiles(dirRoot: Union[str, Path],
 
     if len(qrc_files) == 0:
         print('Did not find any *.qrc files in {}'.format(dirRoot), file=sys.stderr)
-        return
+        return []
 
     print('Compile {} *.qrc files:'.format(len(qrc_files)))
     targetDirOutputNames = []
@@ -151,20 +153,30 @@ def compileResourceFiles(dirRoot: Union[str, Path],
             s = '{}{}'.format(i, suffix)
             outName = '{}{}'.format(bn, s)
 
-        compileResourceFile(qrcFile,
-                            targetDir=targetDir,
-                            suffix=s,
-                            compressLevel=compressLevel,
-                            compressThreshold=compressThreshold)
+        py_file = compileResourceFile(qrcFile,
+                                      targetDir=targetDir,
+                                      suffix=s,
+                                      compressLevel=compressLevel,
+                                      compressThreshold=compressThreshold)
         targetDirOutputNames.append(outName)
+
+        py_files.append(py_file)
 
     if len(qrc_files_skipped) > 0:
         print('Skipped *.qrc files (out of root directory):')
         for qrcFile in qrc_files_skipped:
             print(qrcFile.as_posix())
 
+    return py_files
 
-def compileResourceFile(pathQrc, targetDir=None, suffix: str = '_rc.py', compressLevel=7, compressThreshold=100):
+
+def compileResourceFile(
+    pathQrc,
+    targetDir=None,
+    suffix: str = '_rc.py',
+    compressLevel=7,
+    compressThreshold=100
+) -> Path:
     """
     Compiles a *.qrc file
     :param pathQrc:
@@ -236,8 +248,7 @@ def compileResourceFile(pathQrc, targetDir=None, suffix: str = '_rc.py', compres
 
     with open(pathPy, 'r') as f:
         content = f.read()
-
-    content = re.sub(r'from PyQt[56] import QtCore', r'from qgis.PyQt import QtCore', content)
+    content = re.sub(r'from Py(Qt|Side)[56] import QtCore', r'from qgis.PyQt import QtCore', content)
     content = re.sub(r'\ndef (q.*:)', r'\n\ndef \g<1>', content)
     content = re.sub(r'\nqInitResources\(\)', '\n\nqInitResources()', content)
 
@@ -245,6 +256,7 @@ def compileResourceFile(pathQrc, targetDir=None, suffix: str = '_rc.py', compres
         f.write(content)
 
     os.chdir(last_cwd)
+    return pathPy
 
 
 def compileQGISResourceFiles(qgis_repo: Union[str, Path, None], target: str = None):
@@ -289,7 +301,7 @@ def compileQGISResourceFiles(qgis_repo: Union[str, Path, None], target: str = No
     compileResourceFiles(qgis_repo / 'images', targetDir=target, skip_qgis_images=False)
 
 
-def initQtResources(roots: Union[None, str, Path, list] = None):
+def initQtResources(roots: Union[None, str, Path, list] = None) -> List[Path]:
     """
     Searches recursively for `*_rc.py` files and loads them into the QApplications resources system
     :param roots: list of root folders to search within
@@ -319,6 +331,7 @@ def initQtResources(roots: Union[None, str, Path, list] = None):
     for path in rc_files:
         print('load {}'.format(path))
         initResourceFile(path)
+    return rc_files
 
 
 def initResourceFile(path: Union[str, Path]):
