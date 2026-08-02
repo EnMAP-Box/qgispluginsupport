@@ -3,6 +3,7 @@ import warnings
 from pathlib import Path
 from typing import Dict, Generator, List, Optional, Tuple
 
+from processing.gui.algorithm_widget import AlgorithmWidget as AlgorithmDialog
 from qgis.PyQt.QtCore import pyqtSignal, Qt
 from qgis.PyQt.QtGui import QCloseEvent
 from qgis.PyQt.QtGui import QDragEnterEvent, QDropEvent
@@ -25,7 +26,6 @@ from ..processing.extractspectralprofiles import ExtractSpectralProfiles
 from ..processing.importspectralprofiles import ImportSpectralProfiles
 from ...layerproperties import showLayerPropertiesDialog, AttributeTableWidget
 from ...plotstyling.plotstyling import PlotStyle
-from ...processing.algorithmdialog import AlgorithmDialog
 from ...utils import loadUi
 
 logger = logging.getLogger(__name__)

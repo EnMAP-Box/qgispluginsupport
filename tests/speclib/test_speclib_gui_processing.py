@@ -1,23 +1,31 @@
 import copy
-# noinspection PyPep8Naming
 import unittest
 
 import numpy as np
 from osgeo import gdal
 
 from qgis.PyQt.QtWidgets import QGridLayout, QWidget
-from qgis.core import QgsApplication, QgsProcessingAlgorithm, QgsProcessingContext, QgsProcessingFeedback, \
-    QgsProcessingOutputRasterLayer, QgsProcessingRegistry, QgsProject, \
+from qgis.core import (
+    QgsApplication, QgsProcessingAlgorithm, QgsProcessingContext,
+    QgsProcessingFeedback,
+    QgsProcessingOutputRasterLayer, QgsProcessingRegistry, QgsProject,
     QgsVectorLayer, edit, QgsProcessingException
-from qgis.core import (QgsProcessingParameterRasterLayer,
-                       QgsProcessingParameterNumber, QgsProcessingParameterRasterDestination)
-from qgis.gui import QgsProcessingAlgorithmDialogBase, QgsProcessingContextGenerator, \
+)
+from qgis.core import (
+    QgsProcessingParameterRasterLayer,
+    QgsProcessingParameterNumber, QgsProcessingParameterRasterDestination
+)
+from qgis.gui import (
+    QgsProcessingAlgorithmWidgetBase,
+    QgsProcessingContextGenerator,
     QgsProcessingGui, QgsProcessingParameterWidgetContext
+)
 from qps import initAll
 from qps.qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
-from qps.speclib.gui.spectralprocessingdialog import SpectralProcessingDialog, \
-    SpectralProcessingRasterLayerWidgetWrapper
+from qps.speclib.gui.spectralprocessingdialog import (
+    SpectralProcessingDialog, SpectralProcessingRasterLayerWidgetWrapper
+)
 from qps.testing import ExampleAlgorithmProvider, TestCase, TestObjects, start_app
 
 start_app()
@@ -456,12 +464,18 @@ class SpectralProcessingTests(TestCase):
 
     @unittest.skipIf(TestCase.runsInCI(), 'Sandbox only')
     def test_dialog(self):
-        class D(QgsProcessingAlgorithmDialogBase):
+
+        #  flags: QgsProcessingAlgorithmWidgetBase.WidgetFlags = QgsProcessingAlgorithmWidgetBase.WidgetFlags()
+        #  initialState: Qgis.DockableWidgetInitialState = Qgis.DockableWidgetInitialState.RestorePreviousState
+        parent = None
+
+        class D(QgsProcessingAlgorithmWidgetBase):
             def __init__(self, *args, **kwds):
-                super().__init__(*args, **kwds)
+                super().__init__(parent)
 
         d = D()
-        d.exec()
+        self.showGui(d)
+        # d.exec()
 
     def test_SpectralLibraryWidget(self):
 

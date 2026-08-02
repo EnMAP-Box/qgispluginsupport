@@ -293,7 +293,7 @@ class SpectralViewBox(pg.ViewBox):
 
     def mousePressEvent(self, ev):
         has_shift = ev.modifiers() & Qt.KeyboardModifier.ShiftModifier
-        has_ctrl = ev.modifiers() & Qt.Modifier.CTRL
+        has_ctrl = ev.modifiers() & Qt.KeyboardModifier.ControlModifier
         if ev.button() == Qt.MouseButton.LeftButton and (has_shift or has_ctrl):
             self._selecting = True
             self._p0 = self.mapSceneToView(ev.scenePos())
@@ -613,7 +613,7 @@ class SpectralProfilePlotWidget(pg.GraphicsLayoutWidget):
 
     def __init__(self, *args, **kwargs):
 
-        super().__init__(*args, *kwargs)
+        super().__init__(*args, **kwargs)
 
         pi1 = SpectralProfilePlotItem()
         pi2 = SpectralProfilePlotItem()
@@ -683,9 +683,10 @@ class SpectralProfilePlotWidget(pg.GraphicsLayoutWidget):
     def legend(self) -> pg.LegendItem:
         return self.mLegendItem1
 
-    def spectralProfilePlotDataItems(self,
-                                     is_selected: Optional[bool] = None) \
-            -> Generator[SpectralProfilePlotDataItem, Any, None]:
+    def spectralProfilePlotDataItems(
+        self,
+        is_selected: Optional[bool] = None
+    ) -> Generator[SpectralProfilePlotDataItem, Any, None]:
         """
         Returns a generator of SpectralProfilePlotDataItems
         :return:

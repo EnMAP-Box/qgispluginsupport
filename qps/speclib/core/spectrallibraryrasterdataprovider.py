@@ -832,9 +832,11 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
     def capabilities(self):
 
         # scap = super().capabilities()
+
+        RC = Qgis.RasterInterfaceCapability
+
         caps = (
-            Qgis.RasterInterfaceCapabilities.Size | Qgis.RasterInterfaceCapabilities.IdentifyValue
-            | Qgis.RasterInterfaceCapabilities.Identify  # noqa: W503
+            RC.Size | RC.IdentifyValue | RC.Identify  # noqa: W503
         )
         if Qgis.versionInt() >= 33800:
             return Qgis.RasterInterfaceCapabilities(caps)  # QgsRasterDataProvider.ProviderCapabilities(caps)
