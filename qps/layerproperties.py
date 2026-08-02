@@ -787,14 +787,17 @@ def rendererToXml(layerOrRenderer, geomType: QgsWkbTypes = None):
     return doc
 
 
-def pasteStyleToClipboard(layer: QgsMapLayer,
-                          categories: QgsMapLayer.StyleCategory = QgsMapLayer.StyleCategory.Symbology | QgsMapLayer.StyleCategory.Rendering):  # noqa: E501
+def pasteStyleToClipboard(
+    layer: QgsMapLayer,
+    categories: QgsMapLayer.StyleCategory = QgsMapLayer.StyleCategory.Symbology | QgsMapLayer.StyleCategory.Rendering
+):  # noqa: E501
     doc = QDomDocument()
     err = layer.exportNamedStyle(doc, categories=categories)
     if err == '':
         ba = QByteArray()
         stream = QTextStream(ba)
-        stream.setCodec('utf-8')
+        #  stream.setCodec('utf-8')
+        # stream.autoDetectUnicode()
         doc.documentElement().save(stream, 0)
         md = QMimeData()
         md.setData('application/qgis.style', ba)
