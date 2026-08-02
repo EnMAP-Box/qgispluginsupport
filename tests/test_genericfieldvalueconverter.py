@@ -87,7 +87,8 @@ class GenericFieldValueConverterTests(TestCase):
                 typeName='JSON'
             )
         )
-        fields.append(QgsField('map', type=QMetaType.Type.QVariantMap, subType=0, typeName='map'))
+        fields.append(
+            QgsField('map', type=QMetaType.Type.QVariantMap, subType=QMetaType.Type.UnknownType, typeName='map'))
         fields.append(QgsField('text', type=QMetaType.Type.QString))
         fields.append(QgsField('datetime', type=QMetaType.Type.QDateTime))
         fields.append(QgsField('date', type=QMetaType.Type.QDate))
