@@ -24,12 +24,13 @@
     along with this software. If not, see <https://www.gnu.org/licenses/>.
 ***************************************************************************
 """
+import collections.abc
 import copy
 import enum
 import inspect
 import re
 import types
-from typing import List, Iterator, Type, Union, Tuple, Dict, Pattern, Optional
+from typing import List, Type, Union, Tuple, Dict, Pattern, Optional
 
 import numpy as np
 
@@ -308,29 +309,29 @@ class TreeNode(QObject):
     sigUpdated = pyqtSignal(object)
 
     def __init__(self,
-                 name: str = None,
+                 name: str | None = None,
                  value: any = None,
                  values=None,
-                 icon: QIcon = None,
-                 toolTip: str = None,
-                 statusTip: str = None,
+                 icon: QIcon | None = None,
+                 toolTip: str | None = None,
+                 statusTip: str | None = None,
                  **kwds):
 
         super().__init__()
 
-        self.mParentNode: TreeNode = None
+        self.mParentNode: TreeNode | None = None
         self.mChildren: List[TreeNode] = []
-        self.mName: str = name
+        self.mName: str | None = name
         self.mValues: list = []
-        self.mIcon: QIcon = None
-        self.mToolTip: str = None
+        self.mIcon: QIcon | None = None
+        self.mToolTip: str | None = None
         self.mCheckState: Qt.CheckState = Qt.CheckState.Unchecked
         self.mCheckable: bool = False
         self.mStatusTip: str = ''
 
         if name:
             self.setName(name)
-        if value is not None:
+        if value:
             self.setValue(value)
         if icon:
             self.setIcon(icon)
@@ -482,7 +483,7 @@ class TreeNode(QObject):
             p.removeChildNodes(self)
 
     def hasChildren(self) -> bool:
-        return len(self.mChildren) > 0
+        return len(self.mChildren) > 0 or self.canFetchMore()
 
     def appendChildNodes(self, child_nodes):
         self.insertChildNodes(len(self.mChildren), child_nodes)
@@ -492,7 +493,7 @@ class TreeNode(QObject):
             raise AssertionError
         if isinstance(child_nodes, TreeNode):
             child_nodes = [child_nodes]
-        if not (isinstance(child_nodes, list)):
+        if not isinstance(child_nodes, list):
             raise AssertionError
         unique = []
         for n in child_nodes:
@@ -509,10 +510,8 @@ class TreeNode(QObject):
         self.beginAddChildNodes.emit(self, index, idxLast)
 
         for i, node in enumerate(child_nodes):
-            if not (isinstance(node, TreeNode)):
-                raise AssertionError
-
             # connect node signals
+
             node.beginAddChildNodes.connect(self.beginAddChildNodes)
             node.endAddChildNodes.connect(self.endAddChildNodes)
 
@@ -595,7 +594,7 @@ class TreeNode(QObject):
 
     def setParentNode(self, node: 'TreeNode'):
         self.mParentNode: TreeNode = node
-        # self.setParent(node)
+        self.setParent(node)
 
     def parentNode(self) -> 'TreeNode':
         return self.mParentNode
@@ -821,14 +820,19 @@ class PyObjectTreeNode(TreeNode):
                 value = str(obj)
 
             value = value.strip()
+            assert isinstance(value, str)
             if len(value) > max_line_width:
                 value = value[0:max_line_width - 3] + '...' + value[-3:]
             self.setValue(value)
             self.setToolTip(f'{self.name()} {value}')
             if len(subnodes) > 0:
                 self.appendChildNodes(subnodes)
+            # self.fetch()
+
+            # self.mIsFetched = True
 
     def canFetchMore(self) -> bool:
+        # return False
         return not self.mIsFetched
 
     @staticmethod
@@ -836,9 +840,10 @@ class PyObjectTreeNode(TreeNode):
         pass
 
     def hasChildren(self) -> bool:
-        return self.canFetchMore() or len(self.mChildren) > 0
+        return len(self.mChildren) > 0 or self.canFetchMore()
 
     def fetch(self):
+        # raise Exception('FETCH')
         FETCH_SIZE = 10
         # print(f'Fetch {self}: "{self.name()}"...')
 
@@ -856,19 +861,19 @@ class PyObjectTreeNode(TreeNode):
                 self.mFetchIterator = iter(self.mPyObject.items())
             elif isinstance(self.mPyObject, object):
                 self.mFetchIterator = iter(sorted(inspect.getmembers(self.mPyObject)))
-            elif isinstance(iter(self.mPyObject), Iterator):
-                self.mFetchIterator = self.mPyObject
+            elif isinstance(self.mPyObject, collections.abc.Iterable):
+                self.mFetchIterator = iter(self.mPyObject)
             else:
-                self.mIsFetched = True
-                return
+                raise NotImplementedError(f'Unsupported type: {type(self.mPyObject)}')
+            # else:
+            #    self.mIsFetched = True
+            #    return
 
         newNodes: List[PyObjectTreeNode] = []
 
-        i = 0
         try:
-            while i < FETCH_SIZE:
+            while len(newNodes) < FETCH_SIZE:
                 k, v = self.mFetchIterator.__next__()
-
                 if isinstance(k, str) and k.startswith('__'):
                     continue
                 if (
@@ -883,8 +888,8 @@ class PyObjectTreeNode(TreeNode):
 
                 # create a new node
                 # this allows to create a new node even of inherited classes
-                newNodes.append(self.__class__(name=str(k), obj=v))
-                i += 1
+                # newNodes.append(self.__class__(name=str(k), obj=v))
+                newNodes.append(PyObjectTreeNode(name=str(k), obj=v))
 
         except StopIteration:
             self.mIsFetched = True
@@ -951,7 +956,7 @@ class TreeModel(QAbstractItemModel):
 
     def endInsertNodes(self, node: TreeNode, first: int, last: int):
         self.endInsertRows()
-
+        s = ""
         # self.mCNT_INSERT -= 1
         # parent = self.node2idx(node)
         # idx1 = self.index(first, 0, parent)
@@ -1100,9 +1105,6 @@ class TreeModel(QAbstractItemModel):
 
         node = parent.internalPointer()
 
-        if isinstance(node, PyObjectTreeNode):
-            pass
-
         if isinstance(node, TreeNode):
             return node.canFetchMore()
         else:
@@ -1115,7 +1117,7 @@ class TreeModel(QAbstractItemModel):
         :return:
         """
         node = index.internalPointer()
-        if isinstance(node, TreeNode):
+        if isinstance(node, TreeNode) and node.canFetchMore():
             node.fetch()
 
     def columnCount(self, parent: QModelIndex = None) -> int:

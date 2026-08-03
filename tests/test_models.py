@@ -152,7 +152,10 @@ class ModelTests(TestCase):
     def test_pyObjectNodes(self):
 
         m = TreeModel()
-        _ = QAbstractItemModelTester(m, QAbstractItemModelTester.FailureReportingMode.Fatal)
+        tester = QAbstractItemModelTester(m, QAbstractItemModelTester.FailureReportingMode.Fatal)
+        self.assertIsInstance(tester, QAbstractItemModelTester)
+        tester.setUseFetchMore(True)
+
         if True:
             tv = TreeView()
             tv.setUniformRowHeights(True)
@@ -180,13 +183,32 @@ class ModelTests(TestCase):
                 'CA': QgsMapCanvas(),
                 }
 
-        objNode = PyObjectTreeNode('DATA', obj=DATA)
-        objNode0 = PyObjectTreeNode('Array', obj=np.asarray([[1, 2], [3, 4], [5, 6]]))
+        objNode0 = PyObjectTreeNode('DATA', obj=DATA)
+        objNode1 = PyObjectTreeNode('Array', obj=np.asarray([[1, 2], [3, 4], [5, 6]]))
+        objNode2 = PyObjectTreeNode('String', obj=[['foo', 'bar'], ['foo1', 'bar1']])
+        objNode2 = PyObjectTreeNode('String', obj=['foo', 'bar'])
+
+        if False:
+            self.assertEqual(len(objNode2.childNodes()), 0)
+            self.assertTrue(objNode2.canFetchMore())
+            objNode2.fetch()
+            self.assertEqual(len(objNode2.childNodes()), 2)
+            self.assertFalse(objNode2.canFetchMore())
+
         n = TreeNode('TOP')
-        n.appendChildNodes(objNode0)
-        n.appendChildNodes(objNode)
+        n2 = TreeNode('TOP2')
+        # n.appendChildNodes(n2)
+        # n.appendChildNodes(objNode0)
+        # n.appendChildNodes(objNode1)
+        n.appendChildNodes(objNode2)
+        # n.appendChildNodes([objNode])
+
+        ## root2 = TreeNode('ROOT2')
+        ## root2.appendChildNodes(n)
         root.appendChildNodes(n)
+
         tv.setModel(m)
+        n.appendChildNodes(n2)
         self.showGui(tv)
 
     def test_treeNode(self):
@@ -311,6 +333,7 @@ class ModelTests(TestCase):
         self.assertIsInstance(TV, TreeView)
         TV.setAutoExpansionDepth(2)
         TM = TreeModel()
+
         TV.setModel(TM)
         tester = QAbstractItemModelTester(TM, QAbstractItemModelTester.FailureReportingMode.Fatal)
         self.assertIsInstance(tester, QAbstractItemModelTester)
