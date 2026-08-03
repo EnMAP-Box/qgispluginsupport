@@ -4,8 +4,8 @@ export CI=True
 export QGIS_CONTINUOUS_INTEGRATION_RUN=true
 export PYQTGRAPH_QT_LIB=PyQt5
 export PYTHONPATH="${PYTHONPATH}"\
-":$(pwd)"\
-":/usr/share/qgis/python/plugins"
+":$(pwd)"
+# ":/usr/share/qgis/python/plugins"
 
 rm -Rf test-outputs
 rm -Rf test-reports
