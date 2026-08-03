@@ -647,12 +647,14 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
     def _statsKey(self, bandNo, stats, extent, sampleSize):
         return (bandNo, stats, HashableRectangle(extent))
 
-    def bandStatistics(self,
-                       bandNo: int,
-                       stats: int = ...,
-                       extent: QgsRectangle = ...,
-                       sampleSize: int = ...,
-                       feedback: Optional['QgsRasterBlockFeedback'] = ...) -> 'QgsRasterBandStats':
+    def bandStatistics(
+        self,
+        bandNo: int,
+        stats: Qgis.RasterBandStatistic,
+        extent: Optional[QgsRectangle] = None,
+        sampleSize: int = 0,
+        feedback: Optional[QgsRasterBlockFeedback] = None
+    ) -> QgsRasterBandStats:
 
         if extent is None:
             extent = QgsRectangle()
