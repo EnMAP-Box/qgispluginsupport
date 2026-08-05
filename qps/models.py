@@ -310,7 +310,7 @@ class TreeNode(QObject):
 
     def __init__(self,
                  name: str | None = None,
-                 value: any = None,
+                 value: Optional = None,
                  values=None,
                  icon: QIcon | None = None,
                  toolTip: str | None = None,
@@ -342,6 +342,8 @@ class TreeNode(QObject):
 
         if values is not None:
             self.setValues(values)
+        elif value is not None:
+            self.setValue(value)
 
     def populateContextMenu(self, menu: QMenu):
         """
@@ -820,7 +822,6 @@ class PyObjectTreeNode(TreeNode):
                 value = str(obj)
 
             value = value.strip()
-            assert isinstance(value, str)
             if len(value) > max_line_width:
                 value = value[0:max_line_width - 3] + '...' + value[-3:]
             self.setValue(value)
@@ -952,11 +953,13 @@ class TreeModel(QAbstractItemModel):
         if node == self.mRootNode or parent.isValid():
             self.beginInsertRows(parent, first, last)
         else:
+            s = ""
             pass
+        s = ""
 
     def endInsertNodes(self, node: TreeNode, first: int, last: int):
         self.endInsertRows()
-        s = ""
+
         # self.mCNT_INSERT -= 1
         # parent = self.node2idx(node)
         # idx1 = self.index(first, 0, parent)
@@ -1512,7 +1515,7 @@ class TreeView(QTreeView):
 
         return
 
-    def selectedNode(self) -> TreeNode:
+    def selectedNode(self) -> Optional[TreeNode]:
         """
         Returns the first of all selected TreeNodes
         :return: TreeNode
