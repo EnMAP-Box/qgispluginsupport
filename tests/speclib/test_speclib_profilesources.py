@@ -4,6 +4,11 @@ import random
 import unittest
 from typing import Iterator, List, Tuple
 
+from qgis.PyQt.QtCore import QSize, Qt, QMetaType
+from qgis.PyQt.QtWidgets import QHBoxLayout, QPushButton, QSplitter, QVBoxLayout, QWidget
+from qgis.core import edit, Qgis, QgsExpressionContext, QgsFeature, QgsField, QgsGeometry, QgsMapToPixel, QgsPoint, \
+    QgsPointXY, QgsProject, QgsRaster, QgsRasterDataProvider, QgsRasterLayer, QgsVectorLayer, QgsWkbTypes
+from qgis.gui import QgsDualView, QgsMapCanvas
 from qps import initAll
 from qps.maptools import CursorLocationMapTool
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
@@ -14,16 +19,10 @@ from qps.speclib.gui.spectralprofilesources import (
     SpectralFeatureGeneratorNode, SpectralProfileBridge, SpectralProfileBridgeTreeView,
     SpectralProfileBridgeViewDelegate, SpectralProfileGeneratorNode, SpectralProfileSource,
     SpectralProfileSourceModel, SpectralProfileSourcePanel, SpectralProfileSourceProxyModel,
-    StandardFieldGeneratorNode, StandardLayerProfileSource)
+    StandardFieldGeneratorNode, StandardLayerProfileSource, FloatValueNode)
 from qps.testing import start_app, TestCase, TestObjects
 from qps.utils import rasterArray, SpatialExtent, SpatialPoint
 from qpstestdata import enmap
-
-from qgis.PyQt.QtCore import QSize, Qt, QMetaType
-from qgis.PyQt.QtWidgets import QHBoxLayout, QPushButton, QSplitter, QVBoxLayout, QWidget
-from qgis.core import edit, Qgis, QgsExpressionContext, QgsFeature, QgsField, QgsGeometry, QgsMapToPixel, QgsPoint, \
-    QgsPointXY, QgsProject, QgsRaster, QgsRasterDataProvider, QgsRasterLayer, QgsVectorLayer, QgsWkbTypes
-from qgis.gui import QgsDualView, QgsMapCanvas
 
 start_app()
 initAll()
@@ -667,6 +666,14 @@ class SpectralProcessingTests(TestCase):
         n2.setField(field)
         errors = list(n2.errors(recursive=True))
         self.assertFalse(n2.hasErrors())
+
+    def test_floatvaluenode(self):
+
+        for f in [0.0, 99.0, -235]:
+            n = FloatValueNode('offset', value=f)
+            v = n.value()
+            self.assertIsInstance(v, float)
+            self.assertEqual(v, f)
 
     def test_SpectralFeatureGenerator(self):
 

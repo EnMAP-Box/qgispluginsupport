@@ -647,47 +647,47 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
     def _statsKey(self, bandNo, stats, extent, sampleSize):
         return (bandNo, stats, HashableRectangle(extent))
 
-    def bandStatistics(self,
-                       bandNo: int,
-                       stats: int = ...,
-                       extent: QgsRectangle = ...,
-                       sampleSize: int = ...,
-                       feedback: Optional['QgsRasterBlockFeedback'] = ...) -> 'QgsRasterBandStats':
+    def bandStatistics(
+        self,
+        bandNo: int,
+        stats: Qgis.RasterBandStatistic,
+        extent: Optional[QgsRectangle] = None,
+        sampleSize: int = 0,
+        feedback: Optional[QgsRasterBlockFeedback] = None
+    ) -> QgsRasterBandStats:
 
-        statsKey = self._statsKey(bandNo, stats, extent, sampleSize)
-        if statsKey in self.mStatsCache.keys():
-            return self.mStatsCache[statsKey]
-        print('# statistics')
         if extent is None:
             extent = QgsRectangle()
         else:
             extent = QgsRectangle(extent)
 
-        stats = QgsRasterBandStats()
+        statsKey = self._statsKey(bandNo, stats, extent, sampleSize)
+        if statsKey in self.mStatsCache.keys():
+            return self.mStatsCache[statsKey]
+
+        results = QgsRasterBandStats()
         if self.hasFieldConverter():
             band_data: np.ndarray = self.fieldConverter().rasterDataArray()[bandNo - 1, :, :]
+            nl, ns = band_data.shape
+            if nl > 0 and ns > 0:
+                results.sum = np.nansum(band_data)
+                results.minimumValue = np.nanmin(band_data)
+                results.maximumValue = np.nanmax(band_data)
+                results.mean = np.nanmean(band_data)
+            results.extent = extent
+            results.elementCount = nl * ns
+            results.height = band_data.shape[-2]
+            results.width = band_data.shape[-1]
 
-            stats.sum = np.nansum(band_data)
-            stats.minimumValue = np.nanmin(band_data)
-            stats.maximumValue = np.nanmax(band_data)
-            stats.mean = np.nanmean(band_data)
-            stats.extent = extent
-            stats.elementCount = len(band_data)
-            stats.height = band_data.shape[-2]
-            stats.width = band_data.shape[-1]
-
+            RC = Qgis.RasterBandStatistic
             statsGathered = (
-                Qgis.RasterBandStatistics.Sum | Qgis.RasterBandStatistics.Mean
-                | Qgis.RasterBandStatistics.Min | Qgis.RasterBandStatistics.Max  # noqa: W503
+                RC.Sum | RC.Mean | RC.Min | RC.Max  # noqa: W503
             )
 
-            if Qgis.versionInt() >= 33600:
-                stats.statsGathered = Qgis.RasterBandStatistics(statsGathered)
-            else:
-                stats.statsGathered = QgsRasterBandStats.Stats(statsGathered)
+            results.statsGathered = Qgis.RasterBandStatistics(statsGathered)
 
-            self.mStatsCache[statsKey] = stats
-        return stats
+            self.mStatsCache[statsKey] = results
+        return results
 
     def hasFieldConverter(self) -> bool:
         return isinstance(self.mFieldConverter, FieldToRasterValueConverter)
