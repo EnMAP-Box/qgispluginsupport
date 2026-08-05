@@ -952,10 +952,6 @@ class TreeModel(QAbstractItemModel):
         parent = self.node2idx(node)
         if node == self.mRootNode or parent.isValid():
             self.beginInsertRows(parent, first, last)
-        else:
-            s = ""
-            pass
-        s = ""
 
     def endInsertNodes(self, node: TreeNode, first: int, last: int):
         self.endInsertRows()
