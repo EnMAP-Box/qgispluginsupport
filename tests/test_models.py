@@ -152,9 +152,9 @@ class ModelTests(TestCase):
     def test_pyObjectNodes(self):
 
         m = TreeModel()
-        # tester = QAbstractItemModelTester(m, QAbstractItemModelTester.FailureReportingMode.Fatal)
-        # self.assertIsInstance(tester, QAbstractItemModelTester)
-        # tester.setUseFetchMore(True)
+        tester = QAbstractItemModelTester(m, QAbstractItemModelTester.FailureReportingMode.Fatal)
+        self.assertIsInstance(tester, QAbstractItemModelTester)
+        tester.setUseFetchMore(False)
 
         if True:
             tv = TreeView()
@@ -186,19 +186,15 @@ class ModelTests(TestCase):
         objNode0 = PyObjectTreeNode('DATA', obj=DATA)
         objNode1 = PyObjectTreeNode('Array', obj=np.asarray([[1, 2], [3, 4], [5, 6]]))
         objNode2 = PyObjectTreeNode('String', obj=[['foo', 'bar'], ['foo1', 'bar1']])
-        # objNode1 = PyObjectTreeNode('String', obj='foo')
-        # objNode2 = PyObjectTreeNode('String', obj=['foo', 'bar'])
-
-        if False:
-            self.assertEqual(len(objNode2.childNodes()), 0)
-            self.assertTrue(objNode2.canFetchMore())
-            objNode2.fetch()
-            self.assertEqual(len(objNode2.childNodes()), 2)
-            self.assertFalse(objNode2.canFetchMore())
 
         n = TreeNode('TOP')
+        root.appendChildNodes(n)
         n2 = TreeNode('TOP2')
-        for node in [objNode0, objNode1, objNode2]:
+        n.appendChildNodes(n2)
+
+        for node in [objNode0,
+                     objNode1,
+                     objNode2]:
             n2.appendChildNodes(node)
         # n.appendChildNodes(n2)
         # n.appendChildNodes(objNode0)
@@ -208,10 +204,10 @@ class ModelTests(TestCase):
 
         # root2 = TreeNode('ROOT2')
         # root2.appendChildNodes(n)
-        root.appendChildNodes(objNode2)
 
         tv.setModel(m)
-        n.appendChildNodes(n2)
+        # tv.expandAll()
+        # n.appendChildNodes(n2)
         self.showGui(tv)
 
     def test_treeNode(self):
