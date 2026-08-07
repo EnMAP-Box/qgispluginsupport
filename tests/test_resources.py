@@ -44,11 +44,23 @@ class ResourceTests(TestCase):
         self.assertTrue(r in resources, '"{}" not loaded to resource system'.format(r))
         w = QWidget()
         w.setWindowIcon(QIcon(r))
-        w.show()
+        self.showGui(w)
 
     def test_resource_browser(self):
 
         B = ResourceBrowser()
+        B.tbFilter.setText('qps*.svg')
+        B.updateFilter()
+        B.optionUseRegex.setChecked(False)
+        B.updateFilter()
+        B.optionUseRegex.setChecked(True)
+        B.updateFilter()
+
+        B.optionCaseSensitive.setChecked(False)
+        B.updateFilter()
+        B.optionCaseSensitive.setChecked(True)
+        B.updateFilter()
+
         self.assertIsInstance(B, QWidget)
         self.showGui(B)
 

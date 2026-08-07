@@ -519,7 +519,7 @@ class ResourceBrowser(QWidget):
 
         self.resourceModel: ResourceTableModel = ResourceTableModel()
         self.resourceProxyModel = QSortFilterProxyModel()
-        self.resourceProxyModel.setFilterKeyColumn(0)
+        self.resourceProxyModel.setFilterKeyColumn(-1)
         self.resourceProxyModel.setFilterRole(Qt.ItemDataRole.UserRole)
         self.resourceProxyModel.setSourceModel(self.resourceModel)
 
@@ -540,23 +540,24 @@ class ResourceBrowser(QWidget):
 
         txt = self.tbFilter.text()
 
+        if not self.optionUseRegex.isChecked():
+            wc_options = QRegularExpression.WildcardConversionOption.UnanchoredWildcardConversion
+            txt = QRegularExpression.wildcardToRegularExpression(txt, wc_options)
+
         expr = QRegularExpression(txt)
 
-        if self.optionUseRegex.isChecked():
-            expr.setPatternSyntax(QRegularExpression.RegExp)
-        else:
-            expr.setPatternSyntax(QRegularExpression.Wildcard)
-
         if self.optionCaseSensitive.isChecked():
-            expr.setCaseSensitivity(Qt.CaseSensitivity.CaseSensitive)
+            options = QRegularExpression.PatternOption.NoPatternOption
         else:
-            expr.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+            options = QRegularExpression.PatternOption.CaseInsensitiveOption
+
+        expr.setPatternOptions(options)
 
         if expr.isValid():
-            self.resourceProxyModel.setFilterRegExp(expr)
+            self.resourceProxyModel.setFilterRegularExpression(expr)
             self.info.setText('')
         else:
-            self.resourceProxyModel.setFilterRegExp(None)
+            self.resourceProxyModel.setFilterRegularExpression(None)
             self.info.setText(expr.errorString())
 
     def onSelectionChanged(self, selected, deselected):
