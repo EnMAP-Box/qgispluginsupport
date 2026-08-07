@@ -6,7 +6,6 @@ from qgis.core import (
 )
 from qgis.core import QgsRasterBandStats
 from qgis.gui import QgsMapCanvas, QgsMapLayerComboBox
-
 from qps import initResources
 from qps.speclib.core import profile_fields
 from qps.speclib.core.spectrallibraryrasterdataprovider import createRasterLayers, registerDataProvider, \
@@ -46,7 +45,7 @@ class RasterDataProviderTests(TestCase):
             self.assertTrue(dp.fields() == vl.fields())
 
             caps = dp.capabilities()
-            self.assertIsInstance(caps, Qgis.RasterInterfaceCapabilities)
+            self.assertIsInstance(caps, Qgis.RasterInterfaceCapability)
 
             crs = dp.crs()
             dp.setActiveFeatures(features)
