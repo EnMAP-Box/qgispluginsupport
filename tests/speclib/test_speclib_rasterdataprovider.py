@@ -1,8 +1,12 @@
 import unittest
 
 from qgis.PyQt.QtWidgets import QVBoxLayout, QWidget
-from qgis.core import Qgis, QgsCoordinateReferenceSystem, QgsProject, QgsRasterLayer, QgsRasterPipe, QgsRasterRange
+from qgis.core import (
+    Qgis, QgsCoordinateReferenceSystem, QgsProject, QgsRasterLayer, QgsRasterPipe, QgsRasterRange
+)
+from qgis.core import QgsRasterBandStats
 from qgis.gui import QgsMapCanvas, QgsMapLayerComboBox
+
 from qps import initResources
 from qps.speclib.core import profile_fields
 from qps.speclib.core.spectrallibraryrasterdataprovider import createRasterLayers, registerDataProvider, \
@@ -40,6 +44,10 @@ class RasterDataProviderTests(TestCase):
 
             self.assertIsInstance(dp, VectorLayerFieldRasterDataProvider)
             self.assertTrue(dp.fields() == vl.fields())
+
+            caps = dp.capabilities()
+            self.assertIsInstance(caps, Qgis.RasterInterfaceCapabilities)
+
             crs = dp.crs()
             dp.setActiveFeatures(features)
             self.assertIsInstance(crs, QgsCoordinateReferenceSystem)
@@ -54,6 +62,8 @@ class RasterDataProviderTests(TestCase):
                 self.assertTrue(displayName, str)
                 self.assertTrue(displayName != '')
 
+                stats = dp.bandStatistics(b, Qgis.RasterBandStatistic.All)
+                self.assertIsInstance(stats, QgsRasterBandStats)
                 dt = dp.sourceDataType(b)
                 self.assertIsInstance(dt, Qgis.DataType)
                 src_nodata = dp.sourceNoDataValue(b)
