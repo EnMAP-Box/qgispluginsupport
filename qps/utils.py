@@ -1840,15 +1840,26 @@ def equalRasterRenderer(renderer1: QgsRasterRenderer, renderer2: QgsRasterRender
 def readDateTime(
     text: str,
     format_hint: str | None = None
-) -> Tuple[datetime.datetime, str]:
+) -> Tuple[datetime.datetime, Optional[str]]:
     """
     Tries to read the input text as datetime.datetime object
     :param text: input text
     :param format_hint: format_hint.
     :return: datetime.datetime, format_hint
     """
+    try:
+        import dateutil.parser
+        result = dateutil.parser.parse(text)
+        if isinstance(result, datetime.datetime):
+            return result, None
+    except ImportError:
+        pass
+    except Exception:
+        pass
+
     # List of common datetime format patterns to try
     formats = [
+        '%m/%d/%Y %H:%M:%S %p',
         '%m/%d/%Y %H:%M:%S',
         '%m/%d/%Y %H:%M:%S.%f',
         '%d/%m/%Y %H:%M:%S',
