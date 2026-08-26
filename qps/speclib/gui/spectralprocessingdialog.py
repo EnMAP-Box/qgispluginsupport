@@ -1,10 +1,10 @@
 import datetime
 import json
 import os
-import pathlib
 import sys
 from difflib import SequenceMatcher
 from json import JSONDecodeError
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 from processing import createContext
@@ -15,6 +15,7 @@ from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import (
     QCheckBox, QComboBox, QDialog, QGridLayout, QLabel, QLineEdit, QPushButton, QSizePolicy,
     QVBoxLayout, QWidget)
+from qgis._core import QgsProcessingDestinationParameter
 from qgis.core import (
     Qgis, QgsApplication, QgsCoordinateTransformContext, QgsEditorWidgetSetup, QgsFeature, QgsField,
     QgsFields, QgsMapLayer, QgsMapLayerModel, QgsPalettedRasterRenderer, QgsProcessing, QgsProcessingAlgorithm,
@@ -28,6 +29,7 @@ from qgis.gui import (
     QgsProcessingAlgorithmDialogBase, QgsProcessingContextGenerator, QgsProcessingGui, QgsProcessingHiddenWidgetWrapper,
     QgsProcessingParametersGenerator, QgsProcessingParametersWidget, QgsProcessingParameterWidgetContext,
     QgsProcessingRecentAlgorithmLog, QgsProcessingToolboxProxyModel)
+
 from .. import EDITOR_WIDGET_REGISTRY_KEY, speclibSettings
 from ..core import can_store_spectral_profiles, is_profile_field
 from ..core.spectrallibrary import SpectralLibraryUtils
@@ -95,8 +97,13 @@ class SpectralProcessingAlgorithmModel(QgsProcessingToolboxProxyModel):
         sourceIdx = tbm.index(sourceRow, 0, sourceParent)
         if tbm.isAlgorithm(sourceIdx):
             alg = tbm.algorithmForIndex(sourceIdx)
-            return super().filterAcceptsRow(sourceRow, sourceParent) and has_raster_input(alg) and has_raster_output(
-                alg)
+            if alg.flags() & QgsProcessingAlgorithm.Flag.FlagHideFromToolbox:
+                return False
+            return (
+                super().filterAcceptsRow(sourceRow, sourceParent)
+                # and has_raster_input(alg)
+                and has_raster_output(alg)
+            )
         # isParameter was introduced with QGIS 3.44
         if hasattr(tbm, 'isParameter') and tbm.isParameter(sourceIdx):
             return False
@@ -183,7 +190,7 @@ class SpectralProcessingRasterDestination(QgsAbstractProcessingParameterWidgetWr
 
     @classmethod
     def pathToFieldName(cls, path: str) -> str:
-        name, ext = os.path.splitext(pathlib.Path(path).name)
+        name = Path(path).stem
         suffix = f'{QgsProcessing.TEMPORARY_OUTPUT}_'
         name = name.replace(suffix, '')
         return name
@@ -411,8 +418,12 @@ class SpectralProcessingModelCreatorAlgorithmWrapper(QgsProcessingParametersWidg
 
         self.mIs_active: bool = True
 
-    def addParameterWidget(self, parameter: QgsProcessingParameterDefinition, widget: QWidget,
-                           stretch: int = ...) -> None:
+    def addParameterWidget(
+        self,
+        parameter: QgsProcessingParameterDefinition,
+        widget: QWidget,
+        stretch: int = ...
+    ) -> None:
 
         super().addParameterWidget(parameter, widget, stretch)
         self.mParameterWidgets[parameter.name()] = widget
@@ -480,8 +491,10 @@ class SpectralProcessingModelCreatorAlgorithmWrapper(QgsProcessingParametersWidg
             if isinstance(widget, QWidget):
                 self.addParameterWidget(param, widget, stretch)
 
+        handled_outputs = []
         for output in self.algorithm().destinationParameterDefinitions():
-            if output.flags() & QgsProcessingParameterDefinition.Flag.FlagHidden:
+            if (isinstance(output, QgsProcessingDestinationParameter)
+                and output.flags() & QgsProcessingParameterDefinition.Flag.FlagHidden):
                 continue
 
             if isinstance(output, QgsProcessingParameterRasterDestination):
@@ -507,7 +520,16 @@ class SpectralProcessingModelCreatorAlgorithmWrapper(QgsProcessingParametersWidg
 
             widget = wrapper.createWrappedWidget(self.mProcessing_context)
             if isinstance(widget, QWidget):
+                handled_outputs.append(output.name())
                 self.addOutputWidget(widget, wrapper.stretch())
+
+        # for output in self.algorithm().outputDefinitions():
+        #     output: QgsProcessingOutputDefinition
+        #     if isinstance(output, QgsProcessingOutputRasterLayer):
+        #         wrapper = SpectralProcessingRasterDestination(output, QgsProcessingGui.WidgetType.Standard)
+        #         wrapper.setFields(self.mSpeclib.fields())
+        #
+        #         handled_outputs.append(output.name())
 
         for wrapper in list(self.mWrappers.values()):
             wrapper.postInitialize(list(self.mWrappers.values()))
@@ -850,16 +872,22 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
                     OUTPUTS[parameter.name()] = (parameter, result_value)
 
                     if isinstance(parameter, QgsProcessingOutputRasterLayer):
-                        lyr = QgsRasterLayer(results[parameter.name()])
-                        if not lyr.isValid():
+                        # try 1:
+                        lyr = processingContext.getMapLayer(results[parameter.name()])
+                        if lyr is None:
+                            lyr = QgsRasterLayer(results[parameter.name()])
+
+                        if not isinstance(lyr, QgsRasterLayer) and lyr.isValid():
                             info = f'Unable to open {lyr.source()}'
                             self.log(info, isError=True)
                         else:
                             tmp = rasterArray(lyr)
                             nb, nl, ns = tmp.shape
 
-                            path1 = parameters[parameter.name()]
-                            target_field_name = SpectralProcessingRasterDestination.pathToFieldName(path1)
+                            target_field_name = lyr.name()
+                            if target_field_name == '':
+                                target_field_name = SpectralProcessingRasterDestination.pathToFieldName(lyr.source())
+
                             target_field_index = speclib.fields().lookupField(target_field_name)
                             if target_field_index == -1:
                                 # create a new field
@@ -1087,7 +1115,7 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
             self.flag_invalid_output_extension(e.message, e.widget)
         return {}
 
-    def setAlgorithm(self, alg: Union[str, pathlib.Path, QgsProcessingAlgorithm]):
+    def setAlgorithm(self, alg: Union[str, Path, QgsProcessingAlgorithm]):
 
         if isinstance(alg, str):
             reg: QgsProcessingRegistry = QgsApplication.instance().processingRegistry()
@@ -1095,9 +1123,9 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
             if isinstance(a, QgsProcessingAlgorithm):
                 alg = a
             else:
-                alg = pathlib.Path(alg)
+                alg = Path(alg)
 
-        if isinstance(alg, pathlib.Path):
+        if isinstance(alg, Path):
             if not (alg.is_file()):
                 raise AssertionError(f'Not a model file: {alg}')
             m = QgsProcessingModelAlgorithm()
@@ -1119,14 +1147,18 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
         self.mPanelWidget = w
         self.updateGui()
 
-    def getParametersPanel(self, alg: QgsProcessingAlgorithm,
-                           parent: QWidget) -> SpectralProcessingModelCreatorAlgorithmWrapper:
+    def getParametersPanel(
+        self,
+        alg: QgsProcessingAlgorithm,
+        parent: QWidget
+    ) -> SpectralProcessingModelCreatorAlgorithmWrapper:
         if isinstance(self.mSpeclib, QgsVectorLayer):
-            panel = SpectralProcessingModelCreatorAlgorithmWrapper(alg,
-                                                                   self.mSpeclib,
-                                                                   processingContext=self.mProcessingContext,
-                                                                   parent=self
-                                                                   )
+            panel = SpectralProcessingModelCreatorAlgorithmWrapper(
+                alg,
+                self.mSpeclib,
+                processingContext=self.mProcessingContext,
+                parent=self
+            )
         else:
             panel = QgsPanelWidget()
             if not panel.layout():
