@@ -24,15 +24,15 @@
     along with this software. If not, see <https://www.gnu.org/licenses/>.
 ***************************************************************************
 """
-import datetime
-import pathlib
 import re
 from pathlib import Path
 from typing import Union
 
 from qgis.PyQt.QtCore import QMetaType
 from qgis.core import QgsPointXY
+
 from ..core.spectralprofile import prepareProfileValueDict, SpectralProfileFileReader
+from ...utils import readDateTime
 
 
 class SEDAttributes(object):
@@ -141,7 +141,7 @@ class SEDFile(SpectralProfileFileReader):
         path = Path(path)
         return rx_sed_file.search(path.name) is not None
 
-    def readFromSEDFile(self, path: Union[str, pathlib.Path]):
+    def readFromSEDFile(self, path: Union[str, Path]):
         """
         Reads data from a binary file
         :param path:
@@ -153,6 +153,7 @@ class SEDFile(SpectralProfileFileReader):
 
             iFirstDataLine = None
 
+            header_cols = []
             for i, line in enumerate(LINES):
                 match_meta = rx_metadata.match(line)
                 if match_meta:
@@ -163,39 +164,79 @@ class SEDFile(SpectralProfileFileReader):
 
                     self.mMetadata[key] = value
 
-                elif rx_table_header.match(line):
-                    iFirstDataLine = i + 1
-                    break
-
-            if iFirstDataLine:
-                wvl = []
-                rad_r = []
-                rad_t = []
-                refl = []
-                for line in LINES[iFirstDataLine:]:
-                    splitted = [float(v) for v in re.split(r'\s+', line.strip())]
-                    if len(splitted) != 4:
+                else:
+                    match_hdr = rx_table_header.match(line)
+                    if match_hdr:
+                        header_cols.extend(match_hdr.group().split('\t'))
+                        iFirstDataLine = i + 1
                         break
-                    wvl.append(splitted[0])
-                    rad_r.append(splitted[1])
-                    rad_t.append(splitted[2])
-                    refl.append(splitted[3])
+
+            header_cols = [h.strip() for h in header_cols]
+
+            if 'Wvl' not in header_cols:
+                raise Exception(f'Unable to find Wvl column in {path}')
+
+            # Prepare data lists for known column types
+            data_dict = {}
+            for header in header_cols:
+                data_dict[header] = []
+
+            nc = len(header_cols)
+            for line in LINES[iFirstDataLine:]:
+                line = line.strip()
+                if not line:
+                    continue  # skip empty lines
+
+                # Split the line by whitespace or comma
+                values = re.split(r'[\s,]+', line)
+
+                # Parse numeric values, try float first, fallback to string
+                parsed_values = []
+                for v in values:
+                    try:
+                        parsed_values.append(float(v))
+                    except ValueError:
+                        parsed_values.append(v)
+
+                # If we have enough values, populate the appropriate columns
+                if len(parsed_values) == nc:
+                    for h, v in zip(header_cols, parsed_values):
+                        data_dict[h].append(v)
+
+            # Extract the standard data columns if they exist
+            wvl = data_dict['Wvl']
+            yUnit = self.mMetadata.get('Units', None)
+
+            for column in data_dict.keys():
+                y = data_dict[column]
+                if column == 'Wvl':
+                    continue
+                elif column in ['Reflect. %', 'Tgt./Ref. %']:
+                    profile = prepareProfileValueDict(x=wvl, y=y, xUnit='nm', yUnit='%')
+                    self.mReflectance = profile
+                elif column in ['Rad. (Ref.)', ]:
+                    profile = prepareProfileValueDict(x=wvl, y=y, xUnit='nm', yUnit=yUnit)
+                    self.mReference = profile
+                elif column in ['Rad. (Target)']:
+                    profile = prepareProfileValueDict(x=wvl, y=y, xUnit='nm', yUnit=yUnit)
+                    self.mTarget = profile
+                else:
+                    pass
 
             if 'Date' in self.mMetadata and 'Time' in self.mMetadata:
                 d1, d2 = self.mMetadata['Date'].split(',')
                 t1, t2 = self.mMetadata['Time'].split(',')
-                self.mReferenceTime = datetime.datetime.strptime(d1 + ' ' + t1, '%m/%d/%Y %H:%M:%S')
-                self.mTargetTime = datetime.datetime.strptime(d2 + ' ' + t2, '%m/%d/%Y %H:%M:%S')
+                dt1, hint = readDateTime(d1 + ' ' + t1)
+                dt2, _ = readDateTime(d2 + ' ' + t2, hint)
+                self.mReferenceTime = dt1
+                self.mTargetTime = dt2
+
+                # self.mReferenceTime = datetime.datetime.strptime(d1 + ' ' + t1, '%m/%d/%Y %H:%M:%S')
+                # self.mTargetTime = datetime.datetime.strptime(d2 + ' ' + t2, '%m/%d/%Y %H:%M:%S')
 
             if 'Latitude' in self.mMetadata and 'Longitude' in self.mMetadata:
-                self.mTargetCoordinate = QgsPointXY(float(self.mMetadata['Longitude']),
-                                                    float(self.mMetadata['Latitude']))
-
-            yUnit = self.mMetadata.get('Units', None)
-            profile_r = prepareProfileValueDict(x=wvl, y=rad_r, xUnit='nm', yUnit=yUnit)
-            profile_t = prepareProfileValueDict(x=wvl, y=rad_t, xUnit='nm', yUnit=yUnit)
-            profile_refl = prepareProfileValueDict(x=wvl, y=refl, xUnit='nm', yUnit='%')
-
-            self.mReference = profile_r
-            self.mTarget = profile_t
-            self.mReflectance = profile_refl
+                try:
+                    self.mTargetCoordinate = QgsPointXY(float(self.mMetadata['Longitude']),
+                                                        float(self.mMetadata['Latitude']))
+                except ValueError:
+                    pass

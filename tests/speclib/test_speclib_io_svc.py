@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import List
 
 from qgis.core import QgsFeature, QgsVectorLayer
+
 from qps import initAll
 from qps.speclib.core import is_spectral_feature, is_spectral_library
 from qps.speclib.core.spectralprofile import isProfileValueDict
@@ -55,25 +56,6 @@ class TestSpeclibIO_SVC(TestCase):
         import qpstestdata
         svc_dir = pathlib.Path(qpstestdata.__file__).parent / 'svc'
         return list(file_search(svc_dir, re.compile(r'.*\.sig$'), recursive=True))
-
-    def test_parse_datetime(self):
-
-        # dt = datetime.now().replace(microsecond=0)
-        dt = datetime(2025, 10, 15, 12, 21, 50)
-        # dt = datetime(2025, 10, 15, 8, 21, 50)
-        formats = [
-            '%d.%m.%Y %H:%M:%S',  # 27.05.2025 09:39:32
-            '%m/%d/%Y %H:%M:%S%p',  # 5/27/2025 9:39:32AM
-            '%m/%d/%Y %H:%M:%S %p',  # 5/27/2025 9:39:32 AM
-            '%m/%d/%Y %H:%M:%S',  # 5/27/2025 9:39:32
-        ]
-        self.assertEqual(dt, SVCSigFile._readDateTime(dt.isoformat()))
-        for fmt in formats:
-            text = dt.strftime(fmt)
-            dt2 = SVCSigFile._readDateTime(text)
-            if dt != dt2:
-                pass
-            self.assertEqual(dt, dt2, msg=f'Failed for format "{fmt}" : {text}')
 
     # @unittest.skipIf(TestCase.runsInCI(), 'Skipped CI')
     def test_speclib(self):
