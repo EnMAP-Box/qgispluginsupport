@@ -51,7 +51,6 @@ from osgeo.ogr import OFSTBoolean, OFSTNone, OFTBinary, OFTDate, OFTDateTime, OF
     OFTString, \
     OFTStringList, OFTTime
 from osgeo.osr import SpatialReference
-
 from qgis.PyQt import uic
 from qgis.PyQt.QtCore import NULL, QByteArray, QDirIterator, QObject, QPoint, QPointF, QRect, Qt, QUrl, \
     QVariant, QMetaType
@@ -76,6 +75,7 @@ from qgis.core import (QgsExpressionContextScope, QgsExpressionContext,
                        QgsFeatureRenderer, QgsSingleSymbolRenderer,
                        QgsMarkerSymbol, QgsExpressionContextUtils, QgsRenderContext, QgsSymbol, QgsProcessing)
 from qgis.gui import QgisInterface, QgsDialog, QgsGui, QgsMapCanvas, QgsMapLayerComboBox, QgsMessageViewer
+
 from .qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from .unitmodel import datetime64, UnitLookup
 
@@ -1824,6 +1824,76 @@ def equalRasterRenderer(renderer1: QgsRasterRenderer, renderer2: QgsRasterRender
     xml1 = rendererXML(renderer1)
     xml2 = rendererXML(renderer2)
     return xml1.toByteArray() == xml2.toByteArray()
+
+
+_dateutil_parser = None
+
+
+def readDateTime(
+    text: str,
+    format_hint: str | None = None
+) -> Tuple[datetime.datetime, Optional[str]]:
+    """
+    Tries to read the input text as datetime.datetime object
+    :param text: input text
+    :param format_hint: format_hint.
+    :return: datetime.datetime, format_hint
+    """
+    global _dateutil_parser
+    if _dateutil_parser is None:
+        try:
+            import dateutil.parser
+            _dateutil_parser = dateutil.parser
+        except Exception:
+            _dateutil_parser = False
+    elif _dateutil_parser:
+        return _dateutil_parser.parse(text), None
+
+    # List of common datetime format patterns to try
+    formats = [
+        '%m/%d/%Y %H:%M:%S %p',
+        '%m/%d/%Y %H:%M:%S%p',
+        '%m/%d/%Y %H:%M:%S',
+        '%m/%d/%Y %H:%M:%S.%f',
+        '%d/%m/%Y %H:%M:%S',
+        '%d/%m/%Y %H:%M:%S.%f',
+        '%Y-%m-%d %H:%M:%S',
+        '%Y-%m-%d %H:%M:%S.%f',
+        '%Y-%m-%dT%H:%M:%S',
+        '%Y-%m-%dT%H:%M:%S.%f',
+        '%Y-%m-%dT%H:%M:%SZ',
+        '%Y-%m-%d',
+        '%d.%m.%Y %H:%M:%S',
+        '%d.%m.%Y %H:%M',
+        '%d.%m.%Y',
+        '%b %d, %Y %H:%M:%S',
+        '%b %d, %Y %H:%M:%S.%f',
+        '%B %d, %Y %H:%M:%S',
+        '%B %d, %Y %H:%M:%S.%f',
+        '%m/%d/%Y',
+        '%d-%m-%Y %H:%M:%S',
+        '%d-%m-%Y %H:%M',
+        '%d-%m-%Y',
+        '%Y/%m/%d %H:%M:%S',
+        '%Y/%m/%d',
+        '%m-%d-%Y %H:%M:%S',
+        '%m-%d-%Y',
+    ]
+
+    if format_hint:
+        formats.insert(0, format_hint)
+    # Clean up the input string
+    text = text.strip()
+
+    # Try each format
+    for fmt in formats:
+        try:
+            return datetime.datetime.strptime(text, fmt), fmt
+        except ValueError:
+            continue
+
+    # If no format worked, raise an exception
+    raise ValueError(f"Unable to parse datetime string '{text}' with any known format")
 
 
 def defaultBands(dataset) -> List[int]:
