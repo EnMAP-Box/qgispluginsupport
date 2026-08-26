@@ -1863,6 +1863,7 @@ def readDateTime(
     # List of common datetime format patterns to try
     formats = [
         '%m/%d/%Y %H:%M:%S %p',
+        '%m/%d/%Y %H:%M:%S%p',
         '%m/%d/%Y %H:%M:%S',
         '%m/%d/%Y %H:%M:%S.%f',
         '%d/%m/%Y %H:%M:%S',
