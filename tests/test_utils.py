@@ -12,6 +12,7 @@ __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 __date__ = '2017-07-17'
 __copyright__ = 'Copyright 2017, Benjamin Jakimow'
 
+import datetime
 import json
 import os
 import pathlib
@@ -25,7 +26,6 @@ from typing import Dict
 import defusedxml.ElementTree as ET  # B405 - defusedxml used to safely parse XML
 import numpy as np
 from osgeo import gdal, gdal_array, ogr, osr
-
 from qgis.PyQt.QtCore import NULL, QByteArray, QObject, QPoint, QRect, QUrl
 from qgis.PyQt.QtGui import QColor
 from qgis.PyQt.QtWidgets import QDialog, QDockWidget, QGroupBox, QMainWindow, QMenu, QWidget
@@ -37,6 +37,7 @@ from qgis.core import QgsCoordinateReferenceSystem, QgsFeature, QgsFeatureReques
 from qgis.core import QgsWkbTypes, QgsExpressionContextUtils
 from qgis.gui import QgsDockWidget
 from qgis.gui import QgsFieldCalculator
+
 from qps.speclib.core import is_spectral_library
 from qps.speclib.core.spectralprofile import decodeProfileValueDict
 from qps.testing import start_app, TestCase, TestObjects
@@ -49,7 +50,7 @@ from qps.utils import (
     qgsRasterLayer, qgsRasterLayers, rasterArray, rasterBlockArray, rasterizeFeatures,
     relativePath, SelectMapLayerDialog, SelectMapLayersDialog, snapGeoCoordinates, SpatialExtent, SpatialPoint,
     spatialPoint2px, value2str, writeAsVectorFormat, create_picture_viewer_config, xy_pair_matrix, featureSymbolScope,
-    TemporaryGlobalLayerContext, stringToByteArray, stringFromByteArray)
+    TemporaryGlobalLayerContext, stringToByteArray, stringFromByteArray, readDateTime)
 from qpstestdata import enmap, enmap_multipoint, enmap_multipolygon, enmap_pixel, hymap, landcover
 
 start_app()
@@ -820,6 +821,26 @@ class TestUtils(TestCase):
         for (a, result) in REF:
             aggr = aggregateArray(a, a1, axis=1).tolist()
             self.assertListEqual(aggr, result, msg=f'Wrong result for "{a}"')
+
+    def test_parse_datetime(self):
+
+        # dt = datetime.now().replace(microsecond=0)
+        dt = datetime.datetime(2025, 10, 15, 12, 21, 50)
+        # dt = datetime(2025, 10, 15, 8, 21, 50)
+        formats = [
+            '%d.%m.%Y %H:%M:%S',  # 27.05.2025 09:39:32
+            '%m/%d/%Y %H:%M:%S%p',  # 5/27/2025 9:39:32AM
+            '%m/%d/%Y %H:%M:%S %p',  # 5/27/2025 9:39:32 AM
+            '%m/%d/%Y %H:%M:%S',  # 5/27/2025 9:39:32
+        ]
+
+        for fmt in formats:
+            text = dt.strftime(fmt)
+            dt2, fmt_hint = readDateTime(text)
+            self.assertTrue(isinstance(fmt_hint, str) or fmt_hint is None)
+            if dt != dt2:
+                pass
+            self.assertEqual(dt, dt2, msg=f'Failed for format "{fmt}" : {text}')
 
     def test_rasterArray(self):
 
