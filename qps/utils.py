@@ -1837,6 +1837,9 @@ def equalRasterRenderer(renderer1: QgsRasterRenderer, renderer2: QgsRasterRender
     return xml1.toByteArray() == xml2.toByteArray()
 
 
+_dateutil_parser = None
+
+
 def readDateTime(
     text: str,
     format_hint: str | None = None
@@ -1847,15 +1850,15 @@ def readDateTime(
     :param format_hint: format_hint.
     :return: datetime.datetime, format_hint
     """
-    try:
-        import dateutil.parser
-        result = dateutil.parser.parse(text)
-        if isinstance(result, datetime.datetime):
-            return result, None
-    except ImportError:
-        pass
-    except Exception:
-        pass
+    global _dateutil_parser
+    if _dateutil_parser is None:
+        try:
+            import dateutil.parser
+            _dateutil_parser = dateutil.parser
+        except Exception:
+            _dateutil_parser = False
+    elif _dateutil_parser:
+        return _dateutil_parser.parse(text), None
 
     # List of common datetime format patterns to try
     formats = [
