@@ -65,8 +65,13 @@ def createRasterLayers(
                 settings = json.loads(setting_json)
                 nb = settings['band_count']
                 xUnit = settings.get('xUnit', '')
-                name = f'{field.name()} ({nb} bands, {xUnit})'
-                layer = QgsRasterLayer('?', name, VectorLayerFieldRasterDataProvider.providerKey())
+
+                name = f'{nb} bands'
+                if xUnit:
+                    name += f', {xUnit}'
+                name = f'{field.name()} ({name})'
+                uri = '?'
+                layer = QgsRasterLayer(uri, name, VectorLayerFieldRasterDataProvider.providerKey())
                 if not (layer.isValid()):
                     raise AssertionError
                 dp: VectorLayerFieldRasterDataProvider = layer.dataProvider()
@@ -529,6 +534,12 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
         self.mYOffsetManual: bool = False
         self.initWithDataSourceUri(self.dataSourceUri())
 
+    def source(self) -> str:
+        return super().source()
+
+    def dataSourceUri(self, *args, **kwargs) -> str:
+        return super().dataSourceUri(*args, **kwargs)
+
     def activeFeatures(self) -> List[QgsFeature]:
         return self.mFeatures
 
@@ -750,10 +761,11 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
     def activeField(self) -> QgsField:
         return self.mField
 
-    def setActiveFeatures(self,
-                          features: List[QgsFeature],
-                          field: Union[QgsField, FieldToRasterValueConverter] = None
-                          ):
+    def setActiveFeatures(
+        self,
+        features: List[QgsFeature],
+        field: Union[QgsField, FieldToRasterValueConverter, None] = None
+    ):
 
         if not isinstance(features, list):
             features = list(features)

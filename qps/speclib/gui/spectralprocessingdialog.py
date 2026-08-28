@@ -381,6 +381,11 @@ class SpectralProcessingModelCreatorAlgorithmWrapper(QgsProcessingParametersWidg
         self.mSpeclib: QgsVectorLayer = speclib
         self.mSpeclib.attributeAdded.connect(self.updateExampleLayers)
         self.mSpeclib.attributeDeleted.connect(self.updateExampleLayers)
+        if processingContext is None:
+            processingContext = QgsProcessingContext()
+        self.mProcessing_context: QgsProcessingContext = processingContext
+        self.mProcessing_context.setProject(self.mProject)
+
         self.updateExampleLayers()
 
         self.mParameterWidgets: Dict[str, QWidget] = dict()
@@ -391,11 +396,6 @@ class SpectralProcessingModelCreatorAlgorithmWrapper(QgsProcessingParametersWidg
 
         self.mWrappers = {}
         self.mExtra_parameters = {}
-        if processingContext is None:
-            processingContext = QgsProcessingContext()
-
-        self.mProcessing_context: QgsProcessingContext = processingContext
-        self.mProcessing_context.setProject(self.mProject)
 
         self.mProcessingParameterWidgetContext: QgsProcessingParameterWidgetContext
         self.mProcessingParameterWidgetContext = None
@@ -801,20 +801,40 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
 
             # Calculate feature intersection, i.e.
             self.log('Calculate feature intersection')
+
             affected_features = set()
             n_raster_inputs = 0
             if self.selectedFeaturesOnly():
                 affected_features.update(speclib.selectedFeatureIds())
 
+            # collect the vector field raster layers
+            vectorfieldrasterlayers = {}
             for k, v in parameters.items():
-                if isinstance(v, QgsRasterLayer) and isinstance(v.dataProvider(), VectorLayerFieldRasterDataProvider):
-                    n_raster_inputs += 1
-                    dp: VectorLayerFieldRasterDataProvider = v.dataProvider()
-                    fids = dp.activeFeatureIds()
-                    if len(affected_features) == 0:
-                        affected_features.update(fids)
-                    else:
-                        affected_features.intersection_update(fids)
+                param = alg.parameterDefinition(k)
+                if isinstance(param, QgsProcessingParameterMultipleLayers):
+                    for layer_id in v:
+                        if lyr := processingContext.getMapLayer(layer_id):
+                            vectorfieldrasterlayers[lyr.id()] = lyr
+                elif isinstance(param, QgsProcessingParameterRasterLayer):
+                    if isinstance(v, QgsRasterLayer):
+                        vectorfieldrasterlayers[v.id()] = v
+
+            vectorfieldrasterlayers = {
+                lyr.id(): lyr for lyr in vectorfieldrasterlayers.values()
+                if isinstance(lyr, QgsRasterLayer) and isinstance(
+                    lyr.dataProvider(), VectorLayerFieldRasterDataProvider
+                )
+            }
+
+            n_raster_inputs = len(vectorfieldrasterlayers)
+            for lyr in vectorfieldrasterlayers.values():
+
+                dp: VectorLayerFieldRasterDataProvider = lyr.dataProvider()
+                fids = dp.activeFeatureIds()
+                if len(affected_features) == 0:
+                    affected_features.update(fids)
+                else:
+                    affected_features.intersection_update(fids)
 
             if n_raster_inputs > 0 and len(affected_features) == 0:
                 self.log('Feature ID of selected spectral profile images do not overlap', isError=True)
@@ -891,57 +911,69 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
 
                     if isinstance(parameter, QgsProcessingOutputRasterLayer):
                         # try 1:
-                        lyr = processingContext.getMapLayer(results[parameter.name()])
-                        if lyr is None:
-                            lyr = QgsRasterLayer(results[parameter.name()])
-
-                        if not isinstance(lyr, QgsRasterLayer) and lyr.isValid():
-                            info = f'Unable to open {lyr.source()}'
-                            self.log(info, isError=True)
+                        if isinstance(result_value, QgsRasterLayer):
+                            lyr = result_value
                         else:
-                            tmp = rasterArray(lyr)
-                            nb, nl, ns = tmp.shape
+                            lyr = processingContext.getMapLayer(result_value)
 
-                            target_field_name = lyr.name()
-                            if target_field_name == '':
-                                target_field_name = SpectralProcessingRasterDestination.pathToFieldName(lyr.source())
+                        if lyr is None:
+                            lyr = processingContext.temporaryLayerStore().mapLayer(result_value)
+                        if lyr is None:
+                            lyr = QgsRasterLayer(result_value)
+
+                        if not isinstance(lyr, QgsRasterLayer):
+                            info = f'{parameter.name()} : {result_value}'
+                            self.log(info, isError=True)
+                            continue
+
+                        if not lyr.isValid():
+                            info = f'{parameter.name()} : {lyr.error().message()}'
+                            self.log(info, isError=True)
+                            continue
+
+                        tmp = rasterArray(lyr)
+                        nb, nl, ns = tmp.shape
+
+                        target_field_name = lyr.name()
+                        if target_field_name == '':
+                            target_field_name = SpectralProcessingRasterDestination.pathToFieldName(lyr.source())
+
+                        target_field_index = speclib.fields().lookupField(target_field_name)
+                        if target_field_index == -1:
+                            # create a new field
+
+                            if nb > 1:
+                                # create spectral profile fields
+                                field: QgsField = SpectralLibraryUtils.createProfileField(target_field_name)
+                                if not speclib.dataProvider().supportedType(field):
+                                    field = SpectralLibraryUtils.createProfileField(target_field_name,
+                                                                                    encoding=ProfileEncoding.Text)
+                            else:
+                                # create standard field
+                                field: QgsField = QgsField(name=target_field_name,
+                                                           type=numpyToQgisDataType(tmp.dtype))
+                                if not speclib.dataProvider().supportedType(field):
+                                    field = QgsField(name=target_field_name, type=Qgis.DataType.Float32)
+
+                            speclib.beginEditCommand(f'Add field {field.name()}')
+                            if not (SpectralLibraryUtils.addAttribute(speclib, field)):
+                                raise AssertionError
+                            speclib.endEditCommand()
 
                             target_field_index = speclib.fields().lookupField(target_field_name)
-                            if target_field_index == -1:
-                                # create a new field
 
-                                if nb > 1:
-                                    # create spectral profile fields
-                                    field: QgsField = SpectralLibraryUtils.createProfileField(target_field_name)
-                                    if not speclib.dataProvider().supportedType(field):
-                                        field = SpectralLibraryUtils.createProfileField(target_field_name,
-                                                                                        encoding=ProfileEncoding.Text)
-                                else:
-                                    # create standard field
-                                    field: QgsField = QgsField(name=target_field_name,
-                                                               type=numpyToQgisDataType(tmp.dtype))
-                                    if not speclib.dataProvider().supportedType(field):
-                                        field = QgsField(name=target_field_name, type=Qgis.DataType.Float32)
+                        if target_field_index >= 0:
+                            # if necessary, change editor widget type to SpectralProfile
+                            target_field: QgsField = speclib.fields().at(target_field_index)
+                            if (
+                                nb > 0 and can_store_spectral_profiles(target_field)
+                                and not is_profile_field(target_field)  # noqa: W503
+                            ):
+                                setup = QgsEditorWidgetSetup(EDITOR_WIDGET_REGISTRY_KEY, {})
+                                speclib.setEditorWidgetSetup(target_field_index, setup)
+                                target_field = speclib.fields().at(target_field_index)
 
-                                speclib.beginEditCommand(f'Add field {field.name()}')
-                                if not (SpectralLibraryUtils.addAttribute(speclib, field)):
-                                    raise AssertionError
-                                speclib.endEditCommand()
-
-                                target_field_index = speclib.fields().lookupField(target_field_name)
-
-                            if target_field_index >= 0:
-                                # if necessary, change editor widget type to SpectralProfile
-                                target_field: QgsField = speclib.fields().at(target_field_index)
-                                if (
-                                    nb > 0 and can_store_spectral_profiles(target_field)
-                                    and not is_profile_field(target_field)  # noqa: W503
-                                ):
-                                    setup = QgsEditorWidgetSetup(EDITOR_WIDGET_REGISTRY_KEY, {})
-                                    speclib.setEditorWidgetSetup(target_field_index, setup)
-                                    target_field = speclib.fields().at(target_field_index)
-
-                                OUT_RASTERS[parameter.name()] = (lyr, tmp, target_field)
+                            OUT_RASTERS[parameter.name()] = (lyr, tmp, target_field)
 
                     elif isinstance(parameter, QgsProcessingOutputVectorLayer):
                         # todo: append vector output to speclib

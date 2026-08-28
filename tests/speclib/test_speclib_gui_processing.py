@@ -4,7 +4,6 @@ import unittest
 
 import numpy as np
 from osgeo import gdal
-
 from qgis.PyQt.QtWidgets import QGridLayout, QWidget
 from qgis.core import QgsApplication, QgsProcessingAlgorithm, QgsProcessingContext, QgsProcessingFeedback, \
     QgsProcessingOutputRasterLayer, QgsProcessingRegistry, QgsProject, \
@@ -13,6 +12,7 @@ from qgis.core import (QgsProcessingParameterRasterLayer,
                        QgsProcessingParameterNumber, QgsProcessingParameterRasterDestination)
 from qgis.gui import QgsProcessingAlgorithmDialogBase, QgsProcessingContextGenerator, \
     QgsProcessingGui, QgsProcessingParameterWidgetContext
+
 from qps import initAll
 from qps.qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
@@ -94,6 +94,7 @@ class ExampleRasterProcessing(QgsProcessingAlgorithm):
         feedback.pushInfo(f'Output bands: {n_bands}')
 
         # Open input with GDAL
+        spectral_settings_in = QgsRasterLayerSpectralProperties.fromRasterLayer(input_layer)
         input_ds = gdal.Open(input_layer.source())
         if not input_ds:
             raise QgsProcessingException('Could not open input raster with GDAL')
@@ -169,12 +170,17 @@ class ExampleRasterProcessing(QgsProcessingAlgorithm):
         output_ds.SetGeoTransform(input_ds.GetGeoTransform())
         output_ds.SetProjection(input_ds.GetProjection())
 
+        wl = spectral_settings_in.wavelengths()
         # Write bands
         for i in range(n_bands):
             band = output_ds.GetRasterBand(i + 1)
             band.WriteArray(output_data[i])
             band.FlushCache()
 
+            if i < len(wl):
+                wl_ = wl[i]
+                if wl_:
+                    band.SetMetadataItem('CENTRAL_WAVELENGTH_UM', str(wl_), 'IMAGERY')
             # Set nodata value if available
             input_band = input_ds.GetRasterBand(1)
             nodata = input_band.GetNoDataValue()
@@ -270,6 +276,41 @@ class SpectralProcessingTests(TestCase):
         # e3 = ext(a3)
         a3.initAlgorithm({})
         # e3b = ext(a3)
+
+    def test_virtual_inputs(self):
+
+        # processing.run("native:virtualrastercalc",
+        #                {'LAYERS': ['/home/jakimowb/repositories/qgispluginsupport/qpstestdata/hymap.tif'],
+        #                 'EXPRESSION': '"hymap@1"', 'EXTENT': None, 'CELL_SIZE': None, 'CRS': None,
+        #                 'LAYER_NAME': 'output_layer_name'})
+
+        algorithmId = 'native:virtualrastercalc'
+
+        speclib = TestObjects.createSpectralLibrary(2)
+
+        TestObjects.processingAlgorithm()
+        parameters = {
+            'LAYERS': ['/home/jakimowb/repositories/qgispluginsupport/qpstestdata/hymap.tif'],
+            'EXPRESSION': '"hymap@1"',
+            'EXTENT': None,
+            'CELL_SIZE': None, 'CRS': None,
+            'LAYER_NAME': 'output_layer_name'
+        }
+        with edit(speclib):
+            slw = SpectralLibraryWidget(speclib=speclib)
+
+            spd = SpectralProcessingDialog(speclib=speclib, algorithmId=algorithmId, parameters=parameters)
+
+            # spd.runAlgorithm(fail_fast=True)
+            # slw.showSpectralProcessingWidget(algorithmId=algorithmId)
+            # wrapper = spd.processingModelWrapper()
+
+            # feedback = spd.processingFeedback()
+
+            self.showGui([spd, slw])
+
+        # preg.removeProvider(provider)
+        QgsProject.instance().removeAllMapLayers()
 
     def test_resampling(self):
 

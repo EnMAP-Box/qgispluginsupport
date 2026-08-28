@@ -40,8 +40,8 @@ class RasterDataProviderTests(TestCase):
             print(name)
             src = f'?lid={{{vl.id()}}}&field={field.name()}'
             layer = QgsRasterLayer(src, name, VectorLayerFieldRasterDataProvider.providerKey())
-            dp: VectorLayerFieldRasterDataProvider = layer.dataProvider()
-
+            dp = layer.dataProvider()
+            # dp.setParent(None)
             self.assertIsInstance(dp, VectorLayerFieldRasterDataProvider)
             self.assertTrue(dp.fields() == vl.fields())
 
@@ -75,7 +75,8 @@ class RasterDataProviderTests(TestCase):
 
             dpList.append(dp)
             layers.append(layer)
-
+        dp = None
+        dpList.clear()
         lyr = layers[0]
         c = self.rasterProviderTestSuite(lyr)
         self.showGui(c)
