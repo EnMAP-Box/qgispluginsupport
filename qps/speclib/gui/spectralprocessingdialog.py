@@ -100,9 +100,7 @@ class SpectralProcessingAlgorithmModel(QgsProcessingToolboxProxyModel):
             if alg.flags() & QgsProcessingAlgorithm.Flag.FlagHideFromToolbox:
                 return False
             return (
-                super().filterAcceptsRow(sourceRow, sourceParent)
-                # and has_raster_input(alg)
-                and has_raster_output(alg)
+                super().filterAcceptsRow(sourceRow, sourceParent) and has_raster_output(alg)
             )
         # isParameter was introduced with QGIS 3.44
         if hasattr(tbm, 'isParameter') and tbm.isParameter(sourceIdx):
@@ -356,7 +354,7 @@ class SpectralProcessingRasterLayerWidgetWrapper(QgsAbstractProcessingParameterW
 
 class SpectralProcessingModelCreatorAlgorithmWrapper(QgsProcessingParametersWidget):
     """
-    A wrapper to keep a references on QgsProcessingAlgorithm
+    A wrapper to keep references on QgsProcessingAlgorithm
     and related parameter values and widgets
     """
     sigParameterValueChanged = pyqtSignal(str)
@@ -493,8 +491,10 @@ class SpectralProcessingModelCreatorAlgorithmWrapper(QgsProcessingParametersWidg
 
         handled_outputs = []
         for output in self.algorithm().destinationParameterDefinitions():
-            if (isinstance(output, QgsProcessingDestinationParameter)
-                and output.flags() & QgsProcessingParameterDefinition.Flag.FlagHidden):
+            if (
+                isinstance(output, QgsProcessingDestinationParameter)
+                and output.flags() & QgsProcessingParameterDefinition.Flag.FlagHidden  # noqa: W503
+            ):
                 continue
 
             if isinstance(output, QgsProcessingParameterRasterDestination):
@@ -831,6 +831,10 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
 
             parametersHard = parameters.copy()
             self.log('Make virtual raster(s) permanent')
+
+            processingContext.project().addMapLayers(wrapper.exampleLayers())
+            # example_layers = {lyr.id(): lyr for lyr in wrapper.exampleLayers()}
+
             for k, v in parametersHard.items():
                 param = alg.parameterDefinition(k)
                 if isinstance(v, QgsRasterLayer) and isinstance(v.dataProvider(), VectorLayerFieldRasterDataProvider):
@@ -841,6 +845,20 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
                     file_name = TEMP_FOLDER + f'{k}.tif'
                     self.writeTemporaryRaster(dp, file_name, rasterblockFeedback, transformContext)
                     parametersHard[k] = file_name
+                elif isinstance(param, QgsProcessingParameterMultipleLayers):
+                    # for layer_id in v:
+                    #     lyr = example_layers.get(layer_id)
+                    #     if isinstance(lyr, QgsRasterLayer) and lyr.isValid():
+                    #         new_path = TEMP_FOLDER + f'{layer_id}.tif'
+                    #         if not os.path.exists(new_path):
+                    #             self.writeTemporaryRaster(
+                    #                 lyr.dataProvider(),
+                    #                 new_path,
+                    #                 rasterblockFeedback,
+                    #                 transformContext
+                    #             )
+                    #     s = ""
+                    pass
 
                 elif isinstance(param, QgsProcessingParameterRasterDestination):
                     file_name = TEMP_FOLDER + f'{v}'
@@ -1024,12 +1042,18 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
         """
         return self.mTemporaryRaster[:]
 
-    def writeTemporaryRaster(self,
-                             dp: QgsRasterDataProvider,
-                             file_name: str,
-                             rasterblockFeedback: QgsRasterBlockFeedback,
-                             transformContext: QgsCoordinateTransformContext):
-
+    def writeTemporaryRaster(
+        self,
+        dp: QgsRasterDataProvider,
+        file_name: str,
+        rasterblockFeedback: QgsRasterBlockFeedback,
+        transformContext: QgsCoordinateTransformContext,
+        layer_name: Optional[str] = None,
+    ):
+        """
+        Writes a temporary raster file from a QgsRasterDataProvider.
+        file_name: str a string with the temporary raster file name
+        """
         file_writer = QgsRasterFileWriter(file_name)
 
         if not (dp.xSize() > 0):
@@ -1060,26 +1084,30 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
             raise Exception(f'Unable to write {file_name}\n'
                             f'QgsRasterFileWriterError: {errMsg}')
 
+        layer: QgsRasterLayer = qgsRasterLayer(file_name)
+        if layer_name is not None:
+            layer.setName(layer_name)
+
         # write additional metadata
         if isinstance(dp, VectorLayerFieldRasterDataProvider):
             fieldConverter: FieldToRasterValueConverter = dp.fieldConverter()
+
             # field: QgsField = fieldConverter.field()
             if isinstance(fieldConverter, SpectralProfileValueConverter):
                 # write spectral properties like wavelength per band
                 spectral_settings = fieldConverter.spectralSetting().copy()
-
                 props = QgsRasterLayerSpectralProperties.fromMap(spectral_settings)
-                props.writeToSource(file_name, write_envi=True)
+                props.writeToSource(layer, write_envi=True)
 
             elif fieldConverter.isClassification():
                 # set a categorical raster renderer with class names and colors
-                layer: QgsRasterLayer = qgsRasterLayer(file_name)
                 colorTable = fieldConverter.colorTable(1)
                 classData = QgsPalettedRasterRenderer.colorTableToClassData(colorTable)
                 renderer = QgsPalettedRasterRenderer(layer.dataProvider(), 1, classData)
                 layer.setRenderer(renderer)
                 layer.saveDefaultStyle(QgsMapLayer.StyleCategory.AllStyleCategories)
-                del layer, renderer
+
+        del layer
 
         self.mTemporaryRaster.append(file_name)
 

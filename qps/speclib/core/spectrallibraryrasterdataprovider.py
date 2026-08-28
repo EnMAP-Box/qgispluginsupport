@@ -29,8 +29,10 @@ def defaultCrs() -> QgsCoordinateReferenceSystem:
     return _DEF_CRS
 
 
-def createRasterLayers(features: Union[QgsVectorLayer, List[QgsFeature]],
-                       fields=None) -> List[QgsRasterLayer]:
+def createRasterLayers(
+    features: Union[QgsVectorLayer, List[QgsFeature]],
+    fields=None
+) -> List[QgsRasterLayer]:
     """
     Converts a list of QgsFeatures into a set of QgsRasterLayers.
     :param features:
@@ -509,11 +511,12 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
                 return c(field)
         return None
 
-    def __init__(self,
-                 uri: str,
-                 providerOptions: QgsDataProvider.ProviderOptions = QgsDataProvider.ProviderOptions(),
-                 flags: Union[QgsDataProvider.ReadFlags, QgsDataProvider.ReadFlag] = QgsDataProvider.ReadFlags(),
-                 ):
+    def __init__(
+        self,
+        uri: str,
+        providerOptions: QgsDataProvider.ProviderOptions = QgsDataProvider.ProviderOptions(),
+        flags: Union[QgsDataProvider.ReadFlags, QgsDataProvider.ReadFlag] = QgsDataProvider.ReadFlags(),
+    ):
 
         super().__init__(uri, providerOptions=providerOptions, flags=flags)
         self.mProviderOptions = providerOptions
