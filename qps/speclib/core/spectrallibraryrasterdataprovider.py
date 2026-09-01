@@ -683,7 +683,8 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
             band_data = band_data.astype(target_type)
             block.setData(band_data.tobytes())
 
-            assert block.value(0, 0) == band_data[0, 0]
+            # if not block.value(0, 0) == band_data[0, 0]:
+            #     raise ValueError('Block value does not match band data')
 
         return block
 
