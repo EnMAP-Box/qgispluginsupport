@@ -1,10 +1,10 @@
 import datetime
 import json
 import os
-import pathlib
 import sys
 from difflib import SequenceMatcher
 from json import JSONDecodeError
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 from processing import createContext
@@ -23,21 +23,26 @@ from qgis.core import (
     QgsProcessingParameterDefinition, QgsProcessingParameterMultipleLayers, QgsProcessingParameterRasterDestination,
     QgsProcessingParameterRasterLayer, QgsProcessingRegistry, QgsProcessingUtils, QgsProject, QgsRasterBlockFeedback,
     QgsRasterDataProvider, QgsRasterFileWriter, QgsRasterLayer, QgsRasterPipe, QgsVectorLayer)
+from qgis.core import QgsProcessingDestinationParameter
 from qgis.gui import (
     QgsAbstractProcessingParameterWidgetWrapper, QgsGui, QgsMessageBar, QgsPanelWidget,
     QgsProcessingAlgorithmDialogBase, QgsProcessingContextGenerator, QgsProcessingGui, QgsProcessingHiddenWidgetWrapper,
     QgsProcessingParametersGenerator, QgsProcessingParametersWidget, QgsProcessingParameterWidgetContext,
     QgsProcessingRecentAlgorithmLog, QgsProcessingToolboxProxyModel)
+
 from .. import EDITOR_WIDGET_REGISTRY_KEY, speclibSettings
 from ..core import can_store_spectral_profiles, is_profile_field
 from ..core.spectrallibrary import SpectralLibraryUtils
-from ..core.spectrallibraryrasterdataprovider import createRasterLayers, FieldToRasterValueConverter, \
-    SpectralProfileValueConverter, VectorLayerFieldRasterDataProvider
-from ..core.spectralprofile import encodeProfileValueDict, prepareProfileValueDict, ProfileEncoding
+from ..core.spectrallibraryrasterdataprovider import (
+    createRasterLayers, VectorLayerFieldRasterDataProvider
+)
+from ..core.spectralprofile import (
+    encodeProfileValueDict, prepareProfileValueDict, ProfileEncoding
+)
 from ..gui.spectralprofilefieldcombobox import SpectralProfileFieldComboBox
 from ...processing.processingalgorithmdialog import ProcessingAlgorithmDialog
 from ...qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
-from ...utils import iconForFieldType, numpyToQgisDataType, qgsRasterLayer, rasterArray
+from ...utils import iconForFieldType, qgsRasterLayer, rasterArray, createQgsField
 
 LUT_RASTERFILEWRITER_ERRORS: Dict[int, str] = {
     QgsRasterFileWriter.WriterError.SourceProviderError: 'SourceProviderError',
@@ -95,8 +100,11 @@ class SpectralProcessingAlgorithmModel(QgsProcessingToolboxProxyModel):
         sourceIdx = tbm.index(sourceRow, 0, sourceParent)
         if tbm.isAlgorithm(sourceIdx):
             alg = tbm.algorithmForIndex(sourceIdx)
-            return super().filterAcceptsRow(sourceRow, sourceParent) and has_raster_input(alg) and has_raster_output(
-                alg)
+            if alg.flags() & QgsProcessingAlgorithm.Flag.FlagHideFromToolbox:
+                return False
+            return (
+                super().filterAcceptsRow(sourceRow, sourceParent) and has_raster_output(alg)
+            )
         # isParameter was introduced with QGIS 3.44
         if hasattr(tbm, 'isParameter') and tbm.isParameter(sourceIdx):
             return False
@@ -110,9 +118,9 @@ class SpectralProcessingRasterDestination(QgsAbstractProcessingParameterWidgetWr
                  parameter,
                  dialogType: QgsProcessingGui.WidgetType = QgsProcessingGui.WidgetType.Standard,
                  parent: QObject = None):
-        self.mLabel: QLabel = None
-        self.mFieldComboBox: SpectralProfileFieldComboBox = None
-        self.mFieldName: str = None
+        self.mLabel: Optional[QLabel] = None
+        self.mFieldComboBox: Optional[SpectralProfileFieldComboBox] = None
+        self.mFieldName: Optional[str] = None
         self.mFields: QgsFields = QgsFields()
         super(SpectralProcessingRasterDestination, self).__init__(parameter, dialogType, parent)
 
@@ -183,7 +191,7 @@ class SpectralProcessingRasterDestination(QgsAbstractProcessingParameterWidgetWr
 
     @classmethod
     def pathToFieldName(cls, path: str) -> str:
-        name, ext = os.path.splitext(pathlib.Path(path).name)
+        name = Path(path).stem
         suffix = f'{QgsProcessing.TEMPORARY_OUTPUT}_'
         name = name.replace(suffix, '')
         return name
@@ -209,13 +217,13 @@ class SpectralProcessingRasterLayerWidgetWrapper(QgsAbstractProcessingParameterW
 
         if not (isinstance(parameter, QgsProcessingParameterRasterLayer)):
             raise AssertionError
-        self.mMapLayerWidget: QWidget = None
-        self.mMapLayerModel: QgsMapLayerModel = None
+        self.mMapLayerWidget: Optional[QWidget] = None
+        self.mMapLayerModel: Optional[QgsMapLayerModel] = None
 
-        self.mLabel: QLabel = None
+        self.mLabel: Optional[QLabel] = None
 
         super(SpectralProcessingRasterLayerWidgetWrapper, self).__init__(parameter, dialogType, parent)
-        self.mProfileField: str = None
+        self.mProfileField: Optional[str] = None
 
     def createWidget(self):
 
@@ -349,7 +357,7 @@ class SpectralProcessingRasterLayerWidgetWrapper(QgsAbstractProcessingParameterW
 
 class SpectralProcessingModelCreatorAlgorithmWrapper(QgsProcessingParametersWidget):
     """
-    A wrapper to keep a references on QgsProcessingAlgorithm
+    A wrapper to keep references on QgsProcessingAlgorithm
     and related parameter values and widgets
     """
     sigParameterValueChanged = pyqtSignal(str)
@@ -376,6 +384,11 @@ class SpectralProcessingModelCreatorAlgorithmWrapper(QgsProcessingParametersWidg
         self.mSpeclib: QgsVectorLayer = speclib
         self.mSpeclib.attributeAdded.connect(self.updateExampleLayers)
         self.mSpeclib.attributeDeleted.connect(self.updateExampleLayers)
+        if processingContext is None:
+            processingContext = QgsProcessingContext()
+        self.mProcessing_context: QgsProcessingContext = processingContext
+        self.mProcessing_context.setProject(self.mProject)
+
         self.updateExampleLayers()
 
         self.mParameterWidgets: Dict[str, QWidget] = dict()
@@ -386,11 +399,6 @@ class SpectralProcessingModelCreatorAlgorithmWrapper(QgsProcessingParametersWidg
 
         self.mWrappers = {}
         self.mExtra_parameters = {}
-        if processingContext is None:
-            processingContext = QgsProcessingContext()
-
-        self.mProcessing_context: QgsProcessingContext = processingContext
-        self.mProcessing_context.setProject(self.mProject)
 
         self.mProcessingParameterWidgetContext: QgsProcessingParameterWidgetContext
         self.mProcessingParameterWidgetContext = None
@@ -411,8 +419,12 @@ class SpectralProcessingModelCreatorAlgorithmWrapper(QgsProcessingParametersWidg
 
         self.mIs_active: bool = True
 
-    def addParameterWidget(self, parameter: QgsProcessingParameterDefinition, widget: QWidget,
-                           stretch: int = ...) -> None:
+    def addParameterWidget(
+        self,
+        parameter: QgsProcessingParameterDefinition,
+        widget: QWidget,
+        stretch: int = ...
+    ) -> None:
 
         super().addParameterWidget(parameter, widget, stretch)
         self.mParameterWidgets[parameter.name()] = widget
@@ -480,8 +492,12 @@ class SpectralProcessingModelCreatorAlgorithmWrapper(QgsProcessingParametersWidg
             if isinstance(widget, QWidget):
                 self.addParameterWidget(param, widget, stretch)
 
+        handled_outputs = []
         for output in self.algorithm().destinationParameterDefinitions():
-            if output.flags() & QgsProcessingParameterDefinition.Flag.FlagHidden:
+            if (
+                isinstance(output, QgsProcessingDestinationParameter)
+                and output.flags() & QgsProcessingParameterDefinition.Flag.FlagHidden  # noqa: W503
+            ):
                 continue
 
             if isinstance(output, QgsProcessingParameterRasterDestination):
@@ -507,7 +523,16 @@ class SpectralProcessingModelCreatorAlgorithmWrapper(QgsProcessingParametersWidg
 
             widget = wrapper.createWrappedWidget(self.mProcessing_context)
             if isinstance(widget, QWidget):
+                handled_outputs.append(output.name())
                 self.addOutputWidget(widget, wrapper.stretch())
+
+        # for output in self.algorithm().outputDefinitions():
+        #     output: QgsProcessingOutputDefinition
+        #     if isinstance(output, QgsProcessingOutputRasterLayer):
+        #         wrapper = SpectralProcessingRasterDestination(output, QgsProcessingGui.WidgetType.Standard)
+        #         wrapper.setFields(self.mSpeclib.fields())
+        #
+        #         handled_outputs.append(output.name())
 
         for wrapper in list(self.mWrappers.values()):
             wrapper.postInitialize(list(self.mWrappers.values()))
@@ -578,10 +603,11 @@ class SpectralProcessingModelCreatorAlgorithmWrapper(QgsProcessingParametersWidg
 
     def updateExampleLayers(self):
 
+        for layer in self.mExampleLayers:
+            if lyr := self.mProject.mapLayer(layer.id()):
+                self.mProject.takeMapLayer(lyr)
         self.mExampleLayers.clear()
         self.mExampleLayers.extend(createRasterLayers(self.mSpeclib))
-
-        self.mProject.removeAllMapLayers()
         self.mProject.addMapLayers(self.mExampleLayers)
 
     def exampleLayers(self) -> List[QgsRasterLayer]:
@@ -597,12 +623,14 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
 
     sigOutputsCreated = pyqtSignal(dict)
 
-    def __init__(self, *args,
-                 speclib: Optional[QgsVectorLayer] = None,
-                 algorithmId: Optional[str] = None,
-                 parameters: Optional[dict] = None,
-                 parent: Optional[QWidget] = None,
-                 **kwds):
+    def __init__(
+        self, *args,
+        speclib: Optional[QgsVectorLayer] = None,
+        algorithmId: Optional[str] = None,
+        parameters: Optional[dict] = None,
+        parent: Optional[QWidget] = None,
+        **kwds
+    ):
         super().__init__(parent=parent)
         self.setWindowFlag(Qt.WindowType.WindowContextHelpButtonHint, False)
         # QgsProcessingContextGenerator.__init__(self)
@@ -779,20 +807,43 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
 
             # Calculate feature intersection, i.e.
             self.log('Calculate feature intersection')
+
             affected_features = set()
             n_raster_inputs = 0
             if self.selectedFeaturesOnly():
                 affected_features.update(speclib.selectedFeatureIds())
 
+            # collect used vector field raster layers
+            vectorfieldrasterlayers = {}
+            required_layers = {}
+
+            def add_vectorfieldrasterlayer(lyr):
+                if (
+                    isinstance(lyr, QgsRasterLayer)
+                    and isinstance(lyr.dataProvider(), VectorLayerFieldRasterDataProvider)  # noqa: W503
+                ):
+                    vectorfieldrasterlayers[lyr.id()] = lyr
+
             for k, v in parameters.items():
-                if isinstance(v, QgsRasterLayer) and isinstance(v.dataProvider(), VectorLayerFieldRasterDataProvider):
-                    n_raster_inputs += 1
-                    dp: VectorLayerFieldRasterDataProvider = v.dataProvider()
-                    fids = dp.activeFeatureIds()
-                    if len(affected_features) == 0:
-                        affected_features.update(fids)
-                    else:
-                        affected_features.intersection_update(fids)
+                param = alg.parameterDefinition(k)
+                if isinstance(param, QgsProcessingParameterMultipleLayers):
+                    for layer_id in v:
+                        lyr = processingContext.getMapLayer(layer_id)
+                        if isinstance(lyr, QgsMapLayer):
+                            required_layers[layer_id] = lyr
+                        add_vectorfieldrasterlayer(processingContext.getMapLayer(layer_id))
+                elif isinstance(param, QgsProcessingParameterRasterLayer):
+                    add_vectorfieldrasterlayer(v)
+
+            n_raster_inputs = len(vectorfieldrasterlayers)
+            for lyr in vectorfieldrasterlayers.values():
+
+                dp: VectorLayerFieldRasterDataProvider = lyr.dataProvider()
+                fids = dp.activeFeatureIds()
+                if len(affected_features) == 0:
+                    affected_features.update(fids)
+                else:
+                    affected_features.intersection_update(fids)
 
             if n_raster_inputs > 0 and len(affected_features) == 0:
                 self.log('Feature ID of selected spectral profile images do not overlap', isError=True)
@@ -809,20 +860,48 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
 
             parametersHard = parameters.copy()
             self.log('Make virtual raster(s) permanent')
-            for k, v in parametersHard.items():
-                param = alg.parameterDefinition(k)
-                if isinstance(v, QgsRasterLayer) and isinstance(v.dataProvider(), VectorLayerFieldRasterDataProvider):
-                    dp: VectorLayerFieldRasterDataProvider = v.dataProvider().clone()
-                    dp.setActiveFeatures(activeFeatures)
 
-                    # file_name = QgsProcessingUtils.generateTempFilename(f'{k}.tif')
-                    file_name = TEMP_FOLDER + f'{k}.tif'
-                    self.writeTemporaryRaster(dp, file_name, rasterblockFeedback, transformContext)
-                    parametersHard[k] = file_name
+            # vectorfieldrasterlayers_new_ids = {}
+            for lid, lyr in vectorfieldrasterlayers.items():
+                dp: VectorLayerFieldRasterDataProvider = lyr.dataProvider().clone()
+                dp.setActiveFeatures(activeFeatures, dp.activeField())
 
-                elif isinstance(param, QgsProcessingParameterRasterDestination):
-                    file_name = TEMP_FOLDER + f'{v}'
-                    parametersHard[k] = file_name
+                # file_name = QgsProcessingUtils.generateTempFilename(f'{k}.tif')
+                file_name = TEMP_FOLDER + f'{k}.tif'
+                self.writeTemporaryRaster(dp, file_name, rasterblockFeedback, transformContext)
+                lyr.setDataSource(file_name, '', 'gdal')
+
+            # processingContext.project().addMapLayers(wrapper.exampleLayers())
+            # example_layers = {lyr.id(): lyr for lyr in wrapper.exampleLayers()}
+            #
+            # for k, v in parametersHard.items():
+            #     param = alg.parameterDefinition(k)
+            #     if isinstance(v, QgsRasterLayer) and isinstance(v.dataProvider(), VectorLayerFieldRasterDataProvider):
+            #         dp: VectorLayerFieldRasterDataProvider = v.dataProvider().clone()
+            #         dp.setActiveFeatures(activeFeatures)
+            #
+            #         # file_name = QgsProcessingUtils.generateTempFilename(f'{k}.tif')
+            #         file_name = TEMP_FOLDER + f'{k}.tif'
+            #         self.writeTemporaryRaster(dp, file_name, rasterblockFeedback, transformContext)
+            #         parametersHard[k] = file_name
+            #     elif isinstance(param, QgsProcessingParameterMultipleLayers):
+            #         # for layer_id in v:
+            #         #     lyr = example_layers.get(layer_id)
+            #         #     if isinstance(lyr, QgsRasterLayer) and lyr.isValid():
+            #         #         new_path = TEMP_FOLDER + f'{layer_id}.tif'
+            #         #         if not os.path.exists(new_path):
+            #         #             self.writeTemporaryRaster(
+            #         #                 lyr.dataProvider(),
+            #         #                 new_path,
+            #         #                 rasterblockFeedback,
+            #         #                 transformContext
+            #         #             )
+            #         #     s = ""
+            #         pass
+            #
+            #     elif isinstance(param, QgsProcessingParameterRasterDestination):
+            #         file_name = TEMP_FOLDER + f'{v}'
+            #         parametersHard[k] = file_name
 
             from processing.gui.AlgorithmExecutor import execute as executeAlg
 
@@ -850,52 +929,71 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
                     OUTPUTS[parameter.name()] = (parameter, result_value)
 
                     if isinstance(parameter, QgsProcessingOutputRasterLayer):
-                        lyr = QgsRasterLayer(results[parameter.name()])
-                        if not lyr.isValid():
-                            info = f'Unable to open {lyr.source()}'
-                            self.log(info, isError=True)
+                        # try 1:
+                        if isinstance(result_value, QgsRasterLayer):
+                            lyr = result_value
                         else:
-                            tmp = rasterArray(lyr)
-                            nb, nl, ns = tmp.shape
+                            lyr = processingContext.getMapLayer(result_value)
 
-                            path1 = parameters[parameter.name()]
-                            target_field_name = SpectralProcessingRasterDestination.pathToFieldName(path1)
+                        if lyr is None:
+                            lyr = processingContext.temporaryLayerStore().mapLayer(result_value)
+                        if lyr is None:
+                            lyr = QgsRasterLayer(result_value)
+
+                        if not isinstance(lyr, QgsRasterLayer):
+                            info = f'{parameter.name()} : {result_value}'
+                            self.log(info, isError=True)
+                            continue
+
+                        if not lyr.isValid():
+                            info = f'{parameter.name()} : {lyr.error().message()}'
+                            self.log(info, isError=True)
+                            continue
+
+                        tmp = rasterArray(lyr)
+                        nb, nl, ns = tmp.shape
+
+                        target_field_name = lyr.name()
+                        if target_field_name == '':
+                            target_field_name = SpectralProcessingRasterDestination.pathToFieldName(lyr.source())
+
+                        target_field_index = speclib.fields().lookupField(target_field_name)
+                        if target_field_index == -1:
+                            # create a new field
+
+                            if nb > 1:
+                                # create spectral profile fields
+                                field: QgsField = SpectralLibraryUtils.createProfileField(target_field_name)
+                                if not speclib.dataProvider().supportedType(field):
+                                    field = SpectralLibraryUtils.createProfileField(target_field_name,
+                                                                                    encoding=ProfileEncoding.Text)
+                            else:
+                                # create standard field
+                                field = createQgsField(target_field_name, tmp[0, 0, 0])
+                                # field: QgsField = QgsField(name=target_field_name,
+                                #                            type=numpyToQgisDataType(tmp.dtype))
+                                if not speclib.dataProvider().supportedType(field):
+                                    field = QgsField(name=target_field_name, type=QMetaType.Double)
+
+                            speclib.beginEditCommand(f'Add field {field.name()}')
+                            if not (SpectralLibraryUtils.addAttribute(speclib, field)):
+                                raise AssertionError
+                            speclib.endEditCommand()
+
                             target_field_index = speclib.fields().lookupField(target_field_name)
-                            if target_field_index == -1:
-                                # create a new field
 
-                                if nb > 1:
-                                    # create spectral profile fields
-                                    field: QgsField = SpectralLibraryUtils.createProfileField(target_field_name)
-                                    if not speclib.dataProvider().supportedType(field):
-                                        field = SpectralLibraryUtils.createProfileField(target_field_name,
-                                                                                        encoding=ProfileEncoding.Text)
-                                else:
-                                    # create standard field
-                                    field: QgsField = QgsField(name=target_field_name,
-                                                               type=numpyToQgisDataType(tmp.dtype))
-                                    if not speclib.dataProvider().supportedType(field):
-                                        field = QgsField(name=target_field_name, type=Qgis.DataType.Float32)
+                        if target_field_index >= 0:
+                            # if necessary, change editor widget type to SpectralProfile
+                            target_field: QgsField = speclib.fields().at(target_field_index)
+                            if (
+                                nb > 0 and can_store_spectral_profiles(target_field)
+                                and not is_profile_field(target_field)  # noqa: W503
+                            ):
+                                setup = QgsEditorWidgetSetup(EDITOR_WIDGET_REGISTRY_KEY, {})
+                                speclib.setEditorWidgetSetup(target_field_index, setup)
+                                target_field = speclib.fields().at(target_field_index)
 
-                                speclib.beginEditCommand(f'Add field {field.name()}')
-                                if not (SpectralLibraryUtils.addAttribute(speclib, field)):
-                                    raise AssertionError
-                                speclib.endEditCommand()
-
-                                target_field_index = speclib.fields().lookupField(target_field_name)
-
-                            if target_field_index >= 0:
-                                # if necessary, change editor widget type to SpectralProfile
-                                target_field: QgsField = speclib.fields().at(target_field_index)
-                                if (
-                                    nb > 0 and can_store_spectral_profiles(target_field)
-                                    and not is_profile_field(target_field)  # noqa: W503
-                                ):
-                                    setup = QgsEditorWidgetSetup(EDITOR_WIDGET_REGISTRY_KEY, {})
-                                    speclib.setEditorWidgetSetup(target_field_index, setup)
-                                    target_field = speclib.fields().at(target_field_index)
-
-                                OUT_RASTERS[parameter.name()] = (lyr, tmp, target_field)
+                            OUT_RASTERS[parameter.name()] = (lyr, tmp, target_field)
 
                     elif isinstance(parameter, QgsProcessingOutputVectorLayer):
                         # todo: append vector output to speclib
@@ -996,12 +1094,18 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
         """
         return self.mTemporaryRaster[:]
 
-    def writeTemporaryRaster(self,
-                             dp: QgsRasterDataProvider,
-                             file_name: str,
-                             rasterblockFeedback: QgsRasterBlockFeedback,
-                             transformContext: QgsCoordinateTransformContext):
-
+    def writeTemporaryRaster(
+        self,
+        dp: QgsRasterDataProvider,
+        file_name: str,
+        rasterblockFeedback: QgsRasterBlockFeedback,
+        transformContext: QgsCoordinateTransformContext,
+        layer_name: Optional[str] = None,
+    ):
+        """
+        Writes a temporary raster file from a QgsRasterDataProvider.
+        file_name: str a string with the temporary raster file name
+        """
         file_writer = QgsRasterFileWriter(file_name)
 
         if not (dp.xSize() > 0):
@@ -1032,26 +1136,29 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
             raise Exception(f'Unable to write {file_name}\n'
                             f'QgsRasterFileWriterError: {errMsg}')
 
+        layer: QgsRasterLayer = qgsRasterLayer(file_name)
+        if layer_name is not None:
+            layer.setName(layer_name)
+
         # write additional metadata
         if isinstance(dp, VectorLayerFieldRasterDataProvider):
-            fieldConverter: FieldToRasterValueConverter = dp.fieldConverter()
-            # field: QgsField = fieldConverter.field()
-            if isinstance(fieldConverter, SpectralProfileValueConverter):
-                # write spectral properties like wavelength per band
-                spectral_settings = fieldConverter.spectralSetting().copy()
 
+            if dp.bandCount() > 1:
+                spectral_settings = dp.rasterMetaData().copy()
                 props = QgsRasterLayerSpectralProperties.fromMap(spectral_settings)
-                props.writeToSource(file_name, write_envi=True)
+                props.writeToSource(layer, write_envi=True)
 
-            elif fieldConverter.isClassification():
-                # set a categorical raster renderer with class names and colors
-                layer: QgsRasterLayer = qgsRasterLayer(file_name)
-                colorTable = fieldConverter.colorTable(1)
-                classData = QgsPalettedRasterRenderer.colorTableToClassData(colorTable)
-                renderer = QgsPalettedRasterRenderer(layer.dataProvider(), 1, classData)
-                layer.setRenderer(renderer)
-                layer.saveDefaultStyle(QgsMapLayer.StyleCategory.AllStyleCategories)
-                del layer, renderer
+            # write a classification
+            else:
+                colorTable = dp.colorTable(1)
+                if len(colorTable) > 0:
+                    # set a categorical raster renderer with class names and colors
+                    classData = QgsPalettedRasterRenderer.colorTableToClassData(colorTable)
+                    renderer = QgsPalettedRasterRenderer(layer.dataProvider(), 1, classData)
+                    layer.setRenderer(renderer)
+                    layer.saveDefaultStyle(QgsMapLayer.StyleCategory.AllStyleCategories)
+
+        del layer
 
         self.mTemporaryRaster.append(file_name)
 
@@ -1087,7 +1194,7 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
             self.flag_invalid_output_extension(e.message, e.widget)
         return {}
 
-    def setAlgorithm(self, alg: Union[str, pathlib.Path, QgsProcessingAlgorithm]):
+    def setAlgorithm(self, alg: Union[str, Path, QgsProcessingAlgorithm]):
 
         if isinstance(alg, str):
             reg: QgsProcessingRegistry = QgsApplication.instance().processingRegistry()
@@ -1095,9 +1202,9 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
             if isinstance(a, QgsProcessingAlgorithm):
                 alg = a
             else:
-                alg = pathlib.Path(alg)
+                alg = Path(alg)
 
-        if isinstance(alg, pathlib.Path):
+        if isinstance(alg, Path):
             if not (alg.is_file()):
                 raise AssertionError(f'Not a model file: {alg}')
             m = QgsProcessingModelAlgorithm()
@@ -1119,14 +1226,18 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
         self.mPanelWidget = w
         self.updateGui()
 
-    def getParametersPanel(self, alg: QgsProcessingAlgorithm,
-                           parent: QWidget) -> SpectralProcessingModelCreatorAlgorithmWrapper:
+    def getParametersPanel(
+        self,
+        alg: QgsProcessingAlgorithm,
+        parent: QWidget
+    ) -> SpectralProcessingModelCreatorAlgorithmWrapper:
         if isinstance(self.mSpeclib, QgsVectorLayer):
-            panel = SpectralProcessingModelCreatorAlgorithmWrapper(alg,
-                                                                   self.mSpeclib,
-                                                                   processingContext=self.mProcessingContext,
-                                                                   parent=self
-                                                                   )
+            panel = SpectralProcessingModelCreatorAlgorithmWrapper(
+                alg,
+                self.mSpeclib,
+                processingContext=self.mProcessingContext,
+                parent=self
+            )
         else:
             panel = QgsPanelWidget()
             if not panel.layout():
