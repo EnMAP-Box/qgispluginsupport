@@ -10,6 +10,7 @@ from qgis.core import QgsApplication, QgsProcessingAlgorithm, QgsProcessingConte
     QgsVectorLayer, edit, QgsProcessingException
 from qgis.core import (QgsProcessingParameterRasterLayer,
                        QgsProcessingParameterNumber, QgsProcessingParameterRasterDestination)
+from qgis.core import QgsRasterLayer
 from qgis.gui import QgsProcessingAlgorithmDialogBase, QgsProcessingContextGenerator, \
     QgsProcessingGui, QgsProcessingParameterWidgetContext
 
@@ -124,13 +125,19 @@ class ExampleRasterProcessing(QgsProcessingAlgorithm):
         # Process: resample to n bands
         feedback.setProgress(40)
         feedback.pushInfo(f'Resampling from {input_band_count} to {n_bands} bands...')
-
+        wl_in = spectral_settings_in.wavelengths()
+        wl_out = []
         if n_bands == input_band_count:
             # No resampling needed
             output_data = input_data
+            if np.any(wl_in):
+                wl_out = wl_in
         elif n_bands < input_band_count:
             # Downsample: select evenly spaced bands
             indices = np.linspace(0, input_band_count - 1, n_bands, dtype=int)
+            if np.any(wl_in):
+                wl_out = [wl_in[i] for i in indices]
+
             output_data = input_data[indices]
             feedback.pushInfo(f'Downsampling: selected bands at indices {indices.tolist()}')
         else:
@@ -139,6 +146,9 @@ class ExampleRasterProcessing(QgsProcessingAlgorithm):
             indices_old = np.arange(input_band_count)
             indices_new = np.linspace(0, input_band_count - 1, n_bands)
             output_data = np.zeros((n_bands, rows, cols), dtype=input_data.dtype)
+
+            if np.any(wl_in):
+                wl_out = np.interp(indices_new, indices_old, wl_in)
 
             for row in range(rows):
                 if feedback.isCanceled():
@@ -170,15 +180,14 @@ class ExampleRasterProcessing(QgsProcessingAlgorithm):
         output_ds.SetGeoTransform(input_ds.GetGeoTransform())
         output_ds.SetProjection(input_ds.GetProjection())
 
-        wl = spectral_settings_in.wavelengths()
         # Write bands
         for i in range(n_bands):
             band = output_ds.GetRasterBand(i + 1)
             band.WriteArray(output_data[i])
             band.FlushCache()
 
-            if i < len(wl):
-                wl_ = wl[i]
+            if i < len(wl_out):
+                wl_ = wl_out[i]
                 if wl_:
                     band.SetMetadataItem('CENTRAL_WAVELENGTH_UM', str(wl_), 'IMAGERY')
             # Set nodata value if available
@@ -279,26 +288,31 @@ class SpectralProcessingTests(TestCase):
 
     def test_virtual_inputs(self):
 
-        # processing.run("native:virtualrastercalc",
-        #                {'LAYERS': ['/home/jakimowb/repositories/qgispluginsupport/qpstestdata/hymap.tif'],
-        #                 'EXPRESSION': '"hymap@1"', 'EXTENT': None, 'CELL_SIZE': None, 'CRS': None,
-        #                 'LAYER_NAME': 'output_layer_name'})
-
         algorithmId = 'native:virtualrastercalc'
 
         speclib = TestObjects.createSpectralLibrary(2)
 
-        TestObjects.processingAlgorithm()
+        from qpstestdata import enmap
+
+        lyr = QgsRasterLayer(enmap.as_posix(), 'enmap')
+
+        project = QgsProject()
+        project.addMapLayer(lyr)
+
+        LAYERS = []
+        for f in speclib.fields():
+            lid = f'vectorlayerfieldraster://?lid={speclib.id()}&field={f.name()}'
+            LAYERS.append(lid)
+
         parameters = {
-            'LAYERS': ['/home/jakimowb/repositories/qgispluginsupport/qpstestdata/hymap.tif'],
-            'EXPRESSION': '"hymap@1"',
+            # 'LAYERS': LAYERS,
+            'EXPRESSION': '"profiles0 (177 bands, Micrometers)@1" + "name (string)@1"',
             'EXTENT': None,
             'CELL_SIZE': None, 'CRS': None,
             'LAYER_NAME': 'output_layer_name'
         }
         with edit(speclib):
-            slw = SpectralLibraryWidget(speclib=speclib)
-
+            slw = SpectralLibraryWidget(speclib=speclib, project=project)
             spd = SpectralProcessingDialog(speclib=speclib, algorithmId=algorithmId, parameters=parameters)
 
             # spd.runAlgorithm(fail_fast=True)
@@ -322,8 +336,6 @@ class SpectralProcessingTests(TestCase):
                        if a.id().endswith('examplerasterprocessing')][0]
 
         speclib = TestObjects.createSpectralLibrary(2)
-
-        TestObjects.processingAlgorithm()
 
         with edit(speclib):
             slw = SpectralLibraryWidget(speclib=speclib)

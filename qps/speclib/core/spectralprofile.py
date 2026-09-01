@@ -10,10 +10,10 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
-
 from qgis.PyQt.QtCore import NULL, QByteArray, QDateTime, QJsonDocument, Qt, QMetaType
 from qgis.core import QgsExpressionContext, QgsFeature, QgsField, QgsFields, QgsGeometry, \
     QgsPointXY, QgsProcessingFeedback, QgsPropertyTransformer, QgsVectorLayer
+
 from . import create_profile_field, profile_fields
 from .. import EMPTY_VALUES
 from ...utils import stringFromByteArray
@@ -279,7 +279,10 @@ def encodeProfileValueDict(d: dict,
         return json.dumps(d2, ensure_ascii=False, allow_nan=False)
 
 
-def decodeProfileValueDict(dump: Union[QByteArray, str, dict], numpy_arrays: bool = False) -> dict:
+def decodeProfileValueDict(
+    dump: Union[QByteArray, str, dict],
+    numpy_arrays: bool = False
+) -> dict:
     """
     Converts a text / json / pickle / bytes representation of a SpectralProfile into a dictionary.
 
@@ -365,11 +368,13 @@ def spectralSettingsDict(profile: dict, bbl: bool = False, fwhm: bool = False) -
     return key
 
 
-def groupBySpectralProperties(features: Union[QgsVectorLayer, List[QgsFeature]],
-                              field: Union[None, int, str, QgsField] = None,
-                              fwhm: bool = False,
-                              bbl: bool = False,
-                              mode: str = 'features') -> Dict[str, List[Union[QgsFeature, dict]]]:
+def groupBySpectralProperties(
+    features: Union[QgsVectorLayer, List[QgsFeature]],
+    field: Union[None, int, str, QgsField] = None,
+    fwhm: bool = False,
+    bbl: bool = False,
+    mode: str = 'features'
+) -> Dict[str, List[Union[QgsFeature, dict]]]:
     """
     Returns SpectralProfiles grouped by spectral properties in the field 'profile_field'
     QgsFeatures with empty profiles are excluded from the returned groupings.
