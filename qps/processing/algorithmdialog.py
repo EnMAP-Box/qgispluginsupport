@@ -32,7 +32,6 @@ from processing.gui.MessageBarProgress import MessageBarProgress
 from processing.gui.MessageDialog import MessageDialog
 from processing.gui.Postprocessing import determine_output_name, post_process_layer
 from processing.gui.algorithm_widget import AlgorithmWidget
-from processing.gui.wrappers import WidgetWrapper, WidgetWrapperFactory
 from processing.tools import dataobjects
 from qgis.PyQt.QtCore import QCoreApplication, QDir, QFileInfo
 from qgis.PyQt.QtGui import QColor, QPalette
@@ -49,6 +48,7 @@ from qgis.core import (
     QgsProcessingUtils, QgsProject, QgsProxyProgressTask, QgsSettings)
 from qgis.gui import (
     QgisInterface, QgsGui, QgsPanelWidget, QgsProcessingAlgorithmWidgetBase,
+    QgsAbstractProcessingParameterWidgetWrapper,
     QgsProcessingBatchAlgorithmDialogBase, QgsProcessingContextGenerator, QgsProcessingGui,
     QgsProcessingHiddenWidgetWrapper, QgsProcessingParametersGenerator, QgsProcessingParametersWidget,
     QgsProcessingParameterWidgetContext)
@@ -830,6 +830,21 @@ class ParametersPanel(QgsProcessingParametersWidget):
             except AttributeError:
                 pass
 
+    def parameterChanged(self):
+        """
+        Called when a parameter value is changed in the panel
+        """
+        wrapper: QgsAbstractProcessingParameterWidgetWrapper = self.sender()
+        default_values = self.algorithm().autogenerateParameterValues(
+            self.createProcessingParameters(
+                QgsProcessingParametersGenerator.Flag.SkipValidation
+            ),
+            wrapper.parameterDefinition().name(),
+            Qgis.ProcessingMode.Standard,
+        )
+        if default_values:
+            self.setParameters(default_values)
+
     def initWidgets(self):
         super().initWidgets()
 
@@ -870,45 +885,24 @@ class ParametersPanel(QgsProcessingParametersWidget):
                     self.wrappers[param.name()].setLinkedVectorLayer(self.active_layer)
                     continue
 
-                wrapper = WidgetWrapperFactory.create_wrapper(param, self.parent())
+                wrapper = QgsGui.processingGuiRegistry().createParameterWidgetWrapper(
+                    param, Qgis.ProcessingMode.Standard
+                )
+                # wrapper.setDialog(self.parent())
                 wrapper.setWidgetContext(widget_context)
                 wrapper.registerProcessingContextGenerator(self.context_generator)
                 wrapper.registerProcessingParametersGenerator(self)
                 self.wrappers[param.name()] = wrapper
 
-                # For compatibility with 3.x API, we need to check whether the wrapper is
-                # the deprecated WidgetWrapper class. If not, it's the newer
-                # QgsAbstractProcessingParameterWidgetWrapper class
-                # TODO QGIS 4.0 - remove
-                is_python_wrapper = issubclass(wrapper.__class__, WidgetWrapper)
-                stretch = 0
-                if not is_python_wrapper:
-                    widget = wrapper.createWrappedWidget(self.processing_context)
-                    stretch = wrapper.stretch()
-                else:
-                    widget = wrapper.widget
+                widget = wrapper.createWrappedWidget(self.processing_context)
+                wrapper.widgetValueHasChanged.connect(self.parameterChanged)
+                stretch = wrapper.stretch()
 
                 if widget is not None:
-                    if is_python_wrapper:
-                        widget.setToolTip(param.toolTip())
-
-                    label = None
-                    if not is_python_wrapper:
-                        label = wrapper.createWrappedLabel()
-                    else:
-                        label = wrapper.label
+                    label = wrapper.createWrappedLabel()
 
                     if label is not None:
                         self.addParameterLabel(param, label)
-                    elif is_python_wrapper:
-                        desc = param.description()
-                        if isinstance(param, QgsProcessingParameterExtent):
-                            desc += self.tr(" (xmin, xmax, ymin, ymax)")
-                        if (
-                            param.flags() & QgsProcessingParameterDefinition.Flag.FlagOptional
-                        ):
-                            desc += self.tr(" [optional]")
-                        widget.setText(desc)
 
                     self.addParameterWidget(param, widget, stretch)
 
@@ -977,14 +971,7 @@ class ParametersPanel(QgsProcessingParametersWidget):
                 except KeyError:
                     continue
 
-                # For compatibility with 3.x API, we need to check whether the wrapper is
-                # the deprecated WidgetWrapper class. If not, it's the newer
-                # QgsAbstractProcessingParameterWidgetWrapper class
-                # TODO QGIS 4.0 - remove
-                if issubclass(wrapper.__class__, WidgetWrapper):
-                    widget = wrapper.widget
-                else:
-                    widget = wrapper.wrappedWidget()
+                widget = wrapper.wrappedWidget()
 
                 if (
                     not isinstance(wrapper, QgsProcessingHiddenWidgetWrapper)
@@ -1550,16 +1537,7 @@ class BatchPanel(QgsPanelWidget, WIDGET):
             widget_context.setModel(self.alg)
         wrapper.setWidgetContext(widget_context)
         wrapper.registerProcessingContextGenerator(self.context_generator)
-
-        # For compatibility with 3.x API, we need to check whether the wrapper is
-        # the deprecated WidgetWrapper class. If not, it's the newer
-        # QgsAbstractProcessingParameterWidgetWrapper class
-        # TODO QGIS 4.0 - remove
-        is_cpp_wrapper = not issubclass(wrapper.__class__, WidgetWrapper)
-        if is_cpp_wrapper:
-            widget = wrapper.createWrappedWidget(context)
-        else:
-            widget = wrapper.widget
+        widget = wrapper.createWrappedWidget(context)
 
         self.tblParameters.setCellWidget(row, column, widget)
 
@@ -1588,7 +1566,7 @@ class BatchPanel(QgsPanelWidget, WIDGET):
                     continue
 
                 column = self.parameter_to_column[param.name()]
-                wrapper = WidgetWrapperFactory.create_wrapper(
+                wrapper = param.create_wrapper(
                     param, self.parent, row, column
                 )
                 wrappers[param.name()] = wrapper

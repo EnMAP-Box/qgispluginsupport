@@ -9,7 +9,6 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 from processing import createContext
 from processing.core.exceptions import InvalidParameterValue, InvalidOutputExtension
-from processing.gui.wrappers import WidgetWrapper, WidgetWrapperFactory
 from qgis.PyQt.QtCore import pyqtSignal, QModelIndex, QObject, Qt, QTimer, QMetaType
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import (
@@ -28,6 +27,7 @@ from qgis.gui import (
     QgsProcessingAlgorithmWidgetBase, QgsProcessingContextGenerator, QgsProcessingGui, QgsProcessingHiddenWidgetWrapper,
     QgsProcessingParametersGenerator, QgsProcessingParametersWidget, QgsProcessingParameterWidgetContext,
     QgsProcessingRecentAlgorithmLog, QgsProcessingToolboxProxyModel)
+
 from .. import EDITOR_WIDGET_REGISTRY_KEY, speclibSettings
 from ..core import can_store_spectral_profiles, is_profile_field
 from ..core.spectrallibrary import SpectralLibraryUtils
@@ -208,7 +208,7 @@ class SpectralProcessingRasterLayerWidgetWrapper(QgsAbstractProcessingParameterW
                  ):
 
         if not (isinstance(parameter, QgsProcessingParameterRasterLayer)):
-            raise AssertionError
+            raise AssertionError(f'expected QgsProcessingParameterRasterLayer, got {parameter}')
         self.mMapLayerWidget: QWidget = None
         self.mMapLayerModel: QgsMapLayerModel = None
 
@@ -219,7 +219,7 @@ class SpectralProcessingRasterLayerWidgetWrapper(QgsAbstractProcessingParameterW
 
     def createWidget(self):
 
-        model = QgsMapLayerModel(self, self.widgetContext().project())
+        model = QgsMapLayerModel(project=self.widgetContext().project(), parent=self)
         self.mMapLayerModel = model
 
         param = self.parameterDefinition()
@@ -443,10 +443,13 @@ class SpectralProcessingModelCreatorAlgorithmWrapper(QgsProcessingParametersWidg
                 continue
 
             if isinstance(param, QgsProcessingParameterRasterLayer):
-                # workaround https://github.com/qgis/QGIS/issues/46673
-                wrapper = SpectralProcessingRasterLayerWidgetWrapper(param, QgsProcessingGui.WidgetType.Standard)
+                wrapper = SpectralProcessingRasterLayerWidgetWrapper(
+                    param, QgsProcessingGui.WidgetType.Standard
+                )
             else:
-                wrapper = WidgetWrapperFactory.create_wrapper(param, self.parent(), row=0, col=0)
+                wrapper = QgsGui.processingGuiRegistry().createParameterWidgetWrapper(
+                    param, Qgis.ProcessingMode.Standard
+                )
 
             if not (isinstance(wrapper, QgsAbstractProcessingParameterWidgetWrapper)):
                 raise AssertionError
@@ -461,21 +464,13 @@ class SpectralProcessingModelCreatorAlgorithmWrapper(QgsProcessingParametersWidg
                 raise AssertionError(f'{param.name()} in {self.mWrappers.keys()}')
             self.mWrappers[param.name()] = wrapper
 
-            old_api = isinstance(wrapper, WidgetWrapper)
-            if old_api:
-                label = wrapper.label
-            else:
-                label = wrapper.createWrappedLabel()
+            label = wrapper.createWrappedLabel()
 
             if isinstance(label, QLabel):
                 self.addParameterLabel(param, label)
 
             stretch = 0
-            if old_api:
-                widget = wrapper.widget
-                stretch = wrapper.stretch()
-            else:
-                widget = wrapper.createWrappedWidget(self.mProcessing_context)
+            widget = wrapper.createWrappedWidget(self.mProcessing_context)
 
             if isinstance(widget, QWidget):
                 self.addParameterWidget(param, widget, stretch)
@@ -534,8 +529,6 @@ class SpectralProcessingModelCreatorAlgorithmWrapper(QgsProcessingParametersWidg
                     continue
 
                 widget = wrapper.wrappedWidget()
-                if widget is None and issubclass(wrapper.__class__, WidgetWrapper):
-                    widget = wrapper.widget
 
                 if not isinstance(wrapper, QgsProcessingHiddenWidgetWrapper) and widget is None:
                     continue
