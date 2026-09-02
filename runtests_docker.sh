@@ -22,13 +22,11 @@ export PYTHONPATH="${PYTHONPATH}"\
 ":$(pwd)"\
 ":/usr/share/qgis/python/plugins"\
 ":$(pwd)/tests"
-python3 runfirst.py
-python3 scripts/systeminfo.py
-which python3
-which python
-which pytest
+/venv/qps/bin/python3 runfirst.py
+/venv/qps/bin/python3 scripts/systeminfo.py
 
-python3 -m pytest -n auto --no-cov-on-fail
+# python3 -m pytest -n auto --no-cov-on-fail
+/venv/qps/bin/python3 -m pytest -n auto --no-cov-on-fail
 # pytest --no-cov-on-fail
 # --cov-config=.coveragec "$@"
 # coverage-badge -o coverage.svg
