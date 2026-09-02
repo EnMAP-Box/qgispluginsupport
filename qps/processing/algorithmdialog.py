@@ -347,7 +347,8 @@ class AlgorithmDialog(QgsProcessingAlgorithmWidgetBase):
         self.history_details = {}
 
         self.setAlgorithm(alg)
-        self.setMainWidget(self.getParametersPanel(alg, self))
+        self._panel = self.getParametersPanel(alg, self)
+        self.setMainWidget(self._panel)
 
         if not self.in_place:
             self.runAsBatchButton = QPushButton(
