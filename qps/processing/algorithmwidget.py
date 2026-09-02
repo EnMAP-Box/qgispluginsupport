@@ -31,7 +31,6 @@ from processing.gui.BatchPanel import BatchPanelFillWidget, WIDGET
 from processing.gui.MessageBarProgress import MessageBarProgress
 from processing.gui.MessageDialog import MessageDialog
 from processing.gui.Postprocessing import determine_output_name, post_process_layer
-from processing.gui.algorithm_widget import AlgorithmWidget
 from processing.tools import dataobjects
 from qgis.PyQt.QtCore import QCoreApplication, QDir, QFileInfo
 from qgis.PyQt.QtGui import QColor, QPalette
@@ -43,8 +42,8 @@ from qgis.core import (
     QgsProcessingAlgorithm, QgsProcessingAlgRunnerTask, QgsProcessingContext,
     QgsProcessingFeatureSourceDefinition, QgsProcessingFeedback, QgsProcessingModelAlgorithm,
     QgsProcessingOutputBoolean, QgsProcessingOutputHtml, QgsProcessingOutputLayerDefinition, QgsProcessingOutputNumber,
-    QgsProcessingOutputString, QgsProcessingParameterDefinition, QgsProcessingParameterExtent,
-    QgsProcessingParameterFeatureSink, QgsProcessingParameterRasterDestination, QgsProcessingParameterVectorDestination,
+    QgsProcessingOutputString, QgsProcessingParameterDefinition, QgsProcessingParameterFeatureSink,
+    QgsProcessingParameterRasterDestination, QgsProcessingParameterVectorDestination,
     QgsProcessingUtils, QgsProject, QgsProxyProgressTask, QgsSettings)
 from qgis.gui import (
     QgisInterface, QgsGui, QgsPanelWidget, QgsProcessingAlgorithmWidgetBase,
@@ -310,7 +309,7 @@ def createExpressionContext(  # noqa: QGS105
     return context
 
 
-class AlgorithmDialog(QgsProcessingAlgorithmWidgetBase):
+class AlgorithmWidget(QgsProcessingAlgorithmWidgetBase):
 
     def __init__(  # noqa: QGS105
         self,
@@ -777,6 +776,9 @@ class AlgorithmDialog(QgsProcessingAlgorithmWidgetBase):
                 )
 
 
+AlgorithmDialog = AlgorithmWidget
+
+
 class ParametersPanel(QgsProcessingParametersWidget):
 
     def __init__(  # noqa: QGS105
@@ -958,7 +960,11 @@ class ParametersPanel(QgsProcessingParametersWidget):
     def createProcessingParameters(
         self, flags=QgsProcessingParametersGenerator.Flags()
     ):
-        include_default = not (flags & QgsProcessingParametersGenerator.Flag.SkipDefaultValueParameters)
+        include_default = not (
+            flags & QgsProcessingParametersGenerator.Flag.SkipDefaultValueParameters
+        )
+        validate = not (flags & QgsProcessingParametersGenerator.Flag.SkipValidation)
+
         parameters = {}
         for p, v in self.extra_parameters.items():
             parameters[p] = v
@@ -984,7 +990,7 @@ class ParametersPanel(QgsProcessingParametersWidget):
                 if param.defaultValue() != value or include_default:
                     parameters[param.name()] = value
 
-                if not param.checkValueIsAcceptable(value):
+                if validate and not param.checkValueIsAcceptable(value):
                     raise InvalidParameterValue(param, widget)
             else:
                 if self.in_place and param.name() == "OUTPUT":
@@ -1064,7 +1070,7 @@ class BatchAlgorithmDialog(QgsProcessingBatchAlgorithmDialogBase):
 
     def runAsSingle(self):
         self.close()
-        dlg = AlgorithmDialog(self.algorithm().create(), parent=self._iface.mainWindow(),
+        dlg = AlgorithmWidget(self.algorithm().create(), parent=self._iface.mainWindow(),
                               context=self._context,
                               iface=self._iface)
         dlg.show()
@@ -1807,7 +1813,7 @@ def executeAlgorithm(  # noqa: QGS105
 
                 if not dlg:
                     # use dialog that accounts for individual context and iface
-                    dlg = AlgorithmDialog(alg, in_place, parent=parent, context=context, iface=iface)
+                    dlg = AlgorithmWidget(alg, in_place, parent=parent, context=context, iface=iface)
                 else:
 
                     # overwrite QgsProcessingContext.processingContext()
