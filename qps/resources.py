@@ -229,9 +229,26 @@ def compileResourceFile(
 
     else:
 
-        rcc_exe = 'rcc'
-        if not shutil.which(rcc_exe):
-            raise FileNotFoundError(f'{rcc_exe}')
+        rcc_exe = shutil.which('rcc')
+
+        if not rcc_exe:
+            # try to find rcc executable
+            candidates = ['/usr/lib/libexec/rcc',
+                          '/usr/lib/qt6/bin/rcc',
+                          '/usr/lib/qt6/libexec/rcc']
+            for c in candidates:
+                if os.path.isfile(c):
+                    rcc_exe = c
+                    break
+        # If still not found, try to find any rcc executable
+        if not rcc_exe:
+            for p in Path('/usr').rglob('rcc'):
+                if p.is_file():
+                    rcc_exe = str(p)
+                    break
+
+        if not (rcc_exe and os.path.isfile(rcc_exe)):
+            raise FileNotFoundError('Unable to find rcc executable')
 
         cmd = [
             rcc_exe, str(pathQrc),
