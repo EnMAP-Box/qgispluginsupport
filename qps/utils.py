@@ -964,7 +964,7 @@ def fid2pixelindices(raster: gdal.Dataset,
 
     # print(f'Rasterize FIDs of {layer.GetDescription()}...')
 
-    drvMem: ogr.Driver = ogr.GetDriverByName('Memory')
+    drvMem: ogr.Driver = ogr.GetDriverByName('MEM')
     dsMem: ogr.DataSource = drvMem.CreateDataSource('')
     lyrMem: ogr.Layer = dsMem.CreateLayer(layer.GetName(),
                                           srs=layer.GetSpatialRef(),
@@ -3391,7 +3391,7 @@ class MapGeometryToPixel(object):
             self.bandMEM: gdal.Band = self.rsMEM.GetRasterBand(1)
 
         if not isinstance(self.vsMem, ogr.DataSource):
-            self.vsMem: ogr.DataSource = ogr.GetDriverByName('Memory').CreateDataSource('')
+            self.vsMem: ogr.DataSource = ogr.GetDriverByName('MEM').CreateDataSource('')
 
         g = ogr.CreateGeometryFromWkb(qgsGeometry.asWkb())
         geom_type = g.GetGeometryType()
