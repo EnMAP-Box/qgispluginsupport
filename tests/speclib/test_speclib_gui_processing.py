@@ -8,22 +8,14 @@ from qgis.core import (
     QgsApplication, QgsProcessingAlgorithm, QgsProcessingContext,
     QgsProcessingFeedback,
     QgsProcessingOutputRasterLayer, QgsProcessingRegistry, QgsProject,
-    QgsVectorLayer, edit, QgsProcessingException
-)
-from qgis.core import (
+    QgsVectorLayer, edit, QgsProcessingException,
     QgsProcessingParameterRasterLayer,
-    QgsProcessingParameterNumber, QgsProcessingParameterRasterDestination
+    QgsProcessingParameterNumber, QgsProcessingParameterRasterDestination,
 )
-from qgis.gui import (
-    QgsProcessingAlgorithmWidgetBase,
-    QgsProcessingContextGenerator,
-from qgis.core import (QgsProcessingParameterRasterLayer,
-                       QgsProcessingParameterNumber, QgsProcessingParameterRasterDestination)
 from qgis.core import QgsRasterLayer
-from qgis.gui import QgsProcessingAlgorithmDialogBase, QgsProcessingContextGenerator, \
+from qgis.gui import QgsProcessingAlgorithmWidgetBase, QgsProcessingContextGenerator, \
     QgsProcessingGui, QgsProcessingParameterWidgetContext
 
-)
 from qps import initAll
 from qps.qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget

@@ -1,7 +1,6 @@
 import json
 import math
 import re
-from typing import Any, Dict, List, Optional, Tuple, Union, Iterable
 import warnings
 from typing import Any, Dict, List, Optional, Tuple, Union, Iterable, Set
 from urllib.parse import urlencode
@@ -39,10 +38,6 @@ def create_uri(vl: QgsVectorLayer, field: QgsField) -> str:
 def createRasterLayers(
     vl: QgsVectorLayer,
     selected_only: bool = False,
-    fields=None
-) -> List[QgsRasterLayer]:
-def createRasterLayers(
-    features: Union[QgsVectorLayer, List[QgsFeature]],
     fields: Union[str, List[str], List[QgsField], QgsField, QgsFields] = None
 ) -> List[QgsRasterLayer]:
     """
@@ -1081,11 +1076,6 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
         # dp.setActiveField(self.activeField())
         dp.setParent(VectorLayerFieldRasterDataProvider.PARENT)
 
-        features = [QgsFeature(f) for f in self.activeFeatures()]
-        field = QgsField(self.activeField())
-        dp.setActiveFeatures(features)
-        dp.setActiveField(field)
-        # dp.setParent(VectorLayerFieldRasterDataProvider.PARENT)
         dp.setParent(self.parent())
         # print(f'#CLONE  {self.extent()}  ->  {dp.extent()}')
         # self._refs_.append(dp)

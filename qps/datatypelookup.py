@@ -83,7 +83,7 @@ QMETATYPE_STRING_MAPPING = {
 class DataTypeLookup:
     """
     Static class to convert between Qgis.DataType, numpy dtypes, and QMetaType.
-    
+
     Examples:
         >>> DataTypeLookup.toNumpy(Qgis.DataType.UInt16)
         <class 'numpy.uint16'>
@@ -169,7 +169,7 @@ class DataTypeLookup:
     def toNumpy(cls, datatype: Union[Qgis.DataType, QMetaType.Type, np.dtype, type, str]) -> np.dtype:
         """
         Converts a datatype to numpy dtype.
-        
+
         :param datatype: Qgis.DataType, QMetaType.Type, numpy dtype, Python type, or string representation
         :return: numpy dtype
         """
@@ -203,7 +203,6 @@ class DataTypeLookup:
     def toQgisDataType(cls, datatype: Union[Qgis.DataType, QMetaType.Type, np.dtype, type, str]) -> Qgis.DataType:
         """
         Converts a datatype to Qgis.DataType.
-        
         :param datatype: Qgis.DataType, QMetaType.Type, numpy dtype, Python type, or string representation
         :return: Qgis.DataType
         """
@@ -255,7 +254,6 @@ class DataTypeLookup:
     def toQMetaType(cls, datatype: Union[Qgis.DataType, QMetaType.Type, np.dtype, type, str]) -> QMetaType.Type:
         """
         Converts a datatype to QMetaType.Type.
-        
         :param datatype: Qgis.DataType, QMetaType.Type, numpy dtype, Python type, or string representation
         :return: QMetaType.Type
         """

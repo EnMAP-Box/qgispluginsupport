@@ -7,9 +7,8 @@ from json import JSONDecodeError
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-from processing import createContext
-from processing.gui.AlgorithmDialogBase import AlgorithmDialogBase
-from processing.gui.wrappers import WidgetWrapper, WidgetWrapperFactory
+from processing.core.exceptions import InvalidOutputExtension, InvalidParameterValue
+from processing.tools.dataobjects import createContext
 from qgis.PyQt.QtCore import pyqtSignal, QModelIndex, QObject, Qt, QTimer, QMetaType
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import (
@@ -26,7 +25,7 @@ from qgis.core import (
 from qgis.core import QgsProcessingDestinationParameter
 from qgis.gui import (
     QgsAbstractProcessingParameterWidgetWrapper, QgsGui, QgsMessageBar, QgsPanelWidget,
-    QgsProcessingAlgorithmDialogBase, QgsProcessingContextGenerator, QgsProcessingGui, QgsProcessingHiddenWidgetWrapper,
+    QgsProcessingAlgorithmWidgetBase, QgsProcessingContextGenerator, QgsProcessingGui, QgsProcessingHiddenWidgetWrapper,
     QgsProcessingParametersGenerator, QgsProcessingParametersWidget, QgsProcessingParameterWidgetContext,
     QgsProcessingRecentAlgorithmLog, QgsProcessingToolboxProxyModel)
 
@@ -217,9 +216,7 @@ class SpectralProcessingRasterLayerWidgetWrapper(QgsAbstractProcessingParameterW
 
         if not (isinstance(parameter, QgsProcessingParameterRasterLayer)):
             raise AssertionError(f'expected QgsProcessingParameterRasterLayer, got {parameter}')
-        self.mMapLayerWidget: QWidget = None
-        self.mMapLayerModel: QgsMapLayerModel = None
-            raise AssertionError
+
         self.mMapLayerWidget: Optional[QWidget] = None
         self.mMapLayerModel: Optional[QgsMapLayerModel] = None
 
