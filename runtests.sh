@@ -9,5 +9,5 @@ export PYTHONPATH="${PYTHONPATH}"\
 
 rm -Rf test-outputs
 rm -Rf test-reports
-pytest --no-cov-on-fail --cov-config=.coveragec "$@"
+pytest --no-cov-on-fail "$@"
 # coverage-badge -o coverage.svg -f -v

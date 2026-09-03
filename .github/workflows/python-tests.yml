@@ -39,5 +39,5 @@ jobs:
           submodules: recursive
       - name: Test on QGIS {{matrix.qgis_version}}
         run: |
-          chmod +x .docker/runtests.sh 2>/dev/null || true
-          docker compose -f .docker/docker-compose.gh.yml run --workdir /usr/src qgis /usr/src/runtests.sh -n auto
+          chmod +x runtests.sh
+          docker compose -f .docker/docker-compose.gh.yml run qgis runtests.sh -n auto

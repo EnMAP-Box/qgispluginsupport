@@ -7,5 +7,6 @@ services:
       args:
         QGIS_TEST_VERSION: ${QGIS_TEST_VERSION:-latest}
     tty: true
+    working_dir: /usr/src
     volumes:
       - ${GITHUB_WORKSPACE:-.}:/usr/src
