@@ -30,7 +30,7 @@ RUN /venv/qps/bin/pip install --upgrade pip && \
 
 RUN bash /tmp/qgis_setup.sh
 
-RUN /venv/qps/bin/python /tmp/runfirst.py
+RUN cd /usr/src && /venv/qps/bin/python /tmp/runfirst.py
 
 RUN ls -l /usr/src
 RUN ls -la /usr/lib/qt6/bin
