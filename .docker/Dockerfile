@@ -21,8 +21,8 @@ COPY ./.docker/qgis_setup.sh /tmp/
 
 RUN python3 -m venv --system-site-packages /venv/qps
 ENV PATH=/venv/qps/bin:$PATH
-RUN pip install --upgrade pip
-RUN pip install -r /tmp/requirements.txt
+RUN /venv/qps/bin/pip install --upgrade pip
+RUN /venv/qps/bin/pip install -r /tmp/requirements.txt
 RUN bash /tmp/qgis_setup.sh
 
 # ENV LANG=C.UTF-8
