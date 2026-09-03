@@ -3,7 +3,6 @@ import unittest
 
 import numpy as np
 from osgeo import gdal
-
 from qgis.PyQt.QtWidgets import QGridLayout, QWidget
 from qgis.core import (
     QgsApplication, QgsProcessingAlgorithm, QgsProcessingContext,
@@ -18,7 +17,12 @@ from qgis.core import (
 from qgis.gui import (
     QgsProcessingAlgorithmWidgetBase,
     QgsProcessingContextGenerator,
+from qgis.core import (QgsProcessingParameterRasterLayer,
+                       QgsProcessingParameterNumber, QgsProcessingParameterRasterDestination)
+from qgis.core import QgsRasterLayer
+from qgis.gui import QgsProcessingAlgorithmDialogBase, QgsProcessingContextGenerator, \
     QgsProcessingGui, QgsProcessingParameterWidgetContext
+
 )
 from qps import initAll
 from qps.qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
@@ -102,6 +106,7 @@ class ExampleRasterProcessing(QgsProcessingAlgorithm):
         feedback.pushInfo(f'Output bands: {n_bands}')
 
         # Open input with GDAL
+        spectral_settings_in = QgsRasterLayerSpectralProperties.fromRasterLayer(input_layer)
         input_ds = gdal.Open(input_layer.source())
         if not input_ds:
             raise QgsProcessingException('Could not open input raster with GDAL')
@@ -131,13 +136,19 @@ class ExampleRasterProcessing(QgsProcessingAlgorithm):
         # Process: resample to n bands
         feedback.setProgress(40)
         feedback.pushInfo(f'Resampling from {input_band_count} to {n_bands} bands...')
-
+        wl_in = spectral_settings_in.wavelengths()
+        wl_out = []
         if n_bands == input_band_count:
             # No resampling needed
             output_data = input_data
+            if np.any(wl_in):
+                wl_out = wl_in
         elif n_bands < input_band_count:
             # Downsample: select evenly spaced bands
             indices = np.linspace(0, input_band_count - 1, n_bands, dtype=int)
+            if np.any(wl_in):
+                wl_out = [wl_in[i] for i in indices]
+
             output_data = input_data[indices]
             feedback.pushInfo(f'Downsampling: selected bands at indices {indices.tolist()}')
         else:
@@ -146,6 +157,9 @@ class ExampleRasterProcessing(QgsProcessingAlgorithm):
             indices_old = np.arange(input_band_count)
             indices_new = np.linspace(0, input_band_count - 1, n_bands)
             output_data = np.zeros((n_bands, rows, cols), dtype=input_data.dtype)
+
+            if np.any(wl_in):
+                wl_out = np.interp(indices_new, indices_old, wl_in)
 
             for row in range(rows):
                 if feedback.isCanceled():
@@ -183,6 +197,10 @@ class ExampleRasterProcessing(QgsProcessingAlgorithm):
             band.WriteArray(output_data[i])
             band.FlushCache()
 
+            if i < len(wl_out):
+                wl_ = wl_out[i]
+                if wl_:
+                    band.SetMetadataItem('CENTRAL_WAVELENGTH_UM', str(wl_), 'IMAGERY')
             # Set nodata value if available
             input_band = input_ds.GetRasterBand(1)
             nodata = input_band.GetNoDataValue()
@@ -279,6 +297,46 @@ class SpectralProcessingTests(TestCase):
         a3.initAlgorithm({})
         # e3b = ext(a3)
 
+    def test_virtual_inputs(self):
+
+        algorithmId = 'native:virtualrastercalc'
+
+        speclib = TestObjects.createSpectralLibrary(2)
+
+        from qpstestdata import enmap
+
+        lyr = QgsRasterLayer(enmap.as_posix(), 'enmap')
+
+        project = QgsProject()
+        project.addMapLayer(lyr)
+
+        LAYERS = []
+        for f in speclib.fields():
+            lid = f'vectorlayerfieldraster://?lid={speclib.id()}&field={f.name()}'
+            LAYERS.append(lid)
+
+        parameters = {
+            # 'LAYERS': LAYERS,
+            'EXPRESSION': '"profiles0 (177 bands, Micrometers)@1" + "name (string)@1"',
+            'EXTENT': None,
+            'CELL_SIZE': None, 'CRS': None,
+            'LAYER_NAME': 'output_layer_name'
+        }
+        with edit(speclib):
+            slw = SpectralLibraryWidget(speclib=speclib, project=project)
+            spd = SpectralProcessingDialog(speclib=speclib, algorithmId=algorithmId, parameters=parameters)
+
+            # spd.runAlgorithm(fail_fast=True)
+            # slw.showSpectralProcessingWidget(algorithmId=algorithmId)
+            # wrapper = spd.processingModelWrapper()
+
+            # feedback = spd.processingFeedback()
+
+            self.showGui([spd, slw])
+
+        # preg.removeProvider(provider)
+        QgsProject.instance().removeAllMapLayers()
+
     def test_resampling(self):
 
         provider = ExampleAlgorithmProvider.instance()
@@ -289,8 +347,6 @@ class SpectralProcessingTests(TestCase):
                        if a.id().endswith('examplerasterprocessing')][0]
 
         speclib = TestObjects.createSpectralLibrary(2)
-
-        TestObjects.processingAlgorithm()
 
         with edit(speclib):
             slw = SpectralLibraryWidget(speclib=speclib)

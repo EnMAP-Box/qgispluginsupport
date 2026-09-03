@@ -599,6 +599,16 @@ class SpeclibCoreTests(TestCase):
         n_features = 10
 
         SLIB = TestObjects.createSpectralLibrary(n=n_features, n_bands=n_bands)
+        with edit(SLIB):
+            fid = SLIB.fields().lookupField('name')
+            for i, f in enumerate(SLIB.getFeatures()):
+
+                if i % 2:
+                    class_name = 'A'
+                else:
+                    class_name = 'B'
+
+                SLIB.changeAttributeValue(f.id(), fid, class_name)
 
         pfields = profile_fields(SLIB)
 

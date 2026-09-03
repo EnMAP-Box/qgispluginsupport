@@ -7,11 +7,11 @@ from uuid import uuid4
 
 import numpy as np
 from osgeo import gdal
-
 from qgis.PyQt.QtCore import QDate, QDateTime, QLocale, Qt, QTime, QMetaType
 from qgis.core import Qgis, QgsCoordinateReferenceSystem, QgsEditorWidgetSetup, QgsExpressionContext, QgsFeature, \
     QgsField, QgsFields, QgsProject, QgsProperty, QgsPropertyTransformer, QgsRemappingSinkDefinition, \
     QgsVectorDataProvider, QgsVectorFileWriter, QgsVectorLayer
+
 from .speclib import EDITOR_WIDGET_REGISTRY_KEY
 from .speclib.core import is_profile_field
 from .speclib.core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict, ProfileEncoding

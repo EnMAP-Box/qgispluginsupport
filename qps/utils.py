@@ -105,6 +105,7 @@ NUMPY2QGIS_DATA_TYPES = {np.uint8: Qgis.DataType.Byte,
                          np.uint32: Qgis.DataType.UInt32,
                          np.int16: Qgis.DataType.Int16,
                          np.int32: Qgis.DataType.Int32,
+                         np.int64: Qgis.DataType.Int32,
                          np.float32: Qgis.DataType.Float32,
                          np.float64: Qgis.DataType.Float64,
                          complex: Qgis.DataType.CFloat32,
@@ -1167,7 +1168,7 @@ def qgsFields(source: Union[List[QgsField], QgsFeature, QgsFields, QgsVectorLaye
 
 
 def qgsField(layer_fields: Union[QgsFields, QgsVectorLayer, QgsFeature],
-             field: Union[QgsField, str, int]) -> QgsField:
+             field: Union[QgsField, str, int]) -> Optional[QgsField]:
     """
     Returns the QgsField relating to the input value in "field"
     :param layer_fields: QgsVectorLayer | QgsFields
