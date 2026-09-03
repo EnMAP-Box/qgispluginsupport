@@ -21,13 +21,14 @@ COPY ./.docker/qgis_setup.sh /tmp/
 
 RUN python3 -m venv --system-site-packages /venv/qps
 ENV PATH=/venv/qps/bin:$PATH
-RUN /venv/qps/bin/pip install --upgrade pip
-RUN /venv/qps/bin/pip install -r /tmp/requirements.txt
+ENV PYTHONPATH=/usr/share/qgis/python/:/usr/share/qgis/python/plugins:/usr/lib/python3/dist-packages/qgis:/usr/share/qgis/python/qgis
+
+RUN /venv/qps/bin/pip install --upgrade pip && \
+    /venv/qps/bin/pip install --no-cache-dir -r /tmp/requirements.txt
+
 RUN bash /tmp/qgis_setup.sh
 
-# ENV LANG=C.UTF-8
 RUN ls -l /usr/src
 RUN ls -la /usr/lib/qt6/bin
-# RUN python -c 'from colorama.win32 import windll'
 
 WORKDIR /
