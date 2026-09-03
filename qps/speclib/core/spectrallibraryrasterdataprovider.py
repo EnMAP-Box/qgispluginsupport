@@ -1,7 +1,7 @@
 import json
 import math
 import re
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union, Iterable
 
 import numpy as np
 from qgis.PyQt.QtCore import NULL, QByteArray, QDateTime, QObject, QUrl, QUrlQuery, QMetaType
@@ -29,8 +29,10 @@ def defaultCrs() -> QgsCoordinateReferenceSystem:
     return _DEF_CRS
 
 
-def createRasterLayers(features: Union[QgsVectorLayer, List[QgsFeature]],
-                       fields=None) -> List[QgsRasterLayer]:
+def createRasterLayers(
+    features: Union[QgsVectorLayer, List[QgsFeature]],
+    fields: Union[str, List[str], List[QgsField], QgsField, QgsFields] = None
+) -> List[QgsRasterLayer]:
     """
     Converts a list of QgsFeatures into a set of QgsRasterLayers.
     :param features:
@@ -45,17 +47,27 @@ def createRasterLayers(features: Union[QgsVectorLayer, List[QgsFeature]],
         return layers
 
     all_fields = features[0].fields()
+    all_field_names = all_fields.names()
     if fields is None:
-        fields = [f for f in all_fields]
+        requested_field_names = all_field_names
+    elif isinstance(fields, str):
+        requested_field_names = [fields]
+    elif isinstance(fields, QgsFields):
+        requested_field_names = fields.names()
+    elif isinstance(fields, QgsField):
+        requested_field_names = [fields.name()]
+    elif isinstance(fields, Iterable):
+        requested_field_names = [f.name() if isinstance(f, QgsField) else str(f) for f in fields]
     else:
-        if isinstance(fields, QgsField):
-            fields = [fields]
-        elif isinstance(fields, QgsFields):
-            fields = [f for f in fields]
+        raise ValueError(f'fields: "{fields}" is not supported')
 
-    for field in fields:
-        if not (isinstance(field, QgsField)):
-            raise AssertionError
+    for f in requested_field_names:
+        if f not in all_field_names:
+            raise AssertionError(f'"{f}" is not a valid field name')
+
+    for field_name in requested_field_names:
+        field = all_fields[field_name]
+
         if is_profile_field(field):
             GROUPS = groupBySpectralProperties(features, field=field)
 
@@ -887,11 +899,15 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
         dp.setDataSourceUri(self.dataSourceUri(expandAuthConfig=True))
         # share vector layer cache
 
-        dp.setActiveFeatures(self.activeFeatures())
-        dp.setActiveField(self.activeField())
-        dp.setParent(VectorLayerFieldRasterDataProvider.PARENT)
+        features = [QgsFeature(f) for f in self.activeFeatures()]
+        field = QgsField(self.activeField())
+        dp.setActiveFeatures(features)
+        dp.setActiveField(field)
+        # dp.setParent(VectorLayerFieldRasterDataProvider.PARENT)
+        dp.setParent(self.parent())
         # print(f'#CLONE  {self.extent()}  ->  {dp.extent()}')
         # self._refs_.append(dp)
+
         return dp
 
     def isValid(self) -> bool:
