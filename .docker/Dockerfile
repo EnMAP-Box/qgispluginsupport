@@ -18,6 +18,8 @@ RUN apt update && apt install -y \
 
 COPY ./requirements.txt /tmp/
 COPY ./.docker/qgis_setup.sh /tmp/
+COPY ./runfirst.py /tmp/
+COPY ./scripts/ /tmp/scripts/
 
 RUN python3 -m venv --system-site-packages /venv/qps
 ENV PATH=/venv/qps/bin:$PATH
@@ -27,6 +29,8 @@ RUN /venv/qps/bin/pip install --upgrade pip && \
     /venv/qps/bin/pip install --no-cache-dir -r /tmp/requirements.txt
 
 RUN bash /tmp/qgis_setup.sh
+
+RUN /venv/qps/bin/python /tmp/runfirst.py
 
 RUN ls -l /usr/src
 RUN ls -la /usr/lib/qt6/bin
