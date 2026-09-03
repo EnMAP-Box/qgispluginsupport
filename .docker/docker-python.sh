@@ -40,6 +40,9 @@ COMPOSE_PROJECT="$(printf '%s' "${COMPOSE_PROJECT}" | tr '[:upper:]' '[:lower:]'
 export QGIS_TEST_VERSION
 export GITHUB_WORKSPACE="${GITHUB_WORKSPACE:-${REPO}}"
 
+xhost +local:docker
+DOCKER_DISPLAY=1
+
 compose() {
     docker compose -f "${COMPOSE_FILE}" -p "${COMPOSE_PROJECT}" "$@"
 }
@@ -75,7 +78,6 @@ ARGS=(
     -e PYTHONDONTWRITEBYTECODE=1
     -e QGIS_DISABLE_MESSAGE_HOOKS=1
     -e QGIS_NO_OVERRIDE_IMPORT=1
-    -e CI=True
     -v "${REPO}:${REPO}"
     -v "${HOME}:${HOME}"
     -v /tmp:/tmp

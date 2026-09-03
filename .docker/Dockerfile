@@ -3,7 +3,7 @@ FROM  qgis/qgis:${QGIS_TEST_VERSION}
 LABEL maintainer="Benjamin Jakimow <benjamin.jakimow@geo.hu-berlin.de>"
 LABEL description="container to test qgispluginsupport"
 SHELL ["/bin/bash", "-c"]
-RUN apt install -y python3-flake8 python3-pytest-xdist python3-pytest-cov python3-venv pyqt6-dev-tools qt6-base-dev qt6-base-dev-tools
+RUN apt install -y python3-flake8 python3-pytest-xdist python3-pytest-cov python3-venv pyqt6-dev-tools qt6-base-dev qt6-base-dev-tools libxcb-cursor0
 
 COPY ./requirements.txt /tmp/
 COPY ./.docker/qgis_setup.sh /tmp/
