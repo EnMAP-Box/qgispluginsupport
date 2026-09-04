@@ -9,15 +9,14 @@
 #   Settings > Project > Python Interpreter > Add Interpreter > Add Local Interpreter
 #   > Select existing > Type: Python > Python path: <repo>/.docker/docker-python.sh
 #
-# The container mounts the repository and $HOME at their host paths, so every path
+# The container mounts the repository at their host paths, so every path
 # PyCharm sends (source files, its own helper scripts, temp files) resolves inside
 # the container exactly as it does outside.
 #
 # Environment overrides:
-#   QGIS_TEST_VERSION  tag of the qgis/qgis base image      (default: latest)
+#   QGIS_VERSION       tag of the qgis/qgis base image      (default: latest)
 #   DOCKER_IMAGE       use this image instead of building it from the compose file
 #   DOCKER_BUILD       1 = (re)build the image before running
-#   DOCKER_PYTHON      python executable inside the container (default: /venv/qps/bin/python3)
 #   DOCKER_MOUNTS      extra "-v" arguments, space separated
 #   DOCKER_OPTS        extra "docker run" arguments, space separated
 #   DOCKER_DISPLAY     1 = forward the X11 display instead of running offscreen
@@ -27,17 +26,19 @@ set -euo pipefail
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 REPO="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
 
+
+
 COMPOSE_FILE="${SCRIPT_DIR}/docker-compose.gh.yml"
 COMPOSE_SERVICE=qgis
-QGIS_TEST_VERSION="${QGIS_TEST_VERSION:-latest}"
+QGIS_VERSION="${QGIS_VERSION:-latest}"
 
 # Compose project names must not contain dots, e.g. "3.40" -> "3-40".
-COMPOSE_PROJECT="qps-${QGIS_TEST_VERSION//[^a-zA-Z0-9_-]/-}"
+COMPOSE_PROJECT="qps-${QGIS_VERSION//[^a-zA-Z0-9_-]/-}"
 COMPOSE_PROJECT="$(printf '%s' "${COMPOSE_PROJECT}" | tr '[:upper:]' '[:lower:]')"
 
 # docker-compose.gh.yml expects both variables; GITHUB_WORKSPACE is only used for the
 # /usr/src mount of the CI run, which we replace by our own mounts below.
-export QGIS_TEST_VERSION
+export QGIS_VERSION
 export GITHUB_WORKSPACE="${GITHUB_WORKSPACE:-${REPO}}"
 
 xhost +local:docker
@@ -47,53 +48,49 @@ compose() {
     docker compose -f "${COMPOSE_FILE}" -p "${COMPOSE_PROJECT}" "$@"
 }
 
-# The python of the venv that .docker/Dockerfile creates from requirements.txt.
-CONTAINER_PYTHON="${DOCKER_PYTHON:-/venv/qps/bin/python3}"
-
 if [[ -n "${DOCKER_IMAGE:-}" ]]; then
     IMAGE="${DOCKER_IMAGE}"
 else
     # Ask compose for the image name it tags the built service with.
     IMAGE="$(compose config --images "${COMPOSE_SERVICE}" 2>/dev/null | head -n1)"
-    IMAGE="${IMAGE:-${COMPOSE_PROJECT}-${COMPOSE_SERVICE}}"
+    IMAGE="${IMAGE:-${COMPOSE_PROJECT}-qgis}"
 fi
 
-# PYTHONPATH as in scripts/setup_env.bat, plus the QGIS python packages of the image.
-CONTAINER_PYTHONPATH="/usr/share/qgis/python:/usr/share/qgis/python/plugins"
+# Use the PYTHONPATH from the Dockerfile, not from the host environment.
+# The Dockerfile sets: /usr/share/qgis/python/:/usr/share/qgis/python/plugins:/usr/lib/python3/dist-packages/qgis:/usr/share/qgis/python/qgis
+# We append the repo paths to the Dockerfile's PYTHONPATH
+CONTAINER_PYTHONPATH="/usr/share/qgis/python:/usr/share/qgis/python/plugins:/usr/lib/python3/dist-packages/qgis:/usr/share/qgis/python/qgis"
 CONTAINER_PYTHONPATH="${CONTAINER_PYTHONPATH}:${REPO}"
-CONTAINER_PYTHONPATH="${CONTAINER_PYTHONPATH}:${REPO}/site-packages"
 CONTAINER_PYTHONPATH="${CONTAINER_PYTHONPATH}:${REPO}/tests/src"
-if [[ -n "${PYTHONPATH:-}" ]]; then
-    CONTAINER_PYTHONPATH="${CONTAINER_PYTHONPATH}:${PYTHONPATH}"
-fi
+
+# Don't inherit PYTHONPATH from host to avoid old venv paths
+# unset PYTHONPATH
 
 ARGS=(
     run --rm
     --network host                       # let the PyCharm debugger talk back to the IDE
     --user "$(id -u):$(id -g)"           # keep files created in the repo owned by us
-    --workdir "$(pwd)"
-    -e "HOME=${HOME}"
-    -e "PYTHONPATH=${CONTAINER_PYTHONPATH}"
+    --workdir "${REPO}"
+    # -e "PYTHONPATH=${CONTAINER_PYTHONPATH}"
     -e PYTHONUNBUFFERED=1
     -e PYTHONDONTWRITEBYTECODE=1
     -e QGIS_DISABLE_MESSAGE_HOOKS=1
     -e QGIS_NO_OVERRIDE_IMPORT=1
     -v "${REPO}:${REPO}"
-    -v "${HOME}:${HOME}"
     -v /tmp:/tmp
 )
 
 # PyCharm may run the interpreter from a directory outside the repo (e.g. its helpers).
 CWD="$(pwd)"
 case "${CWD}" in
-    "${REPO}"/*|"${REPO}"|"${HOME}"/*|"${HOME}"|/tmp/*|/tmp) ;;
+    "${REPO}"/*|"${REPO}"|/tmp/*|/tmp) ;;
     *) ARGS+=(-v "${CWD}:${CWD}") ;;
 esac
 
 if [[ "${DOCKER_DISPLAY:-0}" == "1" && -n "${DISPLAY:-}" ]]; then
     ARGS+=(
         -e "DISPLAY=${DISPLAY}"
-        -e "XAUTHORITY=${XAUTHORITY:-${HOME}/.Xauthority}"
+        -e "XAUTHORITY=${XAUTHORITY:-/root/.Xauthority}"
         -v /tmp/.X11-unix:/tmp/.X11-unix
     )
 else
@@ -125,4 +122,4 @@ if [[ "${DOCKER_BUILD:-0}" == "1" ]] || ! docker image inspect "${IMAGE}" > /dev
     fi
 fi
 
-exec docker "${ARGS[@]}" "${IMAGE}" "${CONTAINER_PYTHON}" "$@"
+exec docker "${ARGS[@]}" "${IMAGE}" "python3" "$@"
