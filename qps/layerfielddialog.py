@@ -205,12 +205,15 @@ class FilteredMapLayerProxyModel(QgsMapLayerProxyModel):
 
 class LayerFieldDialog(QDialog):
 
-    def __init__(self, *args, **kwds):
+    def __init__(self, *args, project: Optional[QgsProject] = None, **kwds):
         super().__init__(*args, **kwds)
+
+        if not project:
+            project = QgsProject.instance()
 
         self.setWindowTitle("Select Layer Field")
         self.setWindowFlag(Qt.WindowType.WindowContextHelpButtonHint, False)
-        self.mLayerModel = FilteredMapLayerProxyModel()
+        self.mLayerModel = FilteredMapLayerProxyModel(project=project)
         self.mFieldModel = FilteredFieldProxyModel()
 
         self.mLastFields: Dict[str, str] = dict()
