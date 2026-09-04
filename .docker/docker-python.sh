@@ -3,7 +3,7 @@
 #
 # The image is the one described by .docker/docker-compose.gh.yml, i.e. it is built
 # from .docker/Dockerfile and therefore contains the extra requirements
-# (requirements.txt in /venv/qps plus the apt packages) that the CI tests use.
+# (requirements.txt plus the apt packages) that the CI tests use.
 #
 # Usage in PyCharm:
 #   Settings > Project > Python Interpreter > Add Interpreter > Add Local Interpreter
@@ -26,8 +26,6 @@ set -euo pipefail
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 REPO="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
 
-
-
 COMPOSE_FILE="${SCRIPT_DIR}/docker-compose.gh.yml"
 COMPOSE_SERVICE=qgis
 QGIS_VERSION="${QGIS_VERSION:-latest}"
@@ -41,7 +39,7 @@ COMPOSE_PROJECT="$(printf '%s' "${COMPOSE_PROJECT}" | tr '[:upper:]' '[:lower:]'
 export QGIS_VERSION
 export GITHUB_WORKSPACE="${GITHUB_WORKSPACE:-${REPO}}"
 
-xhost +local:docker
+xhost +local:docker 2>/dev/null || true
 DOCKER_DISPLAY=1
 
 compose() {
@@ -56,22 +54,17 @@ else
     IMAGE="${IMAGE:-${COMPOSE_PROJECT}-qgis}"
 fi
 
-# Use the PYTHONPATH from the Dockerfile, not from the host environment.
-# The Dockerfile sets: /usr/share/qgis/python/:/usr/share/qgis/python/plugins:/usr/lib/python3/dist-packages/qgis:/usr/share/qgis/python/qgis
-# We append the repo paths to the Dockerfile's PYTHONPATH
-CONTAINER_PYTHONPATH="/usr/share/qgis/python:/usr/share/qgis/python/plugins:/usr/lib/python3/dist-packages/qgis:/usr/share/qgis/python/qgis"
-CONTAINER_PYTHONPATH="${CONTAINER_PYTHONPATH}:${REPO}"
-CONTAINER_PYTHONPATH="${CONTAINER_PYTHONPATH}:${REPO}/tests/src"
-
-# Don't inherit PYTHONPATH from host to avoid old venv paths
-# unset PYTHONPATH
+# The Dockerfile sets PYTHONPATH to the QGIS paths.
+# We only add the repo paths that are mounted to the container.
+# CONTAINER_PYTHONPATH="${PYTHONPATH:-/usr/share/qgis/python:/usr/share/qgis/python/plugins:/usr/lib/python3/dist-packages/qgis:/usr/share/qgis/python/qgis}"
+CONTAINER_PYTHONPATH="/usr/share/qgis/python:/usr/share/qgis/python/plugins:${REPO}:${REPO}/tests:"
 
 ARGS=(
     run --rm
     --network host                       # let the PyCharm debugger talk back to the IDE
     --user "$(id -u):$(id -g)"           # keep files created in the repo owned by us
     --workdir "${REPO}"
-    # -e "PYTHONPATH=${CONTAINER_PYTHONPATH}"
+    -e "PYTHONPATH=${CONTAINER_PYTHONPATH}"
     -e PYTHONUNBUFFERED=1
     -e PYTHONDONTWRITEBYTECODE=1
     -e QGIS_DISABLE_MESSAGE_HOOKS=1
