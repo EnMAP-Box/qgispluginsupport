@@ -7,12 +7,7 @@ export PYTHONPATH="${PYTHONPATH}"\
 ":$(pwd)"
 # ":/usr/share/qgis/python/plugins"
 
-# Use venv Python if available
-if [ -f /venv/qps/bin/python ]; then
-    export PATH=/venv/qps/bin:$PATH
-fi
-
 rm -Rf test-outputs
 rm -Rf test-reports
-python -m pytest --no-cov-on-fail "$@"
+python3 -m pytest --no-cov-on-fail "$@"
 # coverage-badge -o coverage.svg -f -v
