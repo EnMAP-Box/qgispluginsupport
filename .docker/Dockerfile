@@ -1,5 +1,5 @@
 ARG QGIS_VERSION=stable
-FROM  qgis/qgis:${QGIS_VERSION}
+FROM --platform=linux/amd64 qgis/qgis:${QGIS_VERSION}
 LABEL maintainer="Benjamin Jakimow <benjamin.jakimow@geo.hu-berlin.de>"
 LABEL description="container to test qgispluginsupport"
 SHELL ["/bin/bash", "-c"]
