@@ -2374,8 +2374,10 @@ class ProfileVisualizationGroup(PropertyItemGroup):
             fc = QColor(self.mPlotWidgetStyle.foregroundColor)
             al = False
 
-        color = QColor(expr.evaluate(context))
-        if not color.isValid():
+        color = expr.evaluate(context)
+        if color:
+            color = QColor(color)
+        if not (isinstance(color, QColor) and color.isValid()):
             color = fc
         style.setBackgroundColor(bc)
         style.setLineColor(color)

@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pyqtgraph import PlotWidget
 
 from qgis.PyQt.QtGui import QPalette, QPen
@@ -8,7 +10,11 @@ from ...plotstyling.plotstyling import PlotStyle
 class SpectralProfilePlotWidget(PlotWidget):
     """A widget to plot a single spectral profile"""
 
-    def __init__(self, *args, profile: dict = None, **kwds):
+    def __init__(
+        self, *args,
+        profile: Optional[dict] = None,
+        **kwds
+    ):
 
         plotItem = SpectralProfilePlotItem()
 
@@ -17,8 +23,8 @@ class SpectralProfilePlotWidget(PlotWidget):
         self.mPDI = SpectralProfilePlotDataItem()
         self.addItem(self.mPDI)
         self.mPlotStyle = PlotStyle()
-        fg = self.palette().color(QPalette.Foreground)
-        # bg = self.palette().color(QPalette.Background)
+        fg = self.palette().color(QPalette.ColorRole.Text)
+
         ax_pen = self.plotItem.axes['bottom']['item'].pen()
         ax_pen.setColor(fg)
         self.plotItem.axes['bottom']['item'].setPen(ax_pen)

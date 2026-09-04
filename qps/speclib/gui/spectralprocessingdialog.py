@@ -7,9 +7,8 @@ from json import JSONDecodeError
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-from processing import createContext
-from processing.gui.AlgorithmDialogBase import AlgorithmDialogBase
-from processing.gui.wrappers import WidgetWrapper, WidgetWrapperFactory
+from processing.core.exceptions import InvalidOutputExtension, InvalidParameterValue
+from processing.tools.dataobjects import createContext
 from qgis.PyQt.QtCore import pyqtSignal, QModelIndex, QObject, Qt, QTimer, QMetaType
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import (
@@ -26,7 +25,7 @@ from qgis.core import (
 from qgis.core import QgsProcessingDestinationParameter
 from qgis.gui import (
     QgsAbstractProcessingParameterWidgetWrapper, QgsGui, QgsMessageBar, QgsPanelWidget,
-    QgsProcessingAlgorithmDialogBase, QgsProcessingContextGenerator, QgsProcessingGui, QgsProcessingHiddenWidgetWrapper,
+    QgsProcessingAlgorithmWidgetBase, QgsProcessingContextGenerator, QgsProcessingGui, QgsProcessingHiddenWidgetWrapper,
     QgsProcessingParametersGenerator, QgsProcessingParametersWidget, QgsProcessingParameterWidgetContext,
     QgsProcessingRecentAlgorithmLog, QgsProcessingToolboxProxyModel)
 
@@ -216,7 +215,8 @@ class SpectralProcessingRasterLayerWidgetWrapper(QgsAbstractProcessingParameterW
                  ):
 
         if not (isinstance(parameter, QgsProcessingParameterRasterLayer)):
-            raise AssertionError
+            raise AssertionError(f'expected QgsProcessingParameterRasterLayer, got {parameter}')
+
         self.mMapLayerWidget: Optional[QWidget] = None
         self.mMapLayerModel: Optional[QgsMapLayerModel] = None
 
@@ -227,7 +227,7 @@ class SpectralProcessingRasterLayerWidgetWrapper(QgsAbstractProcessingParameterW
 
     def createWidget(self):
 
-        model = QgsMapLayerModel(self, self.widgetContext().project())
+        model = QgsMapLayerModel(project=self.widgetContext().project(), parent=self)
         self.mMapLayerModel = model
 
         param = self.parameterDefinition()
@@ -455,10 +455,13 @@ class SpectralProcessingModelCreatorAlgorithmWrapper(QgsProcessingParametersWidg
                 continue
 
             if isinstance(param, QgsProcessingParameterRasterLayer):
-                # workaround https://github.com/qgis/QGIS/issues/46673
-                wrapper = SpectralProcessingRasterLayerWidgetWrapper(param, QgsProcessingGui.WidgetType.Standard)
+                wrapper = SpectralProcessingRasterLayerWidgetWrapper(
+                    param, QgsProcessingGui.WidgetType.Standard
+                )
             else:
-                wrapper = WidgetWrapperFactory.create_wrapper(param, self.parent(), row=0, col=0)
+                wrapper = QgsGui.processingGuiRegistry().createParameterWidgetWrapper(
+                    param, Qgis.ProcessingMode.Standard
+                )
 
             if not (isinstance(wrapper, QgsAbstractProcessingParameterWidgetWrapper)):
                 raise AssertionError
@@ -473,21 +476,13 @@ class SpectralProcessingModelCreatorAlgorithmWrapper(QgsProcessingParametersWidg
                 raise AssertionError(f'{param.name()} in {self.mWrappers.keys()}')
             self.mWrappers[param.name()] = wrapper
 
-            old_api = isinstance(wrapper, WidgetWrapper)
-            if old_api:
-                label = wrapper.label
-            else:
-                label = wrapper.createWrappedLabel()
+            label = wrapper.createWrappedLabel()
 
             if isinstance(label, QLabel):
                 self.addParameterLabel(param, label)
 
             stretch = 0
-            if old_api:
-                widget = wrapper.widget
-                stretch = wrapper.stretch()
-            else:
-                widget = wrapper.createWrappedWidget(self.mProcessing_context)
+            widget = wrapper.createWrappedWidget(self.mProcessing_context)
 
             if isinstance(widget, QWidget):
                 self.addParameterWidget(param, widget, stretch)
@@ -559,8 +554,6 @@ class SpectralProcessingModelCreatorAlgorithmWrapper(QgsProcessingParametersWidg
                     continue
 
                 widget = wrapper.wrappedWidget()
-                if widget is None and issubclass(wrapper.__class__, WidgetWrapper):
-                    widget = wrapper.widget
 
                 if not isinstance(wrapper, QgsProcessingHiddenWidgetWrapper) and widget is None:
                     continue
@@ -570,7 +563,7 @@ class SpectralProcessingModelCreatorAlgorithmWrapper(QgsProcessingParametersWidg
                     parameters[param.name()] = value
 
                 if not param.checkValueIsAcceptable(value):
-                    raise AlgorithmDialogBase.InvalidParameterValue(param, widget)
+                    raise InvalidParameterValue(param, widget)
             else:
                 # if self.in_place and param.name() == 'OUTPUT':
                 #    parameters[param.name()] = 'memory:'
@@ -597,7 +590,7 @@ class SpectralProcessingModelCreatorAlgorithmWrapper(QgsProcessingParametersWidg
                     context = self.mProcessing_context
                     ok, error = param.isSupportedOutputValue(value, context)
                     if not ok:
-                        raise AlgorithmDialogBase.InvalidOutputExtension(widget, error)
+                        raise InvalidOutputExtension(widget, error)
 
         return self.algorithm().preprocessParameters(parameters)
 
@@ -617,21 +610,19 @@ class SpectralProcessingModelCreatorAlgorithmWrapper(QgsProcessingParametersWidg
         return hash((self.algorithm().name(), id(self)))
 
 
-class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
+class SpectralProcessingDialog(QgsProcessingAlgorithmWidgetBase):
     sigSpectralProcessingModelChanged = pyqtSignal()
     sigAboutToBeClosed = pyqtSignal()
 
     sigOutputsCreated = pyqtSignal(dict)
 
-    def __init__(
-        self, *args,
-        speclib: Optional[QgsVectorLayer] = None,
-        algorithmId: Optional[str] = None,
-        parameters: Optional[dict] = None,
-        parent: Optional[QWidget] = None,
-        **kwds
-    ):
-        super().__init__(parent=parent)
+    def __init__(self, *args,
+                 speclib: Optional[QgsVectorLayer] = None,
+                 algorithmId: Optional[str] = None,
+                 parameters: Optional[dict] = None,
+                 parent: Optional[QWidget] = None,
+                 **kwds):
+        super().__init__(parentWindow=parent)
         self.setWindowFlag(Qt.WindowType.WindowContextHelpButtonHint, False)
         # QgsProcessingContextGenerator.__init__(self)
         self.mDialogName = 'Spectral Processing Dialog'
@@ -1035,7 +1026,7 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
             processingFeedback.pushConsoleInfo(str(results))
             self.log(processingFeedback.htmlLog(), isError=not ok)
 
-        except AlgorithmDialogBase.InvalidParameterValue as ex1:
+        except InvalidParameterValue as ex1:
             if fail_fast:
                 raise ex1
             msg = f'Invalid Parameter Value: {ex1.parameter.name()}'
@@ -1043,7 +1034,7 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
             # self.tabWidget.setCurrentWidget(self.tabLog)
             self.highlightParameterWidget(ex1.parameter, ex1.widget)
 
-        except AlgorithmDialogBase.InvalidOutputExtension as ex2:
+        except InvalidOutputExtension as ex2:
             if fail_fast:
                 raise ex2
             msg = f'Invalid Output Extension: {ex2.message}'
@@ -1170,9 +1161,9 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
 
         try:
             return self.mainWidget().createProcessingParameters(flags)
-        except AlgorithmDialogBase.InvalidParameterValue as e:
+        except InvalidParameterValue as e:
             self.flag_invalid_parameter_value(e.parameter.description(), e.widget)
-        except AlgorithmDialogBase.InvalidOutputExtension as e:
+        except InvalidOutputExtension as e:
             self.flag_invalid_output_extension(e.message, e.widget)
         return {}
 

@@ -27,8 +27,11 @@ class TestsCases_Init(TestCase):
 
     def test_init(self):
 
-        create_resource_files()
-        initQtResources()
+        py_files = create_resource_files()
+        self.assertTrue(len(py_files) > 0)
+        files = initQtResources()
+        self.assertTrue(len(files) > 0)
+
         paths = [p for p in scanResources() if p.startswith(':/qps/')]
         self.assertTrue(len(paths) > 0, msg='missing resources')
         for p in paths:

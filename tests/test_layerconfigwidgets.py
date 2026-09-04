@@ -20,7 +20,7 @@ from qgis.PyQt.QtWidgets import QHBoxLayout, QPushButton, QTableView, QVBoxLayou
 from qgis.core import QgsField, QgsProject, QgsRasterLayer
 from qgis.gui import QgsMapCanvas, QgsMapLayerComboBox, QgsMapLayerConfigWidget, QgsMapLayerConfigWidgetFactory, \
     QgsRasterTransparencyWidget
-from qps.layerconfigwidgets.gdalmetadata import RX_OGR_URI
+from qps.layerconfigwidgets.gdalmetadata import RX_OGR_URI, GDALMetadataModelConfigWidget
 from qps.layerconfigwidgets.rasterbands import RasterBandComboBox
 from qps.testing import TestCase, TestObjects, start_app
 
@@ -135,13 +135,31 @@ class LayerConfigWidgetsTests(TestCase):
 
         self.showGui([cR, w])
 
+    def test_gdalmetadata(self):
+        layer = TestObjects.createRasterLayer(nb=10)
+        md = GDALMetadataModelConfigWidget()
+        md.setLayer(layer)
+
+        mv = md.metadataView
+        dv = md.bandDualView
+
+        for view in [mv, dv]:
+            md.updateFilter(view, 'wave', True, False)
+            md.updateFilter(view, 'wave', False, False)
+            md.updateFilter(view, 'wave', True, True)
+            md.updateFilter(view, 'wave', False, True)
+
+        # filter by reges
+
+        self.showGui(md)
+
     def test_empty_gdalmetadata(self):
         lyrR = TestObjects.createRasterLayer(nb=100, eType=gdal.GDT_Byte)
         lyrV = TestObjects.createVectorLayer()
         lyrE = QgsRasterLayer()
 
         QgsProject.instance().addMapLayers([lyrR, lyrV, lyrE])
-        from qps.layerconfigwidgets.gdalmetadata import GDALMetadataModelConfigWidget
+        # from qps.layerconfigwidgets.gdalmetadata import GDALMetadataModelConfigWidget
         cb = QgsMapLayerComboBox()
         # c = QgsMapCanvas()
         md = GDALMetadataModelConfigWidget()
@@ -151,6 +169,7 @@ class LayerConfigWidgetsTests(TestCase):
         vbLayout.addWidget(md)
         w = QWidget()
         w.setLayout(vbLayout)
+
         self.showGui(w)
         QgsProject.instance().removeAllMapLayers()
 

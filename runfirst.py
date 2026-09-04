@@ -27,6 +27,7 @@
 """
 import pathlib
 import site
+import os
 
 
 def setupRepository():
@@ -44,27 +45,21 @@ def setupRepository():
         install_qgisresources()
 
     make_qrc = False
-    try:
-        import os.path
-        import qps.qpsresources
-        if qps.qpsresources is None:
-            raise AssertionError
-        path_qrc = dir_repo / 'qps' / 'qpsresources.qrc'
-        path_py = dir_repo / 'qps' / 'qpsresources.py'
+    path_qrc = dir_repo / 'qps' / 'qpsresources.qrc'
+    path_py = dir_repo / 'qps' / 'qpsresources_rc.py'
 
-        if not path_py.is_file() or os.path.getmtime(path_py) < os.path.getmtime(path_qrc):
-            make_qrc = True
-
-    except (ImportError, ModuleNotFoundError):
-        # compile resources
+    if not path_py.is_file() or os.path.getmtime(path_py) < os.path.getmtime(path_qrc):
         make_qrc = True
 
     if make_qrc:
         print('Need to create qpsresources.py')
         print('Start *.qrc search  in {}'.format(dir_repo))
+        print('Calling compileResourceFiles...')
         compileResourceFiles(dir_repo.as_posix())
+        print('compileResourceFiles completed')
+        print('qpsresources.py created successfully')
     else:
-        print('qpsresources.py exists and is up-to-date')
+        print('qpsresources_rc.py exists and is up-to-date')
 
 
 if __name__ == "__main__":

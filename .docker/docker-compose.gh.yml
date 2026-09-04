@@ -1,4 +1,3 @@
-version: '3'
 services:
 
   qgis:
@@ -6,7 +5,8 @@ services:
       context: ..
       dockerfile: ./.docker/Dockerfile
       args:
-        QGIS_TEST_VERSION: ${QGIS_TEST_VERSION}
+        QGIS_VERSION: ${QGIS_VERSION:-stable}
     tty: true
+    working_dir: /usr/src
     volumes:
-      - ${GITHUB_WORKSPACE}:/usr/src
+      - ${GITHUB_WORKSPACE:-.}:/usr/src

@@ -3,8 +3,9 @@ import warnings
 from pathlib import Path
 from typing import Dict, Generator, List, Optional, Tuple
 
+from processing.gui.algorithm_widget import AlgorithmWidget as AlgorithmDialog
 from qgis.PyQt.QtCore import pyqtSignal, Qt
-from qgis.PyQt.QtGui import QCloseEvent
+from qgis.PyQt.QtGui import QCloseEvent, QKeySequence
 from qgis.PyQt.QtGui import QDragEnterEvent, QDropEvent
 from qgis.PyQt.QtWidgets import QMenu, QWidget
 from qgis.PyQt.QtWidgets import QToolButton
@@ -25,7 +26,6 @@ from ..processing.extractspectralprofiles import ExtractSpectralProfiles
 from ..processing.importspectralprofiles import ImportSpectralProfiles
 from ...layerproperties import showLayerPropertiesDialog, AttributeTableWidget
 from ...plotstyling.plotstyling import PlotStyle
-from ...processing.algorithmdialog import AlgorithmDialog
 from ...utils import loadUi
 
 logger = logging.getLogger(__name__)
@@ -89,7 +89,7 @@ class SpectralLibraryWidget(QWidget):
         self.actionSelectProfilesFromMap.setVisible(False)
         self.actionSelectProfilesFromMap.triggered.connect(self.sigLoadFromMapRequest.emit)
 
-        self.actionAddCurrentProfiles.setShortcut(Qt.Modifier.CTRL + Qt.Key.Key_A)
+        self.actionAddCurrentProfiles.setShortcut(QKeySequence('CTRL+A'))
         self.actionAddCurrentProfiles.setShortcutContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
         self.actionAddCurrentProfiles.triggered.connect(self.addCurrentProfilesToSpeclib)
 
@@ -98,7 +98,7 @@ class SpectralLibraryWidget(QWidget):
         self.optionAddCurrentProfilesAutomatically.toggled.connect(
             self.plotModel().setAddProfileCandidatesAutomatically)
 
-        self.actionRejectCurrentProfiles.setShortcut(Qt.Modifier.CTRL + Qt.Key.Key_Z)
+        self.actionRejectCurrentProfiles.setShortcut(QKeySequence('CTRL+Z'))
         self.actionRejectCurrentProfiles.setShortcutContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
         self.actionRejectCurrentProfiles.triggered.connect(self.rejectCurrentProfiles)
 
