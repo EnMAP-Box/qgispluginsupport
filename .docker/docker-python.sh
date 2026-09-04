@@ -40,7 +40,12 @@ export QGIS_VERSION
 export GITHUB_WORKSPACE="${GITHUB_WORKSPACE:-${REPO}}"
 
 xhost +local:docker 2>/dev/null || true
-DOCKER_DISPLAY=1
+
+if [[ -n "${DISPLAY:-}" ]]; then
+    DOCKER_DISPLAY=1
+else
+    DOCKER_DISPLAY=0
+fi
 
 compose() {
     docker compose -f "${COMPOSE_FILE}" -p "${COMPOSE_PROJECT}" "$@"
