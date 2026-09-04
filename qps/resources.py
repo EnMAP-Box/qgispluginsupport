@@ -99,7 +99,10 @@ def compileResourceFiles(
 
     for ui_file in ui_files:
         ui_dir = Path(ui_file).parent
-        doc.setContent(QFile(ui_file))
+        file = QFile(ui_file)
+        if file.open(QFile.OpenModeFlag.ReadOnly | QFile.OpenModeFlag.Text):
+            doc.setContent(file)
+            file.close()
         includeNodes = doc.elementsByTagName('include')
         for i in range(includeNodes.count()):
             attr = getDOMAttributes(includeNodes.item(i).toElement())
