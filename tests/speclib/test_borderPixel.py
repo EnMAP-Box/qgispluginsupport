@@ -40,12 +40,18 @@ class TestBorderPixel(TestCase):
         k_mode.setAggregation(ProfileSamplingMode.NO_AGGREGATION)
 
         for pt in out_of_image:
-            self.assertFalse(lyr.extent().contains(pt), msg=f'Center point of kernel must be outside raster extent')
+            self.assertFalse(
+                lyr.extent().contains(pt),
+                msg='Center point of kernel must be outside raster extent'
+            )
 
             kernel_rect = QgsRectangle(pt.x() - 1.5 * pxx, pt.y() - 1.5 * pxx,
                                        pt.x() + 1.5 * pxx, pt.y() + 1.5 * pxx)
 
-            self.assertTrue(kernel_rect.intersects(lyr.extent()), msg=f'Kernel window must intersect raster extent')
+            self.assertTrue(
+                kernel_rect.intersects(lyr.extent()),
+                msg='Kernel window must intersect raster extent'
+            )
             size = k_mode.kernelSize()
             x, y = size.width(), size.height()
             profiles = source.collectProfiles(pt, QSize(x, y))

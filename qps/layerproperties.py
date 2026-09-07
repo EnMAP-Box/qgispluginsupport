@@ -22,7 +22,7 @@ import sys
 import warnings
 from typing import Any, Dict, List, Optional, Union
 
-from qgis.PyQt.QtCore import QTextStream, QByteArray, QMetaType
+from qgis.PyQt.QtCore import QTextStream, QByteArray
 from qgis.PyQt.QtCore import pyqtSignal, QMimeData, QModelIndex, QObject, QTimer
 from qgis.PyQt.QtGui import QCloseEvent, QIcon
 from qgis.PyQt.QtWidgets import QAction, QButtonGroup, QCheckBox, QComboBox, QDialog, QDialogButtonBox, \
