@@ -181,7 +181,7 @@ def variant_type_to_ogr_field_type(variant_type):
     elif variant_type in [QMetaType.Type.QChar, QMetaType.Type.QString]:
         ogr_type = OFTString
 
-    elif variant_type == QMetaType.QStringLIST:
+    elif variant_type == QMetaType.Type.QStringLIST:
         ogr_type = OFTStringList
 
     elif variant_type == QMetaType.Type.QByteArray:
@@ -966,6 +966,9 @@ def fid2pixelindices(raster: gdal.Dataset,
     # print(f'Rasterize FIDs of {layer.GetDescription()}...')
 
     drvMem: ogr.Driver = ogr.GetDriverByName('MEM')
+    if not isinstance(drvMem, ogr.Driver):
+        drvMem: ogr.Driver = ogr.GetDriverByName('Memory')
+
     dsMem: ogr.DataSource = drvMem.CreateDataSource('')
     lyrMem: ogr.Layer = dsMem.CreateLayer(layer.GetName(),
                                           srs=layer.GetSpatialRef(),
@@ -3348,8 +3351,13 @@ class MapGeometryToPixel(object):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.wkbTypeLayers.clear()
-        del self.vsMem
-        del self.rsMEM
+        if isinstance(self.vsMem, ogr.DataSource):
+            self.vsMem.Close()
+            self.vsMem = None
+
+        if isinstance(self.rsMEM, gdal.Dataset):
+            self.rsMEM.Close()
+            self.rsMEM = None
 
     def px2geo(self, x: int, y: int) -> QgsPointXY:
         return self.m2p.toMapCoordinatesF(x, y)
@@ -3392,7 +3400,10 @@ class MapGeometryToPixel(object):
             self.bandMEM: gdal.Band = self.rsMEM.GetRasterBand(1)
 
         if not isinstance(self.vsMem, ogr.DataSource):
-            self.vsMem: ogr.DataSource = ogr.GetDriverByName('MEM').CreateDataSource('')
+            drv = ogr.GetDriverByName('MEM')
+            if not isinstance(drv, ogr.Driver):
+                drv = ogr.GetDriverByName('Memory')
+            self.vsMem: ogr.DataSource = drv.CreateDataSource('')
 
         g = ogr.CreateGeometryFromWkb(qgsGeometry.asWkb())
         geom_type = g.GetGeometryType()

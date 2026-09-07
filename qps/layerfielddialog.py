@@ -213,7 +213,7 @@ class LayerFieldDialog(QDialog):
 
         self.setWindowTitle("Select Layer Field")
         self.setWindowFlag(Qt.WindowType.WindowContextHelpButtonHint, False)
-        self.mLayerModel = FilteredMapLayerProxyModel(project=project)
+        self.mLayerModel = FilteredMapLayerProxyModel(project)
         self.mFieldModel = FilteredFieldProxyModel()
 
         self.mLastFields: Dict[str, str] = dict()

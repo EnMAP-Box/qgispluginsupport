@@ -32,7 +32,6 @@ from pathlib import Path
 from typing import Any, Dict, List, Match, Pattern, Tuple, Union
 
 from osgeo import gdal, ogr
-
 from qgis.PyQt.QtCore import (
     NULL, QAbstractTableModel, QMimeData, QModelIndex, QSortFilterProxyModel, Qt, QTimer, QUrl,
     QMetaType, QT_VERSION_STR)
@@ -418,9 +417,6 @@ class GDALBandMetadataModel(QgsVectorLayer):
 
         OFFSET = QgsField(BandFieldNames.Offset, type=QMetaType.Type.Double)
         SCALE = QgsField(BandFieldNames.Scale, type=QMetaType.Type.Double)
-
-        # ENVI_OFFSET = QgsField(BandFieldNames.ENVIDataOffset, type=QMetaType.Double)
-        # ENVI_GAIN = QgsField(BandFieldNames.ENVIDataGain, type=QMetaType.Double)
 
         # add fields
         for field in [BANDNO,
