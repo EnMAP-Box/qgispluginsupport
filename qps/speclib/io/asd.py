@@ -26,7 +26,6 @@
 """
 import datetime
 import enum
-import pathlib
 import re
 import struct
 import warnings
@@ -34,10 +33,10 @@ from pathlib import Path
 from typing import Tuple, Union, List
 
 import numpy as np
-
 from qgis.PyQt.QtCore import QMetaType
 from qgis.core import QgsFeature, QgsField, QgsFields
 from qgis.core import QgsPointXY
+
 from ..core import create_profile_field
 from ..core.spectralprofile import prepareProfileValueDict, SpectralProfileFileReader
 
@@ -378,13 +377,13 @@ class ASDBinaryFile(SpectralProfileFileReader):
     def yValuesReference(self) -> np.ndarray:
         return self.Reference
 
-    def readFromBinaryFile(self, path: Union[str, pathlib.Path]):
+    def readFromBinaryFile(self, path: Union[str, Path]):
         """
         Reads data from a binary file
         :param path:
         :return:
         """
-        path = pathlib.Path(path)
+        path = Path(path)
         with open(path, 'rb') as f:
             DATA = f.read()
 

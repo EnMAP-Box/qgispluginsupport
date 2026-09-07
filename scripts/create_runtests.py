@@ -1,9 +1,9 @@
 import os
-import pathlib
+from pathlib import Path
 
 from qps.utils import file_search
 
-DIR_REPO = pathlib.Path(__file__).parents[1]
+DIR_REPO = Path(__file__).parents[1]
 DIR_TESTS = DIR_REPO / 'tests'
 
 RUN_PYTEST = False
@@ -27,7 +27,7 @@ if __name__ == "__main__":
     bnDirTests = os.path.basename(DIR_TESTS)
     files = sorted(file_search(DIR_TESTS, 'test_*.py', recursive=True))
     for i, file in enumerate(files):
-        file = pathlib.Path(file)
+        file = Path(file)
         bn = os.path.basename(file)
         bn = os.path.splitext(bn)[0]
 

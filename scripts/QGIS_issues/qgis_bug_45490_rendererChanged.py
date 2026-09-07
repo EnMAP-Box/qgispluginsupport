@@ -1,6 +1,6 @@
 # relates to https://github.com/qgis/QGIS/issues/45490
 
-import pathlib
+from pathlib import Path
 import random
 
 from qgis.PyQt.QtGui import QColor
@@ -10,7 +10,7 @@ from qgis.testing import start_app
 
 app = start_app()
 
-path = pathlib.Path(QgsApplication.prefixPath()) / 'resources' / 'data' / 'world_map.gpkg|layername=countries'
+path = Path(QgsApplication.prefixPath()) / 'resources' / 'data' / 'world_map.gpkg|layername=countries'
 lyr = QgsVectorLayer(path.as_posix(), 'World')
 if not (lyr.isValid()):
     raise AssertionError

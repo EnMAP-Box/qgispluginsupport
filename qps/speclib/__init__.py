@@ -24,7 +24,7 @@
     along with this software. If not, see <https://www.gnu.org/licenses/>.
 ***************************************************************************
 """
-import pathlib
+from pathlib import Path
 
 from qgis.PyQt.QtCore import NULL, QMetaType
 from qgis.PyQt.QtWidgets import QWidget
@@ -86,7 +86,7 @@ def speclibUiPath(name: str) -> str:
     if isinstance(name, QWidget):
         name = name.__class__.__name__.lower() + '.ui'
 
-    path = pathlib.Path(__file__).parent / 'ui' / name
+    path = Path(__file__).parent / 'ui' / name
     if not (path.is_file()):
         raise AssertionError(f'File does not exist: {path}')
     return path.as_posix()

@@ -26,9 +26,8 @@ import datetime
 import importlib.util
 import json
 import math
-import pathlib
-import re
 from pathlib import Path
+import re
 from typing import Any, Dict, List, Match, Pattern, Tuple, Union
 
 from osgeo import gdal, ogr
@@ -1190,7 +1189,7 @@ class GDALMetadataItemDialog(QDialog):
                  domains: List[str] = [],
                  **kwds):
         super().__init__(*args, **kwds)
-        pathUi = pathlib.Path(__file__).parents[1] / 'ui' / 'gdalmetadatamodelitemwidget.ui'
+        pathUi = Path(__file__).parents[1] / 'ui' / 'gdalmetadatamodelitemwidget.ui'
         loadUi(pathUi, self)
 
         for mo in major_objects:
@@ -1355,7 +1354,7 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
             canvas = QgsMapCanvas()
 
         super(GDALMetadataModelConfigWidget, self).__init__(layer, canvas, parent=parent)
-        pathUi = pathlib.Path(__file__).parents[1] / 'ui' / 'gdalmetadatamodelwidget.ui'
+        pathUi = Path(__file__).parents[1] / 'ui' / 'gdalmetadatamodelwidget.ui'
         loadUi(pathUi, self)
 
         self.mMessageBar: QgsMessageBar

@@ -16,7 +16,7 @@
 *                                                                         *
 ***************************************************************************
 """
-import pathlib
+from pathlib import Path
 import re
 import sys
 import warnings
@@ -639,7 +639,7 @@ def defaultRasterRenderer(layer: QgsRasterLayer,
 
         # check for *.qml file with default styling information
         if readQml:
-            qmlUri = pathlib.Path(layer.styleURI())
+            qmlUri = Path(layer.styleURI())
             is_file = False
             try:
                 is_file = qmlUri.is_file()
@@ -1031,7 +1031,7 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
                  initialMode: QgsAttributeTableFilterModel.FilterMode = QgsAttributeTableFilterModel.FilterMode.ShowAll,
                  **kwds):
         super().__init__(*args, **kwds)
-        loadUi(pathlib.Path(DIR_UI_FILES) / 'attributetablewidget.ui', self)
+        loadUi(Path(DIR_UI_FILES) / 'attributetablewidget.ui', self)
 
         self.widgetLeft.setVisible(False)
         self.widgetRight.setVisible(False)

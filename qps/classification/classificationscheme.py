@@ -28,7 +28,6 @@
 import csv
 import json
 import os
-import pathlib
 import re
 import sys
 import warnings
@@ -37,7 +36,6 @@ from typing import Any, List, Optional, Union
 
 import numpy as np
 from osgeo import gdal
-
 from qgis.PyQt.QtCore import (
     NULL, pyqtSignal, QAbstractListModel, QAbstractTableModel, QByteArray, QItemSelectionModel,
     QMimeData, QModelIndex, QObject, QSize, Qt, QMetaType)
@@ -53,6 +51,7 @@ from qgis.core import (
 from qgis.gui import (
     QgsDialog, QgsEditorConfigWidget, QgsEditorWidgetFactory, QgsEditorWidgetWrapper, QgsGui,
     QgsMapLayerComboBox)
+
 from ..utils import gdalDataset, loadUi, nextColor, registeredMapLayers, stringFromByteArray, stringToByteArray
 
 DEFAULT_UNCLASSIFIEDCOLOR = QColor('black')
@@ -1545,7 +1544,7 @@ class ClassificationSchemeWidget(QWidget):
 
     def __init__(self, parent=None, classificationScheme: ClassificationScheme = None):
         super(ClassificationSchemeWidget, self).__init__(parent)
-        pathUi = pathlib.Path(__file__).parent / 'classificationscheme.ui'
+        pathUi = Path(__file__).parent / 'classificationscheme.ui'
         loadUi(pathUi, self)
 
         self.mScheme = ClassificationScheme()

@@ -25,7 +25,7 @@
     along with this software. If not, see <https://www.gnu.org/licenses/>.
 ***************************************************************************
 """
-import pathlib
+from pathlib import Path
 import site
 import os
 
@@ -34,7 +34,7 @@ def setupRepository():
     """
     Initializes the QPS repository after it has been cloned
     """
-    dir_repo = pathlib.Path(__file__).parent.resolve()
+    dir_repo = Path(__file__).parent.resolve()
     site.addsitedir(dir_repo.as_posix())
 
     from qps.resources import compileResourceFiles

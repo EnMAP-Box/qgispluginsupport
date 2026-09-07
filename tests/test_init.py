@@ -5,7 +5,7 @@
 
 __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 
-import pathlib
+from pathlib import Path
 import re
 import unittest
 
@@ -61,7 +61,7 @@ class TestsCases_Init(TestCase):
 
     def test_relative_imports(self):
 
-        root = pathlib.Path(__file__).parents[1]
+        root = Path(__file__).parents[1]
 
         re1 = re.compile(r'^\w*import qps')
         re2 = re.compile(r'^\w*from qps')

@@ -1,5 +1,5 @@
 # noinspection PyPep8Naming
-import pathlib
+from pathlib import Path
 import re
 import unittest
 from typing import List
@@ -17,7 +17,7 @@ class TestSpeclibIO_ASD(TestCase):
 
     def test_read_with_gps(self):
         import qpstestdata
-        ASD_DIR = pathlib.Path(qpstestdata.__file__).parent / 'asd' / 'gps'
+        ASD_DIR = Path(qpstestdata.__file__).parent / 'asd' / 'gps'
         files = list(file_search(ASD_DIR, '*.asd', recursive=True))
 
         features = []
@@ -69,12 +69,12 @@ class TestSpeclibIO_ASD(TestCase):
 
     def asdBinFiles(self) -> List[str]:
         import qpstestdata
-        ASD_DIR = pathlib.Path(qpstestdata.__file__).parent / 'asd'
+        ASD_DIR = Path(qpstestdata.__file__).parent / 'asd'
         return list(file_search(ASD_DIR, re.compile(r'\w+\d+\.(asd)$'), recursive=True))
 
     def asdCSVFiles(self):
         import qpstestdata
-        ASD_DIR = pathlib.Path(qpstestdata.__file__).parent / 'asd'
+        ASD_DIR = Path(qpstestdata.__file__).parent / 'asd'
         return list(file_search(ASD_DIR / 'txt', re.compile(r'\.(csv|txt)$'), recursive=True))
 
 

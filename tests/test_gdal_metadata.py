@@ -1,6 +1,5 @@
 import itertools
 import os.path
-import pathlib
 import re
 import unittest
 from pathlib import Path
@@ -8,11 +7,11 @@ from typing import List
 
 import numpy as np
 from osgeo import gdal, gdal_array, ogr
-
 from qgis.PyQt.QtCore import QMimeData, QModelIndex, QUrl
 from qgis.PyQt.QtWidgets import QAction, QApplication, QDialog, QHBoxLayout, QMenu, QPushButton, QVBoxLayout, QWidget
 from qgis.core import edit, QgsFeature, QgsMapLayer, QgsProject, QgsRasterLayer, QgsVectorLayer
 from qgis.gui import QgsDualView, QgsMapCanvas, QgsMapLayerComboBox, QgsRasterBandComboBox
+
 from qps.layerconfigwidgets.gdalmetadata import BandFieldNames, BandPropertyCalculator, GDALBandMetadataModel, \
     GDALMetadataItem, GDALMetadataItemDialog, GDALMetadataModel, GDALMetadataModelConfigWidget
 from qps.qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
@@ -97,7 +96,7 @@ class TestsGdalMetadata(TestCase):
         img_path = self.createImageCopy(enmap)
 
         def read_aux_xml(path):
-            path = pathlib.Path(path)
+            path = Path(path)
             aux_file = [f for f in gdal.Open(path.as_posix()).GetFileList() if f.endswith('.aux.xml')][0]
             with open(aux_file, 'r') as f:
                 xml_string = f.read()

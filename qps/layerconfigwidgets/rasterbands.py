@@ -22,7 +22,7 @@
     along with this software. If not, see <https://www.gnu.org/licenses/>.
 ***************************************************************************
 """
-import pathlib
+from pathlib import Path
 from typing import List, Union, Optional
 
 import numpy as np
@@ -158,7 +158,7 @@ class RasterBandConfigWidget(QpsMapLayerConfigWidget):
     def __init__(self, layer: QgsRasterLayer, canvas: QgsMapCanvas, parent: QWidget = None):
 
         super(RasterBandConfigWidget, self).__init__(layer, canvas, parent=parent)
-        pathUi = pathlib.Path(__file__).parents[1] / 'ui' / 'rasterbandconfigwidget.ui'
+        pathUi = Path(__file__).parents[1] / 'ui' / 'rasterbandconfigwidget.ui'
         loadUi(pathUi, self)
 
         self.mCanvas = canvas

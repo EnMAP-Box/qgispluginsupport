@@ -25,7 +25,7 @@
 """
 
 import os
-import pathlib
+from pathlib import Path
 import sys
 import warnings
 from typing import List, Optional
@@ -41,7 +41,7 @@ os.environ.setdefault('QT_API', f'PyQt{PYQT_VERSION_STR[0]}')
 MIN_QGIS_VERSION = '4.00'
 __version__ = '2.0'
 
-DIR_QPS = pathlib.Path(__file__).parent
+DIR_QPS = Path(__file__).parent
 DIR_REPO = DIR_QPS.parent
 DIR_UI_FILES = DIR_QPS / 'ui'
 DIR_ICONS = DIR_UI_FILES / 'icons'

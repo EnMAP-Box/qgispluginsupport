@@ -1,4 +1,4 @@
-import pathlib
+from pathlib import Path
 
 from qgis.PyQt.QtCore import QModelIndex
 from qgis.PyQt.QtCore import Qt
@@ -13,7 +13,7 @@ class ProcessingAlgorithmDialog(QDialog):
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
 
-        path_ui = pathlib.Path(__file__).parent / 'processingalgorithmdialog.ui'
+        path_ui = Path(__file__).parent / 'processingalgorithmdialog.ui'
         loadUi(path_ui, self)
 
         self.setWindowFlag(Qt.WindowType.WindowContextHelpButtonHint, False)

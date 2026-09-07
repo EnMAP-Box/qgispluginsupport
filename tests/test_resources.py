@@ -1,4 +1,4 @@
-import pathlib
+from pathlib import Path
 import unittest
 
 import defusedxml.ElementTree as ET
@@ -18,7 +18,7 @@ class ResourceTests(TestCase):
 
     def test_qrc(self):
 
-        pathQRC = pathlib.Path(__file__).parents[1] / 'qps' / 'qpsresources.qrc'
+        pathQRC = Path(__file__).parents[1] / 'qps' / 'qpsresources.qrc'
         qrcDir = pathQRC.parent
         self.assertTrue(pathQRC.is_file())
 
@@ -30,7 +30,7 @@ class ResourceTests(TestCase):
                 # prefix = child.attrib['prefix']
                 for fileTag in child:
                     if fileTag.tag == 'file':
-                        resource_path = qrcDir / pathlib.Path(fileTag.text)
+                        resource_path = qrcDir / Path(fileTag.text)
                         # resource_uri = ':{}/{}'.format(prefix, fileTag.text)
                         self.assertTrue(resource_path.is_file(), msg='File does not exist: {}'.format(resource_path))
 

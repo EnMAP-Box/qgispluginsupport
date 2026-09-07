@@ -1,10 +1,10 @@
 import os
-import pathlib
+from pathlib import Path
 import shutil
 
 from qgis.core import QgsVectorLayer
 
-DIR = pathlib.Path(__file__).parent
+DIR = Path(__file__).parent
 path_original = DIR / 'test.geojson'
 path_tmp = DIR / 'tmpfile.geojson'
 shutil.copy(path_original, path_tmp)

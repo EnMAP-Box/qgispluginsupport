@@ -19,7 +19,7 @@
 import logging
 # noinspection PyPep8Naming
 import os
-import pathlib
+from pathlib import Path
 import unittest
 
 from osgeo import gdal, ogr
@@ -121,9 +121,9 @@ class TestSpeclibWidgets(TestCase):
 
         files = []
 
-        for root, dirs, f in os.walk(pathlib.Path(__file__).parents[1] / 'qpstestdata'):
+        for root, dirs, f in os.walk(Path(__file__).parents[1] / 'qpstestdata'):
             for file in f:
-                files.append(pathlib.Path(root) / file)
+                files.append(Path(root) / file)
 
         slw = SpectralLibraryWidget()
         # drop a valid speclib
