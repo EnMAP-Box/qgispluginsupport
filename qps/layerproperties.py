@@ -45,6 +45,7 @@ from qgis.core import (Qgis, QgsAction, QgsApplication, QgsCategorizedSymbolRend
                        QgsSingleBandPseudoColorRenderer, QgsSingleSymbolRenderer, QgsVectorDataProvider, QgsVectorLayer,
                        QgsWkbTypes,
                        QgsCoordinateTransformContext)
+
 from .speclib import EDITOR_WIDGET_REGISTRY_KEY
 
 try:
@@ -1705,11 +1706,6 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
 
                 if not self.mLayer.isEditable() and action.isEnabledOnlyWhenEditable():
                     continue
-
-                    qAction: QAction = actionMenu.addAction(action.icon(), action.shortTitle())
-                    qAction.setToolTip(action.name())
-                    qAction.setData(QMetaType.fromValue < QgsAction > (action))
-                    qAction.triggered.connect(self.layerActionTriggered)
 
             self.mActionFeatureActions.setMenu(actionMenu)
 
