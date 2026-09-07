@@ -1,4 +1,4 @@
-import pathlib
+from pathlib import Path
 import unittest
 
 from qgis.PyQt.QtCore import QSize
@@ -7,7 +7,7 @@ from qgis.PyQt.QtWidgets import QLabel
 from qps.testing import start_app, TestCase
 
 # image resource location
-qgis_images_resources = pathlib.Path(__file__).parents[1] / 'qgisresources' / 'images_rc.py'
+qgis_images_resources = Path(__file__).parents[1] / 'qgisresources' / 'images_rc.py'
 
 start_app()
 

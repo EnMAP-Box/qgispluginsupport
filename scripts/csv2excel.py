@@ -1,9 +1,9 @@
 import csv
 import os
-import pathlib
+from pathlib import Path
 
-csv_dir = pathlib.Path('/data/Jakku/diss_bj/csvtests')
-csv_dir = pathlib.Path('~').expanduser() / 'Downloads' / 'csvtests'
+csv_dir = Path('/data/Jakku/diss_bj/csvtests')
+csv_dir = Path('~').expanduser() / 'Downloads' / 'csvtests'
 os.makedirs(csv_dir, exist_ok=True)
 
 pathA = csv_dir / 'A.csv'

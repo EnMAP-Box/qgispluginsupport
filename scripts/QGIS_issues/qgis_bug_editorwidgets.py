@@ -1,5 +1,5 @@
 import os
-import pathlib
+from pathlib import Path
 import re
 
 import defusedxml.ElementTree as ET
@@ -17,9 +17,9 @@ class TestQgsRangeWidgetSetup(TestCase):
     @classmethod
     def setUpClass(cls):
         QgsGui.editorWidgetRegistry().initEditors()
-        cls.TMP_DIR = pathlib.Path(__file__).parent
+        cls.TMP_DIR = Path(__file__).parent
 
-    def localLayerSourcePath(self) -> pathlib.Path:
+    def localLayerSourcePath(self) -> Path:
 
         path_lyr = self.TMP_DIR / 'example.gpkg'
         if not path_lyr.is_file():

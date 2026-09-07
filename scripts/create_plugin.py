@@ -23,7 +23,6 @@
 import argparse
 import datetime
 import os
-import pathlib
 import re
 import shutil
 import textwrap
@@ -31,10 +30,10 @@ from pathlib import Path
 from typing import Iterator, Optional, Union
 
 import markdown
-
 from qgis.core import QgsUserProfile, QgsUserProfileManager
+
 from qps import DIR_REPO
-# site.addsitedir(pathlib.Path(__file__).parents[2])
+# site.addsitedir(Path(__file__).parents[2])
 from qps.make.deploy import QGISMetadataFileWriter, userProfileManager
 from qps.utils import zipdir
 
@@ -62,23 +61,23 @@ MD.mIsExperimental = True
 # End of config section
 
 
-def scantree(path, pattern=re.compile(r'.$')) -> Iterator[pathlib.Path]:
+def scantree(path, pattern=re.compile(r'.$')) -> Iterator[Path]:
     """
     Recursively returns file paths in directory
     :param path: root directory to search in
     :param pattern: str with required file ending, e.g. ".py" to search for *.py files
-    :return: pathlib.Path
+    :return: Path
     """
     for entry in os.scandir(path):
         if entry.is_dir(follow_symlinks=False):
             yield from scantree(entry.path, pattern=pattern)
         elif entry.is_file and pattern.search(entry.path):
-            yield pathlib.Path(entry.path)
+            yield Path(entry.path)
 
 
 def create_plugin(create_zip: bool = False,
                   copy_to_profile: bool = True,
-                  build_name: str = None) -> Optional[pathlib.Path]:
+                  build_name: str = None) -> Optional[Path]:
     if not ((DIR_REPO / '.git').is_dir()):
         raise AssertionError
 
@@ -149,7 +148,7 @@ def create_plugin(create_zip: bool = False,
         profileManager.setActiveUserProfile(profileName)
         profile: QgsUserProfile = profileManager.userProfile()
 
-        DIR_QGIS_USERPROFILE = pathlib.Path(profile.folder())
+        DIR_QGIS_USERPROFILE = Path(profile.folder())
         if DIR_QGIS_USERPROFILE:
             os.makedirs(DIR_QGIS_USERPROFILE, exist_ok=True)
             if not DIR_QGIS_USERPROFILE.is_dir():
@@ -175,8 +174,8 @@ def create_plugin(create_zip: bool = False,
     return PLUGIN_ZIP.as_posix()
 
 
-def markdown2html(path: Union[str, pathlib.Path]) -> str:
-    path_md = pathlib.Path(path)
+def markdown2html(path: Union[str, Path]) -> str:
+    path_md = Path(path)
     with open(path_md, 'r', encoding='utf-8') as f:
         md = f.read()
     return markdown.markdown(md)

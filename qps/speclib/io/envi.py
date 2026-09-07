@@ -28,7 +28,6 @@
 import csv
 import json
 import os
-import pathlib
 import re
 import time
 import uuid
@@ -37,10 +36,10 @@ from typing import List, Tuple, Union, Optional
 
 import numpy as np
 from osgeo import gdal, gdal_array
-
 from qgis.PyQt.QtCore import NULL, QMetaType
 from qgis.core import QgsExpression, QgsExpressionContext, QgsExpressionContextScope, QgsFeature, QgsFeatureIterator, \
     QgsFeatureRequest, QgsField, QgsFields, QgsProcessingFeedback, QgsVectorLayer
+
 from .. import EMPTY_VALUES, FIELD_FID, FIELD_NAME, FIELD_VALUES
 from ..core import create_profile_field, profile_field_names
 from ..core.spectrallibrary import LUT_IDL2GDAL, VSI_DIR
@@ -98,7 +97,7 @@ def flushCacheWithoutException(dataset: gdal.Dataset):
         n += 1
 
 
-def findENVIHeader(path: Union[str, pathlib.Path]) -> (str, str):
+def findENVIHeader(path: Union[str, Path]) -> (str, str):
     """
     Get a path and returns the ENVI header (*.hdr) and the ENVI binary file (e.g. *.sli) for
     :param path: str
@@ -118,7 +117,7 @@ def findENVIHeader(path: Union[str, pathlib.Path]) -> (str, str):
         # that was easy
         pathHdr = path
     else:
-        candidates: List[pathlib.Path] = [
+        candidates: List[Path] = [
             path.parent / f'{bn}.hdr',
             path.parent / f'{path.name}.hdr'
         ]
@@ -127,7 +126,7 @@ def findENVIHeader(path: Union[str, pathlib.Path]) -> (str, str):
                 pathHdr = p
                 break
 
-    if not isinstance(pathHdr, pathlib.Path):
+    if not isinstance(pathHdr, Path):
         # no header file, no ENVI file
         return None, None
 
@@ -137,11 +136,11 @@ def findENVIHeader(path: Union[str, pathlib.Path]) -> (str, str):
     else:
 
         extensions = ['.bin', '.sli', '.esl', '.bip', '.bil', '.bsq']
-        candidates: List[pathlib.Path] = [
+        candidates: List[Path] = [
             pathHdr.parent / bn,  # file.hdr and file
         ]
         candidates.extend([pathHdr.parent / f'{bn}{ext}' for ext in extensions])  # file.hdr + file.<ext>
-        candidates.extend([pathHdr.parent / f'{pathHdr.name}{ext}' for ext in extensions])  # file.hdr + file.hdr.<ext>
+        candidates.extend([pathHdr.parent / f'{pathHdr.name}{ext}' for ext in extensions])  # file.hdr + file.hdr.<ext)
 
         for c in candidates:
             if c.is_file():

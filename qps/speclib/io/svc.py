@@ -5,10 +5,11 @@ from pathlib import Path
 from typing import Match, Optional, Union
 
 import numpy as np
-
 from qgis.PyQt.QtCore import QDateTime, Qt, QMetaType
 from qgis.core import QgsEditorWidgetSetup, QgsField, QgsFields, QgsPointXY
+
 from ..core.spectralprofile import prepareProfileValueDict, SpectralProfileFileReader
+from ...utils import readDateTime
 
 # GPS Longitude  DDDmm.mmmmC
 # GPS Latitude  DDmm.mmmmC
@@ -107,8 +108,14 @@ class SVCSigFile(SpectralProfileFileReader):
         if 'time' in self.mMetadata:
             # Parse regular timestamps
             t1, t2 = [t.strip() for t in self.mMetadata['time'].split(',')]
-            self.mReferenceTime = self._readDateTime(t1, fmt=fmt)
-            self.mTargetTime = self._readDateTime(t2, fmt=fmt)
+
+            dt1, hint = readDateTime(t1, format_hint=fmt)
+            dt2, _ = readDateTime(t2, format_hint=fmt)
+            self.mReferenceTime = dt1
+            self.mTargetTime = dt2
+
+            # self.mReferenceTime = self._readDateTime(t1, fmt=fmt)
+            # self.mTargetTime = self._readDateTime(t2, fmt=fmt)
 
             # Parse GPS times if available
             if 'gpstime' in self.mMetadata:
@@ -164,47 +171,47 @@ class SVCSigFile(SpectralProfileFileReader):
             data['gpsTimeT'] = toQDateTime(self.mGpsTimeT)
         return data
 
-    @staticmethod
-    def _readDateTime(text: str, fmt: Optional[str] = None) -> datetime.datetime:
-        text = text.strip()
-
-        if isinstance(fmt, str):
-            return datetime.datetime.strptime(text, fmt)
-
-        # test for ISO
-        try:
-            return datetime.datetime.fromisoformat(text)
-        except ValueError:
-            pass
-
-        try:
-            import dateutil.parser
-            from dateutil.parser import ParserError
-            try:
-                return dateutil.parser.parse(text)
-            except ParserError:
-                pass
-        except ImportError:
-            pass
-
-        # test non-ISO formats
-        formats = [
-            '%d.%m.%Y %H:%M:%S',  # 27.05.2025 09:39:32
-            '%m/%d/%Y %I:%M:%S%p',  # 5/27/2025 9:39:32AM
-            '%m/%d/%Y %I:%M:%S %p',  # 5/27/2025 9:39:32 AM
-            '%m/%d/%Y %H:%M:%S',  # 5/27/2025 9:39:32
-            '%d/%m/%Y %H:%M:%S',  # 27/05/2025 09:39:32
-            '%m/%d/%Y %H:%M:%S%p',  # 5/27/2025 9:39:32AM
-            '%m/%d/%Y %H:%M:%S %p',  # 5/27/2025 9:39:32 AM
-        ]
-
-        for fmt in formats:
-            try:
-                return datetime.datetime.strptime(text, fmt)
-            except ValueError:
-                pass
-
-        raise ValueError(f'Unable to extract datetime from {text}')
+    # @staticmethod
+    # def _readDateTime(text: str, fmt: Optional[str] = None) -> datetime.datetime:
+    #     text = text.strip()
+    #
+    #     if isinstance(fmt, str):
+    #         return datetime.datetime.strptime(text, fmt)
+    #
+    #     # test for ISO
+    #     try:
+    #         return datetime.datetime.fromisoformat(text)
+    #     except ValueError:
+    #         pass
+    #
+    #     try:
+    #         import dateutil.parser
+    #         from dateutil.parser import ParserError
+    #         try:
+    #             return dateutil.parser.parse(text)
+    #         except ParserError:
+    #             pass
+    #     except ImportError:
+    #         pass
+    #
+    #     # test non-ISO formats
+    #     formats = [
+    #         '%d.%m.%Y %H:%M:%S',  # 27.05.2025 09:39:32
+    #         '%m/%d/%Y %I:%M:%S%p',  # 5/27/2025 9:39:32AM
+    #         '%m/%d/%Y %I:%M:%S %p',  # 5/27/2025 9:39:32 AM
+    #         '%m/%d/%Y %H:%M:%S',  # 5/27/2025 9:39:32
+    #         '%d/%m/%Y %H:%M:%S',  # 27/05/2025 09:39:32
+    #         '%m/%d/%Y %H:%M:%S%p',  # 5/27/2025 9:39:32AM
+    #         '%m/%d/%Y %H:%M:%S %p',  # 5/27/2025 9:39:32 AM
+    #     ]
+    #
+    #     for fmt in formats:
+    #         try:
+    #             return datetime.datetime.strptime(text, fmt)
+    #         except ValueError:
+    #             pass
+    #
+    #     raise ValueError(f'Unable to extract datetime from {text}')
 
     def _readSIGFile(self, path):
         """Parse SIG file using precompiled regular expressions for improved performance"""

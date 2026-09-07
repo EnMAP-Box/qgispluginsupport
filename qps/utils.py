@@ -37,7 +37,6 @@ import os
 import re
 import shutil
 import sys
-import traceback
 import warnings
 import weakref
 import zipfile
@@ -52,7 +51,6 @@ from osgeo.ogr import OFSTBoolean, OFSTNone, OFTBinary, OFTDate, OFTDateTime, OF
     OFTString, \
     OFTStringList, OFTTime
 from osgeo.osr import SpatialReference
-
 from qgis.PyQt import uic
 from qgis.PyQt.QtCore import NULL, QByteArray, QDirIterator, QObject, QPoint, QPointF, QRect, Qt, QUrl, \
     QVariant, QMetaType
@@ -77,6 +75,7 @@ from qgis.core import (QgsExpressionContextScope, QgsExpressionContext,
                        QgsFeatureRenderer, QgsSingleSymbolRenderer,
                        QgsMarkerSymbol, QgsExpressionContextUtils, QgsRenderContext, QgsSymbol, QgsProcessing)
 from qgis.gui import QgisInterface, QgsDialog, QgsGui, QgsMapCanvas, QgsMapLayerComboBox, QgsMessageViewer
+
 from .qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from .unitmodel import datetime64, UnitLookup
 
@@ -106,6 +105,7 @@ NUMPY2QGIS_DATA_TYPES = {np.uint8: Qgis.DataType.Byte,
                          np.uint32: Qgis.DataType.UInt32,
                          np.int16: Qgis.DataType.Int16,
                          np.int32: Qgis.DataType.Int32,
+                         np.int64: Qgis.DataType.Int32,
                          np.float32: Qgis.DataType.Float32,
                          np.float64: Qgis.DataType.Float64,
                          complex: Qgis.DataType.CFloat32,
@@ -181,7 +181,7 @@ def variant_type_to_ogr_field_type(variant_type):
     elif variant_type in [QMetaType.Type.QChar, QMetaType.Type.QString]:
         ogr_type = OFTString
 
-    elif variant_type == QMetaType.QStringLIST:
+    elif variant_type == QMetaType.Type.QStringLIST:
         ogr_type = OFTStringList
 
     elif variant_type == QMetaType.Type.QByteArray:
@@ -965,7 +965,10 @@ def fid2pixelindices(raster: gdal.Dataset,
 
     # print(f'Rasterize FIDs of {layer.GetDescription()}...')
 
-    drvMem: ogr.Driver = ogr.GetDriverByName('Memory')
+    drvMem: ogr.Driver = ogr.GetDriverByName('MEM')
+    if not isinstance(drvMem, ogr.Driver):
+        drvMem: ogr.Driver = ogr.GetDriverByName('Memory')
+
     dsMem: ogr.DataSource = drvMem.CreateDataSource('')
     lyrMem: ogr.Layer = dsMem.CreateLayer(layer.GetName(),
                                           srs=layer.GetSpatialRef(),
@@ -1168,7 +1171,7 @@ def qgsFields(source: Union[List[QgsField], QgsFeature, QgsFields, QgsVectorLaye
 
 
 def qgsField(layer_fields: Union[QgsFields, QgsVectorLayer, QgsFeature],
-             field: Union[QgsField, str, int]) -> QgsField:
+             field: Union[QgsField, str, int]) -> Optional[QgsField]:
     """
     Returns the QgsField relating to the input value in "field"
     :param layer_fields: QgsVectorLayer | QgsFields
@@ -1408,19 +1411,9 @@ def loadUi(uifile: Union[str, Path],
     buffer.seek(0)
 
     if not loadUiType:
-        return uic.loadUi(buffer, baseinstance=baseinstance, package=package, resource_suffix=resource_suffix)
+        return uic.loadUi(buffer, baseinstance=baseinstance, package=package)
     else:
-        return uic.loadUiType(buffer, resource_suffix=resource_suffix)
-
-
-def loadUIFormClass(pathUi: str, from_imports=False, resourceSuffix: str = '', fixQGISRessourceFileReferences=True,
-                    _modifiedui=None):
-    """
-    Backport, deprecated
-    """
-    info = ''.join(traceback.format_stack()) + '\nUse loadUi(... , loadUiType=True) instead.'
-    warnings.warn(info, DeprecationWarning)
-    return loadUi(pathUi, resource_suffix=resourceSuffix, loadUiType=True)[0]
+        return uic.loadUiType(buffer)
 
 
 def typecheck(variable, type_):
@@ -1679,12 +1672,12 @@ def qgsFields2str(qgsFields: QgsFields) -> str:
         # info = [field.name(), field.type(), field.typeName(), field.length(), field.precision(),
         # field.comment(), field.subType()]
         info = dict(name=field.name(),
-                    type=field.type(),
+                    type=int(field.type()),
                     typeName=field.typeName(),
                     length=field.length(),
                     precission=field.precision(),
                     comment=field.comment(),
-                    subType=field.subType(),
+                    subType=int(field.subType()),
                     editorWidget=field.editorWidgetSetup().type())
         infos.append(info)
     return json.dumps(infos, ensure_ascii=False)
@@ -1700,12 +1693,12 @@ def str2QgsFields(fieldString: str) -> QgsFields:
 
     for info in infos:
         field = QgsField(name=info['name'],
-                         type=info['type'],
+                         type=QMetaType.Type(info['type']),
                          typeName=info['typeName'],
                          len=info['length'],
                          prec=info['precission'],
                          comment=info['comment'],
-                         subType=info['subType']
+                         subType=QMetaType.Type(info['subType']),
                          )
         field.setEditorWidgetSetup(QgsEditorWidgetSetup(info['editorWidget'], {}))
         fields.append(field)
@@ -1835,6 +1828,76 @@ def equalRasterRenderer(renderer1: QgsRasterRenderer, renderer2: QgsRasterRender
     xml1 = rendererXML(renderer1)
     xml2 = rendererXML(renderer2)
     return xml1.toByteArray() == xml2.toByteArray()
+
+
+_dateutil_parser = None
+
+
+def readDateTime(
+    text: str,
+    format_hint: str | None = None
+) -> Tuple[datetime.datetime, Optional[str]]:
+    """
+    Tries to read the input text as datetime.datetime object
+    :param text: input text
+    :param format_hint: format_hint.
+    :return: datetime.datetime, format_hint
+    """
+    global _dateutil_parser
+    if _dateutil_parser is None:
+        try:
+            import dateutil.parser
+            _dateutil_parser = dateutil.parser
+        except Exception:
+            _dateutil_parser = False
+    elif _dateutil_parser:
+        return _dateutil_parser.parse(text), None
+
+    # List of common datetime format patterns to try
+    formats = [
+        '%m/%d/%Y %H:%M:%S %p',
+        '%m/%d/%Y %H:%M:%S%p',
+        '%m/%d/%Y %H:%M:%S',
+        '%m/%d/%Y %H:%M:%S.%f',
+        '%d/%m/%Y %H:%M:%S',
+        '%d/%m/%Y %H:%M:%S.%f',
+        '%Y-%m-%d %H:%M:%S',
+        '%Y-%m-%d %H:%M:%S.%f',
+        '%Y-%m-%dT%H:%M:%S',
+        '%Y-%m-%dT%H:%M:%S.%f',
+        '%Y-%m-%dT%H:%M:%SZ',
+        '%Y-%m-%d',
+        '%d.%m.%Y %H:%M:%S',
+        '%d.%m.%Y %H:%M',
+        '%d.%m.%Y',
+        '%b %d, %Y %H:%M:%S',
+        '%b %d, %Y %H:%M:%S.%f',
+        '%B %d, %Y %H:%M:%S',
+        '%B %d, %Y %H:%M:%S.%f',
+        '%m/%d/%Y',
+        '%d-%m-%Y %H:%M:%S',
+        '%d-%m-%Y %H:%M',
+        '%d-%m-%Y',
+        '%Y/%m/%d %H:%M:%S',
+        '%Y/%m/%d',
+        '%m-%d-%Y %H:%M:%S',
+        '%m-%d-%Y',
+    ]
+
+    if format_hint:
+        formats.insert(0, format_hint)
+    # Clean up the input string
+    text = text.strip()
+
+    # Try each format
+    for fmt in formats:
+        try:
+            return datetime.datetime.strptime(text, fmt), fmt
+        except ValueError:
+            continue
+
+    # If no format worked, raise an exception
+    raise ValueError(f"Unable to parse datetime string '{text}' with any known format")
 
 
 def defaultBands(dataset) -> List[int]:
@@ -3288,8 +3351,13 @@ class MapGeometryToPixel(object):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.wkbTypeLayers.clear()
-        del self.vsMem
-        del self.rsMEM
+        if isinstance(self.vsMem, ogr.DataSource):
+            self.vsMem.Close()
+            self.vsMem = None
+
+        if isinstance(self.rsMEM, gdal.Dataset):
+            self.rsMEM.Close()
+            self.rsMEM = None
 
     def px2geo(self, x: int, y: int) -> QgsPointXY:
         return self.m2p.toMapCoordinatesF(x, y)
@@ -3332,7 +3400,10 @@ class MapGeometryToPixel(object):
             self.bandMEM: gdal.Band = self.rsMEM.GetRasterBand(1)
 
         if not isinstance(self.vsMem, ogr.DataSource):
-            self.vsMem: ogr.DataSource = ogr.GetDriverByName('Memory').CreateDataSource('')
+            drv = ogr.GetDriverByName('MEM')
+            if not isinstance(drv, ogr.Driver):
+                drv = ogr.GetDriverByName('Memory')
+            self.vsMem: ogr.DataSource = drv.CreateDataSource('')
 
         g = ogr.CreateGeometryFromWkb(qgsGeometry.asWkb())
         geom_type = g.GetGeometryType()

@@ -1,14 +1,14 @@
 import argparse
 import os
-import pathlib
+from pathlib import Path
 import zipfile
 
-REPO: pathlib.Path = pathlib.Path(__file__).parents[1]
+REPO: Path = Path(__file__).parents[1]
 
 
-def findQGISRepo() -> pathlib.Path:
+def findQGISRepo() -> Path:
     if 'QGIS_REPO' in os.environ.keys():
-        return pathlib.Path(os.environ['QGIS_REPO'])
+        return Path(os.environ['QGIS_REPO'])
 
     QGISREPO = REPO.parent / 'QGIS'
 
@@ -24,13 +24,13 @@ def create_qgis_resource_file_archive(qgis_repo=None):
     if qgis_repo is None:
         qgis_repo = findQGISRepo()
     else:
-        qgis_repo = pathlib.Path(qgis_repo)
+        qgis_repo = Path(qgis_repo)
 
-    if not (isinstance(qgis_repo, pathlib.Path)):
+    if not (isinstance(qgis_repo, Path)):
         raise AssertionError
     if not (qgis_repo.is_dir()):
         raise AssertionError
-    if not (pathlib.Path(qgis_repo / '.git').is_dir()):
+    if not (Path(qgis_repo / '.git').is_dir()):
         raise AssertionError
 
     TARGET_DIR = REPO / 'qgisresources'
@@ -43,7 +43,7 @@ def create_qgis_resource_file_archive(qgis_repo=None):
     with zipfile.ZipFile(TARGET_ZIP, 'w', compression=zipfile.ZIP_DEFLATED) as f:
         for entry in os.scandir(TARGET_DIR):
             if entry.is_file and entry.name.endswith('_rc.py'):
-                path = pathlib.Path(entry.path)
+                path = Path(entry.path)
                 arcName = path.relative_to(TARGET_DIR).as_posix()
                 f.write(path, arcname=arcName)
 

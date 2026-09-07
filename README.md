@@ -146,7 +146,8 @@ QPS helps to initialize QgsApplications and to test them without starting an ent
 See `tests/test_example.py`
 
 ```python
-import os, pathlib, unittest
+import os, unittest
+from pathlib import Path
 from qps.testing import TestCase, start_app
 
 from qgis.PyQt.QtWidgets import QLabel
@@ -154,7 +155,7 @@ from qgis.PyQt.QtGui import QIcon, QPixmap
 from qgis.PyQt.QtCore import QSize, QFile, QDir
 from qgis.core import QgsApplication
 
-qgis_images_resources = pathlib.Path(__file__).parents[1] / 'qgisresources' / 'images_rc.py'
+qgis_images_resources = Path(__file__).parents[1] / 'qgisresources' / 'images_rc.py'
 
 class Example1(unittest.TestCase):
 

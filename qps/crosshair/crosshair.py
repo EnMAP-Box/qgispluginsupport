@@ -28,7 +28,7 @@
 ***************************************************************************
 """
 import math
-import pathlib
+from pathlib import Path
 from typing import Union, Optional
 
 import numpy as np
@@ -471,7 +471,7 @@ class CrosshairWidget(QWidget):
 
     def __init__(self, title='<#>', parent=None):
         super(CrosshairWidget, self).__init__(parent)
-        loadUi(pathlib.Path(__file__).parent / 'crosshairwidget.ui', self)
+        loadUi(Path(__file__).parent / 'crosshairwidget.ui', self)
 
         self.mapCanvas.setExtent(QgsRectangle(0, 0, 1, 1))  #
 

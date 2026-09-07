@@ -1,4 +1,4 @@
-import pathlib
+from pathlib import Path
 
 from osgeo import ogr
 
@@ -20,7 +20,7 @@ wkt = 'GEOGCRS["WGS 84",ENSEMBLE["World Geodetic System 1984 ensemble",MEMBER["W
 if not (QgsCoordinateReferenceSystem(wkt).isValid()):
     raise AssertionError
 
-path1 = pathlib.Path(__file__).parent / 'testvectordata.geojson'
+path1 = Path(__file__).parent / 'testvectordata.geojson'
 path2 = r'/vsimem/myvector.gpkg'
 
 if not (path1.is_file()):
