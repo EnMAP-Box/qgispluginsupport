@@ -5,7 +5,7 @@
 
 __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 
-import pathlib
+from pathlib import Path
 import re
 import unittest
 
@@ -27,8 +27,11 @@ class TestsCases_Init(TestCase):
 
     def test_init(self):
 
-        create_resource_files()
-        initQtResources()
+        py_files = create_resource_files()
+        self.assertTrue(len(py_files) > 0)
+        files = initQtResources()
+        self.assertTrue(len(files) > 0)
+
         paths = [p for p in scanResources() if p.startswith(':/qps/')]
         self.assertTrue(len(paths) > 0, msg='missing resources')
         for p in paths:
@@ -58,7 +61,7 @@ class TestsCases_Init(TestCase):
 
     def test_relative_imports(self):
 
-        root = pathlib.Path(__file__).parents[1]
+        root = Path(__file__).parents[1]
 
         re1 = re.compile(r'^\w*import qps')
         re2 = re.compile(r'^\w*from qps')

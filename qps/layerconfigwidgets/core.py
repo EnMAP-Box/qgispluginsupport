@@ -21,7 +21,7 @@
 ***************************************************************************
 """
 
-import pathlib
+from pathlib import Path
 
 from qgis.PyQt.QtWidgets import QMenu
 from qgis.core import QgsMapLayer
@@ -36,7 +36,7 @@ def configWidgetUi(name: str) -> str:
     :return:
     :rtype:
     """
-    path = pathlib.Path(__file__).parents[1] / 'ui' / name
+    path = Path(__file__).parents[1] / 'ui' / name
     return path.as_posix()
 
 

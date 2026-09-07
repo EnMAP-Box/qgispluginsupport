@@ -13,7 +13,8 @@ on:
 
 jobs:
   # Run EnMAP-Box tests
-  test:
+  # Disabled: QGIS 4.0 not available for conda yet
+  # test:
 
     runs-on: ubuntu-latest
     defaults:
@@ -24,12 +25,12 @@ jobs:
       QT_QPA_PLATFORM: offscreen
       CI: true
 
-    strategy:
-      fail-fast: false
-      matrix:
-        conda_env: [ qps_latest, qps_ltr, qps_minimum ]
-      # python_version : [3.9, 3.10, 3.11]
-      # mamba_env: [enmapbox_light_latest, enmapbox_light_longterm, enmapbox_full_latest, enmapbox_full_longterm]
+    # strategy:
+    #   fail-fast: false
+    #   matrix:
+    #     conda_env: [ qps_latest, qps_ltr, qps_minimum ]
+    #   # python_version : [3.9, 3.10, 3.11]
+    #   # mamba_env: [enmapbox_light_latest, enmapbox_light_longterm, enmapbox_full_latest, enmapbox_full_longterm]
 
     # name: {{ matrix.conda_env }}
 
@@ -73,7 +74,7 @@ jobs:
           python runfirst.py
           mkdir -p ~/.local/share/QGIS/QGIS3/profiles
 
-      - name: Test in ${{matrix.mamba_env}}
-        run: |
-          chmod +x runtests.sh
-          bash ./runtests.sh -n auto
+      # - name: Test in ${{matrix.mamba_env}}
+      #   run: |
+      #     chmod +x runtests.sh
+      #     bash ./runtests.sh -n auto

@@ -27,7 +27,7 @@
 import json
 import math
 import os
-import pathlib
+from pathlib import Path
 import re
 import sys
 from json import JSONDecodeError
@@ -61,7 +61,7 @@ class HelpStringMaker(object):
 
     def __init__(self):
 
-        helpDir = pathlib.Path(__file__).parent / 'function_help'
+        helpDir = Path(__file__).parent / 'function_help'
         self.mHELP = dict()
 
         if not (helpDir.is_dir()):

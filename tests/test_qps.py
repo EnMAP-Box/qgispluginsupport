@@ -2,11 +2,11 @@
 Tests to ensure repository structure
 """
 
-import pathlib
+from pathlib import Path
 import re
 import unittest
 
-DIR_QPS = pathlib.Path(__file__).parents[1] / 'qps'
+DIR_QPS = Path(__file__).parents[1] / 'qps'
 
 
 class ResourceTests(unittest.TestCase):
@@ -18,7 +18,7 @@ class ResourceTests(unittest.TestCase):
         path_keys = [k for k in qpstestdata.__dict__.keys()
                      if not k.startswith('__') and k not in ['pathlib']]
         for k in path_keys:
-            path = pathlib.Path(getattr(qpstestdata, k))
+            path = Path(getattr(qpstestdata, k))
             if k.startswith('DIR'):
                 self.assertTrue(path.is_dir(), msg=f'Unable to find directory "{k}" = {path}')
             else:
@@ -42,7 +42,7 @@ class ResourceTests(unittest.TestCase):
 
         errors = []
         for path in file_search(DIR_QPS, '*.py', recursive=True):
-            path = pathlib.Path(path)
+            path = Path(path)
             with open(path, 'r', encoding='utf-8') as f:
                 # lastLine = None
                 for i, line in enumerate(f.readlines()):

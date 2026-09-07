@@ -271,12 +271,10 @@ def encodeProfileValueDict(d: dict,
         if k in d2:
             d2[k] = [nanToNone(v) for v in d2[k]]
 
+    dump = json.dumps(d2, ensure_ascii=False, allow_nan=False)
     if encoding in [ProfileEncoding.Bytes, ProfileEncoding.Binary]:
-        jsonDoc = QJsonDocument.fromVariant(d2)
-        return jsonDoc.toBinaryData()
-    else:
-        # encoding = TEXT
-        return json.dumps(d2, ensure_ascii=False, allow_nan=False)
+        dump = QByteArray(bytearray(dump, 'utf-8'))
+    return dump
 
 
 def decodeProfileValueDict(

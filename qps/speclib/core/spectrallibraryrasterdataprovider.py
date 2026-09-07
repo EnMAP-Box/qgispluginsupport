@@ -38,7 +38,7 @@ def create_uri(vl: QgsVectorLayer, field: QgsField) -> str:
 def createRasterLayers(
     vl: QgsVectorLayer,
     selected_only: bool = False,
-    fields=None
+    fields: Union[str, List[str], List[QgsField], QgsField, QgsFields] = None
 ) -> List[QgsRasterLayer]:
     """
     Returns a list of in-memory QgsRasterLayers that represent the values inside a QgsVectorLayer.
@@ -58,17 +58,27 @@ def createRasterLayers(
         return layers
 
     all_fields = features[0].fields()
+    all_field_names = all_fields.names()
     if fields is None:
-        fields = [f for f in all_fields]
+        requested_field_names = all_field_names
+    elif isinstance(fields, str):
+        requested_field_names = [fields]
+    elif isinstance(fields, QgsFields):
+        requested_field_names = fields.names()
+    elif isinstance(fields, QgsField):
+        requested_field_names = [fields.name()]
+    elif isinstance(fields, Iterable):
+        requested_field_names = [f.name() if isinstance(f, QgsField) else str(f) for f in fields]
     else:
-        if isinstance(fields, QgsField):
-            fields = [fields]
-        elif isinstance(fields, QgsFields):
-            fields = [f for f in fields]
+        raise ValueError(f'fields: "{fields}" is not supported')
 
-    for field in fields:
-        if not (isinstance(field, QgsField)):
-            raise AssertionError
+    for f in requested_field_names:
+        if f not in all_field_names:
+            raise AssertionError(f'"{f}" is not a valid field name')
+
+    for field_name in requested_field_names:
+        field = all_fields[field_name]
+
         if is_profile_field(field):
             GROUPS = groupBySpectralProperties(features, field=field)
 
@@ -1065,8 +1075,11 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
         dp.setActiveFeatures(self.activeFeatures(), self.activeField())
         # dp.setActiveField(self.activeField())
         dp.setParent(VectorLayerFieldRasterDataProvider.PARENT)
+
+        dp.setParent(self.parent())
         # print(f'#CLONE  {self.extent()}  ->  {dp.extent()}')
         # self._refs_.append(dp)
+
         return dp
 
     def isValid(self) -> bool:

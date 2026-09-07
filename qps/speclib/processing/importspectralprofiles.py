@@ -239,10 +239,12 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
         p.setHelp('Vector layer with one or more fields that contain spectral profiles')
         self.addParameter(p)
 
-    def prepareAlgorithm(self,
-                         parameters: Dict[str, Any],
-                         context: QgsProcessingContext,
-                         feedback: QgsProcessingFeedback) -> bool:
+    def prepareAlgorithm(
+        self,
+        parameters: Dict[str, Any],
+        context: QgsProcessingContext,
+        feedback: QgsProcessingFeedback
+    ) -> bool:
 
         input_sources = self.parameterAsFileList(parameters, self.P_INPUT, context)
         errors = []
@@ -276,10 +278,12 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
             self._dtg_fmt = None
         return len(errors) == 0
 
-    def processAlgorithm(self,
-                         parameters: Dict[str, Any],
-                         context: QgsProcessingContext,
-                         feedback: QgsProcessingFeedback) -> Dict[str, Any]:
+    def processAlgorithm(
+        self,
+        parameters: Dict[str, Any],
+        context: QgsProcessingContext,
+        feedback: QgsProcessingFeedback
+    ) -> Dict[str, Any]:
 
         wkbType = None
         crs = QgsCoordinateReferenceSystem('EPSG:4326')

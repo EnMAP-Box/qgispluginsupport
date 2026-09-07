@@ -1,4 +1,3 @@
-import pathlib
 from pathlib import Path
 from typing import List, Union, Optional
 
@@ -105,8 +104,8 @@ class GeoPackageSpectralLibraryReader(SpectralProfileFileReader):
         return 'GeoPackage'
 
     @classmethod
-    def canReadFile(cls, path: Union[str, pathlib.Path]) -> bool:
-        return pathlib.Path(path).suffix == '.gpkg'
+    def canReadFile(cls, path: Union[str, Path]) -> bool:
+        return Path(path).suffix == '.gpkg'
 
     def asFeatures(self) -> List[QgsFeature]:
         lyr = QgsVectorLayer(self.path().as_posix())

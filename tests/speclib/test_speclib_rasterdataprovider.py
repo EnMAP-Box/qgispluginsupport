@@ -62,7 +62,7 @@ class RasterDataProviderTests(TestCase):
             self.assertTrue(dp.fields() == vl.fields())
 
             caps = dp.capabilities()
-            self.assertIsInstance(caps, Qgis.RasterInterfaceCapabilities)
+            self.assertIsInstance(caps, Qgis.RasterInterfaceCapability)
 
             crs = dp.crs()
             dp.setActiveFeatures(features, field.name())
@@ -135,7 +135,7 @@ class RasterDataProviderTests(TestCase):
         )
 
         with edit(vl):
-            vl.addAttribute(QgsField('class', QMetaType.QString))
+            vl.addAttribute(QgsField('class', QMetaType.Type.QString))
             for f in vl.getFeatures():
                 if f.id() % 3 == 0:
                     class_name = None
@@ -185,7 +185,7 @@ class RasterDataProviderTests(TestCase):
                         self.assertEqual(y1, y2)
                 elif field.isNumeric():
                     self.assertEqual(vector_value, array1[:, 0, iPx])
-                elif field.type() == QMetaType.QString:
+                elif field.type() == QMetaType.Type.QString:
                     pass
 
             # create second data provider from same url

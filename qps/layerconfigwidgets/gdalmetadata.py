@@ -26,13 +26,11 @@ import datetime
 import importlib.util
 import json
 import math
-import pathlib
-import re
 from pathlib import Path
+import re
 from typing import Any, Dict, List, Match, Pattern, Tuple, Union
 
 from osgeo import gdal, ogr
-
 from qgis.PyQt.QtCore import (
     NULL, QAbstractTableModel, QMimeData, QModelIndex, QSortFilterProxyModel, Qt, QTimer, QUrl,
     QMetaType, QT_VERSION_STR)
@@ -218,7 +216,7 @@ def filterFeatures(layer: QgsVectorLayer, regex: QRegularExpression) -> List[int
     for f in layer.getFeatures():
         f: QgsFeature
         for k, v in f.attributeMap().items():
-            if regex.indexIn(str(v), 0) >= 0:
+            if regex.match(str(v)).hasMatch():
                 fids.append(f.id())
                 break
 
@@ -418,9 +416,6 @@ class GDALBandMetadataModel(QgsVectorLayer):
 
         OFFSET = QgsField(BandFieldNames.Offset, type=QMetaType.Type.Double)
         SCALE = QgsField(BandFieldNames.Scale, type=QMetaType.Type.Double)
-
-        # ENVI_OFFSET = QgsField(BandFieldNames.ENVIDataOffset, type=QMetaType.Double)
-        # ENVI_GAIN = QgsField(BandFieldNames.ENVIDataGain, type=QMetaType.Double)
 
         # add fields
         for field in [BANDNO,
@@ -1194,7 +1189,7 @@ class GDALMetadataItemDialog(QDialog):
                  domains: List[str] = [],
                  **kwds):
         super().__init__(*args, **kwds)
-        pathUi = pathlib.Path(__file__).parents[1] / 'ui' / 'gdalmetadatamodelitemwidget.ui'
+        pathUi = Path(__file__).parents[1] / 'ui' / 'gdalmetadatamodelitemwidget.ui'
         loadUi(pathUi, self)
 
         for mo in major_objects:
@@ -1359,7 +1354,7 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
             canvas = QgsMapCanvas()
 
         super(GDALMetadataModelConfigWidget, self).__init__(layer, canvas, parent=parent)
-        pathUi = pathlib.Path(__file__).parents[1] / 'ui' / 'gdalmetadatamodelwidget.ui'
+        pathUi = Path(__file__).parents[1] / 'ui' / 'gdalmetadatamodelwidget.ui'
         loadUi(pathUi, self)
 
         self.mMessageBar: QgsMessageBar
@@ -1423,10 +1418,15 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
 
         def updateBandFilter(*args):
             self.updateFilter(self.bandDualView, self.tbBandFilter.text(),
-                              self.optionBandMatchCase, self.optionBandRegex)
+                              self.optionBandMatchCase.isChecked(), self.optionBandRegex.isChecked())
 
         def updateFilter(*args):
-            self.updateFilter(self.metadataView, self.tbFilter.text(), self.optionMatchCase, self.optionRegex)
+            self.updateFilter(
+                self.metadataView,
+                self.tbFilter.text(),
+                self.optionMatchCase.isChecked(),
+                self.optionRegex.isChecked()
+            )
 
         self.tbBandFilter.textChanged.connect(updateBandFilter)
         self.optionBandMatchCase.changed.connect(updateBandFilter)
@@ -1695,20 +1695,19 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
     def updateFilter(self,
                      view: Union[QgsDualView, QTableView],
                      text: str,
-                     optionMatchCase: QAction,
-                     optionRegex: QAction):
+                     match_case: bool,
+                     use_regex: bool):
 
-        if optionMatchCase.isChecked():
-            matchCase = Qt.CaseSensitivity.CaseSensitive
+        if not use_regex:
+            wc_options = QRegularExpression.WildcardConversionOption.UnanchoredWildcardConversion
+            text = QRegularExpression.wildcardToRegularExpression(text, wc_options)
+
+        if match_case:
+            options = QRegularExpression.PatternOption.NoPatternOption
         else:
-            matchCase = Qt.CaseSensitivity.CaseInsensitive
+            options = QRegularExpression.PatternOption.CaseInsensitiveOption
+        rx = QRegularExpression(text, options=options)
 
-        if optionRegex.isChecked():
-            syntax = QRegularExpression.RegExp
-        else:
-            syntax = QRegularExpression.Wildcard
-
-        rx = QRegularExpression(text, cs=matchCase, syntax=syntax)
         if isinstance(view, QgsDualView):
             metadataModel = view.masterModel().layer()
             if rx.isValid():
@@ -1720,7 +1719,12 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
             view.autosizeAllColumns()
         elif isinstance(view, QTableView):
             proxyModel: QSortFilterProxyModel = view.model()
-            proxyModel.setFilterRegExp(rx)
+            proxyModel.setFilterRegularExpression(text)
+
+            if match_case:
+                proxyModel.setFilterCaseSensitivity(Qt.CaseSensitivity.CaseSensitive)
+            else:
+                proxyModel.setFilterCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
 
 
 class GDALMetadataConfigWidgetFactory(QgsMapLayerConfigWidgetFactory):

@@ -66,14 +66,26 @@ class TestSpeclibIO_EcoSIS(TestCase):
             results = alg.postProcessAlgorithm(context, feedback)
             lyr = results.get(ImportSpectralProfiles.P_OUTPUT)
             self.assertIsInstance(lyr, QgsVectorLayer)
+
+            ANY_VALUE = dict()
+
             for f in lyr.getFeatures():
                 dump = f.attribute('reflectance')
                 data = decodeProfileValueDict(dump)
                 for k in ['x', 'y', 'xUnit']:
                     self.assertIn(k, data)
 
-                for a in f.attributes():
-                    self.assertTrue(a is not None)
+                for n in f.fields().names():
+                    a = f.attribute(n)
+
+                    if a and n not in ANY_VALUE:
+                        ANY_VALUE[n] = a
+
+            for n in lyr.fields().names():
+                self.assertTrue(
+                    n in ANY_VALUE,
+                    msg=f'Unable to read any valid value from column {n}:\n{file}'
+                )
 
     def test_read_EcoSIS(self):
 

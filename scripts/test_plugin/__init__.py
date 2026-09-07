@@ -1,7 +1,6 @@
 import os
-import pathlib
-import site
 from pathlib import Path
+import site
 from typing import List
 
 from console import show_console
@@ -21,7 +20,7 @@ def classFactory(iface):  # pylint: disable=invalid-name
     :type iface: QgsInterface
     """
 
-    d = pathlib.Path(__file__).parent
+    d = Path(__file__).parent
     site.addsitedir(d)
 
     return QGISPluginsSupportPlugin(iface)

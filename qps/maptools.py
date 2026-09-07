@@ -52,18 +52,25 @@ def tr(t: str) -> str:
     return t
 
 
-def createCursor(resourcePath: str):
+def createCursor(
+    widget: QWidget | None,
+    resourcePath: str
+):
     """
-    Creates a QCursor from a icon path
+    Creates a QCursor from an icon path
+    :param widget:
     :param resourcePath: str
     :return: QCursor
     """
     icon = QIcon(resourcePath)
-    app = QgsApplication.instance()
     activeX = activeY = 13
     if icon.isNull():
-        print('Unable to load icon from {}. Maybe resources not initialized?'.format(resourcePath))
-    scale = Qgis.UI_SCALE_FACTOR * app.fontMetrics().height() / 32.
+        print(f'Unable to load icon from {resourcePath}. Maybe resources not initialized?')
+    if isinstance(widget, QWidget):
+        h = widget.fontMetrics().height()
+    else:
+        h = 16
+    scale = Qgis.UI_SCALE_FACTOR * h / 32.
     size = QSize(int(scale * 32), int(scale * 32))
     cursor = QCursor(icon.pixmap(size), int(scale * activeX), int(scale * activeY))
     return cursor
@@ -345,7 +352,9 @@ class PixelScaleExtentMapTool(QgsMapTool):
     def __init__(self, canvas):
         super(PixelScaleExtentMapTool, self).__init__(canvas)
 
-        self.mCursor = createCursor(':/qps/ui/icons/cursor_zoom_pixelscale.svg')
+        self.mCursor = createCursor(
+            canvas, ':/qps/ui/icons/cursor_zoom_pixelscale.svg'
+        )
         self.setCursor(self.mCursor)
         canvas.setCursor(self.mCursor)
 
@@ -405,9 +414,9 @@ class FullExtentMapTool(QgsMapTool):
     A QgsMapTool to scale a QgsMapCanvas to the full extent of all available QgsMapLayers.
     """
 
-    def __init__(self, canvas):
+    def __init__(self, canvas: QgsMapCanvas | None):
         super(FullExtentMapTool, self).__init__(canvas)
-        self.mCursor = createCursor(':/qps/ui/icons/cursor_zoom_fullextent.svg')
+        self.mCursor = createCursor(canvas, ':/qps/ui/icons/cursor_zoom_fullextent.svg')
         self.setCursor(self.mCursor)
         canvas.setCursor(self.mCursor)
 
@@ -1203,7 +1212,7 @@ class QgsMapToolAddFeature(QgsMapToolDigitizeFeature):
 class QgsDistanceWidget(QWidget):
     distanceChanged = pyqtSignal(float)
     distanceEditingCanceled = pyqtSignal()
-    distanceEditingFinished = pyqtSignal(float, Qt.KeyboardModifiers)
+    distanceEditingFinished = pyqtSignal(float, object)
     distanceEditingCanceled = pyqtSignal()
 
     def __init__(self, label: str, parent: QWidget = None):
@@ -1485,7 +1494,7 @@ class QgsMapToolSelectionHandler(QObject):
         SelectFreehand = 2
         SelectRadius = 3
 
-    geometryChanged = pyqtSignal(Qt.KeyboardModifiers)
+    geometryChanged = pyqtSignal(object)
 
     def __init__(self, canvas: QgsMapCanvas, selectionMode, parent: QObject = None):
         super(QgsMapToolSelectionHandler, self).__init__(parent=parent)

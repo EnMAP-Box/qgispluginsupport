@@ -37,7 +37,6 @@ import os
 import re
 import shutil
 import sys
-import traceback
 import warnings
 import weakref
 import zipfile
@@ -182,7 +181,7 @@ def variant_type_to_ogr_field_type(variant_type):
     elif variant_type in [QMetaType.Type.QChar, QMetaType.Type.QString]:
         ogr_type = OFTString
 
-    elif variant_type == QMetaType.QStringLIST:
+    elif variant_type == QMetaType.Type.QStringLIST:
         ogr_type = OFTStringList
 
     elif variant_type == QMetaType.Type.QByteArray:
@@ -966,7 +965,10 @@ def fid2pixelindices(raster: gdal.Dataset,
 
     # print(f'Rasterize FIDs of {layer.GetDescription()}...')
 
-    drvMem: ogr.Driver = ogr.GetDriverByName('Memory')
+    drvMem: ogr.Driver = ogr.GetDriverByName('MEM')
+    if not isinstance(drvMem, ogr.Driver):
+        drvMem: ogr.Driver = ogr.GetDriverByName('Memory')
+
     dsMem: ogr.DataSource = drvMem.CreateDataSource('')
     lyrMem: ogr.Layer = dsMem.CreateLayer(layer.GetName(),
                                           srs=layer.GetSpatialRef(),
@@ -1409,19 +1411,9 @@ def loadUi(uifile: Union[str, Path],
     buffer.seek(0)
 
     if not loadUiType:
-        return uic.loadUi(buffer, baseinstance=baseinstance, package=package, resource_suffix=resource_suffix)
+        return uic.loadUi(buffer, baseinstance=baseinstance, package=package)
     else:
-        return uic.loadUiType(buffer, resource_suffix=resource_suffix)
-
-
-def loadUIFormClass(pathUi: str, from_imports=False, resourceSuffix: str = '', fixQGISRessourceFileReferences=True,
-                    _modifiedui=None):
-    """
-    Backport, deprecated
-    """
-    info = ''.join(traceback.format_stack()) + '\nUse loadUi(... , loadUiType=True) instead.'
-    warnings.warn(info, DeprecationWarning)
-    return loadUi(pathUi, resource_suffix=resourceSuffix, loadUiType=True)[0]
+        return uic.loadUiType(buffer)
 
 
 def typecheck(variable, type_):
@@ -1680,12 +1672,12 @@ def qgsFields2str(qgsFields: QgsFields) -> str:
         # info = [field.name(), field.type(), field.typeName(), field.length(), field.precision(),
         # field.comment(), field.subType()]
         info = dict(name=field.name(),
-                    type=field.type(),
+                    type=int(field.type()),
                     typeName=field.typeName(),
                     length=field.length(),
                     precission=field.precision(),
                     comment=field.comment(),
-                    subType=field.subType(),
+                    subType=int(field.subType()),
                     editorWidget=field.editorWidgetSetup().type())
         infos.append(info)
     return json.dumps(infos, ensure_ascii=False)
@@ -1701,12 +1693,12 @@ def str2QgsFields(fieldString: str) -> QgsFields:
 
     for info in infos:
         field = QgsField(name=info['name'],
-                         type=info['type'],
+                         type=QMetaType.Type(info['type']),
                          typeName=info['typeName'],
                          len=info['length'],
                          prec=info['precission'],
                          comment=info['comment'],
-                         subType=info['subType']
+                         subType=QMetaType.Type(info['subType']),
                          )
         field.setEditorWidgetSetup(QgsEditorWidgetSetup(info['editorWidget'], {}))
         fields.append(field)
@@ -3359,8 +3351,13 @@ class MapGeometryToPixel(object):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.wkbTypeLayers.clear()
-        del self.vsMem
-        del self.rsMEM
+        if isinstance(self.vsMem, ogr.DataSource):
+            self.vsMem.Close()
+            self.vsMem = None
+
+        if isinstance(self.rsMEM, gdal.Dataset):
+            self.rsMEM.Close()
+            self.rsMEM = None
 
     def px2geo(self, x: int, y: int) -> QgsPointXY:
         return self.m2p.toMapCoordinatesF(x, y)
@@ -3403,7 +3400,10 @@ class MapGeometryToPixel(object):
             self.bandMEM: gdal.Band = self.rsMEM.GetRasterBand(1)
 
         if not isinstance(self.vsMem, ogr.DataSource):
-            self.vsMem: ogr.DataSource = ogr.GetDriverByName('Memory').CreateDataSource('')
+            drv = ogr.GetDriverByName('MEM')
+            if not isinstance(drv, ogr.Driver):
+                drv = ogr.GetDriverByName('Memory')
+            self.vsMem: ogr.DataSource = drv.CreateDataSource('')
 
         g = ogr.CreateGeometryFromWkb(qgsGeometry.asWkb())
         geom_type = g.GetGeometryType()

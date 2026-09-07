@@ -24,9 +24,9 @@
 ***************************************************************************
 """
 import os.path
-import pathlib
 import platform
 from os import getenv
+from pathlib import Path
 from typing import List
 
 from qgis.PyQt.QtCore import QStandardPaths, QSettings
@@ -53,25 +53,38 @@ def userProfileManager() -> QgsUserProfileManager:
             globalsettingsfile = default_globalsettingsfile
 
     if configLocalStorageLocation is None:
+        configLocalStorageLocation = getenv("QGIS_LOCAL_STORAGE_PATH")
+
+    if configLocalStorageLocation is None:
         if globalsettingsfile is not None:
             globalSettings = QSettings(globalsettingsfile, QSettings.Format.IniFormat)
             if globalSettings.contains("core/profilesPath"):
                 configLocalStorageLocation = globalSettings.value("core/profilesPath", "")
 
     if configLocalStorageLocation is None:
-        home = pathlib.Path('~').expanduser()
-        basePath = None
+        home = Path('~').expanduser()
+
         if platform.system() == 'Windows':
             basePath = home / 'AppData/Roaming/QGIS/QGIS3'
         elif platform.system() == 'Linux':
+            if home.as_posix() == '/':
+                home = Path('/root')
             basePath = home / '.local/share/QGIS/QGIS3'
         elif platform.system() == 'Darwin':
             basePath = home / r'Library/Application Support/QGIS/QGIS3'
+        else:
+            basePath = None
 
         if basePath is None:
             raise NotADirectoryError(f'QGIS local storage path undefined for {platform.system()}')
         if not basePath.is_dir():
-            raise NotADirectoryError(f'QGIS local storage path does not exist: {platform.system()}: "{basePath}"')
+            srcPath = Path('/root/.local/share/QGIS/QGIS3')
+            if srcPath.is_dir() and home.as_posix() != '/root':
+                basePath.mkdir(parents=True, exist_ok=True)
+                import shutil
+                shutil.copytree(srcPath, basePath, dirs_exist_ok=True)
+            else:
+                raise NotADirectoryError(f'QGIS local storage path does not exist: {platform.system()}: "{basePath}"')
 
         configLocalStorageLocation = basePath.as_posix()
 

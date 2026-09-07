@@ -1,7 +1,7 @@
 # script that shows how to import ASD files
 
 import os
-import pathlib
+from pathlib import Path
 
 from osgeo import gdal
 
@@ -16,8 +16,8 @@ from qps.speclib.io.geopackage import GeoPackageSpectralLibraryWriter
 gdal.UseExceptions()
 app = start_app()
 
-DIR_INPUTS = pathlib.Path(__file__).parents[1] / 'qpstestdata/asd/gps'
-DIR_OUTPUTS = pathlib.Path(__file__).parent
+DIR_INPUTS = Path(__file__).parents[1] / 'qpstestdata/asd/gps'
+DIR_OUTPUTS = Path(__file__).parent
 os.makedirs(DIR_OUTPUTS, exist_ok=True)
 files = []
 for entry in os.scandir(DIR_INPUTS):

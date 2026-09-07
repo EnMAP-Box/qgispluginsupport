@@ -1,10 +1,10 @@
-import pathlib
+from pathlib import Path
 import re
 
 import numpy as np
 from osgeo import gdal, gdal_array
 
-DIR = pathlib.Path(__file__).parent
+DIR = Path(__file__).parent
 
 array = np.ones((3, 10, 5), dtype=int)
 path = DIR / 'enviexample.bsq'

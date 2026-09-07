@@ -1,4 +1,4 @@
-import pathlib
+from pathlib import Path
 import site
 import unittest
 
@@ -7,7 +7,7 @@ from qgis.core import QgsProject, QgsVectorLayer, QgsVectorLayerExporter, \
 from qgis.gui import QgsGui
 from qgis.testing.mocked import get_iface
 
-DIR_QGIS_REPO = pathlib.Path(r'F:\Repositories\QGIS')
+DIR_QGIS_REPO = Path(r'F:\Repositories\QGIS')
 if not (DIR_QGIS_REPO.is_dir()):
     raise AssertionError
 

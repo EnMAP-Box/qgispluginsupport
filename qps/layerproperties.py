@@ -16,13 +16,13 @@
 *                                                                         *
 ***************************************************************************
 """
-import pathlib
+from pathlib import Path
 import re
 import sys
 import warnings
 from typing import Any, Dict, List, Optional, Union
 
-from qgis.PyQt.QtCore import QTextStream, QByteArray, QMetaType
+from qgis.PyQt.QtCore import QTextStream, QByteArray
 from qgis.PyQt.QtCore import pyqtSignal, QMimeData, QModelIndex, QObject, QTimer
 from qgis.PyQt.QtGui import QCloseEvent, QIcon
 from qgis.PyQt.QtWidgets import QAction, QButtonGroup, QCheckBox, QComboBox, QDialog, QDialogButtonBox, \
@@ -45,6 +45,7 @@ from qgis.core import (Qgis, QgsAction, QgsApplication, QgsCategorizedSymbolRend
                        QgsSingleBandPseudoColorRenderer, QgsSingleSymbolRenderer, QgsVectorDataProvider, QgsVectorLayer,
                        QgsWkbTypes,
                        QgsCoordinateTransformContext)
+
 from .speclib import EDITOR_WIDGET_REGISTRY_KEY
 
 try:
@@ -638,7 +639,7 @@ def defaultRasterRenderer(layer: QgsRasterLayer,
 
         # check for *.qml file with default styling information
         if readQml:
-            qmlUri = pathlib.Path(layer.styleURI())
+            qmlUri = Path(layer.styleURI())
             is_file = False
             try:
                 is_file = qmlUri.is_file()
@@ -787,14 +788,17 @@ def rendererToXml(layerOrRenderer, geomType: QgsWkbTypes = None):
     return doc
 
 
-def pasteStyleToClipboard(layer: QgsMapLayer,
-                          categories: QgsMapLayer.StyleCategory = QgsMapLayer.StyleCategory.Symbology | QgsMapLayer.StyleCategory.Rendering):  # noqa: E501
+def pasteStyleToClipboard(
+    layer: QgsMapLayer,
+    categories: QgsMapLayer.StyleCategory = QgsMapLayer.StyleCategory.Symbology | QgsMapLayer.StyleCategory.Rendering
+):  # noqa: E501
     doc = QDomDocument()
     err = layer.exportNamedStyle(doc, categories=categories)
     if err == '':
         ba = QByteArray()
         stream = QTextStream(ba)
-        stream.setCodec('utf-8')
+        #  stream.setCodec('utf-8')
+        # stream.autoDetectUnicode()
         doc.documentElement().save(stream, 0)
         md = QMimeData()
         md.setData('application/qgis.style', ba)
@@ -1027,7 +1031,7 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
                  initialMode: QgsAttributeTableFilterModel.FilterMode = QgsAttributeTableFilterModel.FilterMode.ShowAll,
                  **kwds):
         super().__init__(*args, **kwds)
-        loadUi(pathlib.Path(DIR_UI_FILES) / 'attributetablewidget.ui', self)
+        loadUi(Path(DIR_UI_FILES) / 'attributetablewidget.ui', self)
 
         self.widgetLeft.setVisible(False)
         self.widgetRight.setVisible(False)
@@ -1702,11 +1706,6 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
 
                 if not self.mLayer.isEditable() and action.isEnabledOnlyWhenEditable():
                     continue
-
-                    qAction: QAction = actionMenu.addAction(action.icon(), action.shortTitle())
-                    qAction.setToolTip(action.name())
-                    qAction.setData(QMetaType.fromValue < QgsAction > (action))
-                    qAction.triggered.connect(self.layerActionTriggered)
 
             self.mActionFeatureActions.setMenu(actionMenu)
 

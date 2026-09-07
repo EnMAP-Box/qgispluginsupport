@@ -1,5 +1,5 @@
 import json
-import pathlib
+from pathlib import Path
 import random
 
 from qps.utils import stringToByteArray
@@ -19,7 +19,7 @@ saveVectorOptions.driverName = 'GPKG'
 saveVectorOptions.symbologyExport = QgsVectorFileWriter.SymbologyExport.SymbolLayerSymbology
 saveVectorOptions.actionOnExistingFile = QgsVectorFileWriter.ActionOnExistingFile.CreateOrOverwriteLayer
 
-path = pathlib.Path('~').expanduser() / 'test.gpkg'
+path = Path('~').expanduser() / 'test.gpkg'
 # if path.is_file() and saveVectorOptions.actionOnExistingFile != QgsVectorFileWriter.CreateOrOverwriteLayer:
 #    os.remove(path)
 # assert not path.is_file()

@@ -1,5 +1,4 @@
 import os.path
-import pathlib
 import re
 import unittest
 from datetime import datetime
@@ -54,7 +53,7 @@ class TestSpeclibIO_SVC(TestCase):
 
     def svcFiles(self) -> List[str]:
         import qpstestdata
-        svc_dir = pathlib.Path(qpstestdata.__file__).parent / 'svc'
+        svc_dir = Path(qpstestdata.__file__).parent / 'svc'
         return list(file_search(svc_dir, re.compile(r'.*\.sig$'), recursive=True))
 
     # @unittest.skipIf(TestCase.runsInCI(), 'Skipped CI')
