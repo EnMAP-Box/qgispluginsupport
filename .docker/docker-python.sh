@@ -40,7 +40,12 @@ export QGIS_VERSION
 export GITHUB_WORKSPACE="${GITHUB_WORKSPACE:-${REPO}}"
 
 xhost +local:docker 2>/dev/null || true
-DOCKER_DISPLAY=1
+
+if [[ -n "${DISPLAY:-}" ]]; then
+    DOCKER_DISPLAY=1
+else
+    DOCKER_DISPLAY=0
+fi
 
 compose() {
     docker compose -f "${COMPOSE_FILE}" -p "${COMPOSE_PROJECT}" "$@"
@@ -70,6 +75,8 @@ ARGS=(
     -e QGIS_DISABLE_MESSAGE_HOOKS=1
     -e QGIS_NO_OVERRIDE_IMPORT=1
     -v "${REPO}:${REPO}"
+    -e QGIS_LOCAL_STORAGE_PATH="${HOME}/.local/share/QGIS/QGIS3"
+    -v "${HOME}:${HOME}"
     -v /tmp:/tmp
 )
 
@@ -97,6 +104,17 @@ else
     ARGS+=(-i)
 fi
 
+# Detect if PyCharm is running with debugger (debugpy or pydevd)
+# PyCharm passes --host and --port arguments to the interpreter when debugging
+if [[ "${@}" == *"--host"* ]] || [[ "${@}" == *"--port"* ]] || [[ "${@}" == *"-m debugpy"* ]]; then
+    # Debug mode detected - ensure container can reach host
+    # The --network host flag above should handle this, but we also need to ensure
+    # debugpy binds to 0.0.0.0 instead of 127.0.0.1 to be accessible from the host
+    echo "PyCharm debugger detected" >&2
+    # PyCharm's debugpy will handle the host:port mapping, but we ensure
+    # the container can reach the host via --network host
+fi
+
 if [[ -n "${DOCKER_MOUNTS:-}" ]]; then
     read -r -a extra_mounts <<< "${DOCKER_MOUNTS}"
     ARGS+=("${extra_mounts[@]}")
@@ -104,6 +122,21 @@ fi
 if [[ -n "${DOCKER_OPTS:-}" ]]; then
     read -r -a extra_opts <<< "${DOCKER_OPTS}"
     ARGS+=("${extra_opts[@]}")
+fi
+
+# Check if debugpy/pydevd is being used by checking arguments
+# PyCharm passes -m debugpy --host 127.0.0.1 --port XXXX when debugging
+DEBUGPY_ARGS=()
+for arg in "$@"; do
+    if [[ "$arg" == "--host" ]] || [[ "$arg" == "--port" ]] || [[ "$arg" == *"-m debugpy"* ]] || [[ "$arg" == *"-m pydevd"* ]]; then
+        DEBUGPY_ARGS+=("$arg")
+    fi
+done
+
+if [[ ${#DEBUGPY_ARGS[@]} -gt 0 ]]; then
+    echo "PyCharm debugger detected. Arguments: ${DEBUGPY_ARGS[*]}" >&2
+    # PyCharm uses pydevd which works with --network host
+    # No additional environment variables needed
 fi
 
 if [[ "${DOCKER_BUILD:-0}" == "1" ]] || ! docker image inspect "${IMAGE}" > /dev/null 2>&1; then

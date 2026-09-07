@@ -941,7 +941,10 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmWidgetBase):
                                 # field: QgsField = QgsField(name=target_field_name,
                                 #                            type=numpyToQgisDataType(tmp.dtype))
                                 if not speclib.dataProvider().supportedType(field):
-                                    field = QgsField(name=target_field_name, type=QMetaType.Double)
+                                    field = QgsField(
+                                        name=target_field_name,
+                                        type=QMetaType.Type.Double
+                                    )
 
                             speclib.beginEditCommand(f'Add field {field.name()}')
                             if not (SpectralLibraryUtils.addAttribute(speclib, field)):
