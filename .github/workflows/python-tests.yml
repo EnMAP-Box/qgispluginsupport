@@ -39,10 +39,13 @@ jobs:
           submodules: recursive
       - name: System Info {{matrix.qgis_version}}
         run: |
-          python3 scripts/systeminfo.py
+          chmod +x .docker/docker-python.sh
+          .docker/docker-python.sh runfirst.py
+          .docker/docker-python.sh scripts/systeminfo.py
 
       - name: Test on QGIS {{matrix.qgis_version}}
         run: |
-          python3 runfirst.py
-          chmod +x runtests.sh
-          docker compose -f .docker/docker-compose.gh.yml run qgis /usr/src/runtests.sh -n auto
+          chmod +x runtests_docker.sh
+          runtests_docker.sh -n auto
+
+        # docker compose -f .docker/docker-compose.gh.yml run qgis /usr/src/runtests_docker.sh -n auto
