@@ -46,6 +46,6 @@ jobs:
       - name: Test on QGIS {{matrix.qgis_version}}
         run: |
           chmod +x runtests_docker.sh
-          runtests_docker.sh -n auto
+          ./runtests_docker.sh -n auto
 
         # docker compose -f .docker/docker-compose.gh.yml run qgis /usr/src/runtests_docker.sh -n auto
