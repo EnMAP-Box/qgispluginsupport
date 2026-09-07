@@ -75,6 +75,7 @@ ARGS=(
     -e QGIS_DISABLE_MESSAGE_HOOKS=1
     -e QGIS_NO_OVERRIDE_IMPORT=1
     -v "${REPO}:${REPO}"
+    -e QGIS_LOCAL_STORAGE_PATH="${HOME}/.local/share/QGIS/QGIS3"
     -v "${HOME}:${HOME}"
     -v /tmp:/tmp
 )
