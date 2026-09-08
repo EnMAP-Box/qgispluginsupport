@@ -13,10 +13,11 @@ from qgis.core import (QgsFeature, QgsProcessingOutputFile, QgsProject, QgsVecto
 from qgis.core import QgsProcessingContext, QgsProcessingFeedback
 from qgis.gui import QgsAttributeTableView, QgsMapCanvas
 from qgis.gui import QgsMessageBar
+
 from .spectrallibraryplotitems import SpectralProfilePlotItem, SpectralProfilePlotWidget
 from .spectrallibraryplotmodelitems import ProfileVisualizationGroup
 from .spectrallibraryplotwidget import SpectralLibraryPlotWidget
-from .spectralprocessingdialog import SpectralProcessingDialog
+from .spectralprocessingwidget import SpectralProcessingWidget
 from .spectralprofilefieldmodel import SpectralProfileFieldActivatorDialog
 from .spectralprofileplotmodel import SpectralProfilePlotModel
 from ..core import is_spectral_library
@@ -149,7 +150,7 @@ class SpectralLibraryWidget(QWidget):
         self.mDelegateOpenRequests: bool = False
 
         self.actionShowProperties.triggered.connect(lambda *args: self.openLayerProperties())
-        self.actionShowSpectralProcessingDialog.triggered.connect(lambda *args: self.openSpectralProcessingWidget())
+        self.actionShowSpectralProcessingWidget.triggered.connect(lambda *args: self.openSpectralProcessingWidget())
         self.actionShowAttributeTable.triggered.connect(lambda *args: self.openAttributeTable())
 
         model = self.plotModel()
@@ -283,7 +284,7 @@ class SpectralLibraryWidget(QWidget):
         has_speclib = isinstance(self.currentSpeclib(), QgsVectorLayer)
 
         self.actionShowAttributeTable.setEnabled(has_speclib)
-        self.actionShowSpectralProcessingDialog.setEnabled(has_speclib)
+        self.actionShowSpectralProcessingWidget.setEnabled(has_speclib)
         self.actionExportSpeclib.setEnabled(has_speclib)
         self.actionGrpLayerProperties.setEnabled(has_layer)
         # self.actionShowProfileFields.setEnabled(b)
@@ -322,13 +323,14 @@ class SpectralLibraryWidget(QWidget):
             return None
         return self.spectralLibraryPlotWidget().createProfileVisualization(layer_id=speclib)
 
-    def openSpectralProcessingWidget(self,
-                                     layer_id: Optional[str] = None,
-                                     algorithmId: Optional[str] = None,
-                                     parameters: Optional[dict] = None):
+    def openSpectralProcessingWidget(
+        self,
+        layer_id: Optional[str] = None,
+        algorithmId: Optional[str] = None,
+        parameters: Optional[dict] = None
+    ) -> Optional[SpectralProcessingWidget]:
         # alg_key = 'qps/processing/last_alg_id'
         # reg: QgsProcessingRegistry = QgsApplication.instance().processingRegistry()
-        # if not isinstance(self.mSpectralProcessingWidget, SpectralProcessingDialog):
 
         if lyr := self._layerInstance(layer_id=layer_id):
             if isinstance(lyr, QgsVectorLayer):
@@ -336,15 +338,19 @@ class SpectralLibraryWidget(QWidget):
                     lyr.startEditing()
 
                 # profile_fields_before = profile_field_names(lyr)
-                dialog = SpectralProcessingDialog(
+                w = SpectralProcessingWidget(
                     speclib=lyr,
                     algorithmId=algorithmId,
-                    parameters=parameters)
+                    parameters=parameters
+                )
                 # dialog.setMainMessageBar(self.mainMessageBar())
                 # dialog.sigOutputsCreated.connect(self.onSpectralProcessingOutputsCreated)
-                dialog.exec()
 
-                dialog.close()
+                # dialog.exec()
+                # dialog.close()
+                w.show()
+                return w
+        return None
 
     def onSpectralProcessingOutputsCreated(self, outputs: Dict):
 

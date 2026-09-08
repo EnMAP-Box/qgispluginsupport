@@ -9,6 +9,7 @@ from qgis.core import (QgsProcessingAlgorithm, QgsProcessingParameterVectorLayer
                        QgsProcessingParameterFileDestination, QgsProcessingParameterField)
 from qgis.core import QgsProcessingParameterBoolean
 from qgis.core import QgsProcessingParameterString
+
 from ..core import is_profile_field, profile_fields
 from ..core.spectralprofile import SpectralProfileFileWriter
 from ..io.ecosis import EcoSISSpectralLibraryWriter
