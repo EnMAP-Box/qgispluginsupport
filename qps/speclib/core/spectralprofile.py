@@ -462,17 +462,22 @@ class SpectralProfileFileWriter(object):
             ext = ext[1:]
         return ext in supported
 
-    def writeFeatures(self,
-                      path: Union[str, Path],
-                      features: List[QgsFeature],
-                      feedback: Optional[QgsProcessingFeedback] = None) -> List[Path]:
+    def writeFeatures(
+        self,
+        path: Union[str, Path],
+        features: List[QgsFeature],
+        field_names: Optional[List[str]] = None,
+        feedback: Optional[QgsProcessingFeedback] = None
+    ) -> List[Path]:
         """
         Writes the provided features to path or, if necessary, multiple files.
         The returned list contains the paths of the written files.
 
         Other writing options should be set with the class constructor.
+
         :param path: path to write
         :param features:
+        :param field_names: optional, the names of the profile fields to write
         :param feedback:
         :return:
         """
@@ -620,7 +625,8 @@ class SpectralProfileFileReader(object):
 
     def asFeatures(self) -> List[QgsFeature]:
         """
-        Returns the QgsFeatures that can be read from the file
+        Returns the QgsFeatures that can be read from the file.
+        This allows returning profiles from sources like CSV files.
         :return: list of QgsFeatures
         """
 

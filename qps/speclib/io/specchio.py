@@ -10,92 +10,88 @@
     Copyright            : (C) 2020 by Benjamin Jakimow
     Email                : benjamin.jakimow@geo.hu-berlin.de
 ***************************************************************************
-    This program is free software; you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation; either version 3 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this software. If not, see <https://www.gnu.org/licenses/>.
+*                                                                         *
+*   This program is free software; you can redistribute it and/or modify  *
+*   it under the terms of the GNU General Public License as published by  *
+*   the Free Software Foundation; either version 3 of the License, or     *
+*   (at your option) any later version.                                   *
+*                                                                         *
 ***************************************************************************
 """
 import collections
-import io
-import os
 import re
-import sys
+from pathlib import Path
+from typing import Optional, Union, List, Dict
 
 import numpy as np
+from qgis.PyQt.QtCore import QMetaType
+from qgis.core import QgsFeature, QgsField, QgsFields, QgsProcessingFeedback, QgsFeatureIterator
 
-from qgis.PyQt.QtWidgets import QMenu, QFileDialog
-from qgis.core import QgsProcessingFeedback
-from qgis.core import QgsVectorLayer, QgsFeature
-from .. import FIELD_VALUES, FIELD_NAME, FIELD_FID, createStandardFields
-from ..core import is_spectral_library
-from ..core.spectrallibrary import SpectralSetting, SpectralLibraryUtils
-from ..core.spectrallibraryio import SpectralLibraryIO
-from ...utils import findTypeFromString, createQgsField
+from .. import FIELD_NAME
+from ..core.spectralprofile import (
+    SpectralProfileFileReader, SpectralProfileFileWriter,
+    ProfileEncoding, encodeProfileValueDict, prepareProfileValueDict, create_profile_field
+)
+from ...utils import findTypeFromString
 
 
-class SPECCHIOSpectralLibraryIO(SpectralLibraryIO):
+class SPECCHIOReader(SpectralProfileFileReader):
     """
-    I/O Interface for the SPECCHIO spectral library .
+    File Reader for SPECCHIO spectral library files.
     See https://ecosis.org for details.
     """
 
+    def __init__(self, path: Union[str, Path], **kwds):
+        super().__init__(path, **kwds)
+        self._profiles: Optional[List[Dict]] = None
+        self._metadataKeys: List[str] = []
+        self._numericKeys: List[str] = []
+
     @classmethod
-    def canRead(cls, path) -> bool:
-        """
-        Returns true if it can read the source defined by path
-        :param path: source uri
-        :return: True, if source is readable.
-        """
+    def id(cls) -> str:
+        return 'specchio'
+
+    @classmethod
+    def shortHelp(cls) -> str:
+        return 'SPECCHIO text file format'
+
+    @classmethod
+    def canReadFile(cls, path: Union[str, Path]) -> bool:
+        path = Path(path)
+        if not path.is_file():
+            return False
         try:
             with open(path, 'r', encoding='utf-8') as f:
                 for line in f:
-                    if re.search(r'^\d+(\.\d+)?.+', line):
+                    line = line.strip()
+                    if len(line) == 0:
+                        continue
+                    values = line.split(',')
+                    if len(values) < 2:
+                        continue
+                    if re.search(r'^\d+(\.\d+)?.+$', values[0]):
                         return True
         except Exception:
             return False
         return False
 
-    @classmethod
-    def readFrom(cls, path: str,
-                 wlu='nm',
-                 delimiter=',',
-                 feedback: QgsProcessingFeedback = None):
+    def _readProfiles(self) -> List[Dict]:
         """
-         Returns the SpectralLibrary read from "path"
-        :param path:
-        :type path:
-        :param wlu:
-        :type wlu:
-        :param delimiter:
-        :type delimiter:
-        :param feedback:
-        :type feedback:
-        :return:
-        :rtype:
+        Reads spectral profiles from the SPECCHIO file
+        :return: list of profile dictionaries
         """
-        sl = SpectralLibraryUtils.createSpectralLibrary()
-        sl.startEditing()
-        sl.addMissingFields(createStandardFields())
-        sl.commitChanges(stopEditing=False)
-        bn = os.path.basename(path)
+        if self._profiles is not None:
+            return self._profiles
+
+        profiles = []
+        DATA = collections.OrderedDict()
+        regNumber = re.compile(r'^\d+(\.\d+)?$')
+
         delimiter = ','
-        with open(path, 'r', encoding='utf-8') as f:
+        with open(self.path(), 'r', encoding='utf-8') as f:
             lines = f.readlines()
-            DATA = collections.OrderedDict()
-            regNumber = re.compile(r'^\d+(\.\d+)?$')
-            nProfiles = 0
+
             for i, line in enumerate(lines):
-                i: int
-                line: str
                 line = line.strip()
                 if len(line) == 0:
                     continue
@@ -106,7 +102,7 @@ class SPECCHIOSpectralLibraryIO(SpectralLibraryIO):
 
                 try:
                     mdKey = values.pop(0).strip()
-                    if not (isinstance(mdKey, str)):
+                    if not isinstance(mdKey, str):
                         raise AssertionError
                     if len(values) == 0:
                         continue
@@ -115,11 +111,9 @@ class SPECCHIOSpectralLibraryIO(SpectralLibraryIO):
                     values = [t(v) for v in values if len(v) > 0]
                     if len(values) > 0:
                         DATA[mdKey] = values
-                    else:
-                        s = ""
                 except Exception as ex:
-                    print(ex, file=sys.stderr)
-                    print('Line {}:{}'.format(i + 1, line), file=sys.stderr)
+                    print(ex)
+                    print('Line {}:{}'.format(i + 1, line))
 
             numericValueKeys = []
             metadataKeys = []
@@ -138,135 +132,144 @@ class SPECCHIOSpectralLibraryIO(SpectralLibraryIO):
 
             nProfiles = len(DATA[numericValueKeys[0]])
 
-            sl.beginEditCommand('Set metadata columns')
-            for k in metadataKeys:
-                if k in sl.fields().names():
-                    continue
-
-                qgsField = createQgsField(k, DATA[k][0])
-                if not (sl.addAttribute(qgsField)):
-                    raise AssertionError(f'Unable to add attribute: {qgsField}')
-
-            sl.endEditCommand()
-            sl.commitChanges(stopEditing=False)
-
-            profiles = []
             for i in range(nProfiles):
-                profile = QgsFeature(fields=sl.fields())
-                # add profile name
-                if FIELD_NAME in metadataKeys:
-                    profile.setAttribute(FIELD_NAME, DATA[FIELD_NAME][i])
-                else:
-                    profile.setAttribute(FIELD_NAME, '{}:{}'.format(bn, i + 1))
+                profile = {'y': [float(DATA[k][i]) for k in numericValueKeys]}
+                profile['x'] = xValues
+                profile['xUnit'] = 'nm'
 
-                # add profile values
-                yValues = [float(DATA[k][i]) for k in numericValueKeys]
-                profile.setValues(x=xValues, y=yValues, xUnit=wlu)
-
-                # add profile metadata
+                # add metadata
+                profile['metadata'] = {}
                 for k in metadataKeys:
                     mdValues = DATA[k]
                     if len(mdValues) > i:
-                        profile.setAttribute(k, mdValues[i])
+                        profile['metadata'][k] = mdValues[i]
+
+                # add name
+                if FIELD_NAME in metadataKeys:
+                    profile['name'] = DATA[FIELD_NAME][i]
+                else:
+                    profile['name'] = '{}:{}'.format(self.path().stem, i + 1)
 
                 profiles.append(profile)
 
-            sl.addProfiles(profiles, addMissingFields=True)
-        sl.commitChanges()
-        return sl
+        self._profiles = profiles
+        self._metadataKeys = metadataKeys
+        self._numericKeys = numericValueKeys
+
+        return profiles
+
+    def metadataKeys(self) -> List[str]:
+        self._readProfiles()
+        return self._metadataKeys
+
+    def numericKeys(self) -> List[str]:
+        self._readProfiles()
+        return self._numericKeys
+
+    def asFeatures(self) -> List[QgsFeature]:
+        """
+        Returns the file content as QgsFeatures
+        :return: list of QgsFeature
+        """
+        profiles = self._readProfiles()
+        features = []
+
+        pfield = create_profile_field('profile', encoding=ProfileEncoding.Text)
+        fields = QgsFields()
+        fields.append(QgsField(FIELD_NAME, QMetaType.Type.QString))
+        fields.append(pfield)
+
+        for metaKey in self._metadataKeys:
+            if metaKey not in fields.names():
+                fields.append(QgsField(metaKey, QMetaType.Type.QVariant))
+
+        for profile in profiles:
+            f = QgsFeature(fields)
+            f.setAttribute(FIELD_NAME, profile.get('name', ''))
+
+            # encode profile values
+            y = profile.get('y', [])
+            x = profile.get('x', list(range(len(y))))
+            xUnit = profile.get('xUnit', 'nm')
+
+            pdict = prepareProfileValueDict(x=x, y=y, xUnit=xUnit)
+            profile_str = encodeProfileValueDict(pdict, encoding=ProfileEncoding.Dict)
+
+            f.setAttribute(pfield.name(), profile_str)
+
+            # add metadata
+            for metaKey in self._metadataKeys:
+                if metaKey in profile.get('metadata', {}):
+                    f.setAttribute(metaKey, profile['metadata'][metaKey])
+
+            features.append(f)
+
+        return features
+
+
+class SPECCHIOWriter(SpectralProfileFileWriter):
+    """
+    Writer for SPECCHIO spectral library files.
+    See https://ecosis.org for details.
+    """
+
+    def __init__(self, *args, delimiter: str = ',', **kwds):
+        super().__init__(*args, **kwds)
+        self.mDelimiter = delimiter
 
     @classmethod
-    def write(cls, speclib: QgsVectorLayer, path: str, feedback: QgsProcessingFeedback = None,
-              delimiter: str = ',') -> list:
+    def id(cls) -> str:
+        return 'specchio'
+
+    @classmethod
+    def filterString(cls) -> str:
+        return "SPECCHIO CSV files (*.csv);;All files (*.*)"
+
+    def writeFeatures(
+        self,
+        path: Union[str, Path], features: List[QgsFeature],
+        field_names=None,
+        feedback: Optional[QgsProcessingFeedback] = None
+    ) -> List[Path]:
         """
-        Writes the SpectralLibrary to path and returns a list of written files
-        that can be used to open the spectral library with readFrom(...)
-        :param speclib: SpectralLibrary
-        :param path: str, path to library source
-        :return: [str-list-of-written-files]
+        Writes the features to a SPECCHIO CSV file
+        :param field_names:
+        :param path: path to write
+        :param features: list of features to write
+        :param feedback: QgsProcessingFeedback
+        :return: list of written file paths
         """
-        if not (is_spectral_library(speclib)):
-            raise AssertionError(f'Not a spectral library/missing spectral profile field: {speclib}')
-        basePath, ext = os.path.splitext(path)
+        path = Path(path)
+
+        if feedback is None:
+            feedback = QgsProcessingFeedback()
+
+        if isinstance(features, (list, tuple)) and len(features) == 0:
+            feedback.pushInfo('No features to write')
+            return []
+
+        if isinstance(features, QgsFeatureIterator):
+            features = list(features)
+
+        # Get the profile field
+        if len(features) == 0:
+            feedback.pushInfo('No profile features found')
+            return []
+
+        profile_field_names = features[0]
+        if len(profile_field_names) == 0:
+            feedback.pushInfo('No profile field found')
+            return []
+
+        if field_names is None:
+            field_names = profile_field_names
+        else:
+            for f in field_names:
+                if f not in profile_field_names:
+                    feedback.pushInfo(f'Profile field {f} not found')
+                    return []
 
         writtenFiles = []
-        # fieldNames = [n for n in speclib.fields().names() if n not in [FIELD_VALUES, FIELD_FID]]
-        groups = speclib.groupBySpectralProperties()
-        for i, setting in enumerate(groups.keys()):
-            # in-memory text buffer
-            setting: SpectralSetting
-            stream = io.StringIO()
-            xValues, _, _ = setting.x(), setting.xUnit(), setting.yUnit()
-            profiles = groups[setting]
-            if i == 0:
-                path = basePath + ext
-            else:
-                path = basePath + '{}{}'.format(i + 1, ext)
 
-            # write metadata
-            for fn in speclib.fields().names():
-                if fn in [FIELD_FID, FIELD_VALUES]:
-                    continue
-                line = [fn]
-                for p in profiles:
-                    if not (isinstance(p, QgsFeature)):
-                        raise AssertionError
-                    line.append(str(p.attribute(fn)))
-                stream.write(delimiter.join(line) + '\n')
-            #
-            line = ['wavelength unit']
-            for p in profiles:
-                line.append(str(p.xUnit()))
-            stream.write(delimiter.join(line) + '\n')
-
-            # write values
-            for i, xValue in enumerate(xValues):
-                line = [str(xValue)]
-                for p in profiles:
-                    if not (isinstance(p, QgsFeature)):
-                        raise AssertionError
-                    yValue = p.values()['y'][i]
-                    line.append(str(yValue))
-                stream.write(delimiter.join(line) + '\n')
-
-            lines = stream.getvalue().replace('\r', '')
-
-            with open(path, 'w', encoding='utf-8') as f:
-                f.write(lines)
-                writtenFiles.append(path)
-
+        raise NotImplementedError('todo: write SPECCHIO csv files')
         return writtenFiles
-
-    @classmethod
-    def addExportActions(cls, spectralLibrary: QgsVectorLayer, menu: QMenu) -> list:
-
-        def write(speclib: QgsVectorLayer):
-            path, filter = QFileDialog.getSaveFileName(caption='Write SPECCHIO CSV Spectral Library ',
-                                                       filter='Textfile (*.csv)')
-            if isinstance(path, str) and len(path) > 0:
-                SPECCHIOSpectralLibraryIO.write(spectralLibrary, path)
-
-        m = menu.addAction('SPECCHIO')
-        m.setToolTip('Exports the profiles into the SPECCIO text file format.')
-        m.triggered.connect(lambda *args, sl=spectralLibrary: write(sl))
-
-    @classmethod
-    def addImportActions(cls, spectralLibrary: QgsVectorLayer, menu: QMenu) -> list:
-
-        def read(speclib: QgsVectorLayer):
-
-            path, filter = QFileDialog.getOpenFileName(caption='Read SPECCHIO CSV File',
-                                                       filter='All type (*.*);;Text files (*.txt);; CSV (*.csv)')
-            if os.path.isfile(path):
-
-                sl = SPECCHIOSpectralLibraryIO.readFrom(path)
-                if is_spectral_library(sl):
-                    speclib.startEditing()
-                    speclib.beginEditCommand('Add profiles from {}'.format(path))
-                    speclib.addSpeclib(sl, True)
-                    speclib.endEditCommand()
-                    speclib.commitChanges()
-
-        m = menu.addAction('SPECCHIO')
-        m.setToolTip('Adds profiles stored in an SPECCHIO csv text file.')
-        m.triggered.connect(lambda *args, sl=spectralLibrary: read(sl))
