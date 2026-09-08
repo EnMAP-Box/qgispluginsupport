@@ -11,7 +11,7 @@ import numpy as np
 from pyqtgraph import (LegendItem, mkBrush, mkPen, PlotCurveItem, PlotDataItem, ScatterPlotItem,
                        SpotItem, FillBetweenItem, SignalProxy)
 from pyqtgraph.GraphicsScene.mouseEvents import HoverEvent, MouseClickEvent
-from qgis.PyQt.QtCore import QRectF
+from qgis.PyQt.QtCore import QRectF, QMetaObject, QObject
 from qgis.PyQt.QtCore import pyqtSignal, QMimeData, QModelIndex, QSortFilterProxyModel, Qt
 from qgis.PyQt.QtGui import QColor, QStandardItem, QStandardItemModel
 from qgis.PyQt.QtWidgets import QApplication
@@ -716,7 +716,11 @@ class SpectralProfilePlotModel(QStandardItemModel):
         """
         for proxies in self.mSignalProxies.values():
             for proxy in proxies:
-                proxy.disconnect()
+                if isinstance(proxy, SignalProxy):
+                    proxy.disconnect()
+                elif isinstance(proxy, QMetaObject.Connection):
+                    QObject.disconnect(proxy)
+
         self.mSignalProxies.clear()
         SpectralProfileCandidates.SHARED_SIGNALS.candidatesChanged.disconnect(self.onCandidatesChanged)
 
