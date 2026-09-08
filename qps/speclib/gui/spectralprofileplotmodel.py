@@ -11,7 +11,6 @@ import numpy as np
 from pyqtgraph import (LegendItem, mkBrush, mkPen, PlotCurveItem, PlotDataItem, ScatterPlotItem,
                        SpotItem, FillBetweenItem, SignalProxy)
 from pyqtgraph.GraphicsScene.mouseEvents import HoverEvent, MouseClickEvent
-
 from qgis.PyQt.QtCore import QRectF
 from qgis.PyQt.QtCore import pyqtSignal, QMimeData, QModelIndex, QSortFilterProxyModel, Qt
 from qgis.PyQt.QtGui import QColor, QStandardItem, QStandardItemModel
@@ -20,6 +19,7 @@ from qgis.PyQt.QtWidgets import QGraphicsSceneMouseEvent
 from qgis.core import QgsExpression, QgsExpressionContext, QgsExpressionContextScope, QgsExpressionContextUtils, \
     QgsFeature, QgsFeatureRenderer, QgsFeatureRequest, QgsField, QgsMarkerSymbol, QgsProject, QgsProperty, \
     QgsRenderContext, QgsSingleSymbolRenderer, QgsSymbol, QgsVectorLayer, QgsVectorLayerCache
+
 from .spectrallibraryplotitems import SpectralProfilePlotItem, SpectralViewBox
 from .spectrallibraryplotmodelitems import lists_to_numpy_array
 from .spectralprofilecandidates import CUSTOM_PROPERTY_CANDIDATE_FIDs, SpectralProfileCandidates
@@ -1853,7 +1853,8 @@ class SpectralProfilePlotModel(QStandardItemModel):
             ]
 
             self.mSignalProxies[speclib.id()] = proxies
-            speclib.willBeDeleted.connect(lambda *args, fid=speclib.id(): self.disconnectSpeclibSignals(fid))
+            conn = speclib.willBeDeleted.connect(lambda *args, fid=speclib.id(): self.disconnectSpeclibSignals(fid))
+            proxies.append(conn)
 
         # speclib.attributeValueChanged.connect(self.onSpeclibAttributeValueChanged)
         # speclib.editCommandStarted.connect(self.onSpeclibEditCommandStarted)
@@ -1875,10 +1876,14 @@ class SpectralProfilePlotModel(QStandardItemModel):
         else:
             lid = speclib
 
-        if lid in self.mSignalProxies:
-            for proxy in self.mSignalProxies[lid]:
-                proxy.disconnect()
-            del self.mSignalProxies[lid]
+        try:
+            if lid in self.mSignalProxies:
+                for proxy in self.mSignalProxies[lid]:
+                    proxy.disconnect()
+                del self.mSignalProxies[lid]
+        except (AttributeError, RuntimeError):
+            # C++ object has been deleted, ignore
+            pass
 
     def onItemChanged(self, item: QStandardItem, *args):
         """
