@@ -10,12 +10,13 @@
 # changes by Benjamin Jakimow (BJ) marked in source code
 #
 
-import sys
+from qgis.PyQt.QtCore import QRectF, QSize, Qt
+from qgis.PyQt.QtGui import QAbstractTextDocumentLayout, QPalette, QPen, QTextDocument
+from qgis.PyQt.QtWidgets import QApplication, QComboBox, QCheckBox, QRadioButton, QStyle, \
+    QStyleOptionButton, QStyledItemDelegate, QProxyStyle, QStyleOptionViewItem
 
-from qgis.PyQt import QtWidgets, QtGui, QtCore
 
-
-class HTMLStyle(QtWidgets.QProxyStyle):
+class HTMLStyle(QProxyStyle):
     """
     A QProxyStyle which can be used to render HTML/Rich text inside
     QComboBoxes, QCheckBoxes and QRadioButtons.  Note that for QComboBox,
@@ -25,7 +26,7 @@ class HTMLStyle(QtWidgets.QProxyStyle):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.text_doc = QtGui.QTextDocument()
+        self.text_doc = QTextDocument()
 
     def drawItemText(self, painter, rect, alignment, pal, enabled, text, text_role):
         """
@@ -42,9 +43,9 @@ class HTMLStyle(QtWidgets.QProxyStyle):
 
         # Save our current pen if we need to
         saved_pen = None
-        if text_role != QtGui.QPalette.NoRole:
+        if text_role != QPalette.NoRole:
             saved_pen = painter.pen()
-            painter.setPen(QtGui.QPen(pal.brush(text_role), saved_pen.widthF()))
+            painter.setPen(QPen(pal.brush(text_role), saved_pen.widthF()))
 
         # Render the text.  There's a bit of voodoo here with the rectangles
         # and painter translation; there were various bits of finagling necessary
@@ -55,11 +56,11 @@ class HTMLStyle(QtWidgets.QProxyStyle):
         painter.translate(rect.left() - margin, 0)
         self.text_doc.setHtml(text)
         self.text_doc.drawContents(painter,
-                                   QtCore.QRectF(rect.adjusted(-rect.left(), 0, -margin, 0)))
+                                   QRectF(rect.adjusted(-rect.left(), 0, -margin, 0)))
         painter.restore()
 
         # Restore our previous pen if we need to
-        if text_role != QtGui.QPalette.NoRole:
+        if text_role != QPalette.NoRole:
             painter.setPen(saved_pen)
 
     def sizeFromContents(self, contents_type, option, size, widget=None):
@@ -75,11 +76,11 @@ class HTMLStyle(QtWidgets.QProxyStyle):
             width = size.width() + widget.width_adjust_contents
         return super().sizeFromContents(contents_type,
                                         option,
-                                        QtCore.QSize(int(width), int(height)),
+                                        QSize(int(width), int(height)),
                                         widget)
 
 
-class HTMLDelegate(QtWidgets.QStyledItemDelegate):
+class HTMLDelegate(QStyledItemDelegate):
     """
     Class for use in a QComboBox to allow HTML Text.  I'm still a bit
     miffed that this isn't just a default part of Qt.  There's a lot of
@@ -99,7 +100,7 @@ class HTMLDelegate(QtWidgets.QStyledItemDelegate):
 
     def __init__(self, parent=None):
         super().__init__()
-        self.doc = QtGui.QTextDocument(self)
+        self.doc = QTextDocument(self)
 
     def paint(self, painter, option, index):
         """
@@ -111,7 +112,7 @@ class HTMLDelegate(QtWidgets.QStyledItemDelegate):
 
         # Copy our option var so we can make some changes without modifying
         # the underlying object
-        options = QtWidgets.QStyleOptionViewItem(option)
+        options = QStyleOptionViewItem(option)
         self.initStyleOption(options, index)
 
         # Add in our data to our QTextDocument
@@ -119,7 +120,7 @@ class HTMLDelegate(QtWidgets.QStyledItemDelegate):
 
         # Acquire our style
         if options.widget is None:
-            style = QtWidgets.QApplication.style()
+            style = QApplication.style()
         else:
             style = options.widget.style()
 
@@ -127,21 +128,21 @@ class HTMLDelegate(QtWidgets.QStyledItemDelegate):
         # text specified - this is to render the background, basically, so
         # that when we're mousing over one of the items the bg changes.
         options.text = ''
-        style.drawControl(QtWidgets.QStyle.CE_ItemViewItem, options, painter)
+        style.drawControl(QStyle.CE_ItemViewItem, options, painter)
 
         # Grab a PaintContext and set our text color depending on if we're
         # selected or not
-        ctx = QtGui.QAbstractTextDocumentLayout.PaintContext()
-        if option.state & QtWidgets.QStyle.State_Selected:
-            ctx.palette.setColor(QtGui.QPalette.Text, option.palette.color(
-                QtGui.QPalette.Active, QtGui.QPalette.HighlightedText))
+        ctx = QAbstractTextDocumentLayout.PaintContext()
+        if option.state & QStyle.State_Selected:
+            ctx.palette.setColor(QPalette.Text, option.palette.color(
+                QPalette.Active, QPalette.HighlightedText))
         else:
-            ctx.palette.setColor(QtGui.QPalette.Text, option.palette.color(
-                QtGui.QPalette.Active, QtGui.QPalette.Text))
+            ctx.palette.setColor(QPalette.Text, option.palette.color(
+                QPalette.Active, QPalette.Text))
 
         # Calculating some rendering geometry.
         textRect = style.subElementRect(
-            QtWidgets.QStyle.SE_ItemViewItemText, options, options.widget)
+            QStyle.SE_ItemViewItemText, options, options.widget)
         textRect.adjust(3, 0, 0, 0)
         painter.translate(textRect.topLeft())
         painter.setClipRect(textRect.translated(-textRect.topLeft()))
@@ -158,10 +159,10 @@ class HTMLDelegate(QtWidgets.QStyledItemDelegate):
         is called before our text has actually been loaded into the QTextDocument,
         but apparently seems to Do The Right Thing Anyway.
         """
-        return QtCore.QSize(int(self.doc.idealWidth()), int(self.doc.size().height()))
+        return QSize(int(self.doc.idealWidth()), int(self.doc.size().height()))
 
 
-class HTMLComboBox(QtWidgets.QComboBox):
+class HTMLComboBox(QComboBox):
     """
     Custom QComboBox class to handle dealing with HTML/Rich text.  This
     is basically just here to set a few attributes and then implement
@@ -185,7 +186,7 @@ class HTMLComboBox(QtWidgets.QComboBox):
         Use a QTextDocument to compute our rendered text size
         """
         if not self.stored_size:
-            doc = QtGui.QTextDocument()
+            doc = QTextDocument()
             model = self.model()
             max_w = 0
             max_h = 0
@@ -196,7 +197,7 @@ class HTMLComboBox(QtWidgets.QComboBox):
                     doc.setHtml(item.text())
                 else:
                     idx = model.index(rownum, 0)
-                    doc.setHtml(model.data(idx, role=QtCore.Qt.ItemDataRole.DisplayRole))
+                    doc.setHtml(model.data(idx, role=Qt.ItemDataRole.DisplayRole))
                 size = doc.size()
                 if size.width() > max_w:
                     max_w = size.width()
@@ -207,7 +208,7 @@ class HTMLComboBox(QtWidgets.QComboBox):
             # arrow selector
             max_w += self.width_adjust_sizehint
 
-            self.stored_size = QtCore.QSize(int(max_w), int(max_h))
+            self.stored_size = QSize(int(max_w), int(max_h))
         return self.stored_size
 
     def minimumSizeHint(self):
@@ -240,15 +241,15 @@ class HTMLWidgetHelper(object):
         Use a QTextDocument to compute our rendered text size
         """
         if not self.stored_size:
-            doc = QtGui.QTextDocument()
+            doc = QTextDocument()
             doc.setHtml(self.text())
             size = doc.size()
             # Details from this derived from QCheckBox/QRadioButton sizeHint sourcecode:
             # https://github.com/qt/qtbase/blob/5.9/src/widgets/widgets/qcheckbox.cpp
             # https://github.com/qt/qtbase/blob/5.9/src/widgets/widgets/qradiobutton.cpp
-            opt = QtWidgets.QStyleOptionButton()
+            opt = QStyleOptionButton()
             self.initStyleOption(opt)
-            self.stored_size = QtCore.QSize(
+            self.stored_size = QSize(
                 int(size.width() + opt.iconSize.width() + 4),
                 int(max(size.height(), opt.iconSize.height())))
         return self.stored_size
@@ -260,7 +261,7 @@ class HTMLWidgetHelper(object):
         return self.sizeHint()
 
 
-class HTMLCheckBox(HTMLWidgetHelper, QtWidgets.QCheckBox):
+class HTMLCheckBox(HTMLWidgetHelper, QCheckBox):
     """
     An HTML-enabled QCheckBox.  All the actual work is done in HTMLWidgetHelper.
     We're abusing (well, using) Python's multiple inheritance since the same code
@@ -268,61 +269,9 @@ class HTMLCheckBox(HTMLWidgetHelper, QtWidgets.QCheckBox):
     """
 
 
-class HTMLRadioButton(HTMLWidgetHelper, QtWidgets.QRadioButton):
+class HTMLRadioButton(HTMLWidgetHelper, QRadioButton):
     """
     An HTML-enabled QRadioButton.  All the actual work is done in HTMLWidgetHelper.
     We're abusing (well, using) Python's multiple inheritance since the same code
     works well for more than one widget type.
     """
-
-
-class Testing(QtWidgets.QMainWindow):
-
-    def __init__(self):
-        super().__init__()
-
-        # Main widget
-        w = QtWidgets.QWidget()
-        layout = QtWidgets.QVBoxLayout()
-        w.setLayout(layout)
-        self.setCentralWidget(w)
-
-        # spacer
-        layout.addWidget(QtWidgets.QLabel(''), 1)
-
-        # Checkbox
-        check = HTMLCheckBox('<b>HTML Text</b> <i>in a CheckBox</i>', self)
-        check.setSizePolicy(QtWidgets.QSizePolicy.Maximum, QtWidgets.QSizePolicy.Preferred)
-        layout.addWidget(check)
-
-        # Radio Buttons
-        hbox_w = QtWidgets.QWidget()
-        hbox = QtWidgets.QHBoxLayout()
-        hbox_w.setLayout(hbox)
-        layout.addWidget(hbox_w)
-        rb = HTMLRadioButton('<b>Radio 1</b>', self)
-        hbox.addWidget(rb, 0)
-        rb = HTMLRadioButton('<i>Radio 2</i>', self)
-        hbox.addWidget(rb, 0)
-        hbox_w.setSizePolicy(QtWidgets.QSizePolicy.Maximum, QtWidgets.QSizePolicy.Preferred)
-
-        # Combo Box
-        cb = HTMLComboBox(self)
-        cb.addItem('<b>Bold</b> Text', None)
-        cb.addItem('<i>Italic</i> Text', None)
-        cb.addItem('<b>Bold</b> and <i>Italic</i> Text', None)
-        layout.addWidget(cb)
-
-        # spacer
-        layout.addWidget(QtWidgets.QLabel(''), 1)
-
-        # A bit of window housekeeping
-        self.resize(400, 400)
-        self.setWindowTitle('Testing')
-        self.show()
-
-
-if __name__ == '__main__':
-    app = QtWidgets.QApplication([])
-    test = Testing()
-    sys.exit(app.exec())
