@@ -34,8 +34,8 @@ from processing.gui.Postprocessing import determine_output_name, post_process_la
 from processing.tools import dataobjects
 from qgis.PyQt.QtCore import QCoreApplication, QDir, QFileInfo
 from qgis.PyQt.QtGui import QColor, QPalette
-from qgis.PyQt.QtWidgets import QDialogButtonBox, QFileDialog, QHeaderView, QMessageBox, QPushButton, QTableWidgetItem
-from qgis.PyQt.QtWidgets import QWidget
+from qgis.PyQt.QtWidgets import (
+    QMainWindow, QWidget, QDialogButtonBox, QFileDialog, QHeaderView, QMessageBox, QPushButton, QTableWidgetItem)
 from qgis.core import (
     Qgis, QgsApplication, QgsExpressionContext, QgsExpressionContextScope, QgsExpressionContextUtils,
     QgsFeatureRequest, QgsFileUtils, QgsLayerTreeGroup, QgsMapLayer, QgsMessageLog,
@@ -315,15 +315,20 @@ class AlgorithmWidget(QgsProcessingAlgorithmWidgetBase):
         self,
         alg: QgsProcessingAlgorithm,
         in_place: bool = False,
-        parent: Optional[QWidget] = None,
+        parent: Optional[QMainWindow] = None,
         context: Optional[QgsProcessingContext] = None,
         iface: Optional[QgisInterface] = None,
     ):
+
+        if parent is None:
+            parent = QMainWindow()
+
         super().__init__(parent)
 
         if not isinstance(iface, QgisInterface):
             iface = qgis.utils.iface
 
+        self._parent = parent
         self._iface = iface
         self._context = context
         self._context_layers = list()
