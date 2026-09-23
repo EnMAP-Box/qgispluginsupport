@@ -13,7 +13,6 @@ createExpressionContext - original: processing/tools/dataobjects.py
 
 """
 import ast
-import codecs
 import datetime
 import json
 import sys
@@ -22,7 +21,7 @@ import traceback
 from typing import Optional, Tuple, Callable, Union
 
 import qgis.utils
-from processing import getTempFilename, ProcessingConfig
+from processing.core.ProcessingConfig import ProcessingConfig
 from processing.core.ProcessingResults import resultsList
 from processing.core.exceptions import InvalidParameterValue, InvalidOutputExtension
 from processing.gui.AlgorithmExecutor import execute, execute_in_place, executeIterating
@@ -32,6 +31,7 @@ from processing.gui.MessageBarProgress import MessageBarProgress
 from processing.gui.MessageDialog import MessageDialog
 from processing.gui.Postprocessing import determine_output_name, post_process_layer
 from processing.tools import dataobjects
+from processing.tools.system import getTempFilename
 from qgis.PyQt.QtCore import QCoreApplication, QDir, QFileInfo
 from qgis.PyQt.QtGui import QColor, QPalette
 from qgis.PyQt.QtWidgets import (
@@ -1145,7 +1145,7 @@ class BatchAlgorithmDialog(QgsProcessingBatchAlgorithmDialogBase):
             return
 
         outputFile = getTempFilename("html")
-        with codecs.open(outputFile, "w", encoding="utf-8") as f:
+        with open(outputFile, "w", encoding="utf-8") as f:
             if createTable:
                 for i, res in enumerate(algorithm_results):
                     results = res["results"]
