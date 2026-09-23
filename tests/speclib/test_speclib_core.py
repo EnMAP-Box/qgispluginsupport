@@ -26,7 +26,7 @@ from typing import List
 
 import numpy as np
 from osgeo import ogr
-from qgis.PyQt.QtCore import NULL, QByteArray, QJsonDocument, QVariant, QMetaType
+from qgis.PyQt.QtCore import NULL, QByteArray, QJsonDocument, QMetaType
 from qgis.core import edit, QgsCoordinateReferenceSystem, QgsFeature, QgsField, QgsFields, QgsRasterLayer, \
     QgsVectorLayer, QgsWkbTypes
 
@@ -109,7 +109,6 @@ class SpeclibCoreTests(TestCase):
         examples = [
             None,
             NULL,
-            QVariant(),
             dict(),
             dict(foobar=[1, 2, 3]),
             dict(x=[1, 2, 3]),
@@ -130,7 +129,7 @@ class SpeclibCoreTests(TestCase):
             self.assertEqual(msg, '')
             self.assertTrue(len(d) > 0)
 
-        for p in [None, dict(), NULL, QVariant()]:
+        for p in [None, dict(), NULL]:
             self.assertFalse(validateProfileValueDict(p)[0])
             self.assertTrue(validateProfileValueDict(p, allowEmpty=True)[0])
 

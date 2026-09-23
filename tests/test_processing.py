@@ -404,7 +404,7 @@ class ProcessingToolsTest(TestCase):
         QgsProject.instance().removeAllMapLayers()
         reg.removeProvider(provider)
 
-    # @unittest.skipIf(TestCase.runsInCI(), 'blocking dialog')
+    @unittest.skipIf(TestCase.runsInCI(), 'blocking dialog')
     def test_spectralprofile_export_dialog(self):
         alg = ExportSpectralProfiles()
         alg.initAlgorithm({})

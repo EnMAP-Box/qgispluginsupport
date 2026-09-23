@@ -53,7 +53,7 @@ from osgeo.ogr import OFSTBoolean, OFSTNone, OFTBinary, OFTDate, OFTDateTime, OF
 from osgeo.osr import SpatialReference
 from qgis.PyQt import uic
 from qgis.PyQt.QtCore import NULL, QByteArray, QDirIterator, QObject, QPoint, QPointF, QRect, Qt, QUrl, \
-    QVariant, QMetaType
+    QMetaType
 from qgis.PyQt.QtGui import QColor, QIcon
 from qgis.PyQt.QtWidgets import (
     QAction, QComboBox, QDialogButtonBox, QGridLayout, QHBoxLayout, QLabel, QMainWindow,
@@ -1661,8 +1661,7 @@ def check_package(name, package=None, stop_on_error=False):
 
 def qgsFieldAttributes2List(attributes: List[Any]) -> List[Any]:
     """Returns a list of attributes with None instead of NULL or QVariant.NULL"""
-    r = QVariant()
-    return [None if v == r else v for v in attributes]
+    return [None if v == NULL else v for v in attributes]
 
 
 def qgsFields2str(qgsFields: QgsFields) -> str:

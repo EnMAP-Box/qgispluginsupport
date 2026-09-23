@@ -623,7 +623,7 @@ class SpectralProfileEditorWidget(QGroupBox):
         :param values: dict() or SpectralProfile
         :return:
         """
-        if profile in [None, NULL, QVariant()]:
+        if profile in [None, NULL]:
             profile = dict()
         if not (isinstance(profile, dict)):
             raise AssertionError
