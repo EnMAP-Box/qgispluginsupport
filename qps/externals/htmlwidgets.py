@@ -43,7 +43,7 @@ class HTMLStyle(QProxyStyle):
 
         # Save our current pen if we need to
         saved_pen = None
-        if text_role != QPalette.NoRole:
+        if text_role != QPalette.ColorRole.NoRole:
             saved_pen = painter.pen()
             painter.setPen(QPen(pal.brush(text_role), saved_pen.widthF()))
 
@@ -60,7 +60,7 @@ class HTMLStyle(QProxyStyle):
         painter.restore()
 
         # Restore our previous pen if we need to
-        if text_role != QPalette.NoRole:
+        if text_role != QPalette.ColorRole.NoRole:
             painter.setPen(saved_pen)
 
     def sizeFromContents(self, contents_type, option, size, widget=None):
@@ -71,7 +71,7 @@ class HTMLStyle(QProxyStyle):
         """
         width = size.width()
         height = size.height()
-        if contents_type == self.CT_ComboBox and widget and isinstance(widget, HTMLComboBox):
+        if contents_type == QStyle.ContentsType.CT_ComboBox and widget and isinstance(widget, HTMLComboBox):
             size = widget.sizeHint()
             width = size.width() + widget.width_adjust_contents
         return super().sizeFromContents(contents_type,
@@ -128,21 +128,21 @@ class HTMLDelegate(QStyledItemDelegate):
         # text specified - this is to render the background, basically, so
         # that when we're mousing over one of the items the bg changes.
         options.text = ''
-        style.drawControl(QStyle.CE_ItemViewItem, options, painter)
+        style.drawControl(QStyle.ControlElement.CE_ItemViewItem, options, painter)
 
         # Grab a PaintContext and set our text color depending on if we're
         # selected or not
         ctx = QAbstractTextDocumentLayout.PaintContext()
-        if option.state & QStyle.State_Selected:
-            ctx.palette.setColor(QPalette.Text, option.palette.color(
-                QPalette.Active, QPalette.HighlightedText))
+        if option.state & QStyle.StateFlag.State_Selected:
+            ctx.palette.setColor(QPalette.ColorRole.Text, option.palette.color(
+                QPalette.ColorGroup.Active, QPalette.ColorRole.HighlightedText))
         else:
-            ctx.palette.setColor(QPalette.Text, option.palette.color(
-                QPalette.Active, QPalette.Text))
+            ctx.palette.setColor(QPalette.ColorRole.Text, option.palette.color(
+                QPalette.ColorGroup.Active, QPalette.ColorRole.Text))
 
         # Calculating some rendering geometry.
         textRect = style.subElementRect(
-            QStyle.SE_ItemViewItemText, options, options.widget)
+            QStyle.SubElement.SE_ItemViewItemText, options, options.widget)
         textRect.adjust(3, 0, 0, 0)
         painter.translate(textRect.topLeft())
         painter.setClipRect(textRect.translated(-textRect.topLeft()))
