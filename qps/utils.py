@@ -1661,7 +1661,7 @@ def check_package(name, package=None, stop_on_error=False):
 
 def qgsFieldAttributes2List(attributes: List[Any]) -> List[Any]:
     """Returns a list of attributes with None instead of NULL or QVariant.NULL"""
-    r = QVariant(None)
+    r = QVariant()
     return [None if v == r else v for v in attributes]
 
 

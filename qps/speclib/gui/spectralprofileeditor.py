@@ -8,7 +8,6 @@ from math import isnan
 from typing import Any, List, Optional, Tuple
 
 import numpy as np
-
 from qgis.PyQt.QtCore import NULL, pyqtSignal, QAbstractTableModel, QModelIndex, QSortFilterProxyModel, \
     Qt, QVariant
 from qgis.PyQt.QtCore import QObject
@@ -19,6 +18,7 @@ from qgis.PyQt.QtWidgets import QMenu, QAction
 from qgis.core import Qgis, QgsApplication, QgsFeature, QgsField, QgsFieldFormatter, QgsFieldFormatterRegistry, \
     QgsVectorLayer
 from qgis.gui import QgsCodeEditorJson, QgsEditorConfigWidget, QgsEditorWidgetFactory, QgsEditorWidgetWrapper, QgsGui
+
 from .spectrallibraryplotunitmodels import SpectralProfilePlotXAxisUnitModel
 from .spectralprofileplotwidget import SpectralProfilePlotWidget
 from .. import EDITOR_WIDGET_REGISTRY_KEY
@@ -623,7 +623,7 @@ class SpectralProfileEditorWidget(QGroupBox):
         :param values: dict() or SpectralProfile
         :return:
         """
-        if profile in [None, NULL, QVariant(None)]:
+        if profile in [None, NULL, QVariant()]:
             profile = dict()
         if not (isinstance(profile, dict)):
             raise AssertionError

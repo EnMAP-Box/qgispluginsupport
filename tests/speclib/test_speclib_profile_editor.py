@@ -5,6 +5,7 @@ from qgis.PyQt.QtCore import NULL, QSize, Qt, QVariant
 from qgis.PyQt.QtWidgets import QCheckBox, QVBoxLayout, QWidget
 from qgis.core import QgsActionManager, QgsFeature
 from qgis.gui import QgsDualView, QgsGui, QgsMapCanvas, QgsSearchWidgetWrapper
+
 from qps import initAll
 from qps.layerproperties import AttributeTableWidget
 from qps.speclib import EDITOR_WIDGET_REGISTRY_KEY, FIELD_VALUES
@@ -106,7 +107,7 @@ class TestSpeclibWidgets(TestCase):
 
         not_a_profile = [None,
                          NULL,
-                         QVariant(None),
+                         QVariant(),
                          dict(),
                          dict(x='not a profile')]
         for p in not_a_profile:
