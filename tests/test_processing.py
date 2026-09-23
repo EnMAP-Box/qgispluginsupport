@@ -22,7 +22,6 @@ import os.path
 import unittest
 from pathlib import Path
 
-from processing import AlgorithmWidget
 from qgis import processing
 from qgis.PyQt.QtCore import QModelIndex, QObject, Qt
 from qgis.PyQt.QtWidgets import QDialog, QMainWindow
@@ -80,6 +79,7 @@ class MyAlgModel(QgsProcessingToolboxProxyModel):
 
 class ProcessingToolsTest(TestCase):
 
+    @unittest.skipIf(TestCase.runsInCI(), 'Blocking dialog')
     def test_processing_widgets_original(self):
 
         reg: QgsProcessingRegistry = QgsApplication.instance().processingRegistry()
@@ -102,13 +102,13 @@ class ProcessingToolsTest(TestCase):
             alg = reg.algorithmById(aname)
             w1 = AW1(alg, parent=parent)
             w1.exec()
-            r1 = w1.results()
+            # r1 = w1.results()
 
-        s = "§"
         w2 = AW2(alg)
         w2.exec()
         r2 = w2.results()
-        s = ""
+        self.assertIsInstance(r2, dict)
+        self.assertTrue('OUTPUT' in r2)
 
     @unittest.skipIf(TestCase.runsInCI(), 'Blocking dialog')
     def test_processingProcessingAlgorithmDialog(self):
