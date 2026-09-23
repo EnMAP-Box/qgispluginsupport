@@ -24,7 +24,7 @@ from pathlib import Path
 
 from qgis import processing
 from qgis.PyQt.QtCore import QModelIndex, QObject, Qt
-from qgis.PyQt.QtWidgets import QDialog
+from qgis.PyQt.QtWidgets import QDialog, QMainWindow
 from qgis.core import edit, QgsApplication, QgsFeature, QgsProcessingAlgorithm, \
     QgsProcessingAlgRunnerTask, QgsProcessingOutputRasterLayer, \
     QgsProcessingRegistry, QgsProject, QgsTaskManager, \
@@ -80,7 +80,38 @@ class MyAlgModel(QgsProcessingToolboxProxyModel):
 class ProcessingToolsTest(TestCase):
 
     @unittest.skipIf(TestCase.runsInCI(), 'Blocking dialog')
-    def test_processingAlgorithmDialog(self):
+    def test_processing_widgets_original(self):
+
+        reg: QgsProcessingRegistry = QgsApplication.instance().processingRegistry()
+
+        aname = 'native:createconstantrasterlayer'
+        alg = reg.algorithmById(aname)
+        self.assertIsInstance(alg, QgsProcessingAlgorithm)
+
+        from qps.processing.algorithmwidget import AlgorithmWidget as AW2
+        from processing import AlgorithmWidget as AW1
+        # processing.execAlgorithmDialog(alg)
+        # from qgis.utils import iface
+        # parent = iface.mainWindow()
+
+        lyr = TestObjects.createRasterLayer()
+        QgsProject.instance().addMapLayer(lyr)
+
+        if False:
+            parent = QMainWindow()
+            alg = reg.algorithmById(aname)
+            w1 = AW1(alg, parent=parent)
+            w1.exec()
+            # r1 = w1.results()
+
+        w2 = AW2(alg)
+        w2.exec()
+        r2 = w2.results()
+        self.assertIsInstance(r2, dict)
+        self.assertTrue('OUTPUT' in r2)
+
+    @unittest.skipIf(TestCase.runsInCI(), 'Blocking dialog')
+    def test_processingProcessingAlgorithmDialog(self):
 
         d = ProcessingAlgorithmDialog()
         model = MyAlgModel(None)
@@ -373,7 +404,7 @@ class ProcessingToolsTest(TestCase):
         QgsProject.instance().removeAllMapLayers()
         reg.removeProvider(provider)
 
-    # @unittest.skipIf(TestCase.runsInCI(), 'blocking dialog')
+    @unittest.skipIf(TestCase.runsInCI(), 'blocking dialog')
     def test_spectralprofile_export_dialog(self):
         alg = ExportSpectralProfiles()
         alg.initAlgorithm({})
@@ -397,9 +428,7 @@ class ProcessingToolsTest(TestCase):
 
         d = AlgorithmWidget(alg, context=context)
         d.algorithmFinished.connect(onFinished)
-        d.show()
-        self.showGui(d)
-        # d.exec()
+        d.exec()
 
         lyr = results.get(ExportSpectralProfiles.P_OUTPUT)
         if lyr:

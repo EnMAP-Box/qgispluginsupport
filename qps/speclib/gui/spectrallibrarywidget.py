@@ -27,6 +27,7 @@ from ..processing.extractspectralprofiles import ExtractSpectralProfiles
 from ..processing.importspectralprofiles import ImportSpectralProfiles
 from ...layerproperties import showLayerPropertiesDialog, AttributeTableWidget
 from ...plotstyling.plotstyling import PlotStyle
+from ...processing.algorithmwidget import AlgorithmWidget
 from ...utils import loadUi
 
 logger = logging.getLogger(__name__)
@@ -103,7 +104,7 @@ class SpectralLibraryWidget(QWidget):
         self.actionRejectCurrentProfiles.setShortcutContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
         self.actionRejectCurrentProfiles.triggered.connect(self.rejectCurrentProfiles)
 
-        m = QMenu()
+        m = QMenu(parent=self)
         m.setToolTipsVisible(True)
         m.addAction(self.actionAddCurrentProfiles)
         m.addAction(self.actionRejectCurrentProfiles)
@@ -115,7 +116,7 @@ class SpectralLibraryWidget(QWidget):
         btn: QToolButton = self.toolBar.widgetForAction(self.actionGrpAddProfiles)
         btn.setPopupMode(QToolButton.ToolButtonPopupMode.MenuButtonPopup)
 
-        m = QMenu()
+        m = QMenu(parent=self)
         m.setToolTipsVisible(True)
         m.addAction(self.actionImportSpeclib)
         m.addAction(self.actionExtractProfiles)
@@ -130,7 +131,7 @@ class SpectralLibraryWidget(QWidget):
         self.actionExportSpeclib.triggered.connect(self.onExportProfiles)
         self.actionShowProfileFields.triggered.connect(self.openProfileFieldDialog)
 
-        m = QMenu()
+        m = QMenu(parent=self)
         m.setToolTipsVisible(True)
         m.addAction(self.actionShowProperties)
         m.addAction(self.actionShowProfileFields)
@@ -138,7 +139,6 @@ class SpectralLibraryWidget(QWidget):
         self.actionGrpLayerProperties.triggered.connect(self.actionShowProperties.trigger)
         self.actionGrpLayerProperties.setMenu(m)
         btn: QToolButton = self.toolBar.widgetForAction(self.actionGrpLayerProperties)
-        # btn.setDefaultAction(self.actionShowProperties)
         btn.setPopupMode(QToolButton.ToolButtonPopupMode.MenuButtonPopup)
 
         self.actionRefreshPlot.triggered.connect(self.updatePlot)
@@ -487,23 +487,23 @@ class SpectralLibraryWidget(QWidget):
         feedback = QgsProcessingFeedback()
         context.setFeedback(feedback)
 
-        results = {}
-
         def onFinished(ok, res):
             if not (ok):
                 raise AssertionError
-            results.update(res)
+
+            lyr = res.get(ImportSpectralProfiles.P_OUTPUT, None)
+            if isinstance(lyr, (QgsVectorLayer, str)):
+                self.libraryPlotWidget().createProfileVisualization(layer_id=lyr)
 
         alg = ImportSpectralProfiles()
         alg.initAlgorithm({})
-        d = AlgorithmDialog(alg, context=context)
+        d = AlgorithmWidget(alg, context=context)
+        # d.setParent(self)
         d.algorithmFinished.connect(onFinished)
         d.exec()
+        self.__ref = d
 
-        lyr = results.get(ImportSpectralProfiles.P_OUTPUT, None)
-        if isinstance(lyr, (QgsVectorLayer, str)):
-            self.libraryPlotWidget().createProfileVisualization(layer_id=lyr)
-            # self.addSpeclib(results['output'], askforNewFields=True)
+        # self.addSpeclib(results['output'], askforNewFields=True)
 
         # sl = self.currentSpeclib()
         # if isinstance(sl, QgsVectorLayer):

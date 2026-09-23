@@ -11,7 +11,7 @@
 *                                                                         *
 *   This program is free software; you can redistribute it and/or modify  *
 *   it under the terms of the GNU General Public License as published by  *
-*   the Free Software Foundation; either version 2 of the License, or     *
+*   the Free Software Foundation; either version 2  the License, or     *
 *   (at your option) any later version.                                   *
 *                                                                         *
 ***************************************************************************
@@ -26,10 +26,10 @@ from typing import List
 
 import numpy as np
 from osgeo import ogr
-
-from qgis.PyQt.QtCore import NULL, QByteArray, QJsonDocument, QVariant, QMetaType
+from qgis.PyQt.QtCore import NULL, QByteArray, QJsonDocument, QMetaType
 from qgis.core import edit, QgsCoordinateReferenceSystem, QgsFeature, QgsField, QgsFields, QgsRasterLayer, \
     QgsVectorLayer, QgsWkbTypes
+
 from qps import initAll
 from qps.speclib import EDITOR_WIDGET_REGISTRY_KEY
 from qps.speclib.core import can_store_spectral_profiles, create_profile_field, is_profile_field, is_spectral_library, \
@@ -109,7 +109,6 @@ class SpeclibCoreTests(TestCase):
         examples = [
             None,
             NULL,
-            QVariant(None),
             dict(),
             dict(foobar=[1, 2, 3]),
             dict(x=[1, 2, 3]),
@@ -130,7 +129,7 @@ class SpeclibCoreTests(TestCase):
             self.assertEqual(msg, '')
             self.assertTrue(len(d) > 0)
 
-        for p in [None, dict(), NULL, QVariant(None)]:
+        for p in [None, dict(), NULL]:
             self.assertFalse(validateProfileValueDict(p)[0])
             self.assertTrue(validateProfileValueDict(p, allowEmpty=True)[0])
 
