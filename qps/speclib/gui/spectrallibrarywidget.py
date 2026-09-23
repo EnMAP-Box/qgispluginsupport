@@ -3,7 +3,6 @@ import warnings
 from pathlib import Path
 from typing import Dict, Generator, List, Optional, Tuple
 
-from processing.gui.algorithm_widget import AlgorithmWidget as AlgorithmDialog
 from qgis.PyQt.QtCore import pyqtSignal, Qt
 from qgis.PyQt.QtGui import QCloseEvent, QKeySequence
 from qgis.PyQt.QtGui import QDragEnterEvent, QDropEvent
@@ -466,7 +465,7 @@ class SpectralLibraryWidget(QWidget):
 
         alg = ExtractSpectralProfiles()
         alg.initAlgorithm({})
-        d = AlgorithmDialog(alg, context=context)
+        d = AlgorithmWidget(alg, context=context)
         d.algorithmFinished.connect(onFinished)
         d.exec()
 
@@ -568,7 +567,7 @@ class SpectralLibraryWidget(QWidget):
                 conf[alg.P_FIELD] = vis.fieldName()
 
             alg.initAlgorithm(conf)
-            d = AlgorithmDialog(alg, context=context)
+            d = AlgorithmWidget(alg, context=context)
             d.algorithmFinished.connect(onFinished)
             d.exec()
 
