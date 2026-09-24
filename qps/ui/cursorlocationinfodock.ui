@@ -52,30 +52,28 @@
        <number>2</number>
       </property>
       <item>
-       <widget class="QLabel" name="label">
-        <property name="text">
-         <string>x</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QLineEdit" name="tbX">
+       <widget class="QLineEdit" name="tbLocation">
         <property name="readOnly">
          <bool>true</bool>
         </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QLabel" name="label_2">
-        <property name="text">
-         <string>y</string>
+        <property name="placeholderText">
+         <string/>
         </property>
        </widget>
       </item>
       <item>
-       <widget class="QLineEdit" name="tbY">
-        <property name="readOnly">
-         <bool>true</bool>
+       <widget class="QgsProjectionSelectionWidget" name="btnCrs" native="true">
+        <property name="minimumSize">
+         <size>
+          <width>25</width>
+          <height>0</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>22</width>
+          <height>16777215</height>
+         </size>
         </property>
        </widget>
       </item>
@@ -195,16 +193,6 @@
        </widget>
       </item>
       <item>
-       <widget class="QgsProjectionSelectionWidget" name="btnCrs">
-        <property name="maximumSize">
-         <size>
-          <width>22</width>
-          <height>16777215</height>
-         </size>
-        </property>
-       </widget>
-      </item>
-      <item>
        <widget class="QComboBox" name="cbLayerModes">
         <property name="sizePolicy">
          <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
@@ -228,7 +216,7 @@
       <item>
        <spacer name="horizontalSpacer">
         <property name="orientation">
-         <enum>Qt::Horizontal</enum>
+         <enum>Qt::Orientation::Horizontal</enum>
         </property>
         <property name="sizeHint" stdset="0">
          <size>
