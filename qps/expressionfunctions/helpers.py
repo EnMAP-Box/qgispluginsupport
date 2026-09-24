@@ -351,7 +351,7 @@ def registerQgsExpressionFunctions():
     from .raster_profile import RasterProfile
     from .spectral_data import SpectralData
     from .spectral_math import SpectralMath
-    from qps.speclib.processing.aggregateprofiles import createSpectralProfileFunctions
+    from ..speclib.processing.aggregateprofiles import createSpectralProfileFunctions
     functions = [Format_Py(), SpectralEncoding(), RasterArray(), RasterProfile(), SpectralData(), SpectralMath()]
     functions.extend(createSpectralProfileFunctions())
     for func in functions:
