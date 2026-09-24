@@ -366,11 +366,11 @@ class XUnitModel(UnitModel):
         self.mUnknownUnit = UnitWrapper(UNKNOWN_UNIT, 'Unknown Unit', tooltip='Unknown units / raw values')
         self.addUnit(self.mUnknownUnit)
 
-    def findUnit(self, unit) -> str:
-        if unit in [None, NULL]:
+    def findUnit(self, value) -> str:
+        if value in [None, NULL]:
             if self.mEmpty not in self.mUnits:
-                unit = BAND_NUMBER
-        return super(XUnitModel, self).findUnit(unit)
+                value = BAND_NUMBER
+        return super(XUnitModel, self).findUnit(value)
 
 
 def square_with_sign(v):
@@ -441,7 +441,7 @@ class UnitLookup(object):
         return list(UnitLookup.TIME_UNITS)
 
     @staticmethod
-    def baseUnit(unit: str) -> str:
+    def baseUnit(unit: str) -> str | None:
         """
         Tries to return the basic physical unit
         e.g. "m" for string of "Meters"
@@ -464,10 +464,10 @@ class UnitLookup(object):
         # e.g. to convert string like "MiKrOMetErS" to "μm"
         base_unit = None
 
-        if unit in UnitLookup.length_units() + \
-            UnitLookup.area_units() + \
-            UnitLookup.date_units() + \
-            UnitLookup.time_units():
+        if (
+            unit in UnitLookup.length_units() + UnitLookup.area_units()
+            + UnitLookup.date_units() + UnitLookup.time_units()  # noqa: W503
+        ):
             return unit
 
         # Area units?
@@ -597,7 +597,8 @@ class UnitLookup(object):
     def convertLengthUnit(
         value: Union[float, np.ndarray],
         u1: str,
-        u2: str) -> Union[None, float, List[float], np.ndarray]:
+        u2: str
+    ) -> Union[None, float, List[float], np.ndarray]:
         """
         Converts a length value `value` from unit `u1` into unit `u2`
         :param value: float | int | might work with numpy arrays as well
