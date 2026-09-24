@@ -48,11 +48,6 @@ start_app()
 initAll()
 
 
-# registerSpectralProfileEditorWidget()
-# registerEditorWidgets()
-#
-# registerMapLayerConfigWidgetFactories()
-
 class SpeclibCoreTests(TestCase):
 
     # @unittest.skip('')

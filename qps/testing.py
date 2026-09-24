@@ -41,16 +41,16 @@ from typing import List, Optional, Set, Tuple, Union
 from unittest import mock
 
 import numpy as np
+import qgis.utils
 from osgeo import gdal, gdal_array, ogr, osr
 from osgeo.gdal import UseExceptions
-
-import qgis.utils
 from qgis.PyQt import sip
 from qgis.PyQt.QtCore import pyqtSignal, QMimeData, QObject, QPoint, QPointF, QSize, Qt
 from qgis.PyQt.QtGui import QDropEvent, QIcon, QImage, QStandardItemModel
 from qgis.PyQt.QtWidgets import (
     QAction, QApplication, QDialogButtonBox, QDockWidget, QFrame, QHBoxLayout, QListWidget,
     QMainWindow, QMenu, QSplitter, QStackedWidget, QToolBar, QTreeView, QVBoxLayout, QWidget)
+from qgis.core import QgsExpressionFunction, QgsExpression
 from qgis.core import (
     edit, Qgis, QgsApplication, QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsFeature,
     QgsFeatureStore, QgsField, QgsFields, QgsGeometry, QgsLayerTree, QgsLayerTreeLayer, QgsLayerTreeModel,
@@ -64,6 +64,7 @@ from qgis.gui import (
     QgsMessageBar, QgsOptionsDialogBase, QgsOptionsPageWidget, QgsOptionsWidgetFactory, QgsPluginManagerInterface
 )
 from qgis.testing import QgisTestCase
+
 from .qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from .resources import initResourceFile
 from .unitmodel import UnitLookup
@@ -501,6 +502,8 @@ def _set_iface(ifaceMock):
 class TestCase(QgisTestCase):
     gdal.UseExceptions()
 
+    FUNC_REFS = []
+
     @staticmethod
     def check_empty_layerstore(name: str):
         error = None
@@ -521,6 +524,25 @@ class TestCase(QgisTestCase):
         if isinstance(app, QApplication):
             app.processEvents()
         gc.collect()
+
+    def registerFunction(self, f: QgsExpressionFunction) -> QgsExpressionFunction:
+        """
+        Registers a QgsExpressionFunction. If a function with same name already exists it will be replaced
+        """
+        self.assertIsInstance(f, QgsExpressionFunction)
+        if QgsExpression.isFunctionName(f.name()):
+            for f2 in QgsExpression.Functions():
+                if f2.name() == f.name():
+                    self.assertEqual(
+                        f2.__class__, f.__class__,
+                        msg=f'Function {f.name()} already exists but has different class name.'
+                    )
+                    return f2
+            raise Exception(f'Function {f.name()} already exists')
+        else:
+            QgsExpression.registerFunction(f)
+            self.FUNC_REFS.append(f)
+        return f
 
     @classmethod
     def setUpClass(cls):
