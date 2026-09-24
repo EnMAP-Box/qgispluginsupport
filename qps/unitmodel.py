@@ -7,7 +7,6 @@ from math import log10
 from typing import Iterator, List, Union, Optional
 
 import numpy as np
-
 from qgis.PyQt.QtCore import NULL, QAbstractListModel, QDate, QDateTime, QModelIndex, Qt
 from qgis.PyQt.QtGui import QIcon
 
@@ -466,9 +465,9 @@ class UnitLookup(object):
         base_unit = None
 
         if unit in UnitLookup.length_units() + \
-                UnitLookup.area_units() + \
-                UnitLookup.date_units() + \
-                UnitLookup.time_units():
+            UnitLookup.area_units() + \
+            UnitLookup.date_units() + \
+            UnitLookup.time_units():
             return unit
 
         # Area units?
@@ -596,9 +595,9 @@ class UnitLookup(object):
 
     @staticmethod
     def convertLengthUnit(
-            value: Union[float, np.ndarray],
-            u1: str,
-            u2: str) -> Union[None, float, List[float], np.ndarray]:
+        value: Union[float, np.ndarray],
+        u1: str,
+        u2: str) -> Union[None, float, List[float], np.ndarray]:
         """
         Converts a length value `value` from unit `u1` into unit `u2`
         :param value: float | int | might work with numpy arrays as well
@@ -695,8 +694,8 @@ class UnitLookup(object):
         elif unit == 'W':
             return value.astype(object).week
         elif unit == 'DOY':
-            return ((value - value.astype('datetime64[Y]')).astype('timedelta64[D]') + 1).astype(int)
-
+            # return ((value - value.astype('datetime64[Y]')).astype('timedelta64[D]') + 1).astype(int)
+            return ((value - value.astype('datetime64[Y]')) / np.timedelta64(1, 'D')).astype(int) + 1
         elif unit.startswith('DecimalYear'):
             year = value.astype(object).year
             year64 = value.astype('datetime64[Y]')
