@@ -189,6 +189,9 @@ class FilteredMapLayerProxyModel(QgsMapLayerProxyModel):
         return f
 
     def setFilterFunc(self, func: Callable):
+        """
+        Set a filter function. `f(layer: QgsMapLayer) -> bool` that returns if a layer should be shown or not.
+        """
         self.mFilterFunc = func
         self.invalidateFilter()
 
