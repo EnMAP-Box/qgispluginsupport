@@ -229,6 +229,7 @@ class SpectralProcessingRasterLayerWidgetWrapper(QgsAbstractProcessingParameterW
     def createWidget(self):
 
         model = QgsMapLayerModel(self.widgetContext().project())
+        model.setProject(self.widgetContext().project())
         self.mMapLayerModel = model
 
         param = self.parameterDefinition()

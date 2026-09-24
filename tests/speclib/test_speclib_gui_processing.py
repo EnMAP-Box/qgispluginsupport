@@ -479,7 +479,7 @@ class SpectralProcessingTests(TestCase):
 
         self.showGui(w)
 
-        w.close()
+        # w.close()
 
         QgsProject.instance().removeAllMapLayers()
 
