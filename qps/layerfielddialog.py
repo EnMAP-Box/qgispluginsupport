@@ -108,6 +108,9 @@ class FilteredFieldProxyModel(QgsFieldProxyModel):
         self.invalidateFilter()
 
     def setFilterFunc(self, func: Callable):
+        """
+        Set a filter function `f(field: QgsField) -> bool` that returns True if a QgsField should be shown
+        """
         self.mFilterFunc = func
         self.invalidateFilter()
 
