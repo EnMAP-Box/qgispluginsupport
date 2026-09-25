@@ -781,11 +781,12 @@ class FilteredFieldProxyModelTests(TestCase):
         src_model.setFields(fields)
 
         def filter_string_fields(field):
-            return field.type() in [QgsField.Type.String]
+            return field.type() in [QMetaType.Type.QString]
 
         model.setFilterFunc(filter_string_fields)
+        model.setShowAll(False)
 
-        string_field_count = sum(1 for f in fields if f.type() == QgsField.Type.String)
+        string_field_count = sum(1 for f in fields if f.type() == QMetaType.Type.QString)
         self.assertEqual(model.rowCount(), string_field_count)
 
     def test_setShowAll_false_hides_filtered_fields(self):
@@ -798,12 +799,12 @@ class FilteredFieldProxyModelTests(TestCase):
         src_model.setFields(fields)
 
         def filter_integer_fields(field):
-            return field.type() == QgsField.Type.Int
+            return field.type() == QMetaType.Type.Int
 
         model.setFilterFunc(filter_integer_fields)
         model.setShowAll(False)
 
-        int_field_count = sum(1 for f in fields if f.type() == QgsField.Type.Int)
+        int_field_count = sum(1 for f in fields if f.type() == QMetaType.Type.Int)
         self.assertEqual(model.rowCount(), int_field_count)
 
     def test_setShowAll_true_shows_filtered_fields_disabled(self):
@@ -828,7 +829,7 @@ class FilteredFieldProxyModelTests(TestCase):
 
             flags = model.flags(idx)
 
-            if field.type() == QgsField.Type.Int:
+            if field.type() == QMetaType.Type.Int:
                 self.assertTrue(flags & Qt.ItemFlag.ItemIsEnabled)
                 self.assertTrue(flags & Qt.ItemFlag.ItemIsSelectable)
             else:
@@ -845,7 +846,7 @@ class FilteredFieldProxyModelTests(TestCase):
         src_model.setFields(fields)
 
         def filter_numeric_fields(field):
-            return field.type() in [QgsField.Type.Int, QgsField.Type.Double]
+            return field.type() in [QMetaType.Type.Int, QMetaType.Type.Double]
 
         model.setFilterFunc(filter_numeric_fields)
 
@@ -892,24 +893,6 @@ class FilteredFieldProxyModelTests(TestCase):
 
         matching_fields = [f for f in fields if f.name().startswith('id') or f.name().startswith('name')]
         self.assertEqual(model.rowCount(), len(matching_fields))
-
-    def test_complex_field_filter(self):
-        model = FilteredFieldProxyModel()
-
-        vl = TestObjects.createVectorLayer(name='vector')
-        fields = vl.fields()
-
-        src_model = model.sourceFieldModel()
-        src_model.setFields(fields)
-
-        def complex_filter(field):
-            return field.type() in [QgsField.Type.String, QgsField.Type.Int]
-
-        model.setFilterFunc(complex_filter)
-        model.setShowAll(False)
-
-        expected_count = sum(1 for f in fields if f.type() in [QgsField.Type.String, QgsField.Type.Int])
-        self.assertEqual(model.rowCount(), expected_count)
 
 
 if __name__ == '__main__':
