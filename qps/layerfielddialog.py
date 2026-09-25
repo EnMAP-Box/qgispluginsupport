@@ -151,11 +151,21 @@ class FilteredMapLayerProxyModel(QgsMapLayerProxyModel):
     """
 
     def __init__(self, *args, **kwds):
-        super().__init__(*args, **kwds)
+
+        project = None
+        for a in args:
+            if isinstance(a, QgsProject):
+                project = a
+                break
+        if project is None:
+            project = QgsProject.instance()
+
+        super().__init__(project, **kwds)
         self.mFilterFunc: Callable = lambda layer: isinstance(layer, QgsMapLayer)
         self.mShowAll = True
         self.mSrcModel = self.sourceLayerModel()
-        self.mProject = QgsProject.instance()
+        self.mProject = project
+        self.setProject(project)
 
     def setShowAll(self, show: bool):
         self.mShowAll = show
