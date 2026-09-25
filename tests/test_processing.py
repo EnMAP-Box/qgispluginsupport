@@ -31,9 +31,10 @@ from qgis.core import edit, QgsApplication, QgsFeature, QgsProcessingAlgorithm, 
     QgsVectorLayer, QgsProcessing
 from qgis.gui import QgsProcessingRecentAlgorithmLog, QgsProcessingToolboxProxyModel
 
+from qps import initAll
+from qps.expressionfunctions import registerQgsExpressionFunctions
 from qps.processing.algorithmwidget import AlgorithmWidget, ParametersPanel
 from qps.processing.processingalgorithmdialog import ProcessingAlgorithmDialog
-from qps.qgsfunctions import registerQgsExpressionFunctions
 from qps.speclib.core import profile_field_names, profile_fields, is_spectral_library
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
 from qps.speclib.core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict, isProfileValueDict, \
@@ -45,6 +46,8 @@ from qps.testing import ExampleAlgorithmProvider, start_app, TestCase, TestObjec
 from qpstestdata import ecosis_csv, asd_with_gps, spectral_evolution_sed, svc_sig
 
 start_app()
+
+initAll()
 
 
 class MyAlgModel(QgsProcessingToolboxProxyModel):
@@ -275,6 +278,7 @@ class ProcessingToolsTest(TestCase):
         # test alg.run
         conf = {}
         results, success = alg.run(parameters, context, feedback, conf)
+        self.assertTrue(success, msg=feedback.textLog())
         on_complete(success, results)
 
         # test processing.run

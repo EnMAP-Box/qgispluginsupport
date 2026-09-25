@@ -159,10 +159,10 @@ def unregisterEditorWidgets():
 
 def registerExpressionFunctions():
     try:
-        from .qgsfunctions import registerQgsExpressionFunctions
+        from .expressionfunctions import registerQgsExpressionFunctions
         registerQgsExpressionFunctions()
     except Exception as ex:
-        print('Failed to call qps.speclib.qgsfunctions.registerQgsExpressionFunctions()', file=sys.stderr)
+        print('Failed to call qps.expressionfunctions.registerQgsExpressionFunctions()', file=sys.stderr)
         print(ex, file=sys.stderr)
 
 
@@ -191,7 +191,7 @@ def unregisterDataProviders():
 
 
 def unregisterExpressionFunctions():
-    from .qgsfunctions import unregisterQgsExpressionFunctions as _unregisterQgsExpressionFunctions
+    from .expressionfunctions import unregisterQgsExpressionFunctions as _unregisterQgsExpressionFunctions
     _unregisterQgsExpressionFunctions()
 
 

@@ -14,6 +14,7 @@ from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import (
     QCheckBox, QComboBox, QDialog, QGridLayout, QLabel, QLineEdit, QPushButton, QSizePolicy,
     QVBoxLayout, QWidget)
+from qgis.PyQt.QtWidgets import QMainWindow
 from qgis.core import (
     Qgis, QgsApplication, QgsCoordinateTransformContext, QgsEditorWidgetSetup, QgsFeature, QgsField,
     QgsFields, QgsMapLayer, QgsMapLayerModel, QgsPalettedRasterRenderer, QgsProcessing, QgsProcessingAlgorithm,
@@ -227,7 +228,8 @@ class SpectralProcessingRasterLayerWidgetWrapper(QgsAbstractProcessingParameterW
 
     def createWidget(self):
 
-        model = QgsMapLayerModel(project=self.widgetContext().project(), parent=self)
+        model = QgsMapLayerModel(self.widgetContext().project())
+        model.setProject(self.widgetContext().project())
         self.mMapLayerModel = model
 
         param = self.parameterDefinition()
@@ -238,6 +240,7 @@ class SpectralProcessingRasterLayerWidgetWrapper(QgsAbstractProcessingParameterW
         mapLayerWidget = None
         if isinstance(param, QgsProcessingParameterRasterLayer):
             cb = QComboBox()
+            model.setParent(cb)
             cb.setModel(model)
             cb.currentIndexChanged.connect(lambda idx, m=model: self.onIndexChanged(idx, m))
             mapLayerWidget = cb
@@ -563,7 +566,7 @@ class SpectralProcessingModelCreatorAlgorithmWrapper(QgsProcessingParametersWidg
                     parameters[param.name()] = value
 
                 if not param.checkValueIsAcceptable(value):
-                    raise InvalidParameterValue(param, widget)
+                    raise InvalidParameterValue(param, value)
             else:
                 # if self.in_place and param.name() == 'OUTPUT':
                 #    parameters[param.name()] = 'memory:'
@@ -622,7 +625,10 @@ class SpectralProcessingWidget(QgsProcessingAlgorithmWidgetBase):
                  parameters: Optional[dict] = None,
                  parent: Optional[QWidget] = None,
                  **kwds):
+        if parent is None:
+            parent = QMainWindow()
         super().__init__(parentWindow=parent)
+        self._parent = parent
         self.setWindowFlag(Qt.WindowType.WindowContextHelpButtonHint, False)
         # QgsProcessingContextGenerator.__init__(self)
         self.mWidgetName = 'Spectral Processing Widget'

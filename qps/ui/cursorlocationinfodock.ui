@@ -57,7 +57,7 @@
          <bool>true</bool>
         </property>
         <property name="placeholderText">
-         <string/>
+         <string>Select a map location</string>
         </property>
        </widget>
       </item>

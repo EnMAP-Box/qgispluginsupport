@@ -344,8 +344,8 @@ class SpectralLibraryWidget(QWidget):
                 )
                 # dialog.setMainMessageBar(self.mainMessageBar())
                 # dialog.sigOutputsCreated.connect(self.onSpectralProcessingOutputsCreated)
-
-                # dialog.exec()
+                # w.setParent(self)
+                # w.exec()
                 # dialog.close()
                 w.show()
                 return w
