@@ -162,7 +162,7 @@ class FilteredMapLayerProxyModel(QgsMapLayerProxyModel):
 
         super().__init__(project, **kwds)
         self.mFilterFunc: Callable = lambda layer: isinstance(layer, QgsMapLayer)
-        self.mShowAll = True
+        self.mShowAll = False
         self.mSrcModel = self.sourceLayerModel()
         self.mProject = project
         self.setProject(project)
