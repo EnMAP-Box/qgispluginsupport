@@ -1560,11 +1560,14 @@ class SpectralProfileBridge(TreeModel):
     A TreeModel to be used in a view, and to be used in a view,
     """
 
-    def __init__(self, *args, **kwds):
+    def __init__(self, *args, project: QgsProject | None = None, **kwds):
+
+        if project is None:
+            project = QgsProject.instance()
 
         super().__init__(*args, **kwds)
         self.mSrcModel = SpectralProfileSourceModel()
-        self.mDstModel = SpectralLibraryListModel()
+        self.mDstModel = SpectralLibraryListModel(project)
         self.mDefaultSource: SpectralProfileSource = None
 
         self.mSLWs: List[SpectralLibraryWidget] = []
@@ -2537,7 +2540,11 @@ class SpectralProfileBridgeTreeView(TreeView):
 
 class SpectralProfileSourcePanel(QgsDockWidget):
 
-    def __init__(self, *args, **kwds):
+    def __init__(
+        self, *args,
+        project: QgsProject | None = None,
+        **kwds
+    ):
         super(SpectralProfileSourcePanel, self).__init__(*args, **kwds)
 
         loadUi(speclibUiPath('spectralprofilesourcepanel.ui'), self)
@@ -2546,7 +2553,7 @@ class SpectralProfileSourcePanel(QgsDockWidget):
         self.mFilterLineEdit: QgsFilterLineEdit
         self.mFilterLineEdit.textChanged.connect(self.setFilter)
 
-        self.mBridge = SpectralProfileBridge()
+        self.mBridge = SpectralProfileBridge(project=project)
         self.mBridge.addSources(MapCanvasLayerProfileSource(mode=MapCanvasLayerProfileSource.MODE_FIRST_LAYER))
 
         self.mProxyModel = SpectralProfileSourceProxyModel()
