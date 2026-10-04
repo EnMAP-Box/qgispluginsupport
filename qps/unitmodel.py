@@ -595,7 +595,7 @@ class UnitLookup(object):
 
     @staticmethod
     def convertLengthUnit(
-        value: Union[float, np.ndarray],
+        value: Union[float, int, np.ndarray, list, tuple],
         u1: str,
         u2: str
     ) -> Union[None, float, List[float], np.ndarray]:
@@ -621,7 +621,7 @@ class UnitLookup(object):
         if all([arg is not None for arg in [value, e1, e2]]):
             if e1 == e2:
                 return copy.copy(value)
-            elif isinstance(value, list):
+            elif isinstance(value, (list, tuple)):
                 return [v * 10 ** (e1 - e2) for v in value]
             else:
                 return value * 10 ** (e1 - e2)
