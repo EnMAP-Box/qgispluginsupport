@@ -37,7 +37,7 @@ import uuid
 import warnings
 from pathlib import Path
 from time import sleep
-from typing import List, Optional, Set, Tuple, Union
+from typing import List, Optional, Set, Tuple, Union, Generator, Dict, Any
 from unittest import mock
 
 import numpy as np
@@ -1007,8 +1007,11 @@ class TestObjects(object):
         )
 
     @staticmethod
-    def spectralProfileData(n: int = 10,
-                            n_bands: List[int] = None):
+    def spectralProfileData(
+        n: int = 10,
+        n_bands: Optional[List[int]] = None,
+        as_dict: bool = False
+    ) -> Generator[Dict[str, Any], None, None]:
         """
         Returns n random spectral profiles from the test data
         :return: lost of (N,3) array of floats specifying point locations.
@@ -1045,7 +1048,12 @@ class TestObjects(object):
             while i < n:
                 x = random.randint(0, coredata.shape[2] - 1)  # nosec B311 # no security relevant sampling
                 y = random.randint(0, coredata.shape[1] - 1)  # nosec B311 # no security relevant sampling
-                yield coredata[band_indices, y, x], wl[band_indices], wlu
+
+                d = {'x': wl[band_indices].tolist(),
+                     'y': coredata[band_indices, y, x].tolist(),
+                     'xUnit': wlu}
+                yield d
+                # yield coredata[band_indices, y, x], , wlu
                 i += 1
 
     @staticmethod
