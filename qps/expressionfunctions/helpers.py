@@ -52,6 +52,7 @@ class HelpStringMaker(object):
     def helpText(self,
                  name: str,
                  parameters: List[QgsExpressionFunction.Parameter] = []) -> str:
+        """Generates a help text for an expression function 'name' and its parameters"""
         html = [f'<h3>{name}</h3>']
         LUT_PARAMETERS = dict()
         for p in parameters:
