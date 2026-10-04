@@ -35,7 +35,10 @@ from qgis.core import QgsUserProfile, QgsUserProfileManager
 from qps import DIR_REPO
 # site.addsitedir(Path(__file__).parents[2])
 from qps.make.deploy import QGISMetadataFileWriter, userProfileManager
+from qps.testing import start_app
 from qps.utils import zipdir
+
+st = start_app()
 
 DIR_TEST_PLUGIN = Path(__file__).parent / 'test_plugin'
 print('DIR_REPO={}'.format(DIR_REPO))
@@ -111,7 +114,7 @@ def create_plugin(create_zip: bool = False,
     # copy python and other resource files
     pattern = re.compile(r'\.(py|svg|png|txt|ui|tif|qml|md|js|css|json|geojson)$')
     files = list(scantree(DIR_REPO / 'qps', pattern=pattern))
-
+    files += list(scantree(DIR_REPO / 'qpstestdata', pattern=pattern))
     for fileSrc in files:
         if not (fileSrc.is_file()):
             raise AssertionError
@@ -188,7 +191,7 @@ if __name__ == "__main__":
                         required=False,
                         default=None,
                         help=textwrap.dedent("""
-                            The build name in "timeseriesviewerplugin.<build name>.zip"
+                            The build name in "qgispluginsupport.<build name>.zip"
                             Defaults:
                                 <version> in case of a release.* branch
                                 <version>.<timestamp>.<branch name> in case of any other branch.
