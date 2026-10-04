@@ -2,17 +2,22 @@ from qgis.core import QgsExpressionContext, QgsExpressionFunction, QgsExpression
 
 from .helpers import ExpressionFunctionUtils, HelpStringMaker, SPECLIB_FUNCTION_GROUP
 from ..speclib.core import is_profile_field
+from ..utils import band_index
 
 HM = HelpStringMaker()
 
 
 class SpectralData(QgsExpressionFunction):
+    """
+    A QgsExpressionFunction to extract spectral data from a profile field.
+    """
     GROUP = SPECLIB_FUNCTION_GROUP
     NAME = 'spectral_data'
 
     def __init__(self):
         args = [
-            QgsExpressionFunction.Parameter('profile_field', optional=True)
+            QgsExpressionFunction.Parameter('profile_field', optional=True),
+            QgsExpressionFunction.Parameter('band', optional=True, defaultValue=None)
         ]
 
         helptext = HM.helpText(self.NAME, args)
@@ -21,17 +26,38 @@ class SpectralData(QgsExpressionFunction):
     def func(self, values: list, context: QgsExpressionContext, parent, node: QgsExpressionNodeFunction):
         try:
             if node.referencedColumns() == set([QgsFeatureRequest.ALL_ATTRIBUTES]):
-                value = None
+                profile_dump = None
                 for field in context.fields():
                     if is_profile_field(field):
                         feat = context.feature()
-                        value = feat.attribute(field.name())
+                        profile_dump = feat.attribute(field.name())
                         break
             else:
-                value = values[0]
-            if value is not None:
-                result = ExpressionFunctionUtils.extractSpectralProfile(self.parameters()[0], value, context)
-                return result
+                profile_dump = values[0]
+            if profile_dump is not None:
+                profile_data = ExpressionFunctionUtils.extractSpectralProfile(
+                    self.parameters()[0], profile_dump,
+                    context
+                )
+
+                if not isinstance(profile_data, dict):
+                    return None
+
+                band_name = values[1]
+
+                if band_name is None:
+                    return profile_data
+
+                # return a single value from the profiles y data vector
+                if isinstance(band_name, str):
+                    band_idx = band_index(band_name, profile_data.get('x'), wlu=profile_data.get('xUnit', 'nm'))
+                else:
+                    band_idx = int(band_name)
+
+                if 0 <= band_idx < len(profile_data['y']):
+                    return profile_data['y'][band_idx]
+                else:
+                    return None
 
         except Exception as ex:
             parent.setEvalErrorString(str(ex))
