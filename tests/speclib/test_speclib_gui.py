@@ -19,11 +19,10 @@
 import logging
 # noinspection PyPep8Naming
 import os
-from pathlib import Path
 import unittest
+from pathlib import Path
 
 from osgeo import gdal, ogr
-
 from qgis.PyQt.QtCore import QMimeData, QPoint, Qt, QUrl
 from qgis.PyQt.QtCore import QSize
 from qgis.PyQt.QtGui import QDropEvent
@@ -31,6 +30,7 @@ from qgis.PyQt.QtWidgets import QAction, QApplication, QComboBox, QPushButton, Q
     QVBoxLayout, QWidget
 from qgis.core import QgsFeature, QgsProject, QgsRasterLayer, QgsVectorLayer
 from qgis.gui import QgsGui, QgsMapCanvas
+
 from qps import registerEditorWidgets
 from qps.layerproperties import AddAttributeDialog
 from qps.speclib.core import is_spectral_library, profile_field_list
@@ -186,12 +186,13 @@ class TestSpeclibWidgets(TestCase):
     def test_SpectralLibraryWidget_empty_vectorlayer(self):
 
         vl = TestObjects.createVectorLayer()
-
-        slw = SpectralLibraryWidget(speclib=vl)
+        project = QgsProject()
+        project.addMapLayer(vl)
+        slw = SpectralLibraryWidget(speclib=vl, project=project)
         self.assertTrue(not is_spectral_library(vl))
         self.assertIsInstance(slw, SpectralLibraryWidget)
         self.showGui(slw)
-        QgsProject.instance().removeAllMapLayers()
+        project.removeAllMapLayers()
 
     @unittest.skipIf(TestCase.runsInCI(), 'GUI test only')
     def test_SpectralLibraryWidget_Empty(self):
