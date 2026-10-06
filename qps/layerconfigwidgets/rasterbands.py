@@ -26,13 +26,13 @@ from pathlib import Path
 from typing import List, Union, Optional
 
 import numpy as np
-
 from qgis.PyQt.QtCore import Qt, QTimer
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QPushButton, QSlider, QStackedWidget, QWidget
 from qgis.core import Qgis, QgsMapLayer, QgsMultiBandColorRenderer, QgsPalettedRasterRenderer, QgsRasterLayer, \
     QgsRasterRenderer, QgsSingleBandColorDataRenderer, QgsSingleBandGrayRenderer, QgsSingleBandPseudoColorRenderer
 from qgis.gui import QgsMapCanvas, QgsMapLayerConfigWidget, QgsMapLayerConfigWidgetFactory, QgsRasterBandComboBox
+
 from ..layerconfigwidgets.core import QpsMapLayerConfigWidget
 from ..qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from ..simplewidgets import FlowLayout
@@ -444,8 +444,13 @@ class RasterBandConfigWidgetFactory(QgsMapLayerConfigWidgetFactory):
     def title(self) -> str:
         return 'Raster Band'
 
-    def createWidget(self, layer: QgsMapLayer, canvas: QgsMapCanvas, dockWidget: bool = True,
-                     parent=None) -> QgsMapLayerConfigWidget:
+    def createWidget(
+        self,
+        layer: QgsMapLayer,
+        canvas: QgsMapCanvas,
+        dockWidget: bool = True,
+        parent: QWidget | None = None
+    ) -> QgsMapLayerConfigWidget:
         w = RasterBandConfigWidget(layer, canvas, parent=parent)
         # if isinstance(parent, QgsRasterLayerProperties):
         #    w.widgetChanged.connect(parent.syncToLayer)

@@ -33,6 +33,7 @@ from typing import List, Union, Optional
 from qgis.PyQt.QtCore import QUrlQuery
 from qgis.core import QgsFeature, QgsField, QgsFields, QgsGeometry, QgsProcessingFeedback, \
     QgsVectorLayer, QgsFileUtils
+
 from ..core import create_profile_field, is_profile_field
 from ..core.spectralprofile import encodeProfileValueDict, prepareProfileValueDict, ProfileEncoding, \
     SpectralProfileFileReader, SpectralProfileFileWriter, groupBySpectralProperties, decodeProfileValueDict
@@ -51,9 +52,12 @@ class EcoSISSpectralLibraryWriter(SpectralProfileFileWriter):
     def filterString(cls) -> str:
         return 'EcoSIS text file (*.csv)'
 
-    def writeFeatures(self, path: str,
-                      features: List[QgsFeature],
-                      feedback: Optional[QgsProcessingFeedback] = None) -> List[Path]:
+    def writeFeatures(
+        self, path: str,
+        features: List[QgsFeature],
+        field_names=None,
+        feedback: Optional[QgsProcessingFeedback] = None
+    ) -> List[Path]:
         if feedback is None:
             feedback = QgsProcessingFeedback()
 

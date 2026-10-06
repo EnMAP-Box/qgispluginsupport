@@ -12,4 +12,4 @@
 #***************************************************************************
 
 export DOCKER_OPTS="-e CI=1 -e QT_QPA_PLATFORM=offscreen"
-.docker/docker-python.sh -m pytest "$@"
+.docker/docker-python.sh -m pytest --no-cov-on-fail "$@"

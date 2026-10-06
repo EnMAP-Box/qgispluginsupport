@@ -25,14 +25,15 @@
 """
 
 import os
-from pathlib import Path
 import sys
 import warnings
+from pathlib import Path
 from typing import List, Optional
 
 from qgis.PyQt.QtCore import PYQT_VERSION_STR
 from qgis.core import Qgis, QgsApplication, QgsProviderRegistry
 from qgis.gui import QgisInterface, QgsMapLayerConfigWidgetFactory
+from qgis.gui import QgsGui, QgsProviderGuiRegistry
 
 # Qt version used by PyQtGraph
 os.environ.setdefault('PYQTGRAPH_QT_LIB', f'PyQt{PYQT_VERSION_STR[0]}')
@@ -77,18 +78,18 @@ def registerMapLayerConfigWidgetFactory(
     # global MAPLAYER_CONFIGWIDGET_FACTORIES
     if not (isinstance(factory, QgsMapLayerConfigWidgetFactory)):
         raise AssertionError
-    name: str = factory.__class__.__name__
+    title = factory.title()
 
-    registered = os.environ.get(KEY_MAPLAYERCONFIGWIDGETFACTORIES, '').split('::')
+    reg: QgsProviderGuiRegistry = QgsGui.providerGuiRegistry()
+    registered = []
+
+    for f in reg.mapLayerConfigWidgetFactories():
+        registered.append(f.title())
 
     from qgis.utils import iface
-    if isinstance(iface, QgisInterface) and factory not in MAPLAYER_CONFIGWIDGET_FACTORIES and name not in registered:
+    if isinstance(iface, QgisInterface) and factory not in MAPLAYER_CONFIGWIDGET_FACTORIES and title not in registered:
         MAPLAYER_CONFIGWIDGET_FACTORIES.append(factory)
-        registered.append(name)
-        os.environ[KEY_MAPLAYERCONFIGWIDGETFACTORIES] = '::'.join(registered)
         iface.registerMapLayerConfigWidgetFactory(factory)
-
-        QgsApplication.instance().messageLog().logMessage(f'Registered {name}', level=Qgis.MessageLevel.Info)
         return factory
     else:
         return None
@@ -159,10 +160,10 @@ def unregisterEditorWidgets():
 
 def registerExpressionFunctions():
     try:
-        from .qgsfunctions import registerQgsExpressionFunctions
+        from .expressionfunctions import registerQgsExpressionFunctions
         registerQgsExpressionFunctions()
     except Exception as ex:
-        print('Failed to call qps.speclib.qgsfunctions.registerQgsExpressionFunctions()', file=sys.stderr)
+        print('Failed to call qps.expressionfunctions.registerQgsExpressionFunctions()', file=sys.stderr)
         print(ex, file=sys.stderr)
 
 
@@ -191,7 +192,7 @@ def unregisterDataProviders():
 
 
 def unregisterExpressionFunctions():
-    from .qgsfunctions import unregisterQgsExpressionFunctions as _unregisterQgsExpressionFunctions
+    from .expressionfunctions import unregisterQgsExpressionFunctions as _unregisterQgsExpressionFunctions
     _unregisterQgsExpressionFunctions()
 
 

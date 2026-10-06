@@ -13,15 +13,16 @@ __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 import unittest
 
 from osgeo import gdal
-
 from qgis.PyQt.QtWidgets import QDialog, QGridLayout, QWidget
 from qgis.core import QgsMapLayer
 from qgis.core import QgsMultiBandColorRenderer, QgsPalettedRasterRenderer, QgsProject, QgsRasterLayer, \
     QgsSingleBandGrayRenderer, QgsStyle, QgsVectorLayer
 from qgis.gui import QgsMapCanvas, QgsMapLayerConfigWidgetFactory, QgsOptionsDialogBase, QgsRasterLayerProperties, \
     QgsRendererPropertiesDialog
-from qps import MAPLAYER_CONFIGWIDGET_FACTORIES
-from qps.layerconfigwidgets.rasterbands import RasterBandConfigWidget
+
+from qps import MAPLAYER_CONFIGWIDGET_FACTORIES, registerMapLayerConfigWidgetFactory
+from qps.layerconfigwidgets.gdalmetadata import GDALMetadataConfigWidgetFactory
+from qps.layerconfigwidgets.rasterbands import RasterBandConfigWidget, RasterBandConfigWidgetFactory
 from qps.layerproperties import AddAttributeDialog, AttributeTableWidget, CopyAttributesDialog, defaultRasterRenderer, \
     equal_styles, RemoveAttributeDialog, showLayerPropertiesDialog, pasteStyleToClipboard, pasteStyleFromClipboard
 from qps.testing import start_app, TestCase, TestObjects
@@ -80,13 +81,14 @@ class LayerPropertyTests(TestCase):
         QgsProject.instance().removeAllMapLayers()
 
     @unittest.skipIf(TestCase.runsInCI(), 'blocking dialog')
-    def test_layer_properties1(self):
+    def test_rasterlayerproperties(self):
+        from qpstestdata import enmap
 
-        rl = TestObjects.createRasterLayer(nb=300)
-        showLayerPropertiesDialog(rl)
-
-        vl = TestObjects.createVectorLayer()
-        showLayerPropertiesDialog(vl)
+        registerMapLayerConfigWidgetFactory(GDALMetadataConfigWidgetFactory())
+        registerMapLayerConfigWidgetFactory(GDALMetadataConfigWidgetFactory())
+        registerMapLayerConfigWidgetFactory(RasterBandConfigWidgetFactory())
+        lyr = QgsRasterLayer(str(enmap))
+        showLayerPropertiesDialog(lyr)
 
     @unittest.skipIf(TestCase.runsInCI(), 'blocking dialog')
     def test_vectorlayerproperties(self):
@@ -94,7 +96,7 @@ class LayerPropertyTests(TestCase):
         vl = TestObjects.createVectorLayer()
         showLayerPropertiesDialog(vl)
 
-    @unittest.skip('Crashes CI, unknown reason')
+    # @unittest.skip('Crashes CI, unknown reason')
     def test_layerPropertiesDialog_RasterBandWidget(self):
 
         lyr = TestObjects.createRasterLayer(nb=255, eType=gdal.GDT_UInt16)

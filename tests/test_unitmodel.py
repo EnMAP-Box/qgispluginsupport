@@ -2,9 +2,9 @@ import calendar
 import datetime
 
 import numpy as np
-
 from qgis.PyQt.QtCore import QDate, QDateTime, Qt
 from qgis.PyQt.QtWidgets import QComboBox
+
 from qps.testing import TestCase, start_app
 from qps.unitmodel import UnitConverterFunctionModel, UnitLookup, UnitModel, UnitWrapper, XUnitModel, datetime64, \
     days_per_year
@@ -180,6 +180,10 @@ class UnitModelTests(TestCase):
 
         r = m.convertFunction('nm', 'nm')(v, 'X')
         self.assertListEqual(list(r), [100, 200, 300])
+
+        f = m.convertFunction('micrometers', 'nm')
+        wl = [0.3, 0.4]
+        self.assertListEqual([300, 400], f(wl))
 
     def test_convertMetricUnits(self):
 

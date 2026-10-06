@@ -79,7 +79,7 @@
        <addaction name="separator"/>
        <addaction name="actionGrpLayerProperties"/>
        <addaction name="actionShowAttributeTable"/>
-       <addaction name="actionShowSpectralProcessingDialog"/>
+       <addaction name="actionShowSpectralProcessingWidget"/>
       </widget>
      </item>
      <item>
@@ -178,7 +178,7 @@
     <string>Show and activate fields to store spectral profiles</string>
    </property>
   </action>
-  <action name="actionShowSpectralProcessingDialog">
+  <action name="actionShowSpectralProcessingWidget">
    <property name="icon">
     <iconset resource="../../qpsresources.qrc">
      <normaloff>:/qps/ui/icons/profile_processing.svg</normaloff>:/qps/ui/icons/profile_processing.svg</iconset>

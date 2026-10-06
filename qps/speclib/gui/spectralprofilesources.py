@@ -2,15 +2,14 @@ import copy
 import difflib
 import logging
 import math
-from pathlib import Path
 import re
 import sys
 import warnings
+from pathlib import Path
 from typing import Any, Dict, Iterable, Iterator, List, Set, Tuple, Union, Optional
 
 import numpy as np
 from numpy import nan
-
 from qgis.PyQt.QtCore import (
     NULL, QAbstractListModel, QItemSelection, QModelIndex, QObject, QRect, QRectF, QSize,
     QSortFilterProxyModel, Qt, pyqtSignal, QMetaType)
@@ -30,6 +29,7 @@ from qgis.core import QgsProject, QgsMapLayerModel
 from qgis.gui import (
     QgsColorButton, QgsDockWidget, QgsDoubleSpinBox, QgsFieldExpressionWidget, QgsFilterLineEdit,
     QgsMapCanvas)
+
 from .spectrallibrarylistmodel import SpectralLibraryListModel
 from .spectrallibrarywidget import SpectralLibraryWidget
 from .spectralprofilecandidates import SpectralProfileCandidates
@@ -38,10 +38,10 @@ from .. import speclibUiPath
 from ..core import profile_field_names
 from ..core.spectralprofile import encodeProfileValueDict, \
     prepareProfileValueDict
+from ...expressionfunctions import RasterProfile
 from ...externals.htmlwidgets import HTMLComboBox
 from ...models import Option, OptionListModel, OptionTreeNode, TreeModel, TreeNode, TreeView, setCurrentComboBoxValue
 from ...plotstyling.plotstyling import PlotStyle, PlotStyleButton
-from ...qgsfunctions import RasterProfile
 from ...utils import HashableRect, SpatialPoint, aggregateArray, iconForFieldType, loadUi, rasterLayerMapToPixel
 
 logger = logging.getLogger(__name__)
@@ -385,7 +385,7 @@ class StandardLayerProfileSource(SpectralProfileSource):
 
         f = RasterProfile()
         all_touched = False
-        values = [self.mLayer, point, 'none', all_touched, 'dict']
+        values = [self.mLayer, g, 'none', all_touched, 'dict']
         exp = QgsExpression()
         fcontext = QgsExpressionContext(context)
         fcontext.setGeometry(g)
@@ -1560,11 +1560,14 @@ class SpectralProfileBridge(TreeModel):
     A TreeModel to be used in a view, and to be used in a view,
     """
 
-    def __init__(self, *args, **kwds):
+    def __init__(self, *args, project: QgsProject | None = None, **kwds):
+
+        if project is None:
+            project = QgsProject.instance()
 
         super().__init__(*args, **kwds)
         self.mSrcModel = SpectralProfileSourceModel()
-        self.mDstModel = SpectralLibraryListModel()
+        self.mDstModel = SpectralLibraryListModel(project)
         self.mDefaultSource: SpectralProfileSource = None
 
         self.mSLWs: List[SpectralLibraryWidget] = []
@@ -2537,7 +2540,11 @@ class SpectralProfileBridgeTreeView(TreeView):
 
 class SpectralProfileSourcePanel(QgsDockWidget):
 
-    def __init__(self, *args, **kwds):
+    def __init__(
+        self, *args,
+        project: QgsProject | None = None,
+        **kwds
+    ):
         super(SpectralProfileSourcePanel, self).__init__(*args, **kwds)
 
         loadUi(speclibUiPath('spectralprofilesourcepanel.ui'), self)
@@ -2546,7 +2553,7 @@ class SpectralProfileSourcePanel(QgsDockWidget):
         self.mFilterLineEdit: QgsFilterLineEdit
         self.mFilterLineEdit.textChanged.connect(self.setFilter)
 
-        self.mBridge = SpectralProfileBridge()
+        self.mBridge = SpectralProfileBridge(project=project)
         self.mBridge.addSources(MapCanvasLayerProfileSource(mode=MapCanvasLayerProfileSource.MODE_FIRST_LAYER))
 
         self.mProxyModel = SpectralProfileSourceProxyModel()

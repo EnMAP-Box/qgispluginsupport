@@ -14,6 +14,7 @@ from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import (
     QCheckBox, QComboBox, QDialog, QGridLayout, QLabel, QLineEdit, QPushButton, QSizePolicy,
     QVBoxLayout, QWidget)
+from qgis.PyQt.QtWidgets import QMainWindow
 from qgis.core import (
     Qgis, QgsApplication, QgsCoordinateTransformContext, QgsEditorWidgetSetup, QgsFeature, QgsField,
     QgsFields, QgsMapLayer, QgsMapLayerModel, QgsPalettedRasterRenderer, QgsProcessing, QgsProcessingAlgorithm,
@@ -227,7 +228,8 @@ class SpectralProcessingRasterLayerWidgetWrapper(QgsAbstractProcessingParameterW
 
     def createWidget(self):
 
-        model = QgsMapLayerModel(project=self.widgetContext().project(), parent=self)
+        model = QgsMapLayerModel(self.widgetContext().project())
+        model.setProject(self.widgetContext().project())
         self.mMapLayerModel = model
 
         param = self.parameterDefinition()
@@ -238,6 +240,7 @@ class SpectralProcessingRasterLayerWidgetWrapper(QgsAbstractProcessingParameterW
         mapLayerWidget = None
         if isinstance(param, QgsProcessingParameterRasterLayer):
             cb = QComboBox()
+            model.setParent(cb)
             cb.setModel(model)
             cb.currentIndexChanged.connect(lambda idx, m=model: self.onIndexChanged(idx, m))
             mapLayerWidget = cb
@@ -563,7 +566,7 @@ class SpectralProcessingModelCreatorAlgorithmWrapper(QgsProcessingParametersWidg
                     parameters[param.name()] = value
 
                 if not param.checkValueIsAcceptable(value):
-                    raise InvalidParameterValue(param, widget)
+                    raise InvalidParameterValue(param, value)
             else:
                 # if self.in_place and param.name() == 'OUTPUT':
                 #    parameters[param.name()] = 'memory:'
@@ -610,7 +613,7 @@ class SpectralProcessingModelCreatorAlgorithmWrapper(QgsProcessingParametersWidg
         return hash((self.algorithm().name(), id(self)))
 
 
-class SpectralProcessingDialog(QgsProcessingAlgorithmWidgetBase):
+class SpectralProcessingWidget(QgsProcessingAlgorithmWidgetBase):
     sigSpectralProcessingModelChanged = pyqtSignal()
     sigAboutToBeClosed = pyqtSignal()
 
@@ -622,11 +625,14 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmWidgetBase):
                  parameters: Optional[dict] = None,
                  parent: Optional[QWidget] = None,
                  **kwds):
+        if parent is None:
+            parent = QMainWindow()
         super().__init__(parentWindow=parent)
+        self._parent = parent
         self.setWindowFlag(Qt.WindowType.WindowContextHelpButtonHint, False)
         # QgsProcessingContextGenerator.__init__(self)
-        self.mDialogName = 'Spectral Processing Dialog'
-        self.setWindowTitle(self.mDialogName)
+        self.mWidgetName = 'Spectral Processing Widget'
+        self.setWindowTitle(self.mWidgetName)
         self.setWindowIcon(QIcon(r':/qps/ui/icons/profile_processing.svg'))
         self.btnAlgorithm: QPushButton = QPushButton('Algorithm')
         self.btnAlgorithm.setIcon(QIcon(':/images/themes/default/processingAlgorithm.svg'))
@@ -703,7 +709,7 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmWidgetBase):
         Resets all settings which may have been derived from QSettings
         """
         settings = speclibSettings()
-        K = SpectralProcessingDialog.__name__
+        K = SpectralProcessingWidget.__name__
         settings.setValue(f'{K}/algorithmId', None)
         settings.value(f'{K}/algorithmParameters', None)
 
@@ -1237,7 +1243,7 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmWidgetBase):
         self.mSpeclib = speclib
         self.mSpeclib.willBeDeleted.connect(self.close)
 
-        self.setWindowTitle(f'{self.mDialogName} - {speclib.name()}')
+        self.setWindowTitle(f'{self.mWidgetName} - {speclib.name()}')
 
     def updateGui(self):
 
@@ -1263,7 +1269,7 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmWidgetBase):
         self.tbAlgorithmName.setStyleSheet(css)
         self.tbAlgorithmName.setText(info)
         self.tbAlgorithmName.setToolTip(tooltip)
-        self.setWindowTitle(self.mDialogName)
+        self.setWindowTitle(self.mWidgetName)
 
     def speclib(self) -> QgsVectorLayer:
         return self.mSpeclib
