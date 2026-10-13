@@ -23,12 +23,10 @@ from typing import Optional, Tuple, Callable, Union
 import qgis.utils
 from processing.core.ProcessingConfig import ProcessingConfig
 from processing.core.ProcessingResults import resultsList
-from processing.core.exceptions import InvalidParameterValue, InvalidOutputExtension
 from processing.gui.AlgorithmExecutor import execute, execute_in_place, executeIterating
 from processing.gui.BatchOutputSelectionPanel import BatchOutputSelectionPanel
 from processing.gui.BatchPanel import BatchPanelFillWidget, WIDGET
 from processing.gui.MessageBarProgress import MessageBarProgress
-from processing.gui.MessageDialog import MessageDialog
 from processing.gui.Postprocessing import determine_output_name, post_process_layer
 from processing.tools import dataobjects
 from processing.tools.system import getTempFilename
@@ -45,6 +43,7 @@ from qgis.core import (
     QgsProcessingOutputString, QgsProcessingParameterDefinition, QgsProcessingParameterFeatureSink,
     QgsProcessingParameterRasterDestination, QgsProcessingParameterVectorDestination,
     QgsProcessingUtils, QgsProject, QgsProxyProgressTask, QgsSettings)
+from qgis.core import QgsProcessingException
 from qgis.gui import (
     QgisInterface, QgsGui, QgsPanelWidget, QgsProcessingAlgorithmWidgetBase,
     QgsAbstractProcessingParameterWidgetWrapper,
@@ -718,11 +717,12 @@ class AlgorithmWidget(QgsProcessingAlgorithmWidgetBase):
                     self.feedback.progressChanged.disconnect()
                     self.proxy_progress.finalize(ok)
                     on_complete(ok, results)
-
-        except InvalidParameterValue as e:
-            self.flag_invalid_parameter_value(e.parameter.description(), e.widget)
-        except InvalidOutputExtension as e:
-            self.flag_invalid_output_extension(e.message, e.widget)
+        except QgsProcessingException as ex:
+            print(ex, sys.stderr)
+        # except InvalidParameterValue as e:
+        #    self.flag_invalid_parameter_value(e.parameter.description(), e.widget)
+        # except InvalidOutputExtension as e:
+        #    self.flag_invalid_output_extension(e.message, e.widget)
 
     def closeEvent(self, e):
         p1 = QgsProject.instance()
