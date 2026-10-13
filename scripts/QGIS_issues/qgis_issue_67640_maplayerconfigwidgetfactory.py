@@ -24,7 +24,7 @@ class MyConfigWidgetFactory(QgsMapLayerConfigWidgetFactory):
         super().__init__('My Factory', QIcon(':/images/themes/default/processingAlgorithm.svg'))
 
     def supportsLayer(self, layer):
-        return
+        return isinstance(layer, QgsMapLayer)
 
     def supportLayerPropertiesDialog(self):
         return True

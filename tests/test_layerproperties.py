@@ -22,7 +22,7 @@ from qgis.gui import QgsMapCanvas, QgsMapLayerConfigWidgetFactory, QgsOptionsDia
 
 from qps import MAPLAYER_CONFIGWIDGET_FACTORIES, registerMapLayerConfigWidgetFactory
 from qps.layerconfigwidgets.gdalmetadata import GDALMetadataConfigWidgetFactory
-from qps.layerconfigwidgets.rasterbands import RasterBandConfigWidget, RasterBandConfigWidgetFactory
+from qps.layerconfigwidgets.rasterbands import RasterBandConfigWidget
 from qps.layerproperties import AddAttributeDialog, AttributeTableWidget, CopyAttributesDialog, defaultRasterRenderer, \
     equal_styles, RemoveAttributeDialog, showLayerPropertiesDialog, pasteStyleToClipboard, pasteStyleFromClipboard
 from qps.testing import start_app, TestCase, TestObjects
@@ -84,9 +84,15 @@ class LayerPropertyTests(TestCase):
     def test_rasterlayerproperties(self):
         from qpstestdata import enmap
 
-        registerMapLayerConfigWidgetFactory(GDALMetadataConfigWidgetFactory())
-        registerMapLayerConfigWidgetFactory(GDALMetadataConfigWidgetFactory())
-        registerMapLayerConfigWidgetFactory(RasterBandConfigWidgetFactory())
+        f1 = registerMapLayerConfigWidgetFactory(GDALMetadataConfigWidgetFactory())
+        f2 = registerMapLayerConfigWidgetFactory(GDALMetadataConfigWidgetFactory())
+        if f1:
+            self.assertIsInstance(f1, GDALMetadataConfigWidgetFactory)
+            self.assertTrue(f2 is None)
+
+        f3 = registerMapLayerConfigWidgetFactory(GDALMetadataConfigWidgetFactory())
+        self.assertIsInstance(f3, GDALMetadataConfigWidgetFactory)
+
         lyr = QgsRasterLayer(str(enmap))
         showLayerPropertiesDialog(lyr)
 
