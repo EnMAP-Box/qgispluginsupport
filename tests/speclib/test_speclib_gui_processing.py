@@ -2,8 +2,10 @@ import copy
 import unittest
 
 import numpy as np
+from PyQt6.QtWidgets import QHBoxLayout
 from osgeo import gdal
 from qgis.PyQt.QtWidgets import QGridLayout, QWidget
+from qgis._gui import QgsMessageBar, QgsProcessingParametersWidget
 from qgis.core import (
     QgsApplication, QgsProcessingAlgorithm, QgsProcessingContext,
     QgsProcessingFeedback,
@@ -20,7 +22,7 @@ from qps import initAll
 from qps.qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
 from qps.speclib.gui.spectralprocessingwidget import (
-    SpectralProcessingWidget, SpectralProcessingRasterLayerWidgetWrapper
+    SpectralProcessingWidget, SpectralProcessingRasterLayerWidgetWrapper, SpectralProcessingParametersWidget
 )
 from qps.testing import ExampleAlgorithmProvider, TestCase, TestObjects, start_app
 
@@ -389,6 +391,34 @@ class SpectralProcessingTests(TestCase):
 
         # preg.removeProvider(provider)
         QgsProject.instance().removeAllMapLayers()
+
+    def test_processing_parameters_widget(self):
+
+        reg: QgsProcessingRegistry = QgsApplication.instance().processingRegistry()
+        alg1 = reg.algorithmById('gdal:translate')
+        alg1.initAlgorithm({})
+        sl = TestObjects.createSpectralLibrary()
+        w = QWidget()
+        w.setWindowTitle('EXAMPLE WIDGET')
+        context = QgsProcessingContext()
+        #     def __init__(self,
+        #     algorithm: _core.QgsProcessingAlgorithm|None,
+        #     inPlace: bool,
+        #     activeLayer: _core.QgsMapLayer|None,
+        #     messageBar: QgsMessageBar|None,
+        #     parent: QtWidgets.QWidget|None = ...) -> None: ...
+        msgBar = QgsMessageBar()
+        wrapper0 = QgsProcessingParametersWidget(alg1, False, sl, msgBar, parent=w)
+        wrapper0.initWidgets()
+        wrapper1 = SpectralProcessingParametersWidget(alg1, sl, context)
+        wrapper1.initWidgets()
+        # wrapper.initWidgets()
+        w.setLayout(QHBoxLayout())
+        w.layout().addWidget(wrapper0)
+        w.layout().addWidget(wrapper1)
+
+        # wrapper = SpectralProcessingModelCreatorAlgorithmWrapper(alg1, sl, context)
+        self.showGui(w)
 
     def test_algwidget(self):
 
