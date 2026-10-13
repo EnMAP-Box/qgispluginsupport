@@ -1,4 +1,5 @@
 import datetime
+import importlib
 import random
 import unittest
 
@@ -13,9 +14,11 @@ from qps.qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
 from qps.speclib.core.spectralprofile import ProfileEncoding
 from qps.testing import start_app, TestCase, TestObjects
-from qps.utils import BAND_INDEX_CACHE, band_index, band_shortcut_descriptions
+from qps.utils import BAND_INDEX_CACHE, band_index, band_shortcut_descriptions, band_values
 
 start_app()
+
+has_spyndex = importlib.util.find_spec('spyndex')
 
 
 class SpectralDataTests(TestCase):
@@ -42,7 +45,7 @@ class SpectralDataTests(TestCase):
 
         QgsProject.instance().removeAllMapLayers()
 
-    def test_band_values(self):
+    def test_spectral_data2(self):
 
         self.registerFunction(SpectralData())
 
@@ -71,6 +74,12 @@ class SpectralDataTests(TestCase):
         context = QgsExpressionContext()
         context.setFeature(f)
         context.setFields(f.fields())
+
+        # return the band-index if band name has a `_` prefix
+        exp = QgsExpression("spectral_data(\"p1\", band:='NDVI', indices:=True)")
+        self.assertTrue(exp.prepare(context), msg=f"Failed to prepare expression: {exp.parserErrorString()}")
+        result = exp.evaluate(context)
+        self.assertEqual(result, {'R620', 2}, )
 
         exp = QgsExpression("spectral_data()")
         self.assertTrue(exp.prepare(context), msg=f"Failed to prepare expression: {exp.parserErrorString()}")
@@ -130,6 +139,98 @@ class SpectralDataTests(TestCase):
             )
 
             self.assertEqual(i0, i1)
+
+    @unittest.skipIf(not has_spyndex, 'spyndex package is not installed')
+    def test_required_band_values(self):
+
+        d = list(TestObjects.spectralProfileData(1))[0]
+        x = d['x']
+        y = d['y']
+        wlu = d['xUnit']
+        # test band identifiers
+        bands = ['R450', 'R650_800', 'R', 'G', 'N']
+        b_values = band_values(bands, x, y, wavelength_unit=wlu)
+        b_indices = band_values(bands, x, y, wavelength_unit=wlu, return_band_indices=True)
+        self.assertIsInstance(b_values, dict)
+        self.assertIsInstance(b_indices, dict)
+        for i, b in enumerate(bands):
+            self.assertTrue(b in b_values)
+            b_value = b_values[b]
+            b_index = b_indices[b]
+            self.assertEqual(b_value, y[b_index])
+
+    @unittest.skipIf(not has_spyndex, 'spyndex package is not installed')
+    def test_spectral_index(self):
+
+        d = list(TestObjects.spectralProfileData(1))[0]
+        x = d['x']
+        y = d['y']
+        wlu = d['xUnit']
+
+        values = band_values('NDVI', x, y, wavelength_unit=wlu)
+        self.assertIsInstance(values, dict)
+        self.assertTrue('NDVI' in values)
+        self.assertIsInstance(values['NDVI'], float)
+
+        b_indices = band_values('EVI', x, y, wavelength_unit=wlu, return_band_indices=True)
+        b_values = band_values('EVI', x, y, wavelength_unit=wlu, return_band_indices=False, compute=False)
+
+        for b in ['B', 'N', 'R']:
+            self.assertTrue(b in b_indices)
+            self.assertTrue(b in b_values)
+            b_idx = b_indices[b]
+            b_val = b_values[b]
+
+            self.assertIsInstance(b_idx, int)
+            self.assertEqual(y[b_idx], b_val)
+
+        s = ""
+        index_names = ['EVI', 'NDVI']
+        from spyndex.axioms import indices, SpectralIndex
+
+        for n in index_names:
+            sidx: SpectralIndex = indices[n]
+            b_values = band_values(sidx.bands, x, y, wavelength_unit=wlu)
+            b_indices = band_values(sidx.bands, x, y, wavelength_unit=wlu, return_band_indices=True)
+            self.assertIsInstance(b_indices, dict)
+            self.assertIsInstance(b_values, dict)
+            self.assertListEqual(list(b_values.keys()), list(b_indices.keys()))
+
+            for b_name, b_idx in b_indices.items():
+                if b_idx is not None:
+                    b_value = b_values[b_name]
+                    self.assertEqual(y[b_idx], b_value)
+
+            value = sidx.compute(b_values)
+
+            self.assertTrue(isinstance(value, (int, float)))
+
+    @unittest.skipIf(not has_spyndex, 'spyndex package is missing')
+    def test_spectral_index_function(self):
+
+        self.registerFunction(SpectralData())
+
+        fields = QgsFields()
+        fields.append(QgsField("name", QMetaType.Type.QString))
+        fields.append(SpectralLibraryUtils.createProfileField('p1', encoding=ProfileEncoding.Json))
+        fields.append(SpectralLibraryUtils.createProfileField('p2', encoding=ProfileEncoding.Json))
+
+        f = QgsFeature(fields)
+
+        d1 = {
+            'x': [400, 500, 600, 700, 800, 900, 1000],
+            'y': [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7],
+            'xUnit': 'nm'
+        }
+        f.setAttribute('p1', d1)
+        context = QgsExpressionContext()
+        context.setFeature(f)
+        context.setFields(f.fields())
+
+        exp = QgsExpression("spectral_data(\"p1\", band:='NDVI')")
+        self.assertTrue(exp.prepare(context), msg=f"Failed to prepare expression: {exp.parserErrorString()}")
+        result = exp.evaluate(context)
+        self.assertEqual(result, 10)
 
     def test_required_bands_benchmark(self):
         n = 1000

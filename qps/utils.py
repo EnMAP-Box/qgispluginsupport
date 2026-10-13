@@ -77,9 +77,22 @@ from qgis.core import (QgsExpressionContextScope, QgsExpressionContext,
                        QgsMarkerSymbol, QgsExpressionContextUtils, QgsRenderContext, QgsSymbol, QgsProcessing)
 from qgis.gui import QgisInterface, QgsDialog, QgsGui, QgsMapCanvas, QgsMapLayerComboBox, QgsMessageViewer
 
-from .externals.spyindex.definitions import BANDS
 from .qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from .unitmodel import UnitLookup, UnitConverterFunctionModel
+
+has_spyndex = importlib.util.find_spec('spyndex') is not None
+if has_spyndex:
+    from spyndex.axioms import constants as SPYNDEX_CONSTANTS
+    from spyndex.axioms import indices as SPYNDEX_INDICES
+    from spyndex.axioms import bands as SPYINDEX_BANDS
+
+    SPYNDEX_INDICES = SPYNDEX_INDICES
+    SPYNDEX_CONSTANTS = SPYNDEX_CONSTANTS
+    SPYNDEX_BANDS = SPYINDEX_BANDS
+else:
+    SPYNDEX_INDICES = {}
+    SPYNDEX_CONSTANTS = {}
+    SPYNDEX_BANDS = {}
 
 QGIS_RESOURCE_WARNINGS = set()
 
@@ -4027,6 +4040,71 @@ BAND_INDEX_CACHE = {}
 rx_band = re.compile(r'R(?P<wl_min>\d+)(_(?P<wl_max>\d+))?')
 
 
+def band_values(
+    requested_bands: Union[str, List[str]],
+    wavelengths: List,
+    values: List,
+    wavelength_unit: str = 'nm',
+    return_band_indices: bool = False,
+    compute: bool = True,
+) -> dict[str, Any]:
+    """
+    Returns the values for requested bands or spectral indices.
+    
+    :param requested_bands: List of band identifiers or spectral indices to retrieve (e.g., 'R', 'SWIR', 'NDVI')
+    :param wavelengths: List of wavelength values corresponding to each band
+    :param values: List of band values to extract from
+    :param wavelength_unit: Unit of the wavelength values, defaults to 'nm'
+    :param return_band_indices: If True, returns band indices instead of values.
+    :param compute: If True (default), computes the values for a spectral index. If False, returns the values for the
+       bands (and constants) used in the spectral index.
+    :return: Dictionary mapping band identifiers to their values.
+    """
+
+    if isinstance(requested_bands, str):
+        requested_bands = [requested_bands]
+
+    results = dict()
+
+    for band in requested_bands:
+        if band in SPYNDEX_CONSTANTS:
+            # return the values for a constant
+            if return_band_indices:
+                results[band] = None
+            else:
+                results[band] = SPYNDEX_CONSTANTS[band].value
+        elif band in SPYNDEX_INDICES:
+            # return the band values for bands needed to calculate a spectral index
+            from spyndex.axioms import SpectralIndex
+            spectral_index: SpectralIndex = SPYNDEX_INDICES[band]
+            required_bands = spectral_index.bands
+
+            index_bands = band_values(
+                required_bands,
+                wavelengths,
+                values,
+                wavelength_unit=wavelength_unit,
+                return_band_indices=return_band_indices
+            )
+
+            if return_band_indices or not compute:
+                results.update(index_bands)
+            else:
+                results[band] = spectral_index.compute(index_bands)
+
+
+        else:
+            bidx = band_index(band, wavelengths, wavelength_unit)
+            if bidx is None:
+                raise Exception(f'band {band} not found')
+            if return_band_indices:
+                results[band] = bidx
+            else:
+                results[band] = values[bidx]
+
+    return results
+
+
 def band_index(band: str, wl: List, wlu: str = 'nm', use_cache: bool = True) -> int | None:
     """
     Returns the band index related to the given band name `band` and the wavelength list `wl`.
@@ -4037,6 +4115,7 @@ def band_index(band: str, wl: List, wlu: str = 'nm', use_cache: bool = True) -> 
     :param use_cache: whether to use a cache.
     :return: band index or None if not found.
     """
+
     wl = tuple(wl)
     key = (band, wl, wlu)
     if use_cache and key in BAND_INDEX_CACHE:
@@ -4057,15 +4136,17 @@ def band_index(band: str, wl: List, wlu: str = 'nm', use_cache: bool = True) -> 
             wl_min = float(wl_min)
             wl_center = (wl_min + wl_max) / 2
 
-    else:
-        if band not in BANDS:
+    elif has_spyndex:
+        if band not in SPYNDEX_BANDS:
             raise Exception(f'Unknown band description: {band}')
 
-        band_definition = BANDS[band]
-        wl_min = band_definition['min_wavelength']
-        wl_max = band_definition['max_wavelength']
+        band_definition = SPYNDEX_BANDS[band]
+        wl_min = band_definition.min_wavelength
+        wl_max = band_definition.max_wavelength
 
         wl_center = (wl_min + wl_max) / 2
+    else:
+        raise Exception(f'Unknown band description: {band}. Install spyndex package')
 
     # convert wavelength vector to nanometers
     CM = UnitConverterFunctionModel.instance()
@@ -4106,9 +4187,10 @@ def band_shortcut_descriptions(wl: List, wlu: str = 'nm') -> List[Dict[str, dict
 
     results = []
     wl_min, wl_max = min(wl2), max(wl2)
-    for b in BANDS.values():
+    from spyndex.axioms import bands
+    for b in bands:
 
-        b_min, b_max = b['min_wavelength'], b['max_wavelength']
+        b_min, b_max = b.min_wavelength, b.max_wavelength
 
         if (
             wl_min <= b_min <= wl_max  # noqa W503

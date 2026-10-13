@@ -1,10 +1,25 @@
+import importlib
+
 from qgis.core import QgsExpressionContext, QgsExpressionFunction, QgsExpressionNodeFunction, QgsFeatureRequest
 
 from .helpers import ExpressionFunctionUtils, HelpStringMaker, SPECLIB_FUNCTION_GROUP
 from ..speclib.core import is_profile_field
-from ..utils import band_index
+from ..utils import band_index, band_values
 
 HM = HelpStringMaker()
+
+has_spyndex = importlib.util.find_spec('spyndex') is not None
+
+if has_spyndex:
+    import spyndex.axioms
+
+    SPYNDEX_BANDS = spyndex.axioms.bands
+    SPYNDEX_CONSTANTS = spyndex.axioms.constants
+    SPYNDEX_INDICES = spyndex.axioms.indices
+else:
+    SPYNDEX_INDICES = None
+    SPYNDEX_BANDS = None
+    SPYNDEX_CONSTANTS = None
 
 
 class SpectralData(QgsExpressionFunction):
@@ -17,7 +32,8 @@ class SpectralData(QgsExpressionFunction):
     def __init__(self):
         args = [
             QgsExpressionFunction.Parameter('profile_field', optional=True),
-            QgsExpressionFunction.Parameter('band', optional=True, defaultValue=None)
+            QgsExpressionFunction.Parameter('band', optional=True, defaultValue=None),
+            QgsExpressionFunction.Parameter('indices', optional=True, defaultValue=False)
         ]
 
         helptext = HM.helpText(self.NAME, args)
@@ -44,18 +60,43 @@ class SpectralData(QgsExpressionFunction):
                     return None
 
                 band_name = values[1]
+                return_band_indices = values[2] is True
 
                 if band_name is None:
                     return profile_data
 
                 # return a single value from the profiles y data vector
-                if isinstance(band_name, str):
-                    band_idx = band_index(band_name, profile_data.get('x'), wlu=profile_data.get('xUnit', 'nm'))
-                else:
+
+                if isinstance(band_name, str) and has_spyndex:
+                    b_values = band_values()
+                    from spyndex.axioms import SpectralIndex, Constant, Band
+
+                    if band_name in SPYNDEX_INDICES:
+                        spidx: SpectralIndex = SPYNDEX_INDICES[band_name]
+                        spidx.bands
+                    elif band_name in SPYNDEX_CONSTANTS:
+                        spidc: Constant = SPYNDEX_CONSTANTS[band_name]
+                        if return_band_indices:
+                            return {band_name: None}
+                        else:
+                            return {band_name: spidc}
+
+                    band_idx = band_index(
+                        band_name,
+                        profile_data.get('x'),
+                        wlu=profile_data.get('xUnit', 'nm')
+                    )
+
+                elif isinstance(band_name, (int, float)):
                     band_idx = int(band_name)
+                else:
+                    raise NotImplementedError('band_name must be a string or int')
 
                 if 0 <= band_idx < len(profile_data['y']):
-                    return profile_data['y'][band_idx]
+                    if return_band_indices:
+                        return {band_name: band_idx}
+                    else:
+                        return profile_data['y'][band_idx]
                 else:
                     return None
 
