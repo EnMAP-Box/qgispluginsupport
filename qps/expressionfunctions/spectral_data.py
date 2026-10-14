@@ -4,7 +4,7 @@ from qgis.core import QgsExpressionContext, QgsExpressionFunction, QgsExpression
 
 from .helpers import ExpressionFunctionUtils, HelpStringMaker, SPECLIB_FUNCTION_GROUP
 from ..speclib.core import is_profile_field
-from ..utils import band_index, band_values
+from ..utils import band_index
 
 HM = HelpStringMaker()
 
@@ -68,8 +68,8 @@ class SpectralData(QgsExpressionFunction):
                 # return a single value from the profiles y data vector
 
                 if isinstance(band_name, str) and has_spyndex:
-                    b_values = band_values()
-                    from spyndex.axioms import SpectralIndex, Constant, Band
+                    #  b_values = band_values()
+                    from spyndex.axioms import SpectralIndex, Constant
 
                     if band_name in SPYNDEX_INDICES:
                         spidx: SpectralIndex = SPYNDEX_INDICES[band_name]

@@ -4050,7 +4050,6 @@ def band_values(
 ) -> dict[str, Any]:
     """
     Returns the values for requested bands or spectral indices.
-    
     :param requested_bands: List of band identifiers or spectral indices to retrieve (e.g., 'R', 'SWIR', 'NDVI')
     :param wavelengths: List of wavelength values corresponding to each band
     :param values: List of band values to extract from
@@ -4091,7 +4090,6 @@ def band_values(
                 results.update(index_bands)
             else:
                 results[band] = spectral_index.compute(index_bands)
-
 
         else:
             bidx = band_index(band, wavelengths, wavelength_unit)

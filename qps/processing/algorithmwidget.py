@@ -1771,9 +1771,9 @@ def executeAlgorithm(  # noqa: QGS105
 
         ok, message = alg.canExecute()
         if not ok:
-            dlg = MessageDialog()
-            dlg.setTitle("Error executing algorithm")
-            dlg.setMessage("<h3>This algorithm cannot " "be run :-( </h3>\n{0}".format(message))
+            dlg = QMessageBox()
+            dlg.setWindowTitle("Error executing algorithm")
+            dlg.setText("<h3>This algorithm cannot " "be run :-( </h3>\n{0}".format(message))
             dlg.exec()
             return False, {}
 

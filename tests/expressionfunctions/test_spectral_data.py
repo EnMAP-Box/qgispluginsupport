@@ -184,7 +184,6 @@ class SpectralDataTests(TestCase):
             self.assertIsInstance(b_idx, int)
             self.assertEqual(y[b_idx], b_val)
 
-        s = ""
         index_names = ['EVI', 'NDVI']
         from spyndex.axioms import indices, SpectralIndex
 
