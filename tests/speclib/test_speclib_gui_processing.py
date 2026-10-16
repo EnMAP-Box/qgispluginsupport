@@ -2,10 +2,9 @@ import copy
 import unittest
 
 import numpy as np
-from PyQt6.QtWidgets import QHBoxLayout
 from osgeo import gdal
 from qgis.PyQt.QtWidgets import QGridLayout, QWidget
-from qgis._gui import QgsMessageBar, QgsProcessingParametersWidget
+from qgis.PyQt.QtWidgets import QHBoxLayout
 from qgis.core import (
     QgsApplication, QgsProcessingAlgorithm, QgsProcessingContext,
     QgsProcessingFeedback,
@@ -15,6 +14,7 @@ from qgis.core import (
     QgsProcessingParameterNumber, QgsProcessingParameterRasterDestination,
 )
 from qgis.core import QgsRasterLayer
+from qgis.gui import QgsMessageBar, QgsProcessingParametersWidget
 from qgis.gui import QgsProcessingAlgorithmWidgetBase, QgsProcessingContextGenerator, \
     QgsProcessingGui, QgsProcessingParameterWidgetContext
 

@@ -14,7 +14,6 @@ from qgis.PyQt.QtWidgets import (
     QCheckBox, QComboBox, QDialog, QGridLayout, QLabel, QLineEdit, QPushButton, QSizePolicy,
     QVBoxLayout, QWidget)
 from qgis.PyQt.QtWidgets import QMainWindow
-from qgis._core import QgsProcessingException
 from qgis.core import (
     Qgis, QgsApplication, QgsCoordinateTransformContext, QgsEditorWidgetSetup, QgsFeature, QgsField,
     QgsFields, QgsMapLayer, QgsMapLayerModel, QgsPalettedRasterRenderer, QgsProcessing, QgsProcessingAlgorithm,
@@ -24,6 +23,7 @@ from qgis.core import (
     QgsProcessingParameterRasterLayer, QgsProcessingRegistry, QgsProcessingUtils, QgsProject, QgsRasterBlockFeedback,
     QgsRasterDataProvider, QgsRasterFileWriter, QgsRasterLayer, QgsRasterPipe, QgsVectorLayer)
 from qgis.core import QgsProcessingDestinationParameter
+from qgis.core import QgsProcessingException
 from qgis.gui import (
     QgsAbstractProcessingParameterWidgetWrapper, QgsGui, QgsMessageBar, QgsPanelWidget,
     QgsProcessingAlgorithmWidgetBase, QgsProcessingContextGenerator, QgsProcessingGui, QgsProcessingHiddenWidgetWrapper,
@@ -423,7 +423,7 @@ class SpectralProcessingParametersWidget(QgsProcessingParametersWidget):
 
         self.mContextGenerator = ContextGenerator(self.mProcessing_context)
 
-        ## self.initWidgets()
+        # # self.initWidgets()
         self.mTooltip: str = ''
 
         self.mIs_active: bool = True
