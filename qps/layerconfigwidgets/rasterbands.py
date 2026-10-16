@@ -88,9 +88,9 @@ class BandCombination(object):
 
     def __init__(self,
                  band_keys: Union[str, tuple],
-                 name: str = None,
-                 tooltip: str = None,
-                 icon: QIcon = None):
+                 name: Optional[str] = None,
+                 tooltip: Optional[str] = None,
+                 icon: Optional[QIcon] = None):
 
         if isinstance(band_keys, str):
             band_keys = (band_keys,)
@@ -157,7 +157,7 @@ class RasterBandConfigWidget(QpsMapLayerConfigWidget):
 
     def __init__(self, layer: QgsRasterLayer, canvas: QgsMapCanvas, parent: QWidget = None):
 
-        super(RasterBandConfigWidget, self).__init__(layer, canvas, parent=parent)
+        super().__init__(layer, canvas, parent=parent)
         pathUi = Path(__file__).parents[1] / 'ui' / 'rasterbandconfigwidget.ui'
         loadUi(pathUi, self)
 
@@ -417,21 +417,20 @@ class RasterBandConfigWidgetBlocker(object):
 class RasterBandConfigWidgetFactory(QgsMapLayerConfigWidgetFactory):
 
     def __init__(self):
-        super(RasterBandConfigWidgetFactory, self).__init__('Raster Band',
-                                                            QIcon(':/qps/ui/icons/rasterband_select.svg'))
+        super().__init__(
+            'Raster Band',
+            QIcon(':/qps/ui/icons/rasterband_select.svg')
+        )
 
     def supportsLayer(self, layer):
-        if isinstance(layer, QgsRasterLayer):
-            return True
-
-        return False
+        return isinstance(layer, QgsRasterLayer) and layer.isValid()
 
     def layerPropertiesPagePositionHint(self) -> str:
         return 'mOptsPage_Transparency'
 
     def supportLayerPropertiesDialog(self):
         # see https://bitbucket.org/hu-geomatics/enmap-box/issues/1392/singleband-pseudoclor-min-max-reset
-        return False
+        return True
         # requires QGIS 1e86672a
         return Qgis.versionInt() >= 32300
 

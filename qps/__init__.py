@@ -34,7 +34,6 @@ from typing import List, Optional
 from qgis.PyQt.QtCore import PYQT_VERSION_STR
 from qgis.core import Qgis, QgsApplication, QgsProviderRegistry, QgsSettings
 from qgis.gui import QgisInterface, QgsMapLayerConfigWidgetFactory
-from qgis.gui import QgsGui, QgsProviderGuiRegistry
 
 # Qt version used by PyQtGraph
 os.environ.setdefault('PYQTGRAPH_QT_LIB', f'PyQt{PYQT_VERSION_STR[0]}')
@@ -90,7 +89,7 @@ def registerMapLayerConfigWidgetFactory(
     registered = json.loads(registered)
     if not isinstance(registered, list):
         registered = []
-
+    from qgis.utils import iface
     if isinstance(iface, QgisInterface) and title not in registered:
         MAPLAYER_CONFIGWIDGET_FACTORIES.append(factory)
         iface.registerMapLayerConfigWidgetFactory(factory)

@@ -22,7 +22,7 @@ from qgis.gui import QgsMapCanvas, QgsMapLayerConfigWidgetFactory, QgsOptionsDia
 
 from qps import MAPLAYER_CONFIGWIDGET_FACTORIES, registerMapLayerConfigWidgetFactory
 from qps.layerconfigwidgets.gdalmetadata import GDALMetadataConfigWidgetFactory
-from qps.layerconfigwidgets.rasterbands import RasterBandConfigWidget
+from qps.layerconfigwidgets.rasterbands import RasterBandConfigWidget, RasterBandConfigWidgetFactory
 from qps.layerproperties import AddAttributeDialog, AttributeTableWidget, CopyAttributesDialog, defaultRasterRenderer, \
     equal_styles, RemoveAttributeDialog, showLayerPropertiesDialog, pasteStyleToClipboard, pasteStyleFromClipboard
 from qps.testing import start_app, TestCase, TestObjects
@@ -90,9 +90,6 @@ class LayerPropertyTests(TestCase):
             self.assertIsInstance(f1, GDALMetadataConfigWidgetFactory)
             self.assertTrue(f2 is None)
 
-        f3 = registerMapLayerConfigWidgetFactory(GDALMetadataConfigWidgetFactory())
-        self.assertIsInstance(f3, GDALMetadataConfigWidgetFactory)
-
         lyr = QgsRasterLayer(str(enmap))
         showLayerPropertiesDialog(lyr)
 
@@ -105,6 +102,9 @@ class LayerPropertyTests(TestCase):
     # @unittest.skip('Crashes CI, unknown reason')
     def test_layerPropertiesDialog_RasterBandWidget(self):
 
+        f = registerMapLayerConfigWidgetFactory(RasterBandConfigWidgetFactory())
+        self.assertIsInstance(f, RasterBandConfigWidgetFactory)
+
         lyr = TestObjects.createRasterLayer(nb=255, eType=gdal.GDT_UInt16)
         self.assertTrue(lyr.isValid())
         QgsProject.instance().addMapLayer(lyr)
@@ -114,9 +114,7 @@ class LayerPropertyTests(TestCase):
         canvas.setLayers([lyr])
         canvas.zoomToFullExtent()
 
-        dialog1 = QgsRasterLayerProperties(lyr, canvas, parent=w)
-
-        dialog2 = QgsRasterLayerProperties(lyr, canvas, parent=w)
+        d = showLayerPropertiesDialog(lyr, canvas, modal=False)
 
         panelWidget = RasterBandConfigWidget(lyr, canvas, parent=w)
         panelWidget.setDockMode(True)
@@ -133,8 +131,6 @@ class LayerPropertyTests(TestCase):
         grid = QGridLayout()
         grid.addWidget(canvas, 0, 0)
         grid.addWidget(panelWidget, 0, 1)
-        grid.addWidget(dialog1, 1, 0)
-        grid.addWidget(dialog2, 1, 1)
 
         w.setWindowTitle('Dialog Test')
         w.setLayout(grid)
