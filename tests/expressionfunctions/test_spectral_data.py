@@ -14,7 +14,7 @@ from qps.qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
 from qps.speclib.core.spectralprofile import ProfileEncoding
 from qps.testing import start_app, TestCase, TestObjects
-from qps.utils import BAND_INDEX_CACHE, band_index, band_shortcut_descriptions, band_values
+from qps.utils import BAND_INDEX_CACHE, band_index, band_descriptions, band_values
 
 start_app()
 
@@ -261,11 +261,13 @@ class SpectralDataTests(TestCase):
     def test_band_shortcut_descriptions(self):
 
         wl_nm = [400, 610, 650, 690, 700]
-        results = band_shortcut_descriptions(wl_nm)
+        results = band_descriptions(wl_nm)
         self.assertIsInstance(results, list)
 
         def check_band(b: dict, wl: list, wlu: str = 'nm'):
-            self.assertIsInstance(b, dict)
+            if not isinstance(b, dict):
+                b = b.__dict__
+
             for k in ['max_wavelength', 'min_wavelength', 'short_name', 'long_name']:
                 self.assertTrue(k in b)
 

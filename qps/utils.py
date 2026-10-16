@@ -29,7 +29,6 @@ import fnmatch
 import gc
 import importlib
 import inspect
-import io
 import itertools
 import json
 import math
@@ -77,6 +76,7 @@ from qgis.core import (QgsExpressionContextScope, QgsExpressionContext,
                        QgsMarkerSymbol, QgsExpressionContextUtils, QgsRenderContext, QgsSymbol, QgsProcessing)
 from qgis.gui import QgisInterface, QgsDialog, QgsGui, QgsMapCanvas, QgsMapLayerComboBox, QgsMessageViewer
 
+import io
 from .qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from .unitmodel import UnitLookup, UnitConverterFunctionModel
 
@@ -86,13 +86,13 @@ if has_spyndex:
     from spyndex.axioms import indices as SPYNDEX_INDICES
     from spyndex.axioms import bands as SPYINDEX_BANDS
 
-    SPYNDEX_INDICES = SPYNDEX_INDICES
-    SPYNDEX_CONSTANTS = SPYNDEX_CONSTANTS
-    SPYNDEX_BANDS = SPYINDEX_BANDS
+    SPYNDEX_INDICES = {k: v for k, v in SPYNDEX_INDICES.items()}
+    SPYNDEX_CONSTANTS = {k: v for k, v in SPYNDEX_CONSTANTS.items()}
+    SPYNDEX_BANDS = {k: v for k, v in SPYINDEX_BANDS.items()}
 else:
-    SPYNDEX_INDICES = {}
-    SPYNDEX_CONSTANTS = {}
-    SPYNDEX_BANDS = {}
+    SPYNDEX_INDICES = dict()
+    SPYNDEX_CONSTANTS = dict()
+    SPYNDEX_BANDS = dict()
 
 QGIS_RESOURCE_WARNINGS = set()
 
@@ -4074,8 +4074,8 @@ def band_values(
                 results[band] = SPYNDEX_CONSTANTS[band].value
         elif band in SPYNDEX_INDICES:
             # return the band values for bands needed to calculate a spectral index
-            from spyndex.axioms import SpectralIndex
-            spectral_index: SpectralIndex = SPYNDEX_INDICES[band]
+
+            spectral_index = SPYNDEX_INDICES[band]
             required_bands = spectral_index.bands
 
             index_bands = band_values(
@@ -4167,7 +4167,7 @@ def band_index(band: str, wl: List, wlu: str = 'nm', use_cache: bool = True) -> 
     return result
 
 
-def band_shortcut_descriptions(wl: List, wlu: str = 'nm') -> List[Dict[str, dict]]:
+def band_descriptions(wl: List, wlu: str = 'nm') -> List[Dict[str, dict]]:
     """
     Returns a list of spyndex band descriptions that fall into
     the range of wavelength defined by wavelength vector `wl`.
@@ -4185,8 +4185,8 @@ def band_shortcut_descriptions(wl: List, wlu: str = 'nm') -> List[Dict[str, dict
 
     results = []
     wl_min, wl_max = min(wl2), max(wl2)
-    from spyndex.axioms import bands
-    for b in bands:
+
+    for b in SPYINDEX_BANDS.values():
 
         b_min, b_max = b.min_wavelength, b.max_wavelength
 
