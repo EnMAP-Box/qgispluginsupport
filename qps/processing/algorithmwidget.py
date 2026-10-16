@@ -996,7 +996,7 @@ class ParametersPanel(QgsProcessingParametersWidget):
                     parameters[param.name()] = value
 
                 if validate and not param.checkValueIsAcceptable(value):
-                    raise InvalidParameterValue(param, widget)
+                    raise QgsProcessingException(f'{param.name()}: Value not acceptable: {value}')
             else:
                 if self.in_place and param.name() == "OUTPUT":
                     parameters[param.name()] = "memory:"
@@ -1022,7 +1022,7 @@ class ParametersPanel(QgsProcessingParametersWidget):
                     context = createContext()
                     ok, error = param.isSupportedOutputValue(value, context)
                     if not ok:
-                        raise InvalidOutputExtension(widget, error)
+                        raise QgsProcessingException(error)
 
         return self.algorithm().preprocessParameters(parameters)
 
