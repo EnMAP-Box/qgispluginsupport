@@ -24,16 +24,17 @@ from pathlib import Path
 
 from qgis import processing
 from qgis.PyQt.QtCore import QModelIndex, QObject, Qt
-from qgis.PyQt.QtWidgets import QDialog
+from qgis.PyQt.QtWidgets import QDialog, QMainWindow
 from qgis.core import edit, QgsApplication, QgsFeature, QgsProcessingAlgorithm, \
     QgsProcessingAlgRunnerTask, QgsProcessingOutputRasterLayer, \
     QgsProcessingRegistry, QgsProject, QgsTaskManager, \
     QgsVectorLayer, QgsProcessing
 from qgis.gui import QgsProcessingRecentAlgorithmLog, QgsProcessingToolboxProxyModel
 
+from qps import initAll
+from qps.expressionfunctions import registerQgsExpressionFunctions
 from qps.processing.algorithmwidget import AlgorithmWidget, ParametersPanel
 from qps.processing.processingalgorithmdialog import ProcessingAlgorithmDialog
-from qps.qgsfunctions import registerQgsExpressionFunctions
 from qps.speclib.core import profile_field_names, profile_fields, is_spectral_library
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
 from qps.speclib.core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict, isProfileValueDict, \
@@ -45,6 +46,8 @@ from qps.testing import ExampleAlgorithmProvider, start_app, TestCase, TestObjec
 from qpstestdata import ecosis_csv, asd_with_gps, spectral_evolution_sed, svc_sig
 
 start_app()
+
+initAll()
 
 
 class MyAlgModel(QgsProcessingToolboxProxyModel):
@@ -80,7 +83,38 @@ class MyAlgModel(QgsProcessingToolboxProxyModel):
 class ProcessingToolsTest(TestCase):
 
     @unittest.skipIf(TestCase.runsInCI(), 'Blocking dialog')
-    def test_processingAlgorithmDialog(self):
+    def test_processing_widgets_original(self):
+
+        reg: QgsProcessingRegistry = QgsApplication.instance().processingRegistry()
+
+        aname = 'native:createconstantrasterlayer'
+        alg = reg.algorithmById(aname)
+        self.assertIsInstance(alg, QgsProcessingAlgorithm)
+
+        from qps.processing.algorithmwidget import AlgorithmWidget as AW2
+        from processing import AlgorithmWidget as AW1
+        # processing.execAlgorithmDialog(alg)
+        # from qgis.utils import iface
+        # parent = iface.mainWindow()
+
+        lyr = TestObjects.createRasterLayer()
+        QgsProject.instance().addMapLayer(lyr)
+
+        if False:
+            parent = QMainWindow()
+            alg = reg.algorithmById(aname)
+            w1 = AW1(alg, parent=parent)
+            w1.exec()
+            # r1 = w1.results()
+
+        w2 = AW2(alg)
+        w2.exec()
+        r2 = w2.results()
+        self.assertIsInstance(r2, dict)
+        self.assertTrue('OUTPUT' in r2)
+
+    @unittest.skipIf(TestCase.runsInCI(), 'Blocking dialog')
+    def test_processingProcessingAlgorithmDialog(self):
 
         d = ProcessingAlgorithmDialog()
         model = MyAlgModel(None)
@@ -244,6 +278,7 @@ class ProcessingToolsTest(TestCase):
         # test alg.run
         conf = {}
         results, success = alg.run(parameters, context, feedback, conf)
+        self.assertTrue(success, msg=feedback.textLog())
         on_complete(success, results)
 
         # test processing.run
@@ -373,7 +408,7 @@ class ProcessingToolsTest(TestCase):
         QgsProject.instance().removeAllMapLayers()
         reg.removeProvider(provider)
 
-    # @unittest.skipIf(TestCase.runsInCI(), 'blocking dialog')
+    @unittest.skipIf(TestCase.runsInCI(), 'blocking dialog')
     def test_spectralprofile_export_dialog(self):
         alg = ExportSpectralProfiles()
         alg.initAlgorithm({})
@@ -397,9 +432,7 @@ class ProcessingToolsTest(TestCase):
 
         d = AlgorithmWidget(alg, context=context)
         d.algorithmFinished.connect(onFinished)
-        d.show()
-        self.showGui(d)
-        # d.exec()
+        d.exec()
 
         lyr = results.get(ExportSpectralProfiles.P_OUTPUT)
         if lyr:

@@ -263,10 +263,12 @@ class EnviSpectralLibraryWriter(SpectralProfileFileWriter):
     def filterString(cls) -> str:
         return 'ENVI Spectral Library (*.sli)'
 
-    def writeFeatures(self,
-                      path: Union[str, Path],
-                      features: List[QgsFeature],
-                      feedback: Optional[QgsProcessingFeedback] = None) -> List[Path]:
+    def writeFeatures(
+        self,
+        path: Union[str, Path],
+        features: List[QgsFeature], field_names=None,
+        feedback: Optional[QgsProcessingFeedback] = None
+    ) -> List[Path]:
 
         if feedback is None:
             feedback = QgsProcessingFeedback()

@@ -6,5 +6,5 @@ set PYQTGRAPH_QT_LIB=PyQt6
 rmdir /s /q test-outputs
 rmdir /s /q test-reports
 :: set QGIS_PREFIX_PATH=D:\OSGeo4W\apps\qgis
-pytest --no-cov-on-fail --cov-config=.coveragec %*
+python3 -m pytest --no-cov-on-fail %*
 :: coverage-badge -o coverage.svg  -f -v

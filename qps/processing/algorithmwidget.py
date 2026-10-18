@@ -13,7 +13,6 @@ createExpressionContext - original: processing/tools/dataobjects.py
 
 """
 import ast
-import codecs
 import datetime
 import json
 import sys
@@ -22,20 +21,19 @@ import traceback
 from typing import Optional, Tuple, Callable, Union
 
 import qgis.utils
-from processing import getTempFilename, ProcessingConfig
+from processing.core.ProcessingConfig import ProcessingConfig
 from processing.core.ProcessingResults import resultsList
-from processing.core.exceptions import InvalidParameterValue, InvalidOutputExtension
 from processing.gui.AlgorithmExecutor import execute, execute_in_place, executeIterating
 from processing.gui.BatchOutputSelectionPanel import BatchOutputSelectionPanel
 from processing.gui.BatchPanel import BatchPanelFillWidget, WIDGET
 from processing.gui.MessageBarProgress import MessageBarProgress
-from processing.gui.MessageDialog import MessageDialog
 from processing.gui.Postprocessing import determine_output_name, post_process_layer
 from processing.tools import dataobjects
+from processing.tools.system import getTempFilename
 from qgis.PyQt.QtCore import QCoreApplication, QDir, QFileInfo
 from qgis.PyQt.QtGui import QColor, QPalette
-from qgis.PyQt.QtWidgets import QDialogButtonBox, QFileDialog, QHeaderView, QMessageBox, QPushButton, QTableWidgetItem
-from qgis.PyQt.QtWidgets import QWidget
+from qgis.PyQt.QtWidgets import (
+    QMainWindow, QWidget, QDialogButtonBox, QFileDialog, QHeaderView, QMessageBox, QPushButton, QTableWidgetItem)
 from qgis.core import (
     Qgis, QgsApplication, QgsExpressionContext, QgsExpressionContextScope, QgsExpressionContextUtils,
     QgsFeatureRequest, QgsFileUtils, QgsLayerTreeGroup, QgsMapLayer, QgsMessageLog,
@@ -45,6 +43,7 @@ from qgis.core import (
     QgsProcessingOutputString, QgsProcessingParameterDefinition, QgsProcessingParameterFeatureSink,
     QgsProcessingParameterRasterDestination, QgsProcessingParameterVectorDestination,
     QgsProcessingUtils, QgsProject, QgsProxyProgressTask, QgsSettings)
+from qgis.core import QgsProcessingException
 from qgis.gui import (
     QgisInterface, QgsGui, QgsPanelWidget, QgsProcessingAlgorithmWidgetBase,
     QgsAbstractProcessingParameterWidgetWrapper,
@@ -315,15 +314,20 @@ class AlgorithmWidget(QgsProcessingAlgorithmWidgetBase):
         self,
         alg: QgsProcessingAlgorithm,
         in_place: bool = False,
-        parent: Optional[QWidget] = None,
+        parent: Optional[QMainWindow] = None,
         context: Optional[QgsProcessingContext] = None,
         iface: Optional[QgisInterface] = None,
     ):
+
+        if parent is None:
+            parent = QMainWindow()
+
         super().__init__(parent)
 
         if not isinstance(iface, QgisInterface):
             iface = qgis.utils.iface
 
+        self._parent = parent
         self._iface = iface
         self._context = context
         self._context_layers = list()
@@ -713,11 +717,12 @@ class AlgorithmWidget(QgsProcessingAlgorithmWidgetBase):
                     self.feedback.progressChanged.disconnect()
                     self.proxy_progress.finalize(ok)
                     on_complete(ok, results)
-
-        except InvalidParameterValue as e:
-            self.flag_invalid_parameter_value(e.parameter.description(), e.widget)
-        except InvalidOutputExtension as e:
-            self.flag_invalid_output_extension(e.message, e.widget)
+        except QgsProcessingException as ex:
+            print(ex, sys.stderr)
+        # except InvalidParameterValue as e:
+        #    self.flag_invalid_parameter_value(e.parameter.description(), e.widget)
+        # except InvalidOutputExtension as e:
+        #    self.flag_invalid_output_extension(e.message, e.widget)
 
     def closeEvent(self, e):
         p1 = QgsProject.instance()
@@ -991,7 +996,7 @@ class ParametersPanel(QgsProcessingParametersWidget):
                     parameters[param.name()] = value
 
                 if validate and not param.checkValueIsAcceptable(value):
-                    raise InvalidParameterValue(param, widget)
+                    raise QgsProcessingException(f'{param.name()}: Value not acceptable: {value}')
             else:
                 if self.in_place and param.name() == "OUTPUT":
                     parameters[param.name()] = "memory:"
@@ -1017,7 +1022,7 @@ class ParametersPanel(QgsProcessingParametersWidget):
                     context = createContext()
                     ok, error = param.isSupportedOutputValue(value, context)
                     if not ok:
-                        raise InvalidOutputExtension(widget, error)
+                        raise QgsProcessingException(error)
 
         return self.algorithm().preprocessParameters(parameters)
 
@@ -1140,7 +1145,7 @@ class BatchAlgorithmDialog(QgsProcessingBatchAlgorithmDialogBase):
             return
 
         outputFile = getTempFilename("html")
-        with codecs.open(outputFile, "w", encoding="utf-8") as f:
+        with open(outputFile, "w", encoding="utf-8") as f:
             if createTable:
                 for i, res in enumerate(algorithm_results):
                     results = res["results"]
@@ -1766,9 +1771,9 @@ def executeAlgorithm(  # noqa: QGS105
 
         ok, message = alg.canExecute()
         if not ok:
-            dlg = MessageDialog()
-            dlg.setTitle("Error executing algorithm")
-            dlg.setMessage("<h3>This algorithm cannot " "be run :-( </h3>\n{0}".format(message))
+            dlg = QMessageBox()
+            dlg.setWindowTitle("Error executing algorithm")
+            dlg.setText("<h3>This algorithm cannot " "be run :-( </h3>\n{0}".format(message))
             dlg.exec()
             return False, {}
 

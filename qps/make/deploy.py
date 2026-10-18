@@ -30,8 +30,7 @@ from pathlib import Path
 from typing import List
 
 from qgis.PyQt.QtCore import QStandardPaths, QSettings
-from qgis.core import QgsApplication
-from qgis.core import QgsUserProfileManager
+from qgis.core import Qgis, QgsApplication, QgsUserProfileManager
 
 
 def userProfileManager() -> QgsUserProfileManager:
@@ -64,21 +63,23 @@ def userProfileManager() -> QgsUserProfileManager:
     if configLocalStorageLocation is None:
         home = Path('~').expanduser()
 
+        v = f'QGIS{str(Qgis.versionInt())[0]}'
+
         if platform.system() == 'Windows':
-            basePath = home / 'AppData/Roaming/QGIS/QGIS3'
+            basePath = home / 'AppData/Roaming/QGIS' / v
         elif platform.system() == 'Linux':
             if home.as_posix() == '/':
                 home = Path('/root')
-            basePath = home / '.local/share/QGIS/QGIS3'
+            basePath = home / '.local/share/QGIS' / v
         elif platform.system() == 'Darwin':
-            basePath = home / r'Library/Application Support/QGIS/QGIS3'
+            basePath = home / r'Library/Application Support/QGIS' / v
         else:
             basePath = None
 
         if basePath is None:
             raise NotADirectoryError(f'QGIS local storage path undefined for {platform.system()}')
         if not basePath.is_dir():
-            srcPath = Path('/root/.local/share/QGIS/QGIS3')
+            srcPath = Path('/root/.local/share/QGIS') / v
             if srcPath.is_dir() and home.as_posix() != '/root':
                 basePath.mkdir(parents=True, exist_ok=True)
                 import shutil
@@ -100,11 +101,14 @@ class QGISMetadataFileWriter(object):
     """
 
     def __init__(self):
+
+        v = str(Qgis.versionInt())[0]
+
         self.mName = ''
         self.mDescription = ''
         self.mVersion = ''
-        self.mQgisMinimumVersion = '3.8'
-        self.mQgisMaximumVersion = '3.99'
+        self.mQgisMinimumVersion = v + '.0'
+        self.mQgisMaximumVersion = v + '.99'
         self.mAuthor = ''
         self.mAbout = ''
         self.mEmail = ''

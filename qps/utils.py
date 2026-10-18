@@ -46,6 +46,7 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, Iterator, List, Optional, Tuple, Union
 
 import numpy as np
+from numpy import dtype, ndarray
 from osgeo import gdal, gdal_array, ogr, osr
 from osgeo.ogr import OFSTBoolean, OFSTNone, OFTBinary, OFTDate, OFTDateTime, OFTInteger, OFTInteger64, OFTReal, \
     OFTString, \
@@ -53,7 +54,7 @@ from osgeo.ogr import OFSTBoolean, OFSTNone, OFTBinary, OFTDate, OFTDateTime, OF
 from osgeo.osr import SpatialReference
 from qgis.PyQt import uic
 from qgis.PyQt.QtCore import NULL, QByteArray, QDirIterator, QObject, QPoint, QPointF, QRect, Qt, QUrl, \
-    QVariant, QMetaType
+    QMetaType
 from qgis.PyQt.QtGui import QColor, QIcon
 from qgis.PyQt.QtWidgets import (
     QAction, QComboBox, QDialogButtonBox, QGridLayout, QHBoxLayout, QLabel, QMainWindow,
@@ -77,7 +78,21 @@ from qgis.core import (QgsExpressionContextScope, QgsExpressionContext,
 from qgis.gui import QgisInterface, QgsDialog, QgsGui, QgsMapCanvas, QgsMapLayerComboBox, QgsMessageViewer
 
 from .qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
-from .unitmodel import datetime64, UnitLookup
+from .unitmodel import UnitLookup, UnitConverterFunctionModel
+
+has_spyndex = importlib.util.find_spec('spyndex') is not None
+if has_spyndex:
+    from spyndex.axioms import constants as SPYNDEX_CONSTANTS
+    from spyndex.axioms import indices as SPYNDEX_INDICES
+    from spyndex.axioms import bands as SPYINDEX_BANDS
+
+    SPYNDEX_INDICES = {k: v for k, v in SPYNDEX_INDICES.items()}
+    SPYNDEX_CONSTANTS = {k: v for k, v in SPYNDEX_CONSTANTS.items()}
+    SPYNDEX_BANDS = {k: v for k, v in SPYINDEX_BANDS.items()}
+else:
+    SPYNDEX_INDICES = dict()
+    SPYNDEX_CONSTANTS = dict()
+    SPYNDEX_BANDS = dict()
 
 QGIS_RESOURCE_WARNINGS = set()
 
@@ -1661,8 +1676,7 @@ def check_package(name, package=None, stop_on_error=False):
 
 def qgsFieldAttributes2List(attributes: List[Any]) -> List[Any]:
     """Returns a list of attributes with None instead of NULL or QVariant.NULL"""
-    r = QVariant(None)
-    return [None if v == r else v for v in attributes]
+    return [None if v == NULL else v for v in attributes]
 
 
 def qgsFields2str(qgsFields: QgsFields) -> str:
@@ -2102,7 +2116,7 @@ def checkWavelengthUnit(key: str, value: str) -> str:
     return wlu
 
 
-def parseWavelength(dataset) -> Tuple[np.ndarray, str]:
+def parseWavelength(dataset) -> tuple[None, None] | tuple[ndarray[tuple[Any, ...], dtype[Any]], str]:
     """
     Returns the wavelength + wavelength unit of a raster
     :param dataset:
@@ -2114,114 +2128,6 @@ def parseWavelength(dataset) -> Tuple[np.ndarray, str]:
     wlu = sp.wavelengthUnits()
     if len(wl) > 0 and len(wlu) > 0:
         return wl, wlu[0]
-    else:
-        return None, None
-
-    # try to get wavelength from provider
-
-    if isinstance(dataset, QgsRasterLayer):
-
-        # temporary workaround, as it uses none-QGIS API
-        # will re replaces with future QEP specification of remote-sensing specific raster metadata
-        provider: QgsRasterDataProvider = dataset.dataProvider()
-
-        # note that wavelength() is only available for custom provider like EE
-        if hasattr(provider, 'wavelength'):
-            wl = np.array([provider.wavelength(bandNo) for bandNo in range(1, provider.bandCount() + 1)])
-            wlu = 'Nanometers'
-            return wl, wlu
-
-    def sort_domains(domains) -> List[str]:
-        if not isinstance(domains, list):
-            domains = []
-        return sorted(domains, key=lambda n: n != ['ENVI'])
-
-    try:
-        dataset = gdalDataset(dataset)
-    except Exception:
-        return None, None
-
-    if isinstance(dataset, gdal.Dataset):
-        # 1. check on raster level
-        for domain in sort_domains(dataset.GetMetadataDomainList()):
-            # see https://www.nv5geospatialsoftware.com/docs/enviheaderfiles.html for supported wavelength units
-
-            mdDict = dataset.GetMetadata_Dict(domain)
-
-            domainWLU: str = None
-            domainWL: np.ndarray = None
-            # search domain
-            for key, values in mdDict.items():
-                if domainWL is None:
-                    domainWL = checkWavelength(key, values, expected=dataset.RasterCount)
-                if domainWLU is None:
-                    domainWLU = checkWavelengthUnit(key, values)
-
-            if isinstance(domainWL, np.ndarray) and isinstance(domainWLU, str):
-                if domain == 'FORCE' and domainWLU == 'DecimalYear':
-                    # make decimal-year values leap-year sensitive
-                    domainWL = convertDateUnit(datetime64(domainWL, dpy=365), 'DecimalYear')
-
-                if len(domainWL) > dataset.RasterCount:
-                    domainWL = domainWL[0:dataset.RasterCount]
-
-                return domainWL, domainWLU
-
-        # 2. check on band level. collect wl from each single band
-        # first domain that defines wl and wlu is prototype domain for all other bands
-
-        wl = []  # list of wavelength values
-        wlu: str = None  # wavelength unit string
-        wlDomain: str = None  # the domain in which the WL and WLU are defined
-        wlKey: str = None  # key that stores the wavelength value
-        wluKey: str = None  # key that stores the wavelength unit
-
-        for b in range(dataset.RasterCount):
-            band: gdal.Band = dataset.GetRasterBand(b + 1)
-            if b == 0:
-                for domain in sort_domains(band.GetMetadataDomainList()):
-                    # see https://www.nv5geospatialsoftware.com/docs/enviheaderfiles.html for supported wavelength units
-                    domainWL = domainWLU = None
-
-                    mdDict = band.GetMetadata_Dict(domain)
-
-                    for key, values in mdDict.items():
-                        if domainWLU is None:
-                            domainWLU = checkWavelengthUnit(key, values)
-                            if domainWLU:
-                                wluKey = key
-
-                        if domainWL is None:
-                            domainWL = checkWavelength(key, values, expected=1)
-                            if isinstance(domainWL, np.ndarray):
-                                wlKey = key
-
-                    if isinstance(domainWL, np.ndarray) and isinstance(domainWLU, str):
-                        wlDomain = domain
-                        wlu = domainWLU
-                        wl.append(domainWL[0])
-
-                if len(wl) == 0:
-                    # we did not found a WL + WLU for the 1st band. stop searching and return
-                    return None, None
-            else:
-                bandWLU = checkWavelengthUnit(wluKey, band.GetMetadataItem(wluKey, wlDomain))
-                bandWL = checkWavelength(wlKey, band.GetMetadataItem(wlKey, wlDomain), expected=1)
-
-                if bandWLU != wlu or bandWL is None:
-                    print(f'{dataset.GetDescription()}: inconsistent use of metadata key {wluKey} per band')
-                    return None, None
-                wl.append(bandWL[0])
-
-        if len(wl) == 0:
-            return None, None
-
-        wl = np.asarray(wl)
-        if domain == 'FORCE' and wlu == 'DecimalYear':
-            # make decimal-year values leap-year sensitive
-            wl = UnitLookup.convertDateUnit(datetime64(wl, dpy=365), 'DecimalYear')
-
-        return wl, wlu
     else:
         return None, None
 
@@ -4128,3 +4034,168 @@ def create_picture_viewer_config(relative: bool = False,
               }
 
     return config
+
+
+BAND_INDEX_CACHE = {}
+rx_band = re.compile(r'R(?P<wl_min>\d+)(_(?P<wl_max>\d+))?')
+
+
+def band_values(
+    requested_bands: Union[str, List[str]],
+    wavelengths: List,
+    values: List,
+    wavelength_unit: str = 'nm',
+    return_band_indices: bool = False,
+    compute: bool = True,
+) -> dict[str, Any]:
+    """
+    Returns the values for requested bands or spectral indices.
+    :param requested_bands: List of band identifiers or spectral indices to retrieve (e.g., 'R', 'SWIR', 'NDVI')
+    :param wavelengths: List of wavelength values corresponding to each band
+    :param values: List of band values to extract from
+    :param wavelength_unit: Unit of the wavelength values, defaults to 'nm'
+    :param return_band_indices: If True, returns band indices instead of values.
+    :param compute: If True (default), computes the values for a spectral index. If False, returns the values for the
+       bands (and constants) used in the spectral index.
+    :return: Dictionary mapping band identifiers to their values.
+    """
+
+    if isinstance(requested_bands, str):
+        requested_bands = [requested_bands]
+
+    results = dict()
+
+    for band in requested_bands:
+        if band in SPYNDEX_CONSTANTS:
+            # return the values for a constant
+            if return_band_indices:
+                results[band] = None
+            else:
+                results[band] = SPYNDEX_CONSTANTS[band].value
+        elif band in SPYNDEX_INDICES:
+            # return the band values for bands needed to calculate a spectral index
+
+            spectral_index = SPYNDEX_INDICES[band]
+            required_bands = spectral_index.bands
+
+            index_bands = band_values(
+                required_bands,
+                wavelengths,
+                values,
+                wavelength_unit=wavelength_unit,
+                return_band_indices=return_band_indices
+            )
+
+            if return_band_indices or not compute:
+                results.update(index_bands)
+            else:
+                results[band] = spectral_index.compute(index_bands)
+
+        else:
+            bidx = band_index(band, wavelengths, wavelength_unit)
+            if bidx is None:
+                raise Exception(f'band {band} not found')
+            if return_band_indices:
+                results[band] = bidx
+            else:
+                results[band] = values[bidx]
+
+    return results
+
+
+def band_index(band: str, wl: List, wlu: str = 'nm', use_cache: bool = True) -> int | None:
+    """
+    Returns the band index related to the given band name `band` and the wavelength list `wl`.
+    :param band: band identifier. E.g. 'R' for red, 'R1222' for 1222 nm or 'R800_1200' for a band
+                        within the range of 800 to 1200 nm.
+    :param wl: wavelength list. Should contain values in nm.
+    :param wlu: wavelength unit, defaults to 'nm' and should be the unit of values in `wl`
+    :param use_cache: whether to use a cache.
+    :return: band index or None if not found.
+    """
+
+    wl = tuple(wl)
+    key = (band, wl, wlu)
+    if use_cache and key in BAND_INDEX_CACHE:
+        return BAND_INDEX_CACHE[key]
+
+    if m := rx_band.match(band):
+        # use wl definitions in nm
+        wl_min = m.group('wl_min')
+        wl_max = m.group('wl_max')
+
+        if wl_max is None:
+            # R<wavelength>
+            # get band next to it
+            wl_center = float(wl_min)
+            wl_min = None
+        else:
+            wl_max = float(wl_max)
+            wl_min = float(wl_min)
+            wl_center = (wl_min + wl_max) / 2
+
+    elif has_spyndex:
+        if band not in SPYNDEX_BANDS:
+            raise Exception(f'Unknown band description: {band}')
+
+        band_definition = SPYNDEX_BANDS[band]
+        wl_min = band_definition.min_wavelength
+        wl_max = band_definition.max_wavelength
+
+        wl_center = (wl_min + wl_max) / 2
+    else:
+        raise Exception(f'Unknown band description: {band}. Install spyndex package')
+
+    # convert wavelength vector to nanometers
+    CM = UnitConverterFunctionModel.instance()
+    convert_function = CM.convertFunction(wlu, 'nm')
+    wl2 = convert_function(wl)
+
+    if wl_min is None:
+        # no range defined
+        result = min(enumerate(wl2), key=lambda item: abs(item[1] - wl_center))[0]
+    else:
+        # range defined. filter valid candidates first
+        valid_candidates = [(idx, val) for idx, val in enumerate(wl2) if wl_min <= val <= wl_max]
+        if len(valid_candidates) == 0:
+            result = None
+        else:
+            # Find candidate with the smallest distance to center
+            result = min(valid_candidates, key=lambda item: abs(item[1] - wl_center))[0]
+
+    BAND_INDEX_CACHE[key] = result
+    return result
+
+
+def band_descriptions(wl: List, wlu: str = 'nm') -> List[Dict[str, dict]]:
+    """
+    Returns a list of spyndex band descriptions that fall into
+    the range of wavelength defined by wavelength vector `wl`.
+    :param wl: wavelength vector
+    :param wlu: wavelength unit, default is 'nm'
+    :return: list of band descriptions
+    """
+    # convert wavelength vector to nanometers
+    CM = UnitConverterFunctionModel.instance()
+    convert_function = CM.convertFunction(wlu, 'nm')
+    wl2 = convert_function(wl)
+
+    if len(wl2) == 0:
+        return []
+
+    results = []
+    wl_min, wl_max = min(wl2), max(wl2)
+
+    for b in SPYINDEX_BANDS.values():
+
+        b_min, b_max = b.min_wavelength, b.max_wavelength
+
+        if (
+            wl_min <= b_min <= wl_max  # noqa W503
+            or wl_min <= b_max <= wl_max  # noqa W503
+            or b_min <= wl_min and wl_max <= b_max  # noqa W503
+        ):
+            wl_center = 0.5 * (b_min + b_max)
+            results.append((b, wl_center))
+    results = sorted(results, key=lambda item: item[1])
+    return [r[0] for r in results]

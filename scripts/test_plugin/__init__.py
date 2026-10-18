@@ -1,6 +1,6 @@
 import os
-from pathlib import Path
 import site
+from pathlib import Path
 from typing import List
 
 from console import show_console
@@ -95,14 +95,15 @@ class QGISPluginsSupportPlugin(object):
 
     def initGui(self):
         from qgis.utils import iface
-        self.assertIsInstance(iface, QgisInterface)
+        if not isinstance(iface, QgisInterface):
+            raise RuntimeError(f'iface is not a QgisInterface: {iface}')
 
         # init main UI
         action = QAction(self.title, iface)
         # action.triggered.connect(self.run)
         self.mToolbarActions.append(action)
 
-        m = QMenu('Start')
+        m = QMenu('Start', parent=iface.mainWindow())
         self.populateMenu(m)
         action.setMenu(m)
 
@@ -120,10 +121,8 @@ class QGISPluginsSupportPlugin(object):
     #    self.loadStartScripts()
 
     def populateMenu(self, menu: QMenu):
-        self.assertIsInstance(menu, QMenu)
 
         folder = Path(__file__).parent / 'startscripts'
-        self.assertTrue(folder.is_dir())
 
         py_files = []
         for e in os.scandir(folder):

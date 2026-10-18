@@ -13,15 +13,16 @@ __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 import unittest
 
 from osgeo import gdal
-
 from qgis.PyQt.QtWidgets import QDialog, QGridLayout, QWidget
 from qgis.core import QgsMapLayer
 from qgis.core import QgsMultiBandColorRenderer, QgsPalettedRasterRenderer, QgsProject, QgsRasterLayer, \
     QgsSingleBandGrayRenderer, QgsStyle, QgsVectorLayer
 from qgis.gui import QgsMapCanvas, QgsMapLayerConfigWidgetFactory, QgsOptionsDialogBase, QgsRasterLayerProperties, \
     QgsRendererPropertiesDialog
-from qps import MAPLAYER_CONFIGWIDGET_FACTORIES
-from qps.layerconfigwidgets.rasterbands import RasterBandConfigWidget
+
+from qps import MAPLAYER_CONFIGWIDGET_FACTORIES, registerMapLayerConfigWidgetFactory
+from qps.layerconfigwidgets.gdalmetadata import GDALMetadataConfigWidgetFactory
+from qps.layerconfigwidgets.rasterbands import RasterBandConfigWidget, RasterBandConfigWidgetFactory
 from qps.layerproperties import AddAttributeDialog, AttributeTableWidget, CopyAttributesDialog, defaultRasterRenderer, \
     equal_styles, RemoveAttributeDialog, showLayerPropertiesDialog, pasteStyleToClipboard, pasteStyleFromClipboard
 from qps.testing import start_app, TestCase, TestObjects
@@ -80,13 +81,17 @@ class LayerPropertyTests(TestCase):
         QgsProject.instance().removeAllMapLayers()
 
     @unittest.skipIf(TestCase.runsInCI(), 'blocking dialog')
-    def test_layer_properties1(self):
+    def test_rasterlayerproperties(self):
+        from qpstestdata import enmap
 
-        rl = TestObjects.createRasterLayer(nb=300)
-        showLayerPropertiesDialog(rl)
+        f1 = registerMapLayerConfigWidgetFactory(GDALMetadataConfigWidgetFactory())
+        f2 = registerMapLayerConfigWidgetFactory(GDALMetadataConfigWidgetFactory())
+        if f1:
+            self.assertIsInstance(f1, GDALMetadataConfigWidgetFactory)
+            self.assertTrue(f2 is None)
 
-        vl = TestObjects.createVectorLayer()
-        showLayerPropertiesDialog(vl)
+        lyr = QgsRasterLayer(str(enmap))
+        showLayerPropertiesDialog(lyr)
 
     @unittest.skipIf(TestCase.runsInCI(), 'blocking dialog')
     def test_vectorlayerproperties(self):
@@ -94,8 +99,11 @@ class LayerPropertyTests(TestCase):
         vl = TestObjects.createVectorLayer()
         showLayerPropertiesDialog(vl)
 
-    @unittest.skip('Crashes CI, unknown reason')
+    # @unittest.skip('Crashes CI, unknown reason')
     def test_layerPropertiesDialog_RasterBandWidget(self):
+
+        f = registerMapLayerConfigWidgetFactory(RasterBandConfigWidgetFactory())
+        self.assertIsInstance(f, RasterBandConfigWidgetFactory)
 
         lyr = TestObjects.createRasterLayer(nb=255, eType=gdal.GDT_UInt16)
         self.assertTrue(lyr.isValid())
@@ -106,27 +114,15 @@ class LayerPropertyTests(TestCase):
         canvas.setLayers([lyr])
         canvas.zoomToFullExtent()
 
-        dialog1 = QgsRasterLayerProperties(lyr, canvas, parent=w)
-
-        dialog2 = QgsRasterLayerProperties(lyr, canvas, parent=w)
+        showLayerPropertiesDialog(lyr, canvas, modal=False)
 
         panelWidget = RasterBandConfigWidget(lyr, canvas, parent=w)
         panelWidget.setDockMode(True)
         panelWidget.widgetChanged.connect(panelWidget.apply)
 
-        added = []
-        if False:
-            for factory in MAPLAYER_CONFIGWIDGET_FACTORIES:
-                factory: QgsMapLayerConfigWidgetFactory
-                added.append(factory.title())
-                dialog1.addPropertiesPageFactory(factory)
-                dialog2.addPropertiesPageFactory(factory)
-
         grid = QGridLayout()
         grid.addWidget(canvas, 0, 0)
         grid.addWidget(panelWidget, 0, 1)
-        grid.addWidget(dialog1, 1, 0)
-        grid.addWidget(dialog2, 1, 1)
 
         w.setWindowTitle('Dialog Test')
         w.setLayout(grid)

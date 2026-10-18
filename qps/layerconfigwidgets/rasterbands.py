@@ -23,22 +23,21 @@
 ***************************************************************************
 """
 from pathlib import Path
-from typing import List, Union, Optional
-
-import numpy as np
+from typing import List, Union, Optional, Dict, Tuple
 
 from qgis.PyQt.QtCore import Qt, QTimer
 from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.QtWidgets import QPushButton, QSlider, QStackedWidget, QWidget
+from qgis.PyQt.QtWidgets import QSlider, QStackedWidget, QWidget
+from qgis.PyQt.QtWidgets import QToolButton, QComboBox
 from qgis.core import Qgis, QgsMapLayer, QgsMultiBandColorRenderer, QgsPalettedRasterRenderer, QgsRasterLayer, \
     QgsRasterRenderer, QgsSingleBandColorDataRenderer, QgsSingleBandGrayRenderer, QgsSingleBandPseudoColorRenderer
 from qgis.gui import QgsMapCanvas, QgsMapLayerConfigWidget, QgsMapLayerConfigWidgetFactory, QgsRasterBandComboBox
+
 from ..layerconfigwidgets.core import QpsMapLayerConfigWidget
 from ..qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
-from ..simplewidgets import FlowLayout
 from ..unitmodel import UnitLookup
-from ..utils import loadUi, LUT_WAVELENGTH, parseWavelength, printCaller, rendererXML, SignalBlocker, \
-    WAVELENGTH_DESCRIPTION
+from ..utils import loadUi, printCaller, rendererXML, SignalBlocker, \
+    has_spyndex, band_descriptions, band_index, band_values
 
 
 class RasterBandComboBox(QgsRasterBandComboBox):
@@ -81,67 +80,31 @@ class RasterBandComboBox(QgsRasterBandComboBox):
             self.setItemData(idx, tooltip, Qt.ItemDataRole.ToolTipRole)
 
 
-class BandCombination(object):
-    """
-    Describes a band combination
-    """
+def standard_band_combinations() -> Dict[str, Tuple[str, str, str]]:
+    # rgb visualizations adopted from:
+    # https://github.com/sandroklippel/qgis_gee_data_catalog/blob/master/datasets.py
 
-    def __init__(self,
-                 band_keys: Union[str, tuple],
-                 name: str = None,
-                 tooltip: str = None,
-                 icon: QIcon = None):
+    mapping = {
+        'Natural color': ('R', 'G', 'B'),
+        'False color': ('R', 'N', 'G'),
+        'Color infrared': ('N', 'R', 'G'),
+        'Shortwave infrared 1': ('S2', 'N', 'R'),
+        'Shortwave infrared 2': ('S2', 'RE4', 'R'),
+        'Shortwave infrared 3': ('S2', 'RE4', 'B'),
+        'Agriculture 1': ('S1', 'N', 'B'),
+        'Agriculture 2': ('S1', 'RE4', 'B'),
+        'Atmospheric penetration / Soil': ('S2', 'S1', 'RE4'),
+        'Geology': ('S2', 'S1', 'B'),
+        'Bathymetric': ('R', 'G', 'A'),
+        'False color urban': ('S2', 'S1', 'R'),
+        'Healthy vegetation': ('N', 'S1', 'B'),
+        'Vegetation analysis 1': ('N', 'S1', 'R'),
+        'Vegetation analysis 2': ('S1', 'N', 'R'),
+        'Forestry / Recent harvest areas': ('S2', 'N', 'G')
+    }
 
-        if isinstance(band_keys, str):
-            band_keys = (band_keys,)
-        if not (isinstance(band_keys, tuple) and len(band_keys) > 0):
-            raise AssertionError('band_keys must be a tuple')
+    return mapping
 
-        for b in band_keys:
-            if not (b in LUT_WAVELENGTH.keys()):
-                raise AssertionError(f'Unknown wavelength key: {b}')
-
-        self.mBand_keys = band_keys
-        self.mName = name
-        self.mTooltip = tooltip
-        self.mIcon = QIcon(icon)
-
-    def bandKeys(self) -> tuple:
-        return self.mBand_keys
-
-    def icon(self) -> QIcon:
-        return self.mIcon
-
-    def name(self) -> str:
-        if self.mName is None:
-            return '-'.join(self.mBand_keys)
-        else:
-            return self.mName
-
-    def tooltip(self, wl_nm) -> str:
-        tt = self.mTooltip if self.mTooltip else ''
-        if len(self.mBand_keys) == 1:
-            return 'Selects the band closest to\n{}'.format(WAVELENGTH_DESCRIPTION[self.mBand_keys[0]])
-        else:
-            tt += '\nSelects the bands closest to:'
-            for i, b in enumerate(self.mBand_keys):
-                tt += '\n' + WAVELENGTH_DESCRIPTION[b]
-        return tt.strip()
-
-    def nBands(self) -> int:
-        return len(self.mBand_keys)
-
-
-BAND_COMBINATIONS: List[BandCombination] = []
-# single-band renders
-BAND_COMBINATIONS += [BandCombination(b) for b in LUT_WAVELENGTH.keys()]
-# 3-band renderers (Order: R-G-B color channel)
-BAND_COMBINATIONS += [
-    BandCombination(('R', 'G', 'B'), name='True Color'),
-    BandCombination(('NIR', 'R', 'G'), name='Colored IR'),
-    BandCombination(('SWIR', 'NIR', 'R')),
-    BandCombination(('NIR', 'SWIR', 'R'))
-]
 
 RENDER_TYPE2NAME = {
     'multibandcolor': 'Multiband color',
@@ -157,7 +120,7 @@ class RasterBandConfigWidget(QpsMapLayerConfigWidget):
 
     def __init__(self, layer: QgsRasterLayer, canvas: QgsMapCanvas, parent: QWidget = None):
 
-        super(RasterBandConfigWidget, self).__init__(layer, canvas, parent=parent)
+        super().__init__(layer, canvas, parent=parent)
         pathUi = Path(__file__).parents[1] / 'ui' / 'rasterbandconfigwidget.ui'
         loadUi(pathUi, self)
 
@@ -165,88 +128,160 @@ class RasterBandConfigWidget(QpsMapLayerConfigWidget):
         self.mLayer = layer
         self.mRendererXMLString: Optional[str] = None
         self.mLayer.rendererChanged.connect(self.syncToLayer)
-        if not isinstance(self.cbSingleBand, QgsRasterBandComboBox):
-            raise AssertionError('self.cbSingleBand is not a QgsRasterBandComboBox')
+        if not isinstance(self.cbS, QgsRasterBandComboBox):
+            raise AssertionError('self.cbS is not a QgsRasterBandComboBox')
 
-        self.cbSingleBand.setLayer(self.mLayer)
-        self.cbMultiBandRed.setLayer(self.mLayer)
-        self.cbMultiBandGreen.setLayer(self.mLayer)
-        self.cbMultiBandBlue.setLayer(self.mLayer)
+        self.cbS.setLayer(self.mLayer)
+        self.cbR.setLayer(self.mLayer)
+        self.cbG.setLayer(self.mLayer)
+        self.cbB.setLayer(self.mLayer)
 
-        self.cbSingleBand.bandChanged.connect(self.onBandWidgetChanged)
-        self.cbMultiBandRed.bandChanged.connect(self.onBandWidgetChanged)
-        self.cbMultiBandGreen.bandChanged.connect(self.onBandWidgetChanged)
-        self.cbMultiBandBlue.bandChanged.connect(self.onBandWidgetChanged)
+        self.cbS.bandChanged.connect(self.onBandWidgetChanged)
+        self.cbR.bandChanged.connect(self.onBandWidgetChanged)
+        self.cbG.bandChanged.connect(self.onBandWidgetChanged)
+        self.cbB.bandChanged.connect(self.onBandWidgetChanged)
+
+        self.cbBandCombinations: QComboBox
+        self.cbBandCombinations.currentIndexChanged.connect(self.onBandCombinationChanged)
 
         self.mChangedBufferMS = 500
         self.mChangedTimer = QTimer()
         self.mChangedTimer.timeout.connect(self.onWidgetChanged)
 
-        self.sliderSingleBand: QSlider
-        self.sliderSingleBand.setRange(1, self.mLayer.bandCount())
-        self.sliderMultiBandRed.setRange(1, self.mLayer.bandCount())
-        self.sliderMultiBandGreen.setRange(1, self.mLayer.bandCount())
-        self.sliderMultiBandBlue.setRange(1, self.mLayer.bandCount())
+        self.sliderS: QSlider
+        self.sliderS.setRange(1, self.mLayer.bandCount())
+        self.sliderR.setRange(1, self.mLayer.bandCount())
+        self.sliderG.setRange(1, self.mLayer.bandCount())
+        self.sliderB.setRange(1, self.mLayer.bandCount())
 
-        mWL, mWLUnit = parseWavelength(self.mLayer)
-        if isinstance(mWL, list):
-            mWL = np.asarray(mWL)
+        self.mBandWL = []
+        self.mBandNames = []
+        self.mRGBShortcuts = []
 
-        if UnitLookup.isMetricUnit(mWLUnit):
-            mWLUnit = UnitLookup.baseUnit(mWLUnit)
-            # convert internally to nanometers
-            if mWLUnit != 'nm':
-                try:
-                    mWL = UnitLookup.convertLengthUnit(mWL, mWLUnit, 'nm')
-                    mWLUnit = 'nm'
-                except Exception:
-                    mWL = None
-                    mWLUnit = None
+        self.mBandButtons_R = []
+        self.mBandButtons_G = []
+        self.mBandButtons_B = []
+        self.mBandButtons_S = []
 
-        self.mWL = mWL
-        self.mWLUnit = mWLUnit
-
-        hasWL = UnitLookup.isMetricUnit(self.mWLUnit)
-        self.gbMultiBandWavelength.setEnabled(hasWL)
-        self.gbSingleBandWavelength.setEnabled(hasWL)
-
-        def createButton(bandCombi: BandCombination) -> QPushButton:
-            btn = QPushButton()
-            # btn.setAutoRaise(False)
-            btn.setText(bandCombi.name())
-            btn.setIcon(bandCombi.icon())
-            btn.setToolTip(bandCombi.tooltip(self.mWL))
-            btn.clicked.connect(lambda *args, b=bandCombi: self.setWL(b.bandKeys()))
-            return btn
-
-        lSingle = FlowLayout()
-        lMulti = FlowLayout()
-
-        for bc in BAND_COMBINATIONS:
-            if bc.nBands() == 1:
-                lSingle.addWidget(createButton(bc))
-
-            if bc.nBands() == 3:
-                lMulti.addWidget(createButton(bc))
-
-        self.gbSingleBandWavelength.setLayout(lSingle)
-        if not self.gbSingleBandWavelength.layout() == lSingle:
-            raise AssertionError('requires FlowLayout')
-        self.gbMultiBandWavelength.setLayout(lMulti)
-        lSingle.setContentsMargins(0, 0, 0, 0)
-        lSingle.setSpacing(0)
-        lSingle.setContentsMargins(0, 0, 0, 0)
-        lSingle.setSpacing(0)
-
-        self.mLytMulti = lMulti
-        self.mLytSingle = lSingle
+        self.CB2LABEL = {
+            self.cbR: self.labelWLR,
+            self.cbG: self.labelWLG,
+            self.cbB: self.labelWLB,
+            self.cbS: self.labelWLS,
+        }
+        self.createBandShortcuts(self.mLayer)
 
         self.syncToLayer()
 
         self.setPanelTitle('Band Selection')
 
+    def createBandShortcuts(self, layer: QgsRasterLayer):
+
+        # clear band combo boxes
+        for (layout, button_list) in [
+            (self.layoutR, self.mBandButtons_R),
+            (self.layoutG, self.mBandButtons_G),
+            (self.layoutB, self.mBandButtons_B),
+            (self.layoutS, self.mBandButtons_S),
+        ]:
+            button_list.clear()
+            while layout.count() > 0:
+                layout.takeAt(0)
+
+        self.cbBandCombinations.clear()
+
+        if not has_spyndex:
+            return
+
+        sp = QgsRasterLayerSpectralProperties.fromRasterLayer(layer)
+        mWL = sp.wavelengths()
+        mWLUnit = sp.wavelengthUnits()[0]
+
+        if UnitLookup.isMetricUnit(mWLUnit):
+            # if possible, convert to nanometers
+            mWLUnit = UnitLookup.baseUnit(mWLUnit)
+            try:
+                mWL = UnitLookup.convertLengthUnit(mWL, mWLUnit, 'nm')
+                mWLUnit = 'nm'
+            except Exception:
+                mWL = None
+                mWLUnit = None
+
+        self.mBandWL.clear()
+        self.mBandWL.extend(mWL)
+        self.mBandWLUnit = mWLUnit
+
+        from spyndex.axioms import Band
+
+        def createButton(band: Band, cb: QgsRasterBandComboBox) -> QToolButton:
+            btn = QToolButton()
+            btn.setText(band.short_name)
+            tt = f'{band.long_name}<br>{band.min_wavelength} nm - {band.max_wavelength} nm'
+            btn.setToolTip(tt)
+            b_idx = band_index(band.short_name, mWL, mWLUnit)
+            btn.clicked.connect(lambda *args, _cb=cb, _idx=b_idx: _cb.setCurrentIndex(_idx))
+            return btn
+
+        b_descriptions = band_descriptions(mWL)
+        for b in b_descriptions:
+            for (layout, button_list, cb) in [
+                (self.layoutR, self.mBandButtons_R, self.cbR),
+                (self.layoutG, self.mBandButtons_G, self.cbG),
+                (self.layoutB, self.mBandButtons_B, self.cbB),
+                (self.layoutS, self.mBandButtons_S, self.cbS),
+            ]:
+                btn = createButton(b, cb)
+                # btn.setAutoRaise(True)
+                button_list.append(btn)
+                layout.addWidget(btn)
+
+        for layout in [self.layoutR, self.layoutG, self.layoutB, self.layoutS]:
+            layout.addStretch()
+
+        # fill band combinations
+        combinations = []
+        available_bands = [b.short_name for b in b_descriptions]
+        for name, rgb in standard_band_combinations().items():
+            covers_all_bands = True
+            for c in rgb:
+                if c not in available_bands:
+                    covers_all_bands = False
+                    break
+            if covers_all_bands:
+                combinations.append((name, rgb))
+
+        for (name, rgb) in combinations:
+            self.cbBandCombinations.addItem(name, userData=rgb)
+
     def onBandWidgetChanged(self, *args):
         self.mChangedTimer.start(self.mChangedBufferMS)
+        sender = self.sender()
+        if isinstance(sender, QgsRasterBandComboBox):
+            self.updateWavelengthLabel(sender)
+
+    def updateWavelengthLabel(self, cb: QgsRasterBandComboBox):
+
+        if cb in self.CB2LABEL:
+            label = self.CB2LABEL[cb]
+            i = cb.currentIndex()
+            if 0 <= i < len(self.mBandWL):
+                wl = self.mBandWL[i]
+                label.setText(f'{wl} {self.mBandWLUnit}')
+
+    def onBandCombinationChanged(self):
+
+        rgb = self.cbBandCombinations.currentData(Qt.ItemDataRole.UserRole)
+
+        rgb_indices = band_values(
+            rgb, self.mBandWL, [0 for w in self.mBandWL],
+            wavelength_unit=self.mBandWLUnit,
+            return_band_indices=True
+        )
+        rgb_indices = {k: v for k, v in rgb_indices.items() if isinstance(v, int)}
+        if len(rgb_indices) == 3:
+            self.cbR.setCurrentIndex(rgb_indices[rgb[0]])
+            self.cbG.setCurrentIndex(rgb_indices[rgb[1]])
+            self.cbB.setCurrentIndex(rgb_indices[rgb[2]])
 
     def onWidgetChanged(self, *args):
         printCaller(prefix=id(self))
@@ -274,31 +309,38 @@ class RasterBandConfigWidget(QpsMapLayerConfigWidget):
 
         if isinstance(oldRenderer, QgsSingleBandGrayRenderer):
             newRenderer: QgsSingleBandGrayRenderer = oldRenderer.clone()
-            newRenderer.setGrayBand(self.cbSingleBand.currentBand())
+            newRenderer.setGrayBand(self.cbS.currentBand())
 
         elif isinstance(oldRenderer, QgsSingleBandPseudoColorRenderer):
             newRenderer: QgsSingleBandGrayRenderer = oldRenderer.clone()
-            newRenderer.setBand(self.cbSingleBand.currentBand())
+            newRenderer.setBand(self.cbS.currentBand())
 
         elif isinstance(newRenderer, QgsPalettedRasterRenderer):
-            newRenderer = QgsPalettedRasterRenderer(oldRenderer.input(), self.cbSingleBand.currentBand(),
+            newRenderer = QgsPalettedRasterRenderer(oldRenderer.input(), self.cbS.currentBand(),
                                                     oldRenderer.classes())
             # setBand ?
         elif isinstance(oldRenderer, QgsSingleBandColorDataRenderer):
-            newRenderer = QgsSingleBandColorDataRenderer(oldRenderer.input(), self.cbSingleBand.currentBand())
+            newRenderer = QgsSingleBandColorDataRenderer(oldRenderer.input(), self.cbS.currentBand())
 
         elif isinstance(oldRenderer, QgsMultiBandColorRenderer):
             newRenderer: QgsMultiBandColorRenderer = oldRenderer.clone()
-            newRenderer.setRedBand(self.cbMultiBandRed.currentBand())
-            newRenderer.setGreenBand(self.cbMultiBandGreen.currentBand())
-            newRenderer.setBlueBand(self.cbMultiBandBlue.currentBand())
+            newRenderer.setRedBand(self.cbR.currentBand())
+            newRenderer.setGreenBand(self.cbG.currentBand())
+            newRenderer.setBlueBand(self.cbB.currentBand())
 
         else:
             newRenderer = oldRenderer.clone()
 
         newRenderer.setInput(oldRenderer.input())
         self.mRendererXMLString = rendererXML(newRenderer).toString()
+
+        self.updateWavelengthLabels()
+
         return newRenderer
+
+    def updateWavelengthLabels(self):
+        for cb in self.CB2LABEL.keys():
+            self.updateWavelengthLabel(cb)
 
     def rendererName(self, renderer: Union[str, QgsRasterRenderer]) -> str:
         if isinstance(renderer, QgsRasterRenderer):
@@ -309,14 +351,14 @@ class RasterBandConfigWidget(QpsMapLayerConfigWidget):
 
     def blockableWidgets(self) -> List[QWidget]:
 
-        return [self.cbSingleBand,
-                self.cbMultiBandRed,
-                self.cbMultiBandGreen,
-                self.cbMultiBandBlue,
-                self.sliderSingleBand,
-                self.sliderMultiBandRed,
-                self.sliderMultiBandGreen,
-                self.sliderMultiBandBlue
+        return [self.cbS,
+                self.cbR,
+                self.cbG,
+                self.cbB,
+                self.sliderS,
+                self.sliderR,
+                self.sliderG,
+                self.sliderB
                 ]
 
     def setRenderer(self, renderer: QgsRasterRenderer):
@@ -324,7 +366,7 @@ class RasterBandConfigWidget(QpsMapLayerConfigWidget):
             return
 
         if rendererXML(renderer).toString() != self.mRendererXMLString:
-            printCaller(prefix=id(self))
+            # printCaller(prefix=id(self))
 
             w: QStackedWidget = self.renderBandWidget
 
@@ -334,25 +376,26 @@ class RasterBandConfigWidget(QpsMapLayerConfigWidget):
 
                 if len(bands) == 1:
                     w.setCurrentWidget(self.pageSingleBand)
-                    self.cbSingleBand.setBand(bands[0])
-                    self.sliderSingleBand.setValue(bands[0])
+                    self.cbS.setBand(bands[0])
+                    self.sliderS.setValue(bands[0])
                 elif len(bands) == 3:
                     w.setCurrentWidget(self.pageMultiBand)
-                    self.cbMultiBandRed.setBand(bands[0])
-                    self.cbMultiBandGreen.setBand(bands[1])
-                    self.cbMultiBandBlue.setBand(bands[2])
-                    self.sliderMultiBandRed.setValue(bands[0])
-                    self.sliderMultiBandGreen.setValue(bands[1])
-                    self.sliderMultiBandBlue.setValue(bands[2])
+                    self.cbR.setBand(bands[0])
+                    self.cbG.setBand(bands[1])
+                    self.cbB.setBand(bands[2])
+                    self.sliderR.setValue(bands[0])
+                    self.sliderG.setValue(bands[1])
+                    self.sliderB.setValue(bands[2])
 
                 else:
                     w.setCurrentWidget(self.pageUnknown)
+            self.updateWavelengthLabels()
 
     def shouldTriggerLayerRepaint(self) -> bool:
         return True
 
     def apply(self):
-        printCaller(suffix='apply called')
+        # printCaller(suffix='apply called')
         newRenderer = self.renderer()
         if rendererXML(self.mLayer.renderer()).toString() == self.mRendererXMLString:
             # no need to replace the renderer
@@ -368,45 +411,6 @@ class RasterBandConfigWidget(QpsMapLayerConfigWidget):
             # self.mLayer.emitStyleChanged()
             # self.widgetChanged.emit()
 
-    def wlBand(self, wlKey: str) -> int:
-        """
-        Returns the band number for a wavelength
-        :param wlKey:
-        :type wlKey:
-        :return:
-        :rtype:
-        """
-        from ..utils import LUT_WAVELENGTH
-        if isinstance(self.mWL, np.ndarray):
-            targetWL = float(LUT_WAVELENGTH[wlKey])
-            return int(np.argmin(np.abs(self.mWL - targetWL))) + 1
-        else:
-            return None
-
-    def setWL(self, wlRegions: tuple):
-        renderer = self.renderer().clone()
-        with SignalBlocker(*self.blockableWidgets()) as _:
-            if isinstance(renderer, (QgsSingleBandGrayRenderer, QgsSingleBandPseudoColorRenderer,
-                                     QgsSingleBandColorDataRenderer)):
-                band = self.wlBand(wlRegions[0])
-                self.cbSingleBand.setBand(band)
-                self.sliderSingleBand.setValue(band)
-
-            elif isinstance(renderer, QgsMultiBandColorRenderer):
-                bR = self.wlBand(wlRegions[0])
-                bG = self.wlBand(wlRegions[1])
-                bB = self.wlBand(wlRegions[2])
-
-                self.cbMultiBandRed.setBand(bR)
-                self.cbMultiBandGreen.setBand(bG)
-                self.cbMultiBandBlue.setBand(bB)
-
-                self.sliderMultiBandRed.setValue(bR)
-                self.sliderMultiBandGreen.setValue(bG)
-                self.sliderMultiBandBlue.setValue(bB)
-
-        self.onBandWidgetChanged()
-
 
 class RasterBandConfigWidgetBlocker(object):
 
@@ -417,21 +421,20 @@ class RasterBandConfigWidgetBlocker(object):
 class RasterBandConfigWidgetFactory(QgsMapLayerConfigWidgetFactory):
 
     def __init__(self):
-        super(RasterBandConfigWidgetFactory, self).__init__('Raster Band',
-                                                            QIcon(':/qps/ui/icons/rasterband_select.svg'))
+        super().__init__(
+            'Raster Band',
+            QIcon(':/qps/ui/icons/rasterband_select.svg')
+        )
 
     def supportsLayer(self, layer):
-        if isinstance(layer, QgsRasterLayer):
-            return True
-
-        return False
+        return isinstance(layer, QgsRasterLayer) and layer.isValid()
 
     def layerPropertiesPagePositionHint(self) -> str:
         return 'mOptsPage_Transparency'
 
     def supportLayerPropertiesDialog(self):
         # see https://bitbucket.org/hu-geomatics/enmap-box/issues/1392/singleband-pseudoclor-min-max-reset
-        return False
+        return True
         # requires QGIS 1e86672a
         return Qgis.versionInt() >= 32300
 
@@ -444,8 +447,13 @@ class RasterBandConfigWidgetFactory(QgsMapLayerConfigWidgetFactory):
     def title(self) -> str:
         return 'Raster Band'
 
-    def createWidget(self, layer: QgsMapLayer, canvas: QgsMapCanvas, dockWidget: bool = True,
-                     parent=None) -> QgsMapLayerConfigWidget:
+    def createWidget(
+        self,
+        layer: QgsMapLayer,
+        canvas: QgsMapCanvas,
+        dockWidget: bool = True,
+        parent: QWidget | None = None
+    ) -> QgsMapLayerConfigWidget:
         w = RasterBandConfigWidget(layer, canvas, parent=parent)
         # if isinstance(parent, QgsRasterLayerProperties):
         #    w.widgetChanged.connect(parent.syncToLayer)

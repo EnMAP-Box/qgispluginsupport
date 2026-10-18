@@ -4,9 +4,9 @@ import os
 from pathlib import Path
 
 from osgeo import gdal
-
 from qgis.core import QgsVectorLayer
 from qgis.testing import start_app
+
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
 from qps.speclib.io.asd import ASDBinaryFile
 from qps.speclib.io.envi import EnviSpectralLibraryWriter
@@ -44,8 +44,7 @@ if not (layer.featureCount() == len(files)):
 features = list(layer.getFeatures())
 
 # write as GeoPackage
-gpkgFiles = GeoPackageSpectralLibraryWriter(crs=layer.crs()).writeFeatures(DIR_OUTPUTS / 'speclibGPKG.gpkg',
-                                                                           features)
+gpkgFiles = GeoPackageSpectralLibraryWriter(crs=layer.crs()).writeFeatures(DIR_OUTPUTS / 'speclibGPKG.gpkg', features)
 print(f'Geopackage(s): {gpkgFiles}')
 
 # write as GeoJSON

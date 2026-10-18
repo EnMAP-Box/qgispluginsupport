@@ -26,8 +26,8 @@ import datetime
 import importlib.util
 import json
 import math
-from pathlib import Path
 import re
+from pathlib import Path
 from typing import Any, Dict, List, Match, Pattern, Tuple, Union
 
 from osgeo import gdal, ogr
@@ -1730,7 +1730,7 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
 class GDALMetadataConfigWidgetFactory(QgsMapLayerConfigWidgetFactory):
 
     def __init__(self):
-        super(GDALMetadataConfigWidgetFactory, self).__init__('GDAL/OGR Metadata',
+        super(GDALMetadataConfigWidgetFactory, self).__init__('GDAL Metadata',
                                                               QIcon(str(_ICON_GDAL_METADATA)))
         self.mIsGDAL = False
         self.mIsOGR = False
@@ -1768,8 +1768,4 @@ class GDALMetadataConfigWidgetFactory(QgsMapLayerConfigWidgetFactory):
         return w
 
     def title(self) -> str:
-        if self.mIsGDAL:
-            return 'GDAL Metadata'
-        if self.mIsOGR:
-            return 'OGR Metadata'
-        return 'Metadata'
+        return 'GDAL Metadata'
