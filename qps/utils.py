@@ -29,6 +29,7 @@ import fnmatch
 import gc
 import importlib
 import inspect
+import io
 import itertools
 import json
 import math
@@ -76,7 +77,6 @@ from qgis.core import (QgsExpressionContextScope, QgsExpressionContext,
                        QgsMarkerSymbol, QgsExpressionContextUtils, QgsRenderContext, QgsSymbol, QgsProcessing)
 from qgis.gui import QgisInterface, QgsDialog, QgsGui, QgsMapCanvas, QgsMapLayerComboBox, QgsMessageViewer
 
-import io
 from .qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from .unitmodel import UnitLookup, UnitConverterFunctionModel
 
@@ -4195,6 +4195,7 @@ def band_descriptions(wl: List, wlu: str = 'nm') -> List[Dict[str, dict]]:
             or wl_min <= b_max <= wl_max  # noqa W503
             or b_min <= wl_min and wl_max <= b_max  # noqa W503
         ):
-            results.append(b)
-
-    return results
+            wl_center = 0.5 * (b_min + b_max)
+            results.append((b, wl_center))
+    results = sorted(results, key=lambda item: item[1])
+    return [r[0] for r in results]

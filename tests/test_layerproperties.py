@@ -114,19 +114,11 @@ class LayerPropertyTests(TestCase):
         canvas.setLayers([lyr])
         canvas.zoomToFullExtent()
 
-        d = showLayerPropertiesDialog(lyr, canvas, modal=False)
+        showLayerPropertiesDialog(lyr, canvas, modal=False)
 
         panelWidget = RasterBandConfigWidget(lyr, canvas, parent=w)
         panelWidget.setDockMode(True)
         panelWidget.widgetChanged.connect(panelWidget.apply)
-
-        added = []
-        if False:
-            for factory in MAPLAYER_CONFIGWIDGET_FACTORIES:
-                factory: QgsMapLayerConfigWidgetFactory
-                added.append(factory.title())
-                dialog1.addPropertiesPageFactory(factory)
-                dialog2.addPropertiesPageFactory(factory)
 
         grid = QGridLayout()
         grid.addWidget(canvas, 0, 0)
