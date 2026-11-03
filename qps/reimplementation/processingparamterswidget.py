@@ -32,11 +32,19 @@ from qgis.gui import QgsProcessingParametersGenerator, QgsProcessingContextGener
 
 class _DefaultWidgetContextGenerator(object):
 
-    def __init__(self, *args, **kwds):
-        self._context = QgsProcessingParameterWidgetContext()
+    def __init__(self, processing_context_generator: QgsProcessingContextGenerator, *args, **kwds):
+        self._processing_context_generator = processing_context_generator
+        self._widget_context = None
 
     def createWidgetContext(self) -> QgsProcessingParameterWidgetContext:
-        return self._context
+        # Sync project from processing context before returning
+        # This ensures the widget context uses the same project as the processing context
+        if self._widget_context is None:
+            wc = QgsProcessingParameterWidgetContext()
+            wc.registerProcessingContextGenerator(self._processing_context_generator)
+            self._widget_context = wc
+
+        return self._widget_context
 
 
 class _DefaultProcessingContextGenerator(QgsProcessingContextGenerator):
@@ -83,7 +91,7 @@ class ProcessingParametersWidget(QgsPanelWidget):
 
         self._processing_context_generator = _DefaultProcessingContextGenerator()
         self._processing_parameters_generator = _DefaultProcessingParametersGenerator(self)
-        self._widget_context_generator = _DefaultWidgetContextGenerator()
+        self._widget_context_generator = _DefaultWidgetContextGenerator(self._processing_context_generator)
 
         self.setupUi()
 
@@ -193,18 +201,20 @@ class ProcessingParametersWidget(QgsPanelWidget):
                 continue
 
             wrapper.setDialog(self.parentWidget())
-            wrapper.setWidgetContext(widgetContext)
+            # Register processing context generator before setting widget context
+            # This ensures the widget context has the correct project
             wrapper.registerProcessingContextGenerator(self._processing_context_generator)
             wrapper.registerProcessingParametersGenerator(self._processing_parameters_generator)
+            wrapper.setWidgetContext(widgetContext)
             self.mWrappers[definition.name()] = wrapper
 
             widget = wrapper.createWrappedWidget(context)
             wrapper.widgetValueHasChanged.connect(self.parameterChanged)
 
-            if widget:
+            if isinstance(widget, QWidget):
                 self.mWidgets.append(widget)
                 label = wrapper.createWrappedLabel()
-                if label:
+                if isinstance(label, QWidget):
                     self.addParameterLabel(definition, label)
                     self.mLabels.append(label)
 
@@ -222,41 +232,35 @@ class ProcessingParametersWidget(QgsPanelWidget):
             if not wrapper:
                 continue
 
-            wrapper.setWidgetContext(widgetContext)
+            # Register processing context generator before setting widget context
             wrapper.registerProcessingContextGenerator(self._processing_context_generator)
             wrapper.registerProcessingParametersGenerator(self._processing_parameters_generator)
+            wrapper.setWidgetContext(widgetContext)
             self.mWrappers[output.name()] = wrapper
 
             label = wrapper.createWrappedLabel()
-            if label:
+            if isinstance(label, QWidget):
                 self.addOutputLabel(label)
                 self.mLabels.append(label)
 
             widget = wrapper.createWrappedWidget(context)
-            self.mWidgets.append(widget)
-            self.addOutputWidget(widget, wrapper.stretch())
+            if isinstance(widget, QWidget):
+                self.mWidgets.append(widget)
+                self.addOutputWidget(widget, wrapper.stretch())
 
         wrapperList = list(self.mWrappers.values())
         for k, wrapper in self.mWrappers.items():
-            print(k)
-
             wrapper.postInitialize(wrapperList)
-            s = ""
 
-    def widgetContext(self) -> QgsProcessingParameterWidgetContext | None:
-        if self._widget_context_generator:
-            return self._widget_context_generator.createWidgetContext()
-        else:
-            return QgsProcessingParameterWidgetContext()
+    def widgetContext(self) -> QgsProcessingParameterWidgetContext:
+        return self._widget_context_generator.createWidgetContext()
 
     def registerWidgetContextGenerator(self, generator):
 
         self._widget_context_generator = generator
 
     def processingContext(self) -> QgsProcessingContext | None:
-        if self._processing_context_generator:
-            return self._processing_context_generator.processingContext()
-        return QgsProcessingContext()
+        return self._processing_context_generator.processingContext()
 
     def algorithm(self):
         return self.mAlgorithm
@@ -281,7 +285,7 @@ class ProcessingParametersWidget(QgsPanelWidget):
         defs = self.mAlgorithm.parameterDefinitions()
 
         for definition in defs:
-            if definition.flags().testFlag(Qgis.ProcessingParameterFlag.Hidden):
+            if definition.flags() & Qgis.ProcessingParameterFlag.Hidden:
                 continue
 
             if not definition.isDestination():
@@ -325,17 +329,15 @@ class ProcessingParametersWidget(QgsPanelWidget):
 
                 if not QgsVariantUtils.isNull(value) and (definition.defaultValue() != value or includeDefault):
                     parameters[definition.name()] = value
-                    if validate:
-                        destinationParam = isinstance(definition, QgsProcessingDestinationParameter)
-                        if destinationParam:
-                            error = ""
-                            ok = destinationParam.isSupportedOutputValue(value, context, error)
-                            if not ok:
-                                result = QgsProcessingParametersGenerator.ParameterValidationResult()
-                                result.parameterName = definition.name()
-                                result.result = QgsProcessingParametersGenerator.ValidationResult.InvalidOutputExtension
-                                result.message = error
-                                validationResults.append(result)
+                    if validate and isinstance(definition, QgsProcessingDestinationParameter):
+                        destinationParam: QgsProcessingDestinationParameter = definition
+                        ok, error = destinationParam.isSupportedOutputValue(value, context)
+                        if not ok:
+                            result = QgsProcessingParametersGenerator.ParameterValidationResult()
+                            result.parameterName = definition.name()
+                            result.result = QgsProcessingParametersGenerator.ValidationResult.InvalidOutputExtension
+                            result.message = error
+                            validationResults.append(result)
 
         return self.mAlgorithm.preprocessParameters(parameters)
 
@@ -366,8 +368,11 @@ class ProcessingParametersWidget(QgsPanelWidget):
     def wrappers(self):
         return list(self.mWrappers.values())
 
+    def registerProcessingParametersGenerator(self, generator: QgsProcessingParametersGenerator):
+        self._processing_parameters_generator = generator
+
     def registerProcessingContextGenerator(self, generator: QgsProcessingContextGenerator):
-        self.mContextGenerator = generator
+        self._processing_context_generator = generator
 
     def parameterChanged(self):
         wrapper = self.sender()

@@ -8,7 +8,7 @@ from qgis.core import (
     QgsRasterLayer, QgsProcessingFeedback, QgsProcessingContext)
 from qgis.gui import QgsGui, QgsMessageBar, QgsProcessingContextGenerator
 
-from qps.testing import start_app, TestCase
+from qps.testing import start_app, TestCase, TestObjects
 
 app = start_app()
 Processing.initialize()
@@ -137,12 +137,24 @@ class TestAlgorithmWidgetContextHandling(TestCase):
 
     def test_createParametersPanel(self):
 
+        lyr1 = TestObjects.createRasterLayer(name='Raster Layer1')
+        lyr2 = TestObjects.createRasterLayer(name='Raster Layer2')
+        QgsProject.instance().addMapLayers([lyr1])
+
+        project2 = QgsProject()
+        project2.addMapLayers([lyr2])
+
         reg: QgsProcessingRegistry = QgsApplication.processingRegistry()
         alg = reg.algorithmById('native:rastergaussianblur')
         from qps.reimplementation.processingparamterswidget import ProcessingParametersWidget
         mbar = QgsMessageBar()
         widget = ProcessingParametersWidget(alg, False, None, mbar)
         widget.initWidgets()
+        parameters = widget.createProcessingParameters()
+        self.assertEqual(parameters.get('INPUT'), lyr1.id())
+
+        widget = ProcessingParametersWidget(alg, False, None, mbar)
+        widget.registerProcessingContextGenerator()
 
         self.showGui(widget)
 
