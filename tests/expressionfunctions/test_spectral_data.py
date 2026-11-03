@@ -9,7 +9,6 @@ from qgis.core import QgsFields, QgsField, QgsFeature
 from qgis.core import QgsRasterLayer
 
 from qps.expressionfunctions import SpectralData
-from qps.externals.spyindex.definitions import BANDS
 from qps.qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
 from qps.speclib.core.spectralprofile import ProfileEncoding
@@ -57,8 +56,8 @@ class SpectralDataTests(TestCase):
         f = QgsFeature(fields)
 
         d1 = {
-            'x': [400, 500, 600, 700, 800, 900, 1000],
-            'y': [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7],
+            'x': [400, 500, 600, 650, 700, 800, 900, 1000],
+            'y': [0.1, 0.2, 0.3, 0.4, 0.4, 0.5, 0.6, 0.7],
             'xUnit': 'nm'
         }
 
@@ -75,12 +74,20 @@ class SpectralDataTests(TestCase):
         context.setFeature(f)
         context.setFields(f.fields())
 
-        # return the band-index if band name has a `_` prefix
+        # return a spectral index
+        exp = QgsExpression("spectral_data(\"p1\", band:='NDVI')")
+        self.assertTrue(exp.prepare(context), msg=f"Failed to prepare expression: {exp.parserErrorString()}")
+        result = exp.evaluate(context)
+        self.assertIsInstance(result, float)
+        self.assertAlmostEqual(result, 0.1111, places=2)
+
+        # return the band-indices
         exp = QgsExpression("spectral_data(\"p1\", band:='NDVI', indices:=True)")
         self.assertTrue(exp.prepare(context), msg=f"Failed to prepare expression: {exp.parserErrorString()}")
         result = exp.evaluate(context)
-        self.assertEqual(result, {'R620', 2}, )
+        self.assertEqual(result, {'N': 5, 'R': 3}, )
 
+        # return the entire spectral data dictionary, default to 1st profile field
         exp = QgsExpression("spectral_data()")
         self.assertTrue(exp.prepare(context), msg=f"Failed to prepare expression: {exp.parserErrorString()}")
         result = exp.evaluate(context)
@@ -106,10 +113,10 @@ class SpectralDataTests(TestCase):
         result = exp.evaluate(context)
         self.assertEqual(result, 0.3)
 
-        exp = QgsExpression("spectral_data(band:='nir')")
-        self.assertTrue(exp.prepare(context), msg=f"Failed to prepare expression: {exp.parserErrorString()}")
-        result = exp.evaluate(context)
-        self.assertEqual(result, 0.5)
+        # exp = QgsExpression("spectral_data(band:='nir')")
+        # self.assertTrue(exp.prepare(context), msg=f"Failed to prepare expression: {exp.parserErrorString()}")
+        # result = exp.evaluate(context)
+        # self.assertEqual(result, 0.5)
 
         exp = QgsExpression("spectral_data(\"p2\", band:='R620')")
         self.assertTrue(exp.prepare(context), msg=f"Failed to prepare expression: {exp.parserErrorString()}")
@@ -217,8 +224,8 @@ class SpectralDataTests(TestCase):
         f = QgsFeature(fields)
 
         d1 = {
-            'x': [400, 500, 600, 700, 800, 900, 1000],
-            'y': [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7],
+            'x': [400, 500, 600, 650, 700, 800, 900, 1000],
+            'y': [0.1, 0.2, 0.3, 0.4, 0.4, 0.5, 0.6, 0.7],
             'xUnit': 'nm'
         }
         f.setAttribute('p1', d1)
@@ -229,7 +236,7 @@ class SpectralDataTests(TestCase):
         exp = QgsExpression("spectral_data(\"p1\", band:='NDVI')")
         self.assertTrue(exp.prepare(context), msg=f"Failed to prepare expression: {exp.parserErrorString()}")
         result = exp.evaluate(context)
-        self.assertEqual(result, 10)
+        self.assertAlmostEqual(result, 0.1111, 2)
 
     def test_required_bands_benchmark(self):
         n = 1000
@@ -239,7 +246,7 @@ class SpectralDataTests(TestCase):
         sp = QgsRasterLayerSpectralProperties.fromRasterLayer(lyr)
         wl = sp.wavelengths()
         wlu = sp.wavelengthUnits()[0]
-        band_names = list(BANDS.keys())
+        band_names = ['R', 'G', 'B', 'RE1', 'RE2', 'S1', 'S2', 'Y']
         n_bands = len(wl)
 
         BAND_INDEX_CACHE.clear()

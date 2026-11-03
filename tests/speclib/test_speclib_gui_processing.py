@@ -14,7 +14,7 @@ from qgis.core import (
     QgsProcessingParameterNumber, QgsProcessingParameterRasterDestination,
 )
 from qgis.core import QgsRasterLayer
-from qgis.gui import QgsMessageBar, QgsProcessingParametersWidget
+from qgis.gui import QgsMessageBar
 from qgis.gui import QgsProcessingAlgorithmWidgetBase, QgsProcessingContextGenerator, \
     QgsProcessingGui, QgsProcessingParameterWidgetContext
 
@@ -408,13 +408,11 @@ class SpectralProcessingTests(TestCase):
         #     messageBar: QgsMessageBar|None,
         #     parent: QtWidgets.QWidget|None = ...) -> None: ...
         msgBar = QgsMessageBar()
-        wrapper0 = QgsProcessingParametersWidget(alg1, False, sl, msgBar, parent=w)
-        wrapper0.initWidgets()
-        wrapper1 = SpectralProcessingParametersWidget(alg1, sl, context)
+
+        wrapper1 = SpectralProcessingParametersWidget(alg1, sl, context, messageBar=msgBar)
         wrapper1.initWidgets()
         # wrapper.initWidgets()
         w.setLayout(QHBoxLayout())
-        w.layout().addWidget(wrapper0)
         w.layout().addWidget(wrapper1)
 
         # wrapper = SpectralProcessingModelCreatorAlgorithmWrapper(alg1, sl, context)

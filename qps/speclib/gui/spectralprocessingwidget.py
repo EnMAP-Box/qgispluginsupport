@@ -369,9 +369,9 @@ class SpectralProcessingParametersWidget(QgsProcessingParametersWidget):
     def __init__(self,
                  alg: QgsProcessingAlgorithm,
                  speclib: QgsVectorLayer,
-                 processingContext: QgsProcessingContext = None,
-                 messageBar: QgsMessageBar = None,
-                 parent: QWidget = None):
+                 processingContext: Optional[QgsProcessingContext] = None,
+                 messageBar: Optional[QgsMessageBar] = None,
+                 parent: Optional[QWidget] = None):
         if not (isinstance(speclib, QgsVectorLayer)):
             raise AssertionError
 
@@ -381,7 +381,11 @@ class SpectralProcessingParametersWidget(QgsProcessingParametersWidget):
         #     activeLayer: _core.QgsMapLayer|None,
         #     messageBar: QgsMessageBar|None,
         #     parent: QtWidgets.QWidget|None = ...) -> None: ...
-        super().__init__(alg, False, None, messageBar, parent=parent)
+        try:
+            super().__init__(alg, False, None, messageBar, parent=parent)
+        except TypeError as ex:
+            # fallback to older constructor
+            super().__init__(alg, parent)
         # self.alg: QgsProcessingAlgorithm = alg.create({})
         self.name: str = self.algorithm().displayName()
 
