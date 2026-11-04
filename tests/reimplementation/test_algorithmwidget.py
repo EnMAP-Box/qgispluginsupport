@@ -2,11 +2,12 @@ import unittest
 
 import processing
 from processing.ProcessingPlugin import Processing
-from processing.gui.algorithm_widget import AlgorithmWidget
 from qgis.core import Qgis
 from qgis.core import QgsProcessing
 from qgis.core import QgsProcessingRegistry, QgsApplication, QgsProject
 from qgis.core import QgsRasterLayer, QgsProcessingFeedback, QgsProcessingContext
+from qgis.gui import QgsProcessingParametersGenerator, QgsProcessingContextGenerator, \
+    QgsProcessingParameterWidgetContext
 
 from qps.testing import start_app, TestCase
 
@@ -38,7 +39,7 @@ class TestAlgorithmWidgetContextHandling(TestCase):
         Test that AlgorithmWidget class exists.
         """
         reg: QgsProcessingRegistry = QgsApplication.processingRegistry()
-        alg = reg.algorithmById('native:rastergaussianblur')
+        alg = reg.algorithmById('native:virtualrastercalc')
 
         lyr_custom = self.createTempRaster()
         lyr_custom.setName('LayerCustomContext')
@@ -50,7 +51,22 @@ class TestAlgorithmWidgetContextHandling(TestCase):
         context.setProject(project)
         context.setFeedback(feedback)
 
-        d = AlgorithmWidget(alg, context=context)
+        widget_context = QgsProcessingParameterWidgetContext()
+        widget_context.setProject(project)
+
+        parameters = {'LAYERS': [lyr_custom],
+                      'EXPRESSION': f'"{lyr_custom.name()}@1"', 'EXTENT': None, 'CELL_SIZE': None, 'CRS': None,
+                      'LAYER_NAME': 'testlayer'}
+
+        d = AlgorithmWidget(alg, processing_context=context, widget_context=widget_context)
+        d.setParameters(parameters)
+
+        if Qgis.versionInt() >= 44000:
+            from qgis.gui import QgsProcessingWidgetContextGenerator
+            self.assertIsInstance(d, QgsProcessingWidgetContextGenerator)
+        self.assertIsInstance(d, QgsProcessingContextGenerator)
+        self.assertIsInstance(d, QgsProcessingParametersGenerator)
+
         self.showGui(d)
 
 

@@ -255,10 +255,6 @@ class ProcessingParametersWidget(QgsPanelWidget):
     def widgetContext(self) -> QgsProcessingParameterWidgetContext:
         return self._widget_context_generator.createWidgetContext()
 
-    def registerWidgetContextGenerator(self, generator):
-
-        self._widget_context_generator = generator
-
     def processingContext(self) -> QgsProcessingContext | None:
         return self._processing_context_generator.processingContext()
 
@@ -268,16 +264,15 @@ class ProcessingParametersWidget(QgsPanelWidget):
     def createProcessingParameters(self, flags=None):
         if flags is None:
             flags = QgsProcessingParametersGenerator.Flags()
-        return self.createAndValidateParameters(flags, [])
+        return self.createAndValidateParameters(flags)[0]
 
     def validate(self):
-        validationResults = []
-        self.createAndValidateParameters(QgsProcessingParametersGenerator.Flags(), validationResults)
+        _, validationResults = self.createAndValidateParameters(QgsProcessingParametersGenerator.Flags())
         return validationResults
 
-    def createAndValidateParameters(self, flags, validationResults):
+    def createAndValidateParameters(self, flags):
         context = self.processingContext()
-
+        validationResults = []
         includeDefault = not bool(flags & QgsProcessingParametersGenerator.Flag.SkipDefaultValueParameters)
         validate = not bool(flags & QgsProcessingParametersGenerator.Flag.SkipValidation)
 
@@ -303,10 +298,14 @@ class ProcessingParametersWidget(QgsPanelWidget):
                     parameters[definition.name()] = value
 
                 if validate and not definition.checkValueIsAcceptable(value):
-                    result = QgsProcessingParametersGenerator.ParameterValidationResult()
-                    result.parameterName = definition.name()
-                    result.result = QgsProcessingParametersGenerator.ValidationResult.InvalidValue
-                    validationResults.append(result)
+                    try:
+                        result = QgsProcessingParametersGenerator.ParameterValidationResult()
+                        result.parameterName = definition.name()
+                        result.result = QgsProcessingParametersGenerator.ValidationResult.InvalidValue
+                        validationResults.append(result)
+                    except Exception:
+                        pass
+
             else:
                 if self.mInPlace and definition.name() == "OUTPUT":
                     parameters[definition.name()] = "memory:"
@@ -339,7 +338,7 @@ class ProcessingParametersWidget(QgsPanelWidget):
                             result.message = error
                             validationResults.append(result)
 
-        return self.mAlgorithm.preprocessParameters(parameters)
+        return self.mAlgorithm.preprocessParameters(parameters), validationResults
 
     def setParameters(self, parameters):
         context = self.processingContext()
@@ -348,7 +347,7 @@ class ProcessingParametersWidget(QgsPanelWidget):
         defs = self.mAlgorithm.parameterDefinitions()
         for definition in defs:
             paramIt = parameters.get(definition.name())
-            if definition.flags().testFlag(Qgis.ProcessingParameterFlag.Hidden):
+            if definition.flags() & Qgis.ProcessingParameterFlag.Hidden:
                 if paramIt is not None:
                     self.mExtraParameters[definition.name()] = paramIt
                 continue
@@ -369,10 +368,22 @@ class ProcessingParametersWidget(QgsPanelWidget):
         return list(self.mWrappers.values())
 
     def registerProcessingParametersGenerator(self, generator: QgsProcessingParametersGenerator):
+        if not isinstance(generator, QgsProcessingParametersGenerator):
+            raise ValueError("Generator must be an instance of QgsProcessingParametersGenerator")
         self._processing_parameters_generator = generator
 
     def registerProcessingContextGenerator(self, generator: QgsProcessingContextGenerator):
+        if not isinstance(generator, QgsProcessingContextGenerator):
+            raise ValueError("Generator must be an instance of QgsProcessingContextGenerator")
         self._processing_context_generator = generator
+
+    def registerWidgetContextGenerator(self, generator):
+        if Qgis.versionInt() >= 44000:
+            from qgis.gui import QgsProcessingWidgetContextGenerator
+            if not isinstance(generator, QgsProcessingWidgetContextGenerator):
+                raise ValueError("Generator must be an instance of QgsProcessingWidgetContextGenerator")
+
+        self._widget_context_generator = generator
 
     def parameterChanged(self):
         wrapper = self.sender()
