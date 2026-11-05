@@ -84,7 +84,6 @@ class SpectralData(QgsExpressionFunction):
                     if not has_spyndex:
                         raise ModuleNotFoundError('spyndex package is not installed.')
                     #  b_values = band_values()
-                    from spyndex.axioms import SpectralIndex, Constant
                     y = profile_data.get('y', [])
                     wl = profile_data.get('x', [])
                     wlu = profile_data.get('xUnit', 'nm')

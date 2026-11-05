@@ -383,7 +383,7 @@ class SpectralProcessingParametersWidget(QgsProcessingParametersWidget):
         #     parent: QtWidgets.QWidget|None = ...) -> None: ...
         try:
             super().__init__(alg, False, None, messageBar, parent=parent)
-        except TypeError as ex:
+        except TypeError:
             # fallback to older constructor
             super().__init__(alg, parent)
         # self.alg: QgsProcessingAlgorithm = alg.create({})
