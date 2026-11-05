@@ -2,10 +2,11 @@ import unittest
 
 import qgis.processing
 from processing.ProcessingPlugin import Processing
-from processing.gui.algorithm_widget import AlgorithmWidget
+from qgis._core import QgsProcessingFeedback
+from qgis._gui import QgsProcessingParametersGenerator, QgsProcessingParameterWidgetContext
 from qgis.core import (
     Qgis, QgsProcessing, QgsProcessingParameterRasterLayer, QgsProcessingRegistry, QgsApplication, QgsProject,
-    QgsRasterLayer, QgsProcessingFeedback, QgsProcessingContext)
+    QgsRasterLayer, QgsProcessingContext)
 from qgis.gui import QgsGui, QgsMessageBar, QgsProcessingContextGenerator
 
 from qps.testing import start_app, TestCase, TestObjects
@@ -91,72 +92,56 @@ class TestAlgorithmWidgetContextHandling(TestCase):
             msg=f'Layer name "{lyr_custom.name()}" is not in combobox text "{combobox_text}"'
         )
 
-    def test_CustomContextAlgorithmWidget(self):
-        # an example using an AlgorithmWidget, just for visualization
-
-        class CustomContextAlgorithmWidget(AlgorithmWidget):
-            def __init__(self, *args, context=None, **kwds):
-                self._context = context
-                self._mbar = QgsMessageBar()
-                self.n_processing_context_calls = 0
-                super().__init__(*args, **kwds)
-
-            def messageBar(self):
-                return self._mbar
-
-            def processingContext(self):
-                self.n_processing_context_calls += 1
-                if not isinstance(self._context, QgsProcessingContext):
-                    raise ValueError('custom context is not set')
-                print(f'# Custom context layers: {self._context.project().mapLayers()}')
-                return self._context
-
-        reg: QgsProcessingRegistry = QgsApplication.processingRegistry()
-        alg = reg.algorithmById('native:rastergaussianblur')
-
-        lyr_standard = self.createTempRaster('LayerStandardContext')
-        QgsProject.instance().addMapLayer(lyr_standard)
-
-        # create a custom context with custom layers
-        lyr_custom = self.createTempRaster('LayerCustomContext')
-        custom_project = QgsProject()
-        custom_project.addMapLayer(lyr_custom)
-        feedback = QgsProcessingFeedback()
-        custom_context = QgsProcessingContext()
-        custom_context.setProject(custom_project)
-        custom_context.setFeedback(feedback)
-
-        # the custom dialogs should show 'LayerCustomContext' but shows 'LayerStandardContext'
-        d = CustomContextAlgorithmWidget(alg, context=custom_context)
-        d.show()
-        self.assertTrue(d.n_processing_context_calls > 0)
-        if not self.is_ci_run():
-            app.exec()
-
-        QgsProject.instance().removeAllMapLayers()
-
     def test_createParametersPanel(self):
-
-        lyr1 = TestObjects.createRasterLayer(name='Raster Layer1')
-        lyr2 = TestObjects.createRasterLayer(name='Raster Layer2')
+        lyr1 = TestObjects.createRasterLayer(name='Raster Layer')
+        lyr2 = TestObjects.createRasterLayer(name='Raster Layer Custom')
         QgsProject.instance().addMapLayers([lyr1])
 
-        project2 = QgsProject()
-        project2.addMapLayers([lyr2])
+        custom_project = QgsProject()
+        custom_project.addMapLayers([lyr2])
 
         reg: QgsProcessingRegistry = QgsApplication.processingRegistry()
         alg = reg.algorithmById('native:rastergaussianblur')
         from qps.reimplementation.processingparameterswidget import ProcessingParametersWidget
         mbar = QgsMessageBar()
-        widget = ProcessingParametersWidget(alg, False, None, mbar)
-        widget.initWidgets()
-        parameters = widget.createProcessingParameters()
-        self.assertEqual(parameters.get('INPUT'), lyr1.id())
 
         widget = ProcessingParametersWidget(alg, False, None, mbar)
-        widget.registerProcessingContextGenerator()
+
+        custom_feedback = QgsProcessingFeedback()
+        custom_context = QgsProcessingContext()
+        custom_context.setFeedback(custom_feedback)
+
+        custom_widget_context = QgsProcessingParameterWidgetContext()
+        custom_widget_context.setProject(custom_project)
+
+        class ContextGenerator(QgsProcessingContextGenerator,
+                               QgsProcessingParametersGenerator):
+
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, **kwargs)
+
+            def processingContext(self):
+                return custom_context
+
+            def createWidgetContext(self):
+                return custom_widget_context
+
+            def createProcessingParameters(self):
+                return {}
+
+        gen = ContextGenerator()
+        widget.registerWidgetContextGenerator(gen)
+        widget.registerProcessingContextGenerator(gen)
+        widget.registerProcessingParametersGenerator(gen)
+
+        widget.initWidgets()
+        self.showGui(widget)
+        parameters = widget.createProcessingParameters()
+        self.assertEqual(parameters.get('INPUT'), lyr2.id())
 
         self.showGui(widget)
+
+        QgsProject.instance().removeAllMapLayers()
 
 
 if __name__ == '__main__':

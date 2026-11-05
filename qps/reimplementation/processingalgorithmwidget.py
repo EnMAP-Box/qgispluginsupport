@@ -105,21 +105,40 @@ class ProcessingAlgorithmWidget(QgsProcessingAlgorithmWidgetBase):
             return parameters
         return {}
 
-    def handleValidationResults(self, results) -> bool:
+    def handleValidationResults(self, results: List) -> bool:
         all_valid = True
         widget = self.parametersWidget()
 
         for result in results:
-            wrapper = widget.wrapper(result.parameterName) if widget else None
-            wrapped_widget = wrapper.wrappedWidget() if wrapper else None
-            parameter = self.algorithm().parameterDefinition(result.parameterName)
+            parameterName = r = None
+            message = ''
+            if isinstance(result, dict):
+                parameterName = result.get('parameterName', None)
+                message = result.get('message', None)
+                r = result.get('result', None)
+            else:
+                if hasattr(result, 'parameterName'):
+                    parameterName = result.parameterName
+                if hasattr(result, 'message'):
+                    message = result.message
+                if hasattr(result, 'result'):
+                    r = result.result
 
-            if result.result == QgsProcessingParametersGenerator.ValidationResult.Valid:
+            if parameterName is None or r is None:
                 continue
-            if result.result == QgsProcessingParametersGenerator.ValidationResult.InvalidOutputExtension:
-                self.flagInvalidOutputExtension(result.message, wrapped_widget)
+
+            wrapper = widget.wrapper(parameterName) if widget else None
+            wrapped_widget = wrapper.wrappedWidget() if wrapper else None
+            if wrapped_widget is None:
+                continue
+            parameter = self.algorithm().parameterDefinition(parameterName)
+
+            if r in ['Valid']:
+                continue
+            if r in ['InvalidOutputExtension']:
+                self.flagInvalidOutputExtension(message, wrapped_widget)
                 all_valid = False
-            elif result.result == QgsProcessingParametersGenerator.ValidationResult.InvalidValue:
+            if r in ['InvalidValue']:
                 message = parameter.description() if parameter else ""
                 self.flagInvalidParameterValue(message, wrapped_widget)
                 all_valid = False

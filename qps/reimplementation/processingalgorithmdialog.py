@@ -5,7 +5,8 @@ from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtWidgets import QDialog, QTreeView, QDialogButtonBox
 from qgis.core import QgsProcessingAlgorithm
 from qgis.gui import QgsFilterLineEdit, QgsProcessingToolboxTreeView, QgsProcessingToolboxProxyModel
-from ..utils import loadUi
+
+from qps.utils import loadUi
 
 
 class ProcessingAlgorithmDialog(QDialog):

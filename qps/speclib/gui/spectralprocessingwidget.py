@@ -27,9 +27,11 @@ from qgis.core import QgsProcessingException
 from qgis.gui import (
     QgsAbstractProcessingParameterWidgetWrapper, QgsGui, QgsMessageBar, QgsPanelWidget,
     QgsProcessingAlgorithmWidgetBase, QgsProcessingContextGenerator, QgsProcessingGui, QgsProcessingHiddenWidgetWrapper,
-    QgsProcessingParametersGenerator, QgsProcessingParametersWidget, QgsProcessingParameterWidgetContext,
+    QgsProcessingParametersGenerator, QgsProcessingParameterWidgetContext,
     QgsProcessingRecentAlgorithmLog, QgsProcessingToolboxProxyModel)
 
+from qps.reimplementation.processingalgorithmdialog import ProcessingAlgorithmDialog
+from qps.reimplementation.processingparameterswidget import ProcessingParametersWidget
 from .. import EDITOR_WIDGET_REGISTRY_KEY, speclibSettings
 from ..core import can_store_spectral_profiles, is_profile_field
 from ..core.spectrallibrary import SpectralLibraryUtils
@@ -40,7 +42,6 @@ from ..core.spectralprofile import (
     encodeProfileValueDict, prepareProfileValueDict, ProfileEncoding
 )
 from ..gui.spectralprofilefieldcombobox import SpectralProfileFieldComboBox
-from ...processing.processingalgorithmdialog import ProcessingAlgorithmDialog
 from ...qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from ...utils import iconForFieldType, qgsRasterLayer, rasterArray, createQgsField
 
@@ -358,7 +359,7 @@ class SpectralProcessingRasterLayerWidgetWrapper(QgsAbstractProcessingParameterW
             return self.widget.windowTitle() + '+Std'
 
 
-class SpectralProcessingParametersWidget(QgsProcessingParametersWidget):
+class SpectralProcessingParametersWidget(ProcessingParametersWidget):
     """
     A wrapper to keep references on QgsProcessingAlgorithm
     and related parameter values and widgets
@@ -397,8 +398,10 @@ class SpectralProcessingParametersWidget(QgsProcessingParametersWidget):
         self.mSpeclib: QgsVectorLayer = speclib
         self.mSpeclib.attributeAdded.connect(self.updateExampleLayers)
         self.mSpeclib.attributeDeleted.connect(self.updateExampleLayers)
+
         if processingContext is None:
             processingContext = QgsProcessingContext()
+
         self.mProcessing_context: QgsProcessingContext = processingContext
         self.mProcessing_context.setProject(self.mProject)
 
@@ -432,7 +435,7 @@ class SpectralProcessingParametersWidget(QgsProcessingParametersWidget):
 
         self.mIs_active: bool = True
 
-    def addParameterWidget(
+    def __addParameterWidget(
         self,
         parameter: QgsProcessingParameterDefinition,
         widget: QWidget,
@@ -442,17 +445,25 @@ class SpectralProcessingParametersWidget(QgsProcessingParametersWidget):
         super().addParameterWidget(parameter, widget, stretch)
         self.mParameterWidgets[parameter.name()] = widget
 
-    def parameterWidget(self, name: str) -> QWidget:
+    def __parameterWidget(self, name: str) -> QWidget:
         return self.mParameterWidgets.get(name, None)
 
-    def addOutputWidget(self, widget: QWidget, stretch: int = ...) -> None:
+    def __addOutputWidget(self, widget: QWidget, stretch: int = ...) -> None:
         super().addOutputWidget(widget, stretch)
         self.mOutputWidgets[widget.objectName()] = widget
 
     def outputWidget(self, name: str) -> QWidget:
         return self.mOutputWidgets.get(name, None)
 
-    def initWidgets(self):
+    def createParameterWidgetWrapper(self, definition: QgsProcessingParameterDefinition, mode: Qgis.ProcessingMode):
+
+        if isinstance(definition, QgsProcessingParameterRasterLayer):
+            return SpectralProcessingRasterLayerWidgetWrapper(definition, QgsProcessingGui.WidgetType.Standard)
+
+        else:
+            return super().createParameterWidgetWrapper(definition, mode)
+
+    def __initWidgets(self):
         super().initWidgets()
         # Create widgets and put them in layouts
         widget_context = QgsProcessingParameterWidgetContext()

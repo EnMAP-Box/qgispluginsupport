@@ -400,7 +400,11 @@ class SpectralProcessingTests(TestCase):
         sl = TestObjects.createSpectralLibrary()
         w = QWidget()
         w.setWindowTitle('EXAMPLE WIDGET')
+        project = QgsProject.instance()
+        project.addMapLayer(sl)
         context = QgsProcessingContext()
+        context.setProject(project)
+
         #     def __init__(self,
         #     algorithm: _core.QgsProcessingAlgorithm|None,
         #     inPlace: bool,
@@ -411,7 +415,6 @@ class SpectralProcessingTests(TestCase):
 
         wrapper1 = SpectralProcessingParametersWidget(alg1, sl, context, messageBar=msgBar)
         wrapper1.initWidgets()
-        # wrapper.initWidgets()
         w.setLayout(QHBoxLayout())
         w.layout().addWidget(wrapper1)
 

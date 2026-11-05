@@ -9,6 +9,7 @@ from typing import List, Tuple, Dict, Any
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtWidgets import QFrame
 from qgis.PyQt.QtWidgets import QWidget, QVBoxLayout, QLabel, QGroupBox
+from qgis._core import QgsProcessingParameterDefinition
 from qgis.core import (
     Qgis, QgsProcessingModelAlgorithm,
     QgsProcessingFeatureBasedAlgorithm,
@@ -101,7 +102,7 @@ class ProcessingParametersWidget(QgsPanelWidget):
         self.scrollAreaWidgetContents.setContentsMargins(4, 4, 4, 4)
 
     def setupUi(self):
-        self.setObjectName("QgsProcessingParametersWidgetBase")
+        self.setObjectName("ProcessingParametersWidget")
         self.verticalLayout = QVBoxLayout(self)
         self.verticalLayout.setSpacing(2)
         self.verticalLayout.setContentsMargins(0, 0, 0, 0)
@@ -137,8 +138,13 @@ class ProcessingParametersWidget(QgsPanelWidget):
         self.scrollArea.setWidget(self.scrollAreaWidgetContents)
         self.verticalLayout.addWidget(self.scrollArea)
 
+    def createParameterWidgetWrapper(self, definition: QgsProcessingParameterDefinition, mode: Qgis.ProcessingMode):
+        return QgsGui.processingGuiRegistry().createParameterWidgetWrapper(definition, mode)
+
     def initWidgets(self):
         context = self.processingContext()
+        if not isinstance(context, QgsProcessingContext):
+            raise ValueError("Processing context is not set")
 
         defs = self.algorithm().parameterDefinitions()
         for param in defs:
@@ -197,8 +203,9 @@ class ProcessingParametersWidget(QgsPanelWidget):
                 self.mWrappers[definition.name()] = wrapper
                 continue
 
-            wrapper = QgsGui.processingGuiRegistry().createParameterWidgetWrapper(definition,
-                                                                                  Qgis.ProcessingMode.Standard)
+            wrapper = self.createParameterWidgetWrapper(definition, Qgis.ProcessingMode.Standard)
+            # wrapper = QgsGui.processingGuiRegistry().createParameterWidgetWrapper(definition,
+            #                                                                      Qgis.ProcessingMode.Standard)
             if not wrapper:
                 continue
 
@@ -282,7 +289,7 @@ class ProcessingParametersWidget(QgsPanelWidget):
         defs = self.mAlgorithm.parameterDefinitions()
 
         for definition in defs:
-            dn = definition.name()
+            # dn = definition.name()
             if definition.flags() & Qgis.ProcessingParameterFlag.Hidden:
                 continue
 
@@ -300,15 +307,17 @@ class ProcessingParametersWidget(QgsPanelWidget):
                 if definition.defaultValue() != value or includeDefault:
                     parameters[definition.name()] = value
 
-                if validate and not definition.checkValueIsAcceptable(value):
+                if validate and not definition.checkValueIsAcceptable(value, context):
                     try:
                         result = QgsProcessingParametersGenerator.ParameterValidationResult()
                         result.parameterName = definition.name()
                         result.result = QgsProcessingParametersGenerator.ValidationResult.InvalidValue
-
-                    except Exception:
-                        result = {'parameterName': definition.name(),
-                                  'result': 'invalid values'}
+                    except AttributeError:
+                        result = {
+                            'parameterName': definition.name(),
+                            'result': 'InvalidValue',
+                            'message': 'Invalid value',
+                        }
                         pass
                     validationResults.append(result)
             else:
@@ -324,7 +333,9 @@ class ProcessingParametersWidget(QgsPanelWidget):
 
                 destinationProject = None
                 if wrapper.customProperties().get("OPEN_AFTER_RUNNING", False):
-                    destinationProject = QgsProject.instance()
+                    destinationProject = context.project()
+                    if destinationProject is None:
+                        destinationProject = QgsProject.instance()
 
                 if hasattr(value, 'userType') and value.userType() == "QgsProcessingOutputLayerDefinition":
                     outputDefinition = value.value()
@@ -337,10 +348,17 @@ class ProcessingParametersWidget(QgsPanelWidget):
                         destinationParam: QgsProcessingDestinationParameter = definition
                         ok, error = destinationParam.isSupportedOutputValue(value, context)
                         if not ok:
-                            result = QgsProcessingParametersGenerator.ParameterValidationResult()
-                            result.parameterName = definition.name()
-                            result.result = QgsProcessingParametersGenerator.ValidationResult.InvalidOutputExtension
-                            result.message = error
+                            try:
+                                result = QgsProcessingParametersGenerator.ParameterValidationResult()
+                                result.parameterName = definition.name()
+                                result.result = QgsProcessingParametersGenerator.ValidationResult.InvalidOutputExtension
+                                result.message = error
+                            except AttributeError:
+                                result = {
+                                    'parameterName': definition.name(),
+                                    'result': 'InvalidOutputExtension',
+                                    'message': error
+                                }
                             validationResults.append(result)
 
         return self.mAlgorithm.preprocessParameters(parameters), validationResults

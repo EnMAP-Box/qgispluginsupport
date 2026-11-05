@@ -33,8 +33,8 @@ from qgis.gui import QgsProcessingRecentAlgorithmLog, QgsProcessingToolboxProxyM
 
 from qps import initAll
 from qps.expressionfunctions import registerQgsExpressionFunctions
-from qps.processing.processingalgorithmdialog import ProcessingAlgorithmDialog
 from qps.reimplementation.algorithmwidget import AlgorithmWidget
+from qps.reimplementation.processingalgorithmdialog import ProcessingAlgorithmDialog
 from qps.speclib.core import profile_field_names, profile_fields, is_spectral_library
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
 from qps.speclib.core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict, isProfileValueDict, \

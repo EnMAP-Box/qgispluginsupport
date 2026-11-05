@@ -91,7 +91,6 @@ def start_app(cleanup: bool = True,
                       'Check your QGIS test environment. Ensure that QGIS_PREFIX_PATH is defined.\n'
                       f'Available providers: {QgsProviderRegistry.instance().providerList()}')
 
-    from qgis.core import QgsCoordinateReferenceSystem
     if not (QgsCoordinateReferenceSystem('EPSG:4326').isValid()):
         raise AssertionError('Unable to load CRS EPSG:4326.')
 
