@@ -14,10 +14,10 @@ from qgis.gui import QgsProcessingParameterWidgetContext, QgsProcessingGuiRegist
 from .processingparameterswidget import ProcessingParametersWidget
 
 
-def default_widget_context() -> QgsProcessingParameterWidgetContext:
+def _default_widget_context() -> QgsProcessingParameterWidgetContext:
     try:
         context = QgsProcessingGuiRegistry.createWidgetContext()
-    except Exception as ex:
+    except Exception:
         context = QgsProcessingParameterWidgetContext()
         context.setProject(QgsProject.instance())
 
@@ -54,7 +54,7 @@ class ProcessingAlgorithmWidget(QgsProcessingAlgorithmWidgetBase):
         self._processing_context = processing_context
 
         if not isinstance(widget_context, QgsProcessingParameterWidgetContext):
-            widget_context: QgsProcessingParameterWidgetContext = default_widget_context()
+            widget_context: QgsProcessingParameterWidgetContext = _default_widget_context()
             widget_context.setProject(processing_context.project())
 
         if processing_context.project() != widget_context.project():

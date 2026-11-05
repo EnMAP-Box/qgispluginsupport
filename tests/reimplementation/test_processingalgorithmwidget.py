@@ -1,6 +1,6 @@
 import unittest
 
-import processing
+import qgis.processing
 from processing.ProcessingPlugin import Processing
 from qgis.PyQt.QtGui import QPalette
 from qgis.core import (
@@ -35,7 +35,7 @@ class TestProcessingAlgorithmWidget(TestCase):
         return algorithm.create()
 
     def createTempRaster(self) -> QgsRasterLayer:
-        results = processing.run(
+        results = qgis.processing.run(
             "native:createconstantrasterlayer",
             {
                 "EXTENT": "-1.0,1.0,-1.0,1.0 [EPSG:4326]",

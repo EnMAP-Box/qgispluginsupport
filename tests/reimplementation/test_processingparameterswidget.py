@@ -1,6 +1,6 @@
 import unittest
 
-import processing
+import qgis.processing
 from processing.ProcessingPlugin import Processing
 from processing.gui.algorithm_widget import AlgorithmWidget
 from qgis.core import (
@@ -23,7 +23,7 @@ class TestAlgorithmWidgetContextHandling(TestCase):
     """
 
     def createTempRaster(self, name: str) -> QgsRasterLayer:
-        results = processing.run(
+        results = qgis.processing.run(
             "native:createconstantrasterlayer",
             {'EXTENT': '-1.0,1.0,-1.0,1.0 [EPSG:4326]',
              'TARGET_CRS': 'EPSG:4326', 'PIXEL_SIZE': 1, 'NUMBER': 1,
@@ -146,7 +146,7 @@ class TestAlgorithmWidgetContextHandling(TestCase):
 
         reg: QgsProcessingRegistry = QgsApplication.processingRegistry()
         alg = reg.algorithmById('native:rastergaussianblur')
-        from qps.reimplementation.processingparamterswidget import ProcessingParametersWidget
+        from qps.reimplementation.processingparameterswidget import ProcessingParametersWidget
         mbar = QgsMessageBar()
         widget = ProcessingParametersWidget(alg, False, None, mbar)
         widget.initWidgets()

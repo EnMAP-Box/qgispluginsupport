@@ -3,13 +3,26 @@
 """
 ProcessingResultsHandler reimplementation for QGIS Python plugins.
 
-This module provides a Python reimplementation of the C++ QgsAppProcessingResultsHandler
-class from QGIS src/app/processing/qgsappprocessingutils.cpp
+This module provides a Python reimplementations of the
+C++ QgsAppProcessingResultsHandler and QgsProcessingResultsHandler
+which by now (Nov 2027) are considered to be released with QGIS 4.4 but not stable Python API
+Aim is to use similar functionality with QGS 4.0+ and allow to run with QgisInterface instances
+different to the QGIS Main Desktop
+
+see QGIS src/app/processing/qgsappprocessingutils.cpp
 """
+import traceback
+from typing import Tuple
+
 from qgis.PyQt.QtCore import QCoreApplication
+from qgis.core import QgsMessageLog, Qgis, QgsSettings, QgsVectorLayer, QgsRasterLayer
 from qgis.core import QgsProcessingAlgorithm, QgsProcessingFeedback, QgsProcessingUtils
 from qgis.core import QgsProcessingContext, QgsMapLayer
-from qgis.gui import QgisInterface, QgsLayerTreeView, QgsProcessingGuiUtils
+from qgis.core import (
+    QgsProject, QgsLayerTreeGroup, QgsProcessingOutputDefinition, QgsProcessingOutputLayerDefinition,
+    QgsProperty
+)
+from qgis.gui import QgisInterface, QgsLayerTreeView
 from qgis.utils import iface as _iface
 
 
@@ -22,17 +35,16 @@ class GenericProcessingResultsHandler(object):
     to be used with individual QgsInterface instances
     """
 
-    def __init__(self, parent=None,
+    def __init__(self, parent=None,  # noqa: QGS105 # support for other QgisInterfaces
                  iface: QgisInterface | None = None,
                  layer_tree_view: QgsLayerTreeView | None = None):
         """
         Constructor for ProcessingResultsHandler.
-        
         :param parent: Parent object (optional)
         """
         if iface is None:
             iface = _iface
-        self._iface = _iface
+        self._iface = iface
 
         if layer_tree_view is None:
             layer_tree_view = iface.layerTreeView()
@@ -55,13 +67,96 @@ class GenericProcessingResultsHandler(object):
             layer_tree_view.setUpdatesEnabled(False)
 
         # Call base class implementation
-        result = self.handleAlgorithmResultsProtected(algorithm, context, parameters, feedback)
+        success, results = self.handleAlgorithmResultsProtected(algorithm, context, parameters, feedback)
 
         # Re-enable updates to layer tree view
         if layer_tree_view:
             layer_tree_view.setUpdatesEnabled(True)
 
-        return result
+        return success
+
+    def layerTreeResultsGroup(
+        self,
+        layer_details: QgsProcessingContext.LayerDetails,
+        context: QgsProcessingContext
+    ) -> QgsLayerTreeGroup | None:
+        # imitates QgsProcessingResultsHandler::layerTreeResultsGroup
+        destinationProject = layer_details.project if hasattr(layer_details, 'project') else context.project()
+
+        layerTreeRoot = None
+        if isinstance(self._layer_tree_view, QgsLayerTreeView):
+            layerTreeRoot = self._layer_tree_view.layerTreeModel().rootGroup()
+        elif isinstance(destinationProject, QgsProject):
+            layerTreeRoot = destinationProject.layerTreeRoot()
+
+        if not isinstance(layerTreeRoot, QgsLayerTreeGroup):
+            return None
+
+        resultsGroup = None
+        if layer_details.groupName in ['', None]:
+            resultsGroup = layerTreeRoot
+        else:
+            resultsGroup = layerTreeRoot.findGroup(layer_details.groupName)
+            if resultsGroup is None:
+                resultsGroup = layerTreeRoot.insertGroup(0, layer_details.groupName)
+                resultsGroup.setExpanded(True)
+
+        return resultsGroup
+
+    def postProcessLayer(self, layer: QgsMapLayer, output_name: str, algorithm: QgsProcessingAlgorithm):
+        # imitates QgsProcessingLayerPostProcessor::postProcessLayer
+        if not isinstance(layer, QgsMapLayer) or not layer.isValid():
+            return
+
+        styleFilePath = None
+        if output_name not in ['', None] and isinstance(algorithm, QgsProcessingAlgorithm):
+            # todo: get styleFilePath from QgsApplication.
+            # available with QGS 4.4
+            pass
+
+        if styleFilePath is None:
+            settings = QgsSettings()
+            if isinstance(layer, QgsVectorLayer):
+                gt = layer.geometryType()
+                if gt == Qgis.GeometryType.Point:
+                    styleFilePath = settings.value('Processing/Configuration/VECTOR_POINT_STYLE')
+                elif gt == Qgis.GeometryType.Line:
+                    styleFilePath = settings.value('Processing/Configuration/VECTOR_LINE_STYLE')
+                elif gt == Qgis.GeometryType.Polygon:
+                    styleFilePath = settings.value('Processing/Configuration/VECTOR_POLYGON_STYLE')
+
+            elif isinstance(layer, QgsRasterLayer):
+                styleFilePath = settings.value('Processing/Configuration/RASTER_STYLE')
+
+        if isinstance(styleFilePath, str):
+            layer.loadNamedStyle(styleFilePath)
+
+    def determineOutputName(
+        self, destinationId: str,
+        details: QgsProcessingContext.LayerDetails,
+        algorithm: QgsProcessingAlgorithm,
+        context: QgsProcessingContext,
+        parameters: dict
+    ) -> str:
+        # imitates QgsProcessingResultsHandler::determineOutputName
+        if not isinstance(algorithm, QgsProcessingAlgorithm):
+            return details.outputName
+
+        for output in algorithm.outputDefinitions():
+            output: QgsProcessingOutputDefinition
+            outputValue = parameters.get(output.name())
+            if outputValue is None:
+                continue
+
+            if isinstance(outputValue, QgsProcessingOutputLayerDefinition):
+                sink: QgsProperty = output.sink
+                outputValue = sink.valueAsString(context.expressionContext())
+            else:
+                outputValue = str(outputValue)
+            if outputValue == destinationId:
+                return output.name()
+
+        return details.outputName
 
     def handleAlgorithmResultsProtected(
         self,
@@ -69,25 +164,18 @@ class GenericProcessingResultsHandler(object):
         context,
         parameters,
         feedback
-    ):
-
-        added_layers: list[QgsProcessingGuiUtils.ResultLayerDetails] = []
-
-        # Store the current selected node
-        if self._layer_tree_view:
-            current_node = self._layer_tree_view.currentNode()
-        else:
-            current_node = None
+    ) -> Tuple[bool, list]:
 
         feedback.setProgressText("Loading resulting layers")
-
-        layers_to_post_process: list[
-            tuple[QgsMapLayer, QgsProcessingContext.LayerDetails]
-        ] = []
+        added_layer_details: list = []
+        invalid_layers: list = []
 
         for i, (dest_id, details) in enumerate(context.layersToLoadOnCompletion().items()):
+            dest_id: str
+            details: QgsProcessingContext.LayerDetails
+
             if feedback.isCanceled():
-                return False
+                return False, added_layer_details
 
             if len(context.layersToLoadOnCompletion()) > 2:
                 # only show progress feedback if we're loading a bunch of layers
@@ -97,81 +185,45 @@ class GenericProcessingResultsHandler(object):
 
             try:
                 layer = QgsProcessingUtils.mapLayerFromString(dest_id, context, typeHint=details.layerTypeHint)
-                # check if it is available inthe temporary store
+                # check if layer is available in temporary store
                 if layer is None:
                     layer = context.temporaryLayerStore().mapLayer(dest_id)
 
                 if isinstance(layer, QgsMapLayer) and layer.isValid():
                     details.setOutputLayerName(layer)
 
-                    output_name = determine_output_name(
-                        dest_id, details, alg, context, parameters
-                    )
-                    post_process_layer(output_name, layer, alg)
+                    output_name = self.determineOutputName(dest_id, details, algorithm, context, parameters)
+                    self.postProcessLayer(layer, output_name, algorithm)
 
                     # Load layer to layer tree root or to a specific group
-                    results_group = QgsProcessingGuiUtils.layerTreeResultsGroup(
-                        details, context
-                    )
+                    resultsGroup = self.layerTreeResultsGroup(details, context)
+                    if isinstance(resultsGroup, QgsLayerTreeGroup):
+                        resultsGroup.addLayer(layer)
+                        self.postProcessLayer(layer, output_name, algorithm)
 
-                    # note here that we may not retrieve an owned layer -- eg if the
-                    # output layer already exists in the destination project
-                    owned_map_layer = context.temporaryLayerStore().takeMapLayer(layer)
-                    if owned_map_layer:
-                        # we don't add the layer to the tree yet -- that's done
-                        # later, after we've sorted all added layers
-                        result_layer_details = QgsProcessingGuiUtils.ResultLayerDetails(
-                            owned_map_layer
-                        )
-                        result_layer_details.targetLayerTreeGroup = results_group
-                        result_layer_details.sortKey = details.layerSortKey or 0
-                        result_layer_details.destinationProject = details.project
-                        added_layers.append(result_layer_details)
-
-                    if details.postProcessor():
-                        # we defer calling the postProcessor set in the context
-                        # until the layer has been added to the project's layer
-                        # tree, just in case the postProcessor contains logic
-                        # relating to layer tree handling
-                        layers_to_post_process.append((layer, details))
-
+                    added_layer_details.append(layer)
                 else:
-                    wrong_layers.append(str(dest_id))
+                    invalid_layers.append(dest_id)
             except Exception:
+                msg = QCoreApplication.translate(
+                    "Postprocessing", "Error loading result layer:"
+                ) + "\n" + traceback.format_exc()
+
                 QgsMessageLog.logMessage(
-                    QCoreApplication.translate(
-                        "Postprocessing", "Error loading result layer:"
-                    )
-                    + "\n"
-                    + traceback.format_exc(),
-                    "Processing",
-                    Qgis.MessageLevel.Critical,
+                    msg, "Processing", Qgis.MessageLevel.Critical,
                 )
-                wrong_layers.append(str(dest_id))
-            i += 1
+                invalid_layers.append(dest_id)
 
-        if iface is not None:
-            iface.layerTreeView().setUpdatesEnabled(False)
-
-        QgsProcessingGuiUtils.addResultLayers(
-            added_layers, context, iface.layerTreeView() if iface else None
-        )
-
-        # all layers have been added to the layer tree, so safe to call
-        # postProcessors now
-        for layer, details in layers_to_post_process:
-            details.postProcessor().postProcessLayer(layer, context, feedback)
-
-        if iface is not None:
-            iface.layerTreeView().setUpdatesEnabled(True)
+        newActiveLayer = self.handleAddResultLayers(added_layer_details, context)
+        self.setNewActiveLayer(newActiveLayer)
 
         feedback.setProgress(100)
 
-        if wrong_layers:
+        if invalid_layers:
             msg = QCoreApplication.translate(
                 "Postprocessing", "The following layers were not correctly generated."
             )
-            msg += "\n" + "\n".join([f"• {lay}" for lay in wrong_layers]) + "\n"
+            msg += "\n" + "\n".join([f"• {lay}" for lay in invalid_layers]) + "\n"
             msg += QCoreApplication.translate(
                 "Postprocessing",
                 "You can check the 'Log Messages Panel' in QGIS main window "
@@ -179,23 +231,23 @@ class GenericProcessingResultsHandler(object):
             )
             feedback.reportError(msg)
 
-        return len(wrong_layers) == 0
-        s = ""
+        return len(invalid_layers) == 0, added_layer_details
 
-    def handleAddResultLayers(
-        self,
-        details,
-        context: QgsProcessingContext
-    ) -> bool:
+    def handleAddResultLayers(self, layers, context: QgsProcessingContext):
 
-        return True
+        for layer in layers:
+            # move layer from temporary store to context project, if necessary
+            tmp = context.temporaryLayerStore().takeMapLayer(layer)
+            target_project = context.project()
+            target_project.addMapLayer(tmp)
+
+        pass
 
     def setNewActiveLayer(self, layer: QgsMapLayer):
         """
         Sets the new project active layer after processing the results.
-        
+
         This override sets the active layer in the QGIS application.
-        
         :param layer: The layer to set as active
         """
         if isinstance(self._iface, QgisInterface):

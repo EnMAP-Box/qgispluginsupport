@@ -71,7 +71,6 @@ class _DefaultProcessingParametersGenerator(QgsProcessingParametersGenerator):
 class ProcessingParametersWidget(QgsPanelWidget):
     """
     Reimplementation of QgsProcessingParametersWidget.
-    
     This class provides a pure Python implementation of the QGIS processing
     parameters widget, allowing users to select values for algorithm parameters.
     """
@@ -173,9 +172,11 @@ class ProcessingParametersWidget(QgsPanelWidget):
             label.setWordWrap(True)
 
             layerName = self.mActiveLayer.name() if self.mActiveLayer else ""
-            infoText = QCoreApplication.translate("QgsProcessingParametersWidget",
-                                                  "<i>No additional parameters are required. This algorithm will activate edit mode and modify the features on layer <b>%1</b> in place.</i>").arg(
-                layerName)
+            infoText = QCoreApplication.translate(
+                "QgsProcessingParametersWidget",
+                "<i>No additional parameters are required. This algorithm will activate "
+                "edit mode and modify the features on layer <b>%1</b> in place.</i>"
+            ).arg(layerName)
             label.setText(infoText)
 
             layout.addWidget(label)

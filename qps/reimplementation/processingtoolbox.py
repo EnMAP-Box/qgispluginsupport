@@ -24,8 +24,6 @@ import warnings
 
 from processing.core.ProcessingConfig import ProcessingConfig
 from processing.gui.EditRenderingStylesDialog import EditRenderingStylesDialog
-from processing.gui.MessageDialog import MessageDialog
-from processing.gui.Postprocessing import handleAlgorithmResults
 from processing.gui.ProviderActions import ProviderActions, ProviderContextMenuActions
 from qgis.PyQt import uic
 from qgis.PyQt.QtCore import QCoreApplication, Qt, pyqtSignal
