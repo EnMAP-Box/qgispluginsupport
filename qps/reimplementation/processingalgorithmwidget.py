@@ -46,11 +46,14 @@ class ProcessingAlgorithmWidget(QgsProcessingAlgorithmWidgetBase):
         )
 
         self._in_place = in_place
-
+        self._feedback = None
         if not isinstance(processing_context, QgsProcessingContext):
             processing_context: QgsProcessingContext = QgsProcessingContext()
             processing_context.setProject(QgsProject.instance())
-
+            self._feedback = self.createFeedback()
+            processing_context.setFeedback(self._feedback)
+        else:
+            self._feedback = processing_context.feedback()
         self._processing_context = processing_context
 
         if not isinstance(widget_context, QgsProcessingParameterWidgetContext):
@@ -62,7 +65,7 @@ class ProcessingAlgorithmWidget(QgsProcessingAlgorithmWidgetBase):
 
         widget_context.registerProcessingContextGenerator(self)
         self._widget_context = widget_context
-        self._feedback = None
+
         self._widgets_to_reset_palette: List[QWidget] = []
 
         self.setAlgorithm(algorithm)
@@ -97,13 +100,12 @@ class ProcessingAlgorithmWidget(QgsProcessingAlgorithmWidgetBase):
         if flags is None:
             flags = QgsProcessingParametersGenerator.Flags()
 
-        validation_results = []
-        parameters = widget.createAndValidateParameters(flags, validation_results)
+        parameters, validation_results = widget.createAndValidateParameters(flags)
         if self.handleValidationResults(validation_results):
             return parameters
         return {}
 
-    def handleValidationResults(self, results):
+    def handleValidationResults(self, results) -> bool:
         all_valid = True
         widget = self.parametersWidget()
 

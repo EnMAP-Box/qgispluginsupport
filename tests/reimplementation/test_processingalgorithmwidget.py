@@ -98,7 +98,8 @@ class TestProcessingAlgorithmWidget(TestCase):
             project.removeMapLayer(layer)
 
     def test_validation_palette_is_reset_after_acceptance(self):
-        alg = self.createAlgorithm()
+        registry: QgsProcessingRegistry = QgsApplication.processingRegistry()
+        alg = registry.algorithmById("native:rastergaussianblur")
 
         layer = self.createTempRaster()
         project = QgsProject()
@@ -110,7 +111,9 @@ class TestProcessingAlgorithmWidget(TestCase):
         widget = ProcessingAlgorithmWidget(alg, processing_context=context)
         panel = widget.createParametersPanel(False, None, widget.messageBar())
         widget.setMainWidget(panel)
-        panel = widget.parametersWidget()
+        self.assertEqual(panel, widget.parametersWidget())
+        widget.setParameters({"INPUT": 'foobar', 'BAND': 9999})
+        panel.validate()
         input_widget = panel.wrapper("INPUT").wrappedWidget()
 
         self.showGui(widget)

@@ -4,6 +4,7 @@ Reimplementation of QgsProcessingParametersWidget.
 This module provides a Python reimplementation of the QGIS processing
 QgsProcessingParametersWidget class based on the C++ implementation
 """
+from typing import List, Tuple, Dict, Any
 
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtWidgets import QFrame
@@ -267,11 +268,11 @@ class ProcessingParametersWidget(QgsPanelWidget):
             flags = QgsProcessingParametersGenerator.Flags()
         return self.createAndValidateParameters(flags)[0]
 
-    def validate(self):
+    def validate(self) -> List:
         _, validationResults = self.createAndValidateParameters(QgsProcessingParametersGenerator.Flags())
         return validationResults
 
-    def createAndValidateParameters(self, flags):
+    def createAndValidateParameters(self, flags) -> Tuple[Dict[str, Any], List]:
         context = self.processingContext()
         validationResults = []
         includeDefault = not bool(flags & QgsProcessingParametersGenerator.Flag.SkipDefaultValueParameters)
@@ -281,6 +282,7 @@ class ProcessingParametersWidget(QgsPanelWidget):
         defs = self.mAlgorithm.parameterDefinitions()
 
         for definition in defs:
+            dn = definition.name()
             if definition.flags() & Qgis.ProcessingParameterFlag.Hidden:
                 continue
 
@@ -303,10 +305,12 @@ class ProcessingParametersWidget(QgsPanelWidget):
                         result = QgsProcessingParametersGenerator.ParameterValidationResult()
                         result.parameterName = definition.name()
                         result.result = QgsProcessingParametersGenerator.ValidationResult.InvalidValue
-                        validationResults.append(result)
-                    except Exception:
-                        pass
 
+                    except Exception:
+                        result = {'parameterName': definition.name(),
+                                  'result': 'invalid values'}
+                        pass
+                    validationResults.append(result)
             else:
                 if self.mInPlace and definition.name() == "OUTPUT":
                     parameters[definition.name()] = "memory:"
@@ -398,7 +402,7 @@ class ProcessingParametersWidget(QgsPanelWidget):
             Qgis.ProcessingMode.Standard
         )
 
-        if defaultValues:
+        if len(defaultValues) > 0:
             self.setParameters(defaultValues)
 
     def addParameterWidget(self, parameter, widget, stretch=0):

@@ -26,7 +26,7 @@ from ..processing.extractspectralprofiles import ExtractSpectralProfiles
 from ..processing.importspectralprofiles import ImportSpectralProfiles
 from ...layerproperties import showLayerPropertiesDialog, AttributeTableWidget
 from ...plotstyling.plotstyling import PlotStyle
-from ...processing.algorithmwidget import AlgorithmWidget
+from ...reimplementation.algorithmwidget import AlgorithmWidget
 from ...utils import loadUi
 
 logger = logging.getLogger(__name__)

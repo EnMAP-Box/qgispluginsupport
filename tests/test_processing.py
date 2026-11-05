@@ -24,7 +24,7 @@ from pathlib import Path
 
 from qgis import processing
 from qgis.PyQt.QtCore import QModelIndex, QObject, Qt
-from qgis.PyQt.QtWidgets import QDialog, QMainWindow
+from qgis.PyQt.QtWidgets import QDialog
 from qgis.core import edit, QgsApplication, QgsFeature, QgsProcessingAlgorithm, \
     QgsProcessingAlgRunnerTask, QgsProcessingOutputRasterLayer, \
     QgsProcessingRegistry, QgsProject, QgsTaskManager, \
@@ -33,8 +33,8 @@ from qgis.gui import QgsProcessingRecentAlgorithmLog, QgsProcessingToolboxProxyM
 
 from qps import initAll
 from qps.expressionfunctions import registerQgsExpressionFunctions
-from qps.processing.algorithmwidget import AlgorithmWidget, ParametersPanel
 from qps.processing.processingalgorithmdialog import ProcessingAlgorithmDialog
+from qps.reimplementation.algorithmwidget import AlgorithmWidget
 from qps.speclib.core import profile_field_names, profile_fields, is_spectral_library
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
 from qps.speclib.core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict, isProfileValueDict, \
@@ -81,37 +81,6 @@ class MyAlgModel(QgsProcessingToolboxProxyModel):
 
 
 class ProcessingToolsTest(TestCase):
-
-    @unittest.skipIf(TestCase.runsInCI(), 'Blocking dialog')
-    def test_processing_widgets_original(self):
-
-        reg: QgsProcessingRegistry = QgsApplication.instance().processingRegistry()
-
-        aname = 'native:createconstantrasterlayer'
-        alg = reg.algorithmById(aname)
-        self.assertIsInstance(alg, QgsProcessingAlgorithm)
-
-        from qps.processing.algorithmwidget import AlgorithmWidget as AW2
-        from processing import AlgorithmWidget as AW1
-        # processing.execAlgorithmDialog(alg)
-        # from qgis.utils import iface
-        # parent = iface.mainWindow()
-
-        lyr = TestObjects.createRasterLayer()
-        QgsProject.instance().addMapLayer(lyr)
-
-        if False:
-            parent = QMainWindow()
-            alg = reg.algorithmById(aname)
-            w1 = AW1(alg, parent=parent)
-            w1.exec()
-            # r1 = w1.results()
-
-        w2 = AW2(alg)
-        w2.exec()
-        r2 = w2.results()
-        self.assertIsInstance(r2, dict)
-        self.assertTrue('OUTPUT' in r2)
 
     @unittest.skipIf(TestCase.runsInCI(), 'Blocking dialog')
     def test_processingProcessingAlgorithmDialog(self):
@@ -393,10 +362,6 @@ class ProcessingToolsTest(TestCase):
         # Note: We need to use a parent that has messageBar() method
         # AlgorithmDialog provides this, but full initialization causes crashes due to
         # parameterChanged being triggered during initWidgets()
-
-        # Test 1: Check that ParametersPanel is importable and accessible
-        from qps.processing.algorithmwidget import ParametersPanel as PanelClass
-        self.assertEqual(PanelClass, ParametersPanel)
 
         # Test 2: Verify the algorithm has the expected parameters
         param_names = [p.name() for p in alg.parameterDefinitions()]
