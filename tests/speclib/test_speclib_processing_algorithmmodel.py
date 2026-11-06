@@ -7,19 +7,16 @@ from qgis.PyQt.QtWidgets import QDialog
 from qgis.core import (
     QgsApplication, QgsProcessingAlgorithm, QgsProcessingContext,
     QgsProcessingFeedback,
-    QgsProcessingOutputRasterLayer, QgsProject,
-    QgsProcessingException,
+    QgsProcessingOutputRasterLayer, QgsProcessingException,
     QgsProcessingParameterRasterLayer,
     QgsProcessingParameterNumber, QgsProcessingParameterRasterDestination,
 )
-from qgis.core import QgsProcessingRegistry
 
 from qps import initAll
 from qps.qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from qps.reimplementation.processingalgorithmdialog import ProcessingAlgorithmDialog
-from qps.speclib.gui.spectralprocessingalgorithmodel import SpectralProcessingAlgorithmModel
-from qps.speclib.gui.spectralprocessingalgorithwidget import SpectralProcessingAlgorithmWidget
-from qps.testing import ExampleAlgorithmProvider, TestCase, TestObjects, start_app
+from qps.speclib.gui.spectralprocessingalgorithmmodel import SpectralProcessingAlgorithmModel
+from qps.testing import ExampleAlgorithmProvider, TestCase, start_app
 
 start_app()
 initAll()

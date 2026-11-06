@@ -1,9 +1,9 @@
 import unittest
 
-from qgis._core import QgsProcessingAlgorithm
 from qgis.core import (
     QgsApplication, QgsProcessingContext, QgsProcessingRegistry, QgsProject
 )
+from qgis.core import QgsProcessingAlgorithm
 
 from qps import initAll
 from qps.speclib.gui.spectralprocessingalgorithmwidget import SpectralProcessingAlgorithmWidget

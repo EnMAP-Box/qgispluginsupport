@@ -13,13 +13,27 @@ from qgis.core import Qgis, QgsColorRampShader, QgsCoordinateReferenceSystem, Qg
     QgsRaster, QgsRasterBandStats, QgsRasterBlock, QgsRasterBlockFeedback, \
     QgsRasterDataProvider, QgsRasterIdentifyResult, QgsRasterLayer, QgsRectangle, QgsVectorLayer, \
     QgsProviderMetadata, QgsProviderRegistry, QgsMessageLog
+from qgis.core import QgsCoordinateTransformContext, QgsRasterFileWriter, QgsRasterPipe, QgsPalettedRasterRenderer, \
+    QgsMapLayer
 
 from .spectralprofile import groupBySpectralProperties, spectralSettingsDict
 from ..core import is_profile_field, profile_fields
 from ..core.spectralprofile import decodeProfileValueDict  # , groupBySpectralProperties_depr, SpectralSetting
-from ...utils import HashableRectangle, nextColor, numpyToQgisDataType, qgsField, QGIS2NUMPY_DATA_TYPES
+from ...qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
+from ...utils import HashableRectangle, nextColor, numpyToQgisDataType, qgsField, QGIS2NUMPY_DATA_TYPES, qgsRasterLayer
 
 _DEF_CRS = None
+
+LUT_RASTERFILEWRITER_ERRORS: Dict[int, str] = {
+    QgsRasterFileWriter.WriterError.SourceProviderError: 'SourceProviderError',
+    QgsRasterFileWriter.WriterError.DestProviderError: 'DestProviderError',
+    QgsRasterFileWriter.WriterError.CreateDatasourceError: 'CreateDatasourceError',
+    QgsRasterFileWriter.WriterError.WriteError: 'WriteError',
+    QgsRasterFileWriter.WriterError.NoDataConflict: 'Internal error if a value used '
+                                                    'for "no data" was found in input',
+    QgsRasterFileWriter.WriterError.WriteCanceled: 'Writing was manually canceled.',
+
+}
 
 
 def defaultCrs() -> QgsCoordinateReferenceSystem:
@@ -35,6 +49,76 @@ def create_uri(vl: QgsVectorLayer, field: QgsField) -> str:
     return uri
 
 
+def writeTemporaryRaster(
+    self,
+    dp: QgsRasterDataProvider,
+    file_name: str,
+    rasterblockFeedback: QgsRasterBlockFeedback,
+    transformContext: QgsCoordinateTransformContext,
+    layer_name: Optional[str] = None,
+):
+    """
+    Writes a temporary raster file from a QgsRasterDataProvider.
+    file_name: str a string with the temporary raster file name
+    """
+    file_writer = QgsRasterFileWriter(file_name)
+
+    if not (dp.xSize() > 0):
+        raise AssertionError
+    if not (dp.ySize() > 0):
+        raise AssertionError
+    if not (dp.bandCount() > 0):
+        raise AssertionError
+
+    pipe = QgsRasterPipe()
+    if not pipe.set(dp):
+        self.log(f'Cannot set pipe provider to write {file_name}', isError=True)
+    else:
+        self.log(f'Write {file_name}')
+    error = file_writer.writeRaster(
+        pipe,
+        dp.xSize(),
+        dp.ySize(),
+        dp.extent(),
+        dp.crs(),
+        transformContext,
+        rasterblockFeedback
+    )
+
+    del file_writer
+    if error != QgsRasterFileWriter.WriterError.NoError:
+        errMsg = LUT_RASTERFILEWRITER_ERRORS.get(error, 'unknown')
+        raise Exception(
+            f'Unable to write {file_name}\n'
+            f'QgsRasterFileWriterError: {errMsg}'
+        )
+
+    layer: QgsRasterLayer = qgsRasterLayer(file_name)
+    if layer_name is not None:
+        layer.setName(layer_name)
+
+    # write additional metadata
+    if isinstance(dp, VectorLayerFieldRasterDataProvider):
+
+        if dp.bandCount() > 1:
+            # write spectral settings, if available
+            spectral_settings = dp.rasterMetaData().copy()
+            props = QgsRasterLayerSpectralProperties.fromMap(spectral_settings)
+            props.writeToSource(layer, write_envi=True)
+
+        # write a classification
+        else:
+            colorTable = dp.colorTable(1)
+            if len(colorTable) > 0:
+                # set a categorical raster renderer with class names and colors
+                classData = QgsPalettedRasterRenderer.colorTableToClassData(colorTable)
+                renderer = QgsPalettedRasterRenderer(layer.dataProvider(), 1, classData)
+                layer.setRenderer(renderer)
+                layer.saveDefaultStyle(QgsMapLayer.StyleCategory.AllStyleCategories)
+
+    del layer
+
+
 def createRasterLayers(
     vl: QgsVectorLayer,
     selected_only: bool = False,
@@ -42,6 +126,7 @@ def createRasterLayers(
 ) -> List[QgsRasterLayer]:
     """
     Returns a list of in-memory QgsRasterLayers that represent the values inside a QgsVectorLayer.
+    Each layer uses a VectorLayerFieldRasterDataProvider data provider that accesses vector features
     :param features:
     :param fields:
     :return:

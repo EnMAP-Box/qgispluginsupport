@@ -9,13 +9,13 @@ from typing import List, Tuple, Dict, Any
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtWidgets import QFrame
 from qgis.PyQt.QtWidgets import QWidget, QVBoxLayout, QLabel, QGroupBox
-from qgis._core import QgsProcessingParameterDefinition
 from qgis.core import (
     Qgis, QgsProcessingModelAlgorithm,
     QgsProcessingFeatureBasedAlgorithm,
     QgsProcessingDestinationParameter,
 )
 from qgis.core import QgsProcessingContext
+from qgis.core import QgsProcessingParameterDefinition
 from qgis.core import QgsVariantUtils, QgsProject
 from qgis.gui import (
     QgsGui,
@@ -244,7 +244,8 @@ class ProcessingParametersWidget(QgsPanelWidget):
             if self.mInPlace and (output.name() == inPlaceInputParameterName or output.name() == "OUTPUT"):
                 continue
 
-            # wrapper = QgsGui.processingGuiRegistry().createParameterWidgetWrapper(output, Qgis.ProcessingMode.Standard)
+            # wrapper = QgsGui.processingGuiRegistry()
+            # .createParameterWidgetWrapper(output, Qgis.ProcessingMode.Standard)
             wrapper = self.createParameterWidgetWrapper(output, Qgis.ProcessingMode.Standard)
             if not wrapper:
                 continue

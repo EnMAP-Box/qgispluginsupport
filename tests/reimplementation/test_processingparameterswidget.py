@@ -2,12 +2,12 @@ import unittest
 
 import qgis.processing
 from processing.ProcessingPlugin import Processing
-from qgis._core import QgsProcessingFeedback
-from qgis._gui import QgsProcessingParametersGenerator, QgsProcessingParameterWidgetContext
 from qgis.core import (
     Qgis, QgsProcessing, QgsProcessingParameterRasterLayer, QgsProcessingRegistry, QgsApplication, QgsProject,
     QgsRasterLayer, QgsProcessingContext)
+from qgis.core import QgsProcessingFeedback
 from qgis.gui import QgsGui, QgsMessageBar, QgsProcessingContextGenerator
+from qgis.gui import QgsProcessingParametersGenerator, QgsProcessingParameterWidgetContext
 
 from qps.testing import start_app, TestCase, TestObjects
 

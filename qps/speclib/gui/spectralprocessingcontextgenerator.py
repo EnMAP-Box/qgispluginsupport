@@ -1,6 +1,7 @@
-from psycopg2._psycopg import List
-from qgis._core import QgsVectorLayer, QgsProcessingContext, QgsProject, QgsRasterLayer
-from qgis._gui import QgsProcessingContextGenerator, QgsProcessingParametersGenerator, \
+from typing import List
+
+from qgis.core import QgsVectorLayer, QgsProcessingContext, QgsProject, QgsRasterLayer
+from qgis.gui import QgsProcessingContextGenerator, QgsProcessingParametersGenerator, \
     QgsProcessingParameterWidgetContext
 
 from ..core.spectrallibraryrasterdataprovider import createRasterLayers

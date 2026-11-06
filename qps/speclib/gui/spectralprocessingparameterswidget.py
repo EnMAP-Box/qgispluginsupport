@@ -1,15 +1,18 @@
-from qgis._core import QgsProcessingParameterRasterLayer, QgsProcessingParameterRasterDestination, QgsVectorLayer
 from qgis.core import (
     QgsProcessingParameterDefinition
 )
+from qgis.core import QgsProcessingParameterRasterLayer, QgsProcessingParameterRasterDestination, QgsVectorLayer
 
-from .spectralprocessingwidget import SpectralProcessingRasterLayerWidgetWrapper, SpectralProcessingRasterDestination
+from .spectralprocessingrasterdestination import SpectralProcessingRasterDestination
+from .spectralprocessingrasterlayerwidgetwrapper import SpectralProcessingRasterLayerWidgetWrapper
 from ...reimplementation.processingparameterswidget import ProcessingParametersWidget
 
 
 class SpectralProcessingParametersWidget(ProcessingParametersWidget):
 
     def __init__(self, *args, speclib: QgsVectorLayer, **kwds):
+        if not isinstance(speclib, QgsVectorLayer):
+            raise TypeError('SpectralProcessingParametersWidget requires a QgsVectorLayer object "speclib"')
         super().__init__(*args, **kwds)
 
         self._speclib = speclib

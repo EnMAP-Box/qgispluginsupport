@@ -21,9 +21,10 @@ from qgis.gui import QgsProcessingAlgorithmWidgetBase, QgsProcessingContextGener
 from qps import initAll
 from qps.qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
-from qps.speclib.gui.spectralprocessingwidget import (
-    SpectralProcessingWidget, SpectralProcessingRasterLayerWidgetWrapper, SpectralProcessingParametersWidget
-)
+from qps.speclib.gui.spectralprocessingrasterlayerwidgetwrapper import SpectralProcessingRasterLayerWidgetWrapper
+from qps.speclib.gui.spectralprocessingwidget import (SpectralProcessingParametersWidget
+                                                      )
+from qps.speclib.gui.spectralprocessingwidget import SpectralProcessingWidget
 from qps.testing import ExampleAlgorithmProvider, TestCase, TestObjects, start_app
 
 start_app()
@@ -427,7 +428,7 @@ class SpectralProcessingTests(TestCase):
         procw = SpectralProcessingWidget(speclib=speclib)
         # procw.setSpeclib(speclib)
         reg: QgsProcessingRegistry = QgsApplication.instance().processingRegistry()
-        alg1 = R('gdal:rearrange_bands')
+        alg1 = reg.createAlgorithmById('gdal:rearrange_bands')
         self.assertIsInstance(alg1, QgsProcessingAlgorithm)
         alg2 = reg.createAlgorithmById('native:rescaleraster')
         self.assertIsInstance(alg2, QgsProcessingAlgorithm)

@@ -12,6 +12,7 @@ from qgis.PyQt.QtWidgets import (
     QPushButton,
     QSizePolicy,
 )
+from qgis._gui import QgsProcessingParametersGenerator
 from qgis.core import QgsProcessingAlgorithm, QgsVectorLayer
 from qgis.gui import QgsPanelWidget
 
@@ -134,3 +135,36 @@ class SpectralProcessingAlgorithmWidget(ProcessingAlgorithmWidget):
         self.tbAlgorithmName.setText(info)
         self.tbAlgorithmName.setToolTip(tooltip)
         self.setWindowTitle(self.mWidgetName)
+
+    def processingContext(self):
+        return self.mContextGenerator.processingContext()
+
+    def widgetContext(self):
+        return self.mContextGenerator.createWidgetContext()
+
+    def runAlgorithm(self):
+
+        feedback = self.createFeedback()
+        processing_context = self.processingContext()
+
+        parameters = {}
+        validation_result = []
+        if self.mainWidget() is not None:
+            parameters, validation_result = (
+                self.mainWidget().createAndValidateParameters(QgsProcessingParametersGenerator.Flags())
+            )
+        else:
+            return
+        algorithm = self.algorithm()
+
+        # 1. check parameters for QgsRasterLayers that use a VectorLayerFieldRasterDataProvider.
+        #    Convert these into temporary local files that can be used with gdal algorithms
+        # 2. replace the VectorLayerFieldRasterDataProvider layer with layer that use the temporary local files
+        #    keep in mind for these parameters the VectorLayerFieldRasterDataProvider's activeFeatureIDs()
+        #    so that we can later on refer each pixel index to a feature id
+        # 3. run the algorithm with modified parameters. report to feedback and collect all results / outputs
+        # 4. collect results and convert its outputs as followed
+        #    If output raster have the same number of pixels as the input rasters:
+        #    - raster files with one band into int / float fields
+        #    - raster files with > 1 bands into spectral profile fields
+        #    otherwise do not use them
