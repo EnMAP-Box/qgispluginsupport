@@ -52,4 +52,4 @@ class SpectralProcessingContextGenerator(QgsProcessingContextGenerator, QgsProce
         self._project.addMapLayers(self._example_layers)
 
     def exampleLayers(self) -> List[QgsRasterLayer]:
-        return self.mExampleLayers[:]
+        return self._example_layers[:]
