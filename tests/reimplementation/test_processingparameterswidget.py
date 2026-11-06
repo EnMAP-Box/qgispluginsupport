@@ -43,12 +43,18 @@ class TestAlgorithmWidgetContextHandling(TestCase):
         class CustomProcessingContextGenerator(QgsProcessingContextGenerator):
             def __init__(self, context):
                 super().__init__()
-                self._context = context
-                self.n_processing_context_calls = 0
+                self._pcontext = context
+                self._wcontext = None
 
             def processingContext(self):
-                self.n_processing_context_calls += 1
-                return self._context
+                return self._pcontext
+
+            def createWidgetContext(self):
+                if self._wcontext is None:
+                    self._wcontext = QgsProcessingParameterWidgetContext()
+                    self._wcontext.setProject(self._pcontext.project())
+                    self._wcontext.registerProcessingContextGenerator(self)
+                return self._wcontext
 
         lyr_custom = self.createTempRaster('LayerCustomContext')
         lyr_standard = self.createTempRaster('LayerStandardContext')
@@ -66,8 +72,10 @@ class TestAlgorithmWidgetContextHandling(TestCase):
         # QgsProcessingParametersWidget::initWidgets()
         # https://github.com/qgis/QGIS/blob/2829fc55840474e42c64f0bca756c2fda272a0bf/src/gui/processing/qgsprocessingparameterswidget.cpp#L326
 
-        processing_context = c_generator.processingContext()
-        widget_context = QgsGui.processingGuiRegistry().createWidgetContext()
+        w_context = c_generator.createWidgetContext()
+        p_context = c_generator.processingContext()
+        self.assertEqual(c_project, w_context.project())
+        self.assertEqual(c_project, p_context.project())
 
         definition = QgsProcessingParameterRasterLayer('myraster')
         wrapper = QgsGui.processingGuiRegistry().createParameterWidgetWrapper(
@@ -79,10 +87,10 @@ class TestAlgorithmWidgetContextHandling(TestCase):
         # in the map layer combox
         # w_context.setProject(c_context.project())
 
-        wrapper.setWidgetContext(widget_context)
+        wrapper.setWidgetContext(w_context)
         wrapper.registerProcessingContextGenerator(c_generator)
 
-        raster_widget = wrapper.createWrappedWidget(processing_context)
+        raster_widget = wrapper.createWrappedWidget(p_context)
 
         # get the current text of the raster layer combobox
         combobox_text = raster_widget.children()[1].currentText()
@@ -91,6 +99,8 @@ class TestAlgorithmWidgetContextHandling(TestCase):
             lyr_custom.name() in combobox_text,
             msg=f'Layer name "{lyr_custom.name()}" is not in combobox text "{combobox_text}"'
         )
+
+        QgsProject.instance().removeAllMapLayers()
 
     def test_createParametersPanel(self):
         lyr1 = TestObjects.createRasterLayer(name='Raster Layer')
