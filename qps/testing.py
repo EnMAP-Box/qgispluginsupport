@@ -576,10 +576,7 @@ class TestCase(QgisTestCase):
 
         app = QApplication.instance()
         if isinstance(app, QApplication) and keepOpen:
-            try:
-                app.exec()
-            except Exception:
-                app.exec()
+            app.exec()
 
         return True
 

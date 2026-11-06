@@ -68,10 +68,18 @@ class ProcessingAlgorithmWidget(QgsProcessingAlgorithmWidgetBase):
         self._widget_context = widget_context
 
         self._widgets_to_reset_palette: List[QWidget] = []
-
+        # self._algorithm: QgsProcessingAlgorithm | None = None
         if isinstance(algorithm, QgsProcessingAlgorithm):
             self.setAlgorithm(algorithm)
+
         self.buttonBox().accepted.connect(self._resetWidgetPalettes)
+
+    # def setAlgorithm(self, algorithm) -> None:
+    #     if isinstance(algorithm, QgsProcessingAlgorithm):
+    #         algorithm = algorithm.create()
+    #
+    #     self._algorithm = algorithm  # keep a reference to the algorithm
+    #     super().setAlgorithm(algorithm)
 
     def createParametersPanel(self, inPlaceMode, activeLayer, messageBar):
         widget = ProcessingParametersWidget(self.algorithm(), inPlaceMode, activeLayer, messageBar)

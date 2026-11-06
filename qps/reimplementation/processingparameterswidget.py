@@ -77,7 +77,14 @@ class ProcessingParametersWidget(QgsPanelWidget):
     parameters widget, allowing users to select values for algorithm parameters.
     """
 
-    def __init__(self, algorithm, in_place=False, active_layer=None, message_bar=None, parent=None):
+    def __init__(
+        self,
+        algorithm,
+        in_place=False,
+        active_layer=None,
+        message_bar=None,
+        parent=None
+    ):
         super().__init__(parent)
 
         self.mAlgorithm = algorithm
@@ -237,7 +244,8 @@ class ProcessingParametersWidget(QgsPanelWidget):
             if self.mInPlace and (output.name() == inPlaceInputParameterName or output.name() == "OUTPUT"):
                 continue
 
-            wrapper = QgsGui.processingGuiRegistry().createParameterWidgetWrapper(output, Qgis.ProcessingMode.Standard)
+            # wrapper = QgsGui.processingGuiRegistry().createParameterWidgetWrapper(output, Qgis.ProcessingMode.Standard)
+            wrapper = self.createParameterWidgetWrapper(output, Qgis.ProcessingMode.Standard)
             if not wrapper:
                 continue
 
