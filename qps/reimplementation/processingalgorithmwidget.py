@@ -3,6 +3,7 @@ from typing import List
 
 from qgis.PyQt.QtGui import QColor, QPalette
 from qgis.PyQt.QtWidgets import QWidget
+from qgis._core import QgsProcessingAlgorithm
 from qgis.core import Qgis, QgsProcessingContext
 from qgis.core import QgsProject
 from qgis.gui import (
@@ -68,7 +69,8 @@ class ProcessingAlgorithmWidget(QgsProcessingAlgorithmWidgetBase):
 
         self._widgets_to_reset_palette: List[QWidget] = []
 
-        self.setAlgorithm(algorithm)
+        if isinstance(algorithm, QgsProcessingAlgorithm):
+            self.setAlgorithm(algorithm)
         self.buttonBox().accepted.connect(self._resetWidgetPalettes)
 
     def createParametersPanel(self, inPlaceMode, activeLayer, messageBar):
