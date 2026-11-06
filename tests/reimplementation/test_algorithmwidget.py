@@ -39,7 +39,7 @@ class TestAlgorithmWidgetContextHandling(TestCase):
         Test that AlgorithmWidget class exists.
         """
         reg: QgsProcessingRegistry = QgsApplication.processingRegistry()
-        alg = reg.algorithmById('native:virtualrastercalc')
+        alg = reg.createAlgorithmById('native:virtualrastercalc')
 
         lyr_custom = self.createTempRaster()
         lyr_custom.setName('LayerCustomContext')

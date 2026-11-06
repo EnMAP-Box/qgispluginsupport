@@ -395,7 +395,7 @@ class SpectralProcessingTests(TestCase):
     def test_processing_parameters_widget(self):
 
         reg: QgsProcessingRegistry = QgsApplication.instance().processingRegistry()
-        alg1 = reg.algorithmById('gdal:translate')
+        alg1 = reg.createAlgorithmById('gdal:translate')
         alg1.initAlgorithm({})
         sl = TestObjects.createSpectralLibrary()
         w = QWidget()
@@ -405,12 +405,6 @@ class SpectralProcessingTests(TestCase):
         context = QgsProcessingContext()
         context.setProject(project)
 
-        #     def __init__(self,
-        #     algorithm: _core.QgsProcessingAlgorithm|None,
-        #     inPlace: bool,
-        #     activeLayer: _core.QgsMapLayer|None,
-        #     messageBar: QgsMessageBar|None,
-        #     parent: QtWidgets.QWidget|None = ...) -> None: ...
         msgBar = QgsMessageBar()
 
         wrapper1 = SpectralProcessingParametersWidget(alg1, sl, context, messageBar=msgBar)
@@ -418,7 +412,6 @@ class SpectralProcessingTests(TestCase):
         w.setLayout(QHBoxLayout())
         w.layout().addWidget(wrapper1)
 
-        # wrapper = SpectralProcessingModelCreatorAlgorithmWrapper(alg1, sl, context)
         self.showGui(w)
 
     def test_algwidget(self):
@@ -434,9 +427,9 @@ class SpectralProcessingTests(TestCase):
         procw = SpectralProcessingWidget(speclib=speclib)
         # procw.setSpeclib(speclib)
         reg: QgsProcessingRegistry = QgsApplication.instance().processingRegistry()
-        alg1 = reg.algorithmById('gdal:rearrange_bands')
+        alg1 = R('gdal:rearrange_bands')
         self.assertIsInstance(alg1, QgsProcessingAlgorithm)
-        alg2 = reg.algorithmById('native:rescaleraster')
+        alg2 = reg.createAlgorithmById('native:rescaleraster')
         self.assertIsInstance(alg2, QgsProcessingAlgorithm)
         procw.setAlgorithm(alg2)
         self.showGui(procw)
@@ -460,9 +453,9 @@ class SpectralProcessingTests(TestCase):
         procw = SpectralProcessingWidget()
         procw.setSpeclib(speclib)
         reg: QgsProcessingRegistry = QgsApplication.instance().processingRegistry()
-        alg1 = reg.algorithmById('gdal:rearrange_bands')
+        alg1 = reg.createAlgorithmById('gdal:rearrange_bands')
         self.assertIsInstance(alg1, QgsProcessingAlgorithm)
-        alg2 = reg.algorithmById('native:rescaleraster')
+        alg2 = reg.createAlgorithmById('native:rescaleraster')
 
         procw.setAlgorithm(alg2)
         wrapper = procw.processingModelWrapper()

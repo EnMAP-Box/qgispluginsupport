@@ -844,7 +844,7 @@ def ogrDataSource(data_source, update: int = 0) -> ogr.DataSource:
         if dpn not in ['ogr']:
             context = QgsProcessingContext()
             feedback = QgsProcessingFeedback()
-            alg: QgsProcessingAlgorithm = QgsApplication.processingRegistry().algorithmById(
+            alg: QgsProcessingAlgorithm = QgsApplication.processingRegistry().createAlgorithmById(
                 'native:savefeatures').create({})
             parameters = dict(DATASOURCE_OPTIONS='',
                               INPUT=data_source.source(),

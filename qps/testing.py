@@ -1475,7 +1475,7 @@ class TestObjects(object):
     def createRasterProcessingModel(name: str = 'Example Raster Model') -> QgsProcessingModelAlgorithm:
 
         reg: QgsProcessingRegistry = QgsApplication.instance().processingRegistry()
-        alg = reg.algorithmById('gdal:rearrange_bands')
+        alg = reg.createAlgorithmById('gdal:rearrange_bands')
 
         return alg
 

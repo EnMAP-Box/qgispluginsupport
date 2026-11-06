@@ -142,7 +142,7 @@ class ProcessingToolsTest(TestCase):
         alg_id = 'testalgorithmprovider:aggregateprofiles'
         # alg_id = provider.algorithms()[0].id()
 
-        alg = reg.algorithmById(alg_id)
+        alg = reg.createAlgorithmById(alg_id)
         self.assertIsInstance(alg, AggregateProfiles)
 
         d = AlgorithmWidget(alg)
@@ -186,7 +186,7 @@ class ProcessingToolsTest(TestCase):
         reg = QgsApplication.instance().processingRegistry()
 
         alg_id = provider.algorithms()[0].id()
-        alg = reg.algorithmById(alg_id)
+        alg = reg.createAlgorithmById(alg_id)
         self.assertIsInstance(alg, AggregateProfiles)
 
         parameters = {
@@ -355,7 +355,7 @@ class ProcessingToolsTest(TestCase):
 
         reg = QgsApplication.instance().processingRegistry()
         alg_id = provider.algorithms()[0].id()
-        alg = reg.algorithmById(alg_id)
+        alg = reg.createAlgorithmById(alg_id)
         self.assertIsInstance(alg, AggregateProfiles)
 
         # Create a minimal ParametersPanel - just test that it can be instantiated

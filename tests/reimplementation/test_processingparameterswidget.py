@@ -111,7 +111,7 @@ class TestAlgorithmWidgetContextHandling(TestCase):
         custom_project.addMapLayers([lyr2])
 
         reg: QgsProcessingRegistry = QgsApplication.processingRegistry()
-        alg = reg.algorithmById('native:rastergaussianblur')
+        alg = reg.createAlgorithmById('native:rastergaussianblur')
         from qps.reimplementation.processingparameterswidget import ProcessingParametersWidget
         mbar = QgsMessageBar()
 

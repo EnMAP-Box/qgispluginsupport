@@ -31,7 +31,7 @@ Processing.initialize()
 class TestProcessingAlgorithmWidget(TestCase):
     def createAlgorithm(self):
         registry: QgsProcessingRegistry = QgsApplication.processingRegistry()
-        algorithm = registry.algorithmById("native:rastergaussianblur")
+        algorithm = registry.createAlgorithmById("native:rastergaussianblur")
         self.assertIsNotNone(algorithm)
         return algorithm.create()
 
@@ -100,7 +100,7 @@ class TestProcessingAlgorithmWidget(TestCase):
 
     def test_validation_palette_is_reset_after_acceptance(self):
         registry: QgsProcessingRegistry = QgsApplication.processingRegistry()
-        alg = registry.algorithmById("native:rastergaussianblur")
+        alg = registry.createAlgorithmById("native:rastergaussianblur")
 
         layer = self.createTempRaster()
         project = QgsProject()
