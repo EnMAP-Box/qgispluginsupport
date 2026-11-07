@@ -6,11 +6,12 @@ name: qps_latest
 channels:
   - conda-forge
 dependencies:
-  - qgis<3.99
+  - qgis>=4.00
   - python>=3.12
   - pip
   - pyqtgraph
   - defusedxml
+  - spyndex
 
   # Development
   - bandit
@@ -28,4 +29,4 @@ dependencies:
 
 variables:
   QT_MAC_WANTS_LAYER: 1
-  PYQTGRAPH_QT_LIB: PyQt5
+  PYQTGRAPH_QT_LIB: PyQt6

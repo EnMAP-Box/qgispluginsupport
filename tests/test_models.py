@@ -5,20 +5,22 @@ import unittest
 from typing import List, Union
 
 import numpy as np
-
-from qgis.PyQt.QtCore import QModelIndex, QSettings, QSortFilterProxyModel, Qt
+from qgis.PyQt.QtCore import QModelIndex, QSettings, QSortFilterProxyModel, Qt, QMetaType
 from qgis.PyQt.QtGui import QColor
 from qgis.PyQt.QtTest import QAbstractItemModelTester
 from qgis.PyQt.QtWidgets import (
     QComboBox, QGridLayout, QHBoxLayout, QLabel, QMenu, QPushButton,
     QTreeView, QVBoxLayout, QWidget)
+from qgis.core import QgsField, QgsProject, QgsRasterLayer, QgsVectorLayer, QgsFieldModel, QgsMapLayerModel
 from qgis.gui import QgsMapCanvas
+
+from qps.layerfielddialog import FilteredFieldProxyModel, FilteredMapLayerProxyModel
 from qps.models import (
     Option, OptionListModel, PyObjectTreeNode,
     SettingsModel, SettingsNode, SettingsTreeView,
     TreeModel, TreeNode, TreeView)
 from qps.plotstyling.plotstyling import MarkerSymbol
-from qps.testing import start_app, TestCase
+from qps.testing import start_app, TestCase, TestObjects
 
 start_app()
 
@@ -538,6 +540,359 @@ class ModelTests(TestCase):
         view.setModel(model)
 
         #  self.showGui(view)
+
+
+class FilteredMapLayerProxyModelTests(TestCase):
+
+    def test_init(self):
+        project = QgsProject()
+        model = FilteredMapLayerProxyModel(project)
+        self.assertIsInstance(model, FilteredMapLayerProxyModel)
+        self.assertEqual(model.project(), project)
+
+    def test_default_filter(self):
+        project = QgsProject()
+        model = FilteredMapLayerProxyModel(project)
+        self.assertEqual(model.project(), project)
+
+        vl = TestObjects.createVectorLayer(name='vector')
+        rl = TestObjects.createRasterLayer(name='raster')
+        project.addMapLayers([vl, rl])
+        cb = QComboBox()
+        cb.setModel(model)
+        self.showGui(cb)
+        self.assertEqual(model.rowCount(), 2)
+
+    def test_filter_vector_layers_only(self):
+        project = QgsProject()
+
+        vl1 = TestObjects.createVectorLayer(name='vector1')
+        vl2 = TestObjects.createVectorLayer(name='vector2')
+        rl = TestObjects.createRasterLayer(name='raster')
+
+        project.addMapLayers([vl1, vl2, rl])
+
+        model = FilteredMapLayerProxyModel(project)
+
+        def filter_vector(layer):
+            return isinstance(layer, QgsVectorLayer)
+
+        model.setFilterFunc(filter_vector)
+
+        self.assertEqual(model.rowCount(), 2)
+
+    def test_filter_raster_layers_only(self):
+        project = QgsProject()
+
+        vl = TestObjects.createVectorLayer(name='vector')
+        rl1 = TestObjects.createRasterLayer(name='raster1')
+        rl2 = TestObjects.createRasterLayer(name='raster2')
+
+        project.addMapLayers([vl, rl1, rl2])
+
+        model = FilteredMapLayerProxyModel(project)
+        model.setShowAll(False)
+
+        def filter_raster(layer):
+            return isinstance(layer, QgsRasterLayer)
+
+        model.setFilterFunc(filter_raster)
+
+        self.assertEqual(model.rowCount(), 2)
+
+    def test_setShowAll_false_hides_filtered(self):
+        project = QgsProject()
+
+        vl = TestObjects.createVectorLayer(name='vector')
+        rl = TestObjects.createRasterLayer(name='raster')
+
+        project.addMapLayers([vl, rl])
+
+        model = FilteredMapLayerProxyModel(project)
+
+        def filter_vector(layer):
+            return isinstance(layer, QgsVectorLayer)
+
+        model.setFilterFunc(filter_vector)
+        model.setShowAll(False)
+
+        self.assertEqual(model.rowCount(), 1)
+
+        idx = model.index(0, 0)
+        layer = model.data(idx, QgsMapLayerModel.CustomRole.Layer)
+        self.assertIsInstance(layer, QgsVectorLayer)
+
+    def test_layers_method(self):
+        project = QgsProject()
+
+        vl1 = TestObjects.createVectorLayer(name='vector1')
+        vl2 = TestObjects.createVectorLayer(name='vector2')
+        rl = TestObjects.createRasterLayer(name='raster')
+
+        project.addMapLayers([vl1, vl2, rl])
+
+        model = FilteredMapLayerProxyModel(project)
+
+        layers = model.layers()
+        self.assertEqual(len(layers), 3)
+        self.assertIn(vl1, layers)
+        self.assertIn(vl2, layers)
+        self.assertIn(rl, layers)
+
+    def test_layer_filtering_with_layers_method(self):
+        project = QgsProject()
+
+        vl1 = TestObjects.createVectorLayer(name='vector1')
+        vl2 = TestObjects.createVectorLayer(name='vector2')
+        rl = TestObjects.createRasterLayer(name='raster')
+
+        project.addMapLayers([vl1, vl2, rl])
+
+        model = FilteredMapLayerProxyModel(project)
+
+        def filter_vector(layer):
+            return isinstance(layer, QgsVectorLayer)
+
+        model.setFilterFunc(filter_vector)
+
+        layers = model.layers()
+        self.assertEqual(len(layers), 2)
+        for layer in layers:
+            self.assertIsInstance(layer, QgsVectorLayer)
+
+    def test_getitem_dunder(self):
+        project = QgsProject()
+
+        vl1 = TestObjects.createVectorLayer(name='vector1')
+        vl2 = TestObjects.createVectorLayer(name='vector2')
+
+        project.addMapLayers([vl1, vl2])
+
+        model = FilteredMapLayerProxyModel(project)
+
+        layer0 = model[0]
+        layer1 = model[1]
+
+        self.assertEqual(layer0, vl1)
+        self.assertEqual(layer1, vl2)
+
+    def test_layer_slicing(self):
+        project = QgsProject()
+
+        vl1 = TestObjects.createVectorLayer(name='vector1')
+        vl2 = TestObjects.createVectorLayer(name='vector2')
+        rl = TestObjects.createRasterLayer(name='raster')
+
+        project.addMapLayers([vl1, vl2, rl])
+
+        model = FilteredMapLayerProxyModel(project)
+        for lyrP, lyrM in zip(project.mapLayers().values(), model[:]):
+            self.assertEqual(lyrP, lyrM)
+
+    def test_project_change(self):
+        project1 = QgsProject()
+        project2 = QgsProject()
+
+        vl1 = TestObjects.createVectorLayer(name='vector1')
+        project1.addMapLayer(vl1)
+
+        vl2 = TestObjects.createVectorLayer(name='vector2')
+        project2.addMapLayer(vl2)
+
+        model = FilteredMapLayerProxyModel(project1)
+        self.assertEqual(model.rowCount(), 1)
+
+        model.setProject(project2)
+        self.assertEqual(model.rowCount(), 1)
+
+        layer = model.layers()[0]
+        self.assertEqual(layer, vl2)
+
+    def test_filter_accepts_row(self):
+        project = QgsProject()
+
+        vl = TestObjects.createVectorLayer(name='vector')
+        rl = TestObjects.createRasterLayer(name='raster')
+
+        project.addMapLayers([vl, rl])
+
+        model = FilteredMapLayerProxyModel(project)
+
+        def filter_vector(layer):
+            return isinstance(layer, QgsVectorLayer)
+
+        model.setFilterFunc(filter_vector)
+        model.setShowAll(True)
+        self.assertEqual(model.rowCount(), 2)
+        model.setShowAll(False)
+        self.assertEqual(model.rowCount(), 1)
+
+        for i in range(model.rowCount()):
+            layer = model.data(model.index(i, 0), QgsMapLayerModel.CustomRole.Layer)
+            self.assertIsInstance(layer, QgsVectorLayer)
+
+    def test_filter_with_complex_condition(self):
+        project = QgsProject()
+
+        vl1 = TestObjects.createVectorLayer(name='small')
+        vl2 = TestObjects.createVectorLayer(name='large')
+        rl = TestObjects.createRasterLayer(name='raster')
+
+        project.addMapLayers([vl1, vl2, rl])
+
+        model = FilteredMapLayerProxyModel(project)
+
+        def filter_by_name(layer):
+            return layer.name() in ['small', 'raster']
+
+        model.setFilterFunc(filter_by_name)
+        model.setShowAll(False)
+
+        self.assertEqual(model.rowCount(), 2)
+        names = [model.data(model.index(i, 0), Qt.ItemDataRole.DisplayRole) for i in range(model.rowCount())]
+        self.assertIn('small', names)
+        self.assertIn('raster', names)
+
+
+class FilteredFieldProxyModelTests(TestCase):
+
+    def test_init(self):
+        model = FilteredFieldProxyModel()
+        self.assertIsInstance(model, FilteredFieldProxyModel)
+
+    def test_default_filter(self):
+        model = FilteredFieldProxyModel()
+
+        vl = TestObjects.createVectorLayer(name='vector')
+        fields = vl.fields()
+
+        src_model = model.sourceFieldModel()
+        src_model.setFields(fields)
+
+        self.assertEqual(model.rowCount(), fields.count())
+
+    def test_filter_fields_by_type(self):
+        model = FilteredFieldProxyModel()
+
+        vl = TestObjects.createVectorLayer(name='vector')
+        fields = vl.fields()
+
+        src_model = model.sourceFieldModel()
+        src_model.setFields(fields)
+
+        def filter_string_fields(field):
+            return field.type() in [QMetaType.Type.QString]
+
+        model.setFilterFunc(filter_string_fields)
+        model.setShowAll(False)
+
+        string_field_count = sum(1 for f in fields if f.type() == QMetaType.Type.QString)
+        self.assertEqual(model.rowCount(), string_field_count)
+
+    def test_setShowAll_false_hides_filtered_fields(self):
+        model = FilteredFieldProxyModel()
+
+        vl = TestObjects.createVectorLayer(name='vector')
+        fields = vl.fields()
+
+        src_model = model.sourceFieldModel()
+        src_model.setFields(fields)
+
+        def filter_integer_fields(field):
+            return field.type() == QMetaType.Type.Int
+
+        model.setFilterFunc(filter_integer_fields)
+        model.setShowAll(False)
+
+        int_field_count = sum(1 for f in fields if f.type() == QMetaType.Type.Int)
+        self.assertEqual(model.rowCount(), int_field_count)
+
+    def test_setShowAll_true_shows_filtered_fields_disabled(self):
+        model = FilteredFieldProxyModel()
+
+        vl = TestObjects.createVectorLayer(name='vector')
+        fields = vl.fields()
+
+        src_model = model.sourceFieldModel()
+        src_model.setFields(fields)
+
+        def filter_integer_fields(field: QgsField):
+            return field.type() == QMetaType.Type.Int
+
+        model.setFilterFunc(filter_integer_fields)
+        model.setShowAll(True)
+        self.assertEqual(model.rowCount(), fields.count())
+        for i in range(fields.count()):
+            idx = model.index(i, 0)
+            fname = model.data(idx, QgsFieldModel.CustomRole.FieldName)
+            field = model.sourceFieldModel().fields()[fname]
+
+            flags = model.flags(idx)
+
+            if field.type() == QMetaType.Type.Int:
+                self.assertTrue(flags & Qt.ItemFlag.ItemIsEnabled)
+                self.assertTrue(flags & Qt.ItemFlag.ItemIsSelectable)
+            else:
+                self.assertFalse(flags & Qt.ItemFlag.ItemIsEnabled)
+                self.assertFalse(flags & Qt.ItemFlag.ItemIsSelectable)
+
+    def test_filter_accepts_row(self):
+        model = FilteredFieldProxyModel()
+
+        vl = TestObjects.createVectorLayer(name='vector')
+        fields = vl.fields()
+
+        src_model = model.sourceFieldModel()
+        src_model.setFields(fields)
+
+        def filter_numeric_fields(field):
+            return field.type() in [QMetaType.Type.Int, QMetaType.Type.Double]
+
+        model.setFilterFunc(filter_numeric_fields)
+
+        self.assertTrue(model.filterAcceptsRow(0, QModelIndex()))
+
+        model.setShowAll(False)
+
+        for i in range(fields.count()):
+            idx = src_model.data(src_model.index(i, 0), QgsFieldModel.CustomRole.FieldIndex)
+            field = fields.at(idx)
+            expected = filter_numeric_fields(field)
+            self.assertEqual(model.filterAcceptsRow(i, QModelIndex()), expected)
+
+    def test_field_name_data_role(self):
+        model = FilteredFieldProxyModel()
+
+        vl = TestObjects.createVectorLayer(name='vector')
+        fields = vl.fields()
+
+        src_model = model.sourceFieldModel()
+        src_model.setFields(fields)
+
+        for i in range(fields.count()):
+            idx = model.index(i, 0)
+            field_name = model.data(idx, QgsFieldModel.CustomRole.FieldName)
+            field = fields[i]
+
+            self.assertEqual(field_name, field.name())
+
+    def test_filter_fields_by_name_pattern(self):
+        model = FilteredFieldProxyModel()
+
+        vl = TestObjects.createVectorLayer(name='vector')
+        fields = vl.fields()
+
+        src_model = model.sourceFieldModel()
+        src_model.setFields(fields)
+
+        def filter_by_prefix(field):
+            return field.name().startswith('id') or field.name().startswith('name')
+
+        model.setFilterFunc(filter_by_prefix)
+        model.setShowAll(False)
+
+        matching_fields = [f for f in fields if f.name().startswith('id') or f.name().startswith('name')]
+        self.assertEqual(model.rowCount(), len(matching_fields))
 
 
 if __name__ == '__main__':

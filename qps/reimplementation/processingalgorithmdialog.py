@@ -5,7 +5,8 @@ from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtWidgets import QDialog, QTreeView, QDialogButtonBox
 from qgis.core import QgsProcessingAlgorithm
 from qgis.gui import QgsFilterLineEdit, QgsProcessingToolboxTreeView, QgsProcessingToolboxProxyModel
-from ..utils import loadUi
+
+from qps.utils import loadUi
 
 
 class ProcessingAlgorithmDialog(QDialog):
@@ -31,7 +32,7 @@ class ProcessingAlgorithmDialog(QDialog):
         self.mTreeViewAlgorithms.doubleClicked.connect(self.onDoubleClicked)
         # self.mTreeViewAlgorithms.selectionModel().currentChanged.connect(self.onAlgorithmTreeSelectionChanged)
 
-        self.mSelectedAlgorithm: QgsProcessingAlgorithm = None
+        self.mSelectedAlgorithm: QgsProcessingAlgorithm | None = None
 
         self.tbAlgorithmFilter: QgsFilterLineEdit
         self.tbAlgorithmFilter.textChanged.connect(self.setAlgorithmFilter)
@@ -50,7 +51,7 @@ class ProcessingAlgorithmDialog(QDialog):
         self.mAlgorithmModel = model
         self.tbAlgorithmFilter.setText(model.filterString())
 
-    def algorithm(self) -> QgsProcessingAlgorithm:
+    def algorithm(self) -> QgsProcessingAlgorithm | None:
         return self.mSelectedAlgorithm
 
     def setAlgorithmFilter(self, pattern: str):
@@ -59,12 +60,15 @@ class ProcessingAlgorithmDialog(QDialog):
     def onDoubleClicked(self, index: QModelIndex):
         alg = self.mTreeViewAlgorithms.algorithmForIndex(index)
         if isinstance(alg, QgsProcessingAlgorithm):
-            self.mSelectedAlgorithm = alg
+            self.mSelectedAlgorithm = alg.create()
             self.setResult(QDialog.DialogCode.Accepted)
             self.buttonBox.button(QDialogButtonBox.StandardButton.Ok).click()
 
     def onAlgorithmTreeSelectionChanged(self, selected, deselected):
-        self.mSelectedAlgorithm = self.mTreeViewAlgorithms.selectedAlgorithm()
+        a = self.mTreeViewAlgorithms.selectedAlgorithm()
+        if isinstance(a, QgsProcessingAlgorithm):
+            a = a.create()
+        self.mSelectedAlgorithm = a
         b = isinstance(self.mSelectedAlgorithm, QgsProcessingAlgorithm)
 
         btnOk = self.buttonBox.button(QDialogButtonBox.StandardButton.Ok)

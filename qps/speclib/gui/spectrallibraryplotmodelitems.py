@@ -30,7 +30,6 @@ from typing import Any, List, Optional, Union
 import numpy as np
 from pyqtgraph import InfiniteLine, PlotDataItem
 from pyqtgraph.widgets.PlotWidget import PlotWidget
-
 from qgis.PyQt.QtCore import QAbstractItemModel, QMimeData, QModelIndex, QSize, Qt
 from qgis.PyQt.QtCore import QObject, pyqtSignal
 from qgis.PyQt.QtGui import QColor, QIcon, QPixmap, QStandardItem, QStandardItemModel
@@ -45,6 +44,7 @@ from qgis.core import Qgis, QgsExpression, QgsExpressionContext, QgsExpressionCo
     QgsTextFormat, QgsVectorLayer, QgsXmlUtils
 from qgis.gui import QgsColorButton, QgsDoubleSpinBox, QgsFieldExpressionWidget, QgsMapLayerComboBox, \
     QgsPropertyOverrideButton, QgsSpinBox
+
 from ..core import is_profile_field, is_spectral_library, profile_field_names
 from ..core.spectralprofile import decodeProfileValueDict
 from ...editors.pythoncodeeditor import PythonCodeWidget, PythonCodeDialog
@@ -1040,7 +1040,7 @@ class SpectralProfileLayerFieldItem(PropertyItem):
             if model := plotModel():
                 model.sigOpenAttributeTableRequest.emit(self.mLayerID)
 
-        def onSpectralProcessingDialogRequest(*args):
+        def onSpectralProcessingWidgetRequest(*args):
             if model := plotModel():
                 model.sigOpenSpectralProcessingRequest.emit(self.mLayerID)
 
@@ -1059,7 +1059,7 @@ class SpectralProfileLayerFieldItem(PropertyItem):
             a = menu.addAction('Spectral Processing')
             a.setIcon(QIcon(':/qps/ui/icons/profile_processing.svg'))
             a.setToolTip(f'Open a spectral processing dialog for layer "{layer.name()}"')
-            a.triggered.connect(onSpectralProcessingDialogRequest)
+            a.triggered.connect(onSpectralProcessingWidgetRequest)
 
     def createEditor(self, parent):
         w = LayerFieldWidget(parent=parent)

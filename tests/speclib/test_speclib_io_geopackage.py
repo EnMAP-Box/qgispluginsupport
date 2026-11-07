@@ -2,6 +2,7 @@
 import unittest
 
 from qgis.core import QgsFeature, QgsVectorLayer
+
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
 from qps.speclib.io.geopackage import GeoPackageSpectralLibraryWriter
 from qps.testing import TestCase, TestObjects, start_app

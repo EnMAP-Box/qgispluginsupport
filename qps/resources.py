@@ -173,6 +173,37 @@ def compileResourceFiles(
     return py_files
 
 
+def find_rcc() -> Optional[Path]:
+    """
+    Find a local rcc
+    """
+    home = Path.home()
+    candidates = []
+    if os.name == 'nt':
+        candidates.extend([
+            'C:/Qt',
+            "C:/Program Files/Qt",
+            home / "Qt",
+        ])
+    else:
+        candidates.extend([
+            home / "Qt",
+            '/usr/lib/libexec',
+            '/usr/lib/qt6',
+            '/usr/local/bin',
+        ])
+
+    def is_executable(path) -> bool:
+        return os.path.isfile(path) and os.access(path, os.X_OK)
+
+    for c in candidates:
+        d = Path(c)
+        for p in d.rglob('rcc'):
+            if is_executable(p):
+                return Path(p)
+    return None
+
+
 def compileResourceFile(
     pathQrc,
     targetDir=None,
@@ -232,29 +263,19 @@ def compileResourceFile(
 
     else:
 
-        rcc_exe = shutil.which('rcc')
+        if 'RCC_PATH' in os.environ:
+            rcc_exe = os.environ['RCC_PATH']
+        else:
+            rcc_exe = shutil.which('rcc')
 
-        if not rcc_exe:
-            # try to find rcc executable
-            candidates = ['/usr/lib/libexec/rcc',
-                          '/usr/lib/qt6/bin/rcc',
-                          '/usr/lib/qt6/libexec/rcc']
-            for c in candidates:
-                if os.path.isfile(c):
-                    rcc_exe = c
-                    break
-        # If still not found, try to find any rcc executable
-        if not rcc_exe:
-            for p in Path('/usr').rglob('rcc'):
-                if p.is_file():
-                    rcc_exe = str(p)
-                    break
+        if rcc_exe is None:
+            rcc_exe = find_rcc()
 
         if not (rcc_exe and os.path.isfile(rcc_exe)):
             raise FileNotFoundError('Unable to find rcc executable')
 
         cmd = [
-            rcc_exe, str(pathQrc),
+            str(rcc_exe), str(pathQrc),
             '-o', str(pathPy),
             '-g', 'python',
             '--compress', str(compressLevel),

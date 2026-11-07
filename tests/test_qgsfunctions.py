@@ -4,15 +4,15 @@ import unittest
 
 import numpy as np
 from osgeo import gdal_array
-
 from qgis import processing
 from qgis.PyQt.QtCore import QByteArray, QMetaType
 from qgis.core import edit, Qgis, QgsProcessing, QgsExpression, QgsExpressionContext, \
-    QgsExpressionContextUtils, QgsExpressionFunction, QgsFeature, QgsField, QgsFields, QgsGeometry, QgsMapLayerStore, \
+    QgsExpressionContextUtils, QgsFeature, QgsField, QgsFields, QgsGeometry, QgsMapLayerStore, \
     QgsPointXY, QgsProject, QgsProperty, QgsRasterLayer, QgsVectorLayer, QgsWkbTypes, QgsProcessingContext
 from qgis.gui import QgsFieldCalculator
-from qps.qgsfunctions import ExpressionFunctionUtils, Format_Py, HelpStringMaker, RasterArray, RasterProfile, \
-    ReadSpectralProfile, SpectralData, SpectralEncoding, SpectralMath
+
+from qps.expressionfunctions import RasterArray, RasterProfile, ReadSpectralProfile, SpectralEncoding, SpectralData, \
+    HelpStringMaker, ExpressionFunctionUtils, SpectralMath, Format_Py
 from qps.speclib.core import profile_fields
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
 from qps.speclib.core.spectralprofile import decodeProfileValueDict, isProfileValueDict, ProfileEncoding, \
@@ -87,7 +87,6 @@ class QgsFunctionTests(TestCase):
     """
     Tests for functions in the Field Calculator
     """
-    FUNC_REFS = []
 
     def test_eval_geometry(self):
 
@@ -542,15 +541,6 @@ class QgsFunctionTests(TestCase):
         self.assertTrue(QgsExpression.unregisterFunction(f.name()))
         QgsProject.instance().removeAllMapLayers()
 
-    def registerFunction(self, f: QgsExpressionFunction):
-        self.assertIsInstance(f, QgsExpressionFunction)
-        if QgsExpression.isFunctionName(f.name()):
-            self.assertTrue(QgsExpression.unregisterFunction(f.name()))
-
-        self.assertTrue(QgsExpression.registerFunction(f))
-        self.assertTrue(QgsExpression.isFunctionName(f.name()))
-        self.FUNC_REFS.append(f)
-
     def test_RasterProfile2(self):
 
         f = RasterProfile()
@@ -648,8 +638,6 @@ class QgsFunctionTests(TestCase):
             SpectralEncoding(),
             ReadSpectralProfile()
         ]
-
-        functions.extend(createSpectralProfileFunctions())
 
         for f in functions:
             self.registerFunction(f)
