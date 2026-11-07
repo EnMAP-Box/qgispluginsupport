@@ -16,6 +16,7 @@ from qgis.gui import QgsMessageBar
 from .spectrallibraryplotitems import SpectralProfilePlotItem, SpectralProfilePlotWidget
 from .spectrallibraryplotmodelitems import ProfileVisualizationGroup
 from .spectrallibraryplotwidget import SpectralLibraryPlotWidget
+from .spectralprocessingalgorithmwidget import SpectralProcessingAlgorithmWidget
 from .spectralprocessingwidget import SpectralProcessingWidget
 from .spectralprofilefieldmodel import SpectralProfileFieldActivatorDialog
 from .spectralprofileplotmodel import SpectralProfilePlotModel
@@ -337,7 +338,7 @@ class SpectralLibraryWidget(QWidget):
                     lyr.startEditing()
 
                 # profile_fields_before = profile_field_names(lyr)
-                w = SpectralProcessingWidget(
+                w = SpectralProcessingAlgorithmWidget(
                     speclib=lyr,
                     algorithmId=algorithmId,
                     parameters=parameters

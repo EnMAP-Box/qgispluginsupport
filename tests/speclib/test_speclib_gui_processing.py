@@ -21,6 +21,7 @@ from qgis.gui import QgsProcessingAlgorithmWidgetBase, QgsProcessingContextGener
 from qps import initAll
 from qps.qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
+from qps.speclib.gui.spectralprocessingalgorithmwidget import SpectralProcessingAlgorithmWidget
 from qps.speclib.gui.spectralprocessingrasterlayerwidgetwrapper import SpectralProcessingRasterLayerWidgetWrapper
 from qps.speclib.gui.spectralprocessingwidget import (SpectralProcessingParametersWidget
                                                       )
@@ -425,7 +426,7 @@ class SpectralProcessingTests(TestCase):
         speclib: QgsVectorLayer
 
         speclib.startEditing()
-        procw = SpectralProcessingWidget(speclib=speclib)
+        procw = SpectralProcessingAlgorithmWidget(speclib=speclib)
         # procw.setSpeclib(speclib)
         reg: QgsProcessingRegistry = QgsApplication.instance().processingRegistry()
         alg1 = reg.createAlgorithmById('gdal:rearrange_bands')

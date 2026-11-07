@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Dict, Any, Tuple
 
 from PyQt6.QtWidgets import QDialog
 from qgis.PyQt.QtCore import Qt
@@ -12,10 +12,13 @@ from qgis.PyQt.QtWidgets import (
     QPushButton,
     QSizePolicy,
 )
+from qgis._core import QgsProcessingUtils, QgsRasterLayer, QgsProcessingParameterMultipleLayers, QgsProcessingContext, \
+    QgsMapLayer, QgsProcessingParameterRasterLayer
 from qgis._gui import QgsProcessingParametersGenerator
 from qgis.core import QgsProcessingAlgorithm, QgsVectorLayer
 from qgis.gui import QgsPanelWidget
 
+from core.spectrallibraryrasterdataprovider import VectorLayerFieldRasterDataProvider
 from .spectralprocessingalgorithmmodel import SpectralProcessingAlgorithmModel
 from .spectralprocessingcontextgenerator import SpectralProcessingContextGenerator
 from .spectralprocessingparameterswidget import SpectralProcessingParametersWidget
@@ -29,7 +32,7 @@ class SpectralProcessingAlgorithmWidget(ProcessingAlgorithmWidget):
         if not isinstance(speclib, QgsVectorLayer):
             raise TypeError('speclib must be a QgsVectorLayer')
 
-        super().__init__(algorithm, *args, **kwds)
+        super().__init__(None, *args, **kwds)
 
         self.setWindowFlag(Qt.WindowType.WindowContextHelpButtonHint, False)
         # QgsProcessingContextGenerator.__init__(self)
@@ -58,14 +61,17 @@ class SpectralProcessingAlgorithmWidget(ProcessingAlgorithmWidget):
         self.layout().insertLayout(0, self.mTopGrid)
         self.mProcessingAlgorithmModel: SpectralProcessingAlgorithmModel = SpectralProcessingAlgorithmModel()
 
-        self.mContextGenerator = SpectralProcessingContextGenerator(speclib)
-
         self.mSpeclib = speclib
+
+        self.mContextGenerator = SpectralProcessingContextGenerator(speclib)
 
         self._parameters_panel = self.createParametersPanel(
             self.inPlace(), self.mSpeclib, self.messageBar()
         )
         self.setMainWidget(self._parameters_panel)
+
+        if isinstance(algorithm, QgsProcessingAlgorithm):
+            self.setAlgorithm(algorithm)
 
     def createParametersPanel(self, inPlaceMode, activeLayer, messageBar):
         a = self.algorithm()
@@ -145,7 +151,10 @@ class SpectralProcessingAlgorithmWidget(ProcessingAlgorithmWidget):
     def runAlgorithm(self):
 
         feedback = self.createFeedback()
+
         processing_context = self.processingContext()
+        tmp_folder: str = QgsProcessingUtils.generateTempFilename('')
+        processing_context.setTemporaryFolder(tmp_folder)
 
         parameters = {}
         validation_result = []
@@ -155,7 +164,10 @@ class SpectralProcessingAlgorithmWidget(ProcessingAlgorithmWidget):
             )
         else:
             return
+
         algorithm = self.algorithm()
+        if not isinstance(algorithm, QgsProcessingAlgorithm):
+            return
 
         # 1. check parameters for QgsRasterLayers that use a VectorLayerFieldRasterDataProvider.
         #    Convert these into temporary local files that can be used with gdal algorithms
@@ -168,3 +180,54 @@ class SpectralProcessingAlgorithmWidget(ProcessingAlgorithmWidget):
         #    - raster files with one band into int / float fields
         #    - raster files with > 1 bands into spectral profile fields
         #    otherwise do not use them
+
+        vectorfieldrasterlayers = collect_vectorlayerfieldrasters(parameters, algorithm, processing_context)
+
+        affected_features = set()
+
+
+def collect_vectorlayerfieldrasters_feature_ids(rasters: List[QgsRasterLayer]) -> List[int]:
+    """
+    Returns the feature IDs that are used as inputs for the virtual raster layers
+    :return:
+    """
+    all_fids = set()
+    for lyr in rasters:
+        s = ""
+
+
+def collect_vectorlayerfieldrasters(
+    parameters: Dict[str, Any],
+    alg: QgsProcessingAlgorithm,
+    context: QgsProcessingContext,
+) -> dict[str, Tuple[str, QgsRasterLayer]]:
+    # collect vector field raster layers
+    vector_field_layers: Dict[str, Tuple[str, QgsRasterLayer]] = {}
+    required_layer = {}
+
+    def is_match(input: Any) -> bool:
+        return (
+            isinstance(input, QgsRasterLayer)
+            and input.isValid()
+            and isinstance(input.dataProvider(), VectorLayerFieldRasterDataProvider)
+        )
+
+    for k, v in parameters.items():
+        k: str
+        param = alg.parameterDefinition(k)
+        if isinstance(param, QgsProcessingParameterMultipleLayers):
+            for layer_id in v:
+                layer_id: str
+                lyr = context.getMapLayer(layer_id)
+                if is_match(lyr):
+                    lyr: QgsRasterLayer
+                    vector_field_layers[k] = (layer_id, lyr)
+                if isinstance(lyr, QgsMapLayer):
+                    required_layer[layer_id] = lyr
+
+        elif isinstance(param, QgsProcessingParameterRasterLayer):
+            if is_match(v):
+                v: QgsRasterLayer
+                vector_field_layers[k] = (v.id(), v)
+
+    return vector_field_layers
