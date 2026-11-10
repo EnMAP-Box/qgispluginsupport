@@ -71,7 +71,8 @@ from qgis.core import (Qgis, QgsApplication, QgsCoordinateReferenceSystem,
                        QgsRasterInterface,
                        QgsRasterLayer, QgsRasterRenderer, QgsRectangle, QgsTask, QgsVector, QgsVectorDataProvider,
                        QgsVectorFileWriter,
-                       QgsVectorLayer, QgsWkbTypes)
+                       QgsVectorLayer, QgsWkbTypes, QgsCoordinateTransformContext, QgsRasterFileWriter, QgsRasterPipe,
+                       QgsPalettedRasterRenderer)
 from qgis.core import (QgsExpressionContextScope, QgsExpressionContext,
                        QgsFeatureRenderer, QgsSingleSymbolRenderer,
                        QgsMarkerSymbol, QgsExpressionContextUtils, QgsRenderContext, QgsSymbol, QgsProcessing)
@@ -4199,3 +4200,101 @@ def band_descriptions(wl: List, wlu: str = 'nm') -> List[Dict[str, dict]]:
             results.append((b, wl_center))
     results = sorted(results, key=lambda item: item[1])
     return [r[0] for r in results]
+
+
+def write_raster_file(
+    dp: QgsRasterDataProvider | QgsRasterLayer,
+    file_name: Path | str,
+    processing_context: QgsProcessingContext | None = None,
+    raster_block_feedback: QgsRasterBlockFeedback | None = None,
+    transform_context: QgsCoordinateTransformContext | None = None,
+) -> Tuple[bool, List[str]]:
+    """
+    Writes the data of a QgsRasterLayer or QgsRasterDataProvider into a local raster data file
+    file_name: str a string with the path of the new raster data file name
+    """
+    _ref = None
+    if isinstance(dp, QgsRasterLayer):
+        if not dp.isValid():
+            raise AssertionError(f'Input layer in not valid: {dp}')
+        _ref = dp
+        dp = dp.dataProvider()
+
+    if not isinstance(dp, QgsRasterDataProvider):
+        raise AssertionError(f'Not a QgsRasterDataProvider: {dp}')
+
+    file_name = str(file_name)
+
+    from .speclib.core.spectrallibraryrasterdataprovider import VectorLayerFieldRasterDataProvider
+
+    if not isinstance(processing_context, QgsProcessingContext):
+        processing_context = QgsProcessingContext()
+
+    if not isinstance(transform_context, QgsCoordinateTransformContext):
+        transform_context = processing_context.transformContext()
+    else:
+        processing_context.setTransformContext(transform_context)
+
+    if not isinstance(raster_block_feedback, QgsRasterBlockFeedback):
+        raster_block_feedback = QgsRasterBlockFeedback()
+
+    file_writer = QgsRasterFileWriter(file_name)
+
+    if not (dp.xSize() > 0):
+        raise AssertionError
+    if not (dp.ySize() > 0):
+        raise AssertionError
+    if not (dp.bandCount() > 0):
+        raise AssertionError
+
+    errors = []
+
+    pipe = QgsRasterPipe()
+    if not pipe.set(dp.clone()):
+        errors.append(f'Unable to set raster pipe for {file_name}')
+        return False, errors
+
+    result = file_writer.writeRaster(
+        pipe,
+        dp.xSize(),
+        dp.ySize(),
+        dp.extent(),
+        dp.crs(),
+        transform_context,
+        raster_block_feedback
+    )
+
+    # unset data provider
+    # pipe.set(None)
+    del file_writer
+
+    if result != QgsRasterFileWriter.WriterError.NoError:
+        result: QgsRasterFileWriter.WriterError
+
+        errors.append(f'Unable to write {file_name}\n'
+                      f'QgsRasterFileWriterError: {result.name}'
+                      )
+
+    layer: QgsRasterLayer = qgsRasterLayer(file_name)
+
+    # write additional metadata
+    if isinstance(dp, VectorLayerFieldRasterDataProvider):
+
+        if dp.bandCount() > 1:
+            # write spectral settings, if available
+            spectral_settings = dp.rasterMetaData().copy()
+            props = QgsRasterLayerSpectralProperties.fromMap(spectral_settings)
+            props.writeToSource(layer, write_envi=True)
+
+        # write a classification
+        else:
+            colorTable = dp.colorTable(1)
+            if len(colorTable) > 0:
+                # set a categorical raster renderer with class names and colors
+                classData = QgsPalettedRasterRenderer.colorTableToClassData(colorTable)
+                renderer = QgsPalettedRasterRenderer(layer.dataProvider(), 1, classData)
+                layer.setRenderer(renderer)
+                layer.saveDefaultStyle(QgsMapLayer.StyleCategory.AllStyleCategories)
+
+    del layer
+    return len(errors) == 0, errors

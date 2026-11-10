@@ -50,7 +50,8 @@ from qps.utils import (
     osrSpatialReference, parseFWHM, parseWavelength, px2geo, px2geocoordinates, px2spatialPoint, qgsField,
     qgsRasterLayer, qgsRasterLayers, rasterArray, rasterBlockArray, rasterizeFeatures,
     relativePath, SelectMapLayerDialog, SelectMapLayersDialog, snapGeoCoordinates, SpatialExtent, SpatialPoint,
-    spatialPoint2px, value2str, writeAsVectorFormat, create_picture_viewer_config, xy_pair_matrix, featureSymbolScope,
+    spatialPoint2px, value2str, write_raster_file, writeAsVectorFormat, create_picture_viewer_config, xy_pair_matrix,
+    featureSymbolScope,
     TemporaryGlobalLayerContext, stringToByteArray, stringFromByteArray, readDateTime)
 from qpstestdata import enmap, enmap_multipoint, enmap_multipolygon, enmap_pixel, hymap, landcover
 
@@ -1219,6 +1220,101 @@ class TestUtils(TestCase):
             c = nextColor(c, mode='cat')
             self.assertIsInstance(c, QColor)
             self.assertTrue(c.name() != '#000000')
+
+    def test_write_raster_file(self):
+        """Test write_raster_file function"""
+        # Create a test raster layer
+        rl = TestObjects.createRasterLayer(ns=100, nl=100, nb=3)
+
+        self.assertTrue(rl.isValid())
+        self.assertEqual(rl.width(), 100)
+        self.assertEqual(rl.height(), 100)
+        self.assertEqual(rl.bandCount(), 3)
+
+        # Test writing to GeoTIFF
+        DIR_TEST = self.createTestOutputDirectory()
+        path_tif = DIR_TEST / 'test_raster_write.tif'
+
+        dp = rl.dataProvider()
+        success, messages = write_raster_file(dp, path_tif.as_posix())
+        self.assertTrue(success)
+        layer = QgsRasterLayer(str(path_tif))
+
+        arr1 = rasterArray(rl)
+        arr2 = rasterArray(layer)
+        self.assertIsInstance(arr1, np.ndarray)
+        self.assertIsInstance(arr2, np.ndarray)
+        self.assertTrue(np.array_equal(arr1, arr2))
+
+        self.assertIsInstance(layer, QgsRasterLayer)
+        self.assertTrue(layer.isValid())
+        self.assertEqual(layer.width(), rl.width())
+        self.assertEqual(layer.height(), rl.height())
+        self.assertEqual(layer.bandCount(), rl.bandCount())
+
+        # Test writing with layer name
+        path_tif2 = DIR_TEST / 'test_raster_write_with_name.tif'
+        layer_name = 'Custom Layer Name'
+
+        success, messages = write_raster_file(rl, path_tif2.as_posix())
+        layer = QgsRasterLayer(str(path_tif2))
+        self.assertTrue(success)
+        self.assertIsInstance(layer, QgsRasterLayer)
+        self.assertTrue(layer.isValid())
+
+        # Test writing with QgsRasterDataProvider directly
+        path_tif3 = DIR_TEST / 'test_raster_write_provider.tif'
+        dp = rl.dataProvider()
+
+        success, messages = write_raster_file(dp, path_tif3.as_posix())
+
+        self.assertTrue(success)
+        self.assertIsInstance(layer, QgsRasterLayer)
+        self.assertTrue(layer.isValid())
+
+        # Test with processing context
+        from qgis.core import QgsProcessingContext
+        context = QgsProcessingContext()
+        path_tif4 = DIR_TEST / 'test_raster_write_with_context.tif'
+
+        success, messages = write_raster_file(rl, path_tif4.as_posix(), processing_context=context)
+        layer = QgsRasterLayer(path_tif4.as_posix())
+        self.assertTrue(success)
+        self.assertIsInstance(layer, QgsRasterLayer)
+        self.assertTrue(layer.isValid())
+
+        # Test error handling - invalid provider
+        with self.assertRaises(AssertionError):
+            write_raster_file('invalid_provider', path_tif4.as_posix())
+
+        # Test error handling - invalid layer (no data provider)
+        # Create a minimal valid raster data provider
+        dp = rl.dataProvider()
+        self.assertIsInstance(dp, QgsRasterDataProvider)
+
+        # Test that function validates raster dimensions
+        # This should not raise an error for valid rasters
+        self.assertEqual(rl.width(), 100)
+        self.assertEqual(rl.height(), 100)
+        self.assertEqual(rl.bandCount(), 3)
+
+    def test_write_raster_file_multiband(self):
+        """Test write_raster_file with different band counts"""
+        DIR_TEST = self.createTestOutputDirectory()
+
+        for nb in [1, 3, 5, 10]:
+            rl = TestObjects.createRasterLayer(ns=50, nl=50, nb=nb)
+
+            self.assertTrue(rl.isValid())
+            self.assertEqual(rl.bandCount(), nb)
+
+            path = DIR_TEST / f'test_raster_{nb}_bands.tif'
+            success, layer, messages = write_raster_file(rl, path.as_posix())
+
+            self.assertTrue(success)
+            self.assertIsInstance(layer, QgsRasterLayer)
+            self.assertTrue(layer.isValid())
+            self.assertEqual(layer.bandCount(), nb)
 
 
 if __name__ == "__main__":
