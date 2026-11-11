@@ -13,14 +13,12 @@ from qgis.core import Qgis, QgsColorRampShader, QgsCoordinateReferenceSystem, Qg
     QgsRaster, QgsRasterBandStats, QgsRasterBlock, QgsRasterBlockFeedback, \
     QgsRasterDataProvider, QgsRasterIdentifyResult, QgsRasterLayer, QgsRectangle, QgsVectorLayer, \
     QgsProviderMetadata, QgsProviderRegistry, QgsMessageLog
-from qgis.core import QgsCoordinateTransformContext, QgsRasterFileWriter, QgsRasterPipe, QgsPalettedRasterRenderer, \
-    QgsMapLayer
+from qgis.core import QgsRasterFileWriter
 
 from .spectralprofile import groupBySpectralProperties, spectralSettingsDict
 from ..core import is_profile_field, profile_fields
 from ..core.spectralprofile import decodeProfileValueDict  # , groupBySpectralProperties_depr, SpectralSetting
-from ...qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
-from ...utils import HashableRectangle, nextColor, numpyToQgisDataType, qgsField, QGIS2NUMPY_DATA_TYPES, qgsRasterLayer
+from ...utils import HashableRectangle, nextColor, numpyToQgisDataType, qgsField, QGIS2NUMPY_DATA_TYPES
 
 _DEF_CRS = None
 
@@ -43,80 +41,12 @@ def defaultCrs() -> QgsCoordinateReferenceSystem:
     return _DEF_CRS
 
 
-def create_uri(vl: QgsVectorLayer, field: QgsField) -> str:
+def create_uri(vl: QgsVectorLayer, field: QgsField, layername: str | None = None) -> str:
     params = {'lid': vl.id(), 'field': field.name(), 'src': vl.source()}
+    if layername:
+        params['layername'] = layername
     uri = 'vectorlayerfieldraster://?' + urlencode(params)
     return uri
-
-
-def writeTemporaryRaster(
-    self,
-    dp: QgsRasterDataProvider,
-    file_name: str,
-    rasterblockFeedback: QgsRasterBlockFeedback,
-    transformContext: QgsCoordinateTransformContext,
-    layer_name: Optional[str] = None,
-):
-    """
-    Writes a temporary raster file from a QgsRasterDataProvider.
-    file_name: str a string with the temporary raster file name
-    """
-    file_writer = QgsRasterFileWriter(file_name)
-
-    if not (dp.xSize() > 0):
-        raise AssertionError
-    if not (dp.ySize() > 0):
-        raise AssertionError
-    if not (dp.bandCount() > 0):
-        raise AssertionError
-
-    pipe = QgsRasterPipe()
-    if not pipe.set(dp):
-        self.log(f'Cannot set pipe provider to write {file_name}', isError=True)
-    else:
-        self.log(f'Write {file_name}')
-    error = file_writer.writeRaster(
-        pipe,
-        dp.xSize(),
-        dp.ySize(),
-        dp.extent(),
-        dp.crs(),
-        transformContext,
-        rasterblockFeedback
-    )
-
-    del file_writer
-    if error != QgsRasterFileWriter.WriterError.NoError:
-        errMsg = LUT_RASTERFILEWRITER_ERRORS.get(error, 'unknown')
-        raise Exception(
-            f'Unable to write {file_name}\n'
-            f'QgsRasterFileWriterError: {errMsg}'
-        )
-
-    layer: QgsRasterLayer = qgsRasterLayer(file_name)
-    if layer_name is not None:
-        layer.setName(layer_name)
-
-    # write additional metadata
-    if isinstance(dp, VectorLayerFieldRasterDataProvider):
-
-        if dp.bandCount() > 1:
-            # write spectral settings, if available
-            spectral_settings = dp.rasterMetaData().copy()
-            props = QgsRasterLayerSpectralProperties.fromMap(spectral_settings)
-            props.writeToSource(layer, write_envi=True)
-
-        # write a classification
-        else:
-            colorTable = dp.colorTable(1)
-            if len(colorTable) > 0:
-                # set a categorical raster renderer with class names and colors
-                classData = QgsPalettedRasterRenderer.colorTableToClassData(colorTable)
-                renderer = QgsPalettedRasterRenderer(layer.dataProvider(), 1, classData)
-                layer.setRenderer(renderer)
-                layer.saveDefaultStyle(QgsMapLayer.StyleCategory.AllStyleCategories)
-
-    del layer
 
 
 def createRasterLayers(
@@ -178,7 +108,7 @@ def createRasterLayers(
                 name = f'{field.name()} ({name})'
 
                 uri = create_uri(vl, field)
-                layer = QgsRasterLayer('?', name, VectorLayerFieldRasterDataProvider.providerKey())
+                layer = QgsRasterLayer(uri, name, VectorLayerFieldRasterDataProvider.providerKey())
                 dp: VectorLayerFieldRasterDataProvider = layer.dataProvider()
                 dp.setActiveFeatures(profile_features, field=field.name())
                 if not (layer.isValid()):
@@ -664,6 +594,7 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
 
         if uri:
             self._init_from_uri(uri)
+        s = ""
 
     def featureSourceId(self) -> str:
         return self.mFeatureSourceID
