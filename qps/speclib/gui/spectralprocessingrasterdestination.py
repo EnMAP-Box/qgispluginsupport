@@ -1,15 +1,175 @@
 import os
+import re
 from pathlib import Path
 from typing import Optional
 
 from qgis.PyQt.QtCore import QObject
-from qgis.PyQt.QtWidgets import QLabel, QComboBox, QWidget
+from qgis.PyQt.QtCore import pyqtSignal
+from qgis.PyQt.QtWidgets import QButtonGroup
+from qgis.PyQt.QtWidgets import QLabel, QWidget
+from qgis.PyQt.QtWidgets import QRadioButton, QLineEdit, QHBoxLayout, QVBoxLayout
 from qgis.core import (
     QgsFields,
     QgsProcessing,
-    QgsProcessingParameterDefinition,
 )
 from qgis.gui import QgsAbstractProcessingParameterWidgetWrapper, QgsProcessingGui
+from qgis.gui import QgsFieldComboBox
+
+
+class SpectralProcessingDestinationFieldWidget(QWidget):
+    """
+    A widget that allows users to specify a destination field either by:
+    1. Entering a field name directly in a text box
+    2. Selecting an existing field from a combo box
+
+    The two options are toggled using radio buttons.
+    Radio buttons are displayed in one row, and the input widget (QLineEdit or QComboBox)
+    is displayed in a second row.
+    """
+
+    sigValueChanged = pyqtSignal()
+
+    def __init__(self, parent: QWidget = None):
+        super().__init__(parent)
+
+        self.mUseTextBox = True  # True = text box, False = combo box
+
+        # Create radio buttons
+        self.rbNewField = QRadioButton("Create new Field")
+        self.rbExistingField = QRadioButton("Update existing Field")
+        self.btnGroup = QButtonGroup(self)
+        self.btnGroup.addButton(self.rbNewField)
+        self.btnGroup.addButton(self.rbExistingField)
+
+        # Group the radio buttons
+        self.rbNewField.setChecked(True)
+
+        # Create text box
+        self.tbNewFieldName = QLineEdit()
+        self.tbNewFieldName.setPlaceholderText("Enter field name...")
+        self.tbNewFieldName.textChanged.connect(self.onFieldChanged)
+        self.tbNewFieldName_tt = 'Name of new field to store calculated values'
+        # Create combo box
+        self.cbFields = QgsFieldComboBox()
+        self.cbFields.setEditable(False)
+        self.cbFields.hide()  # Hidden by default
+        self.cbFields.fieldChanged.connect(self.onFieldChanged)
+
+        # Radio button connections
+        self.rbNewField.toggled.connect(self.onRadioButtonToggled)
+        self.rbExistingField.toggled.connect(self.onRadioButtonToggled)
+
+        # Radio button layout (row 1) - horizontal layout for radio buttons
+        rbLayout = QHBoxLayout()
+        rbLayout.setContentsMargins(0, 0, 0, 0)
+        rbLayout.setSpacing(5)
+        rbLayout.addWidget(self.rbNewField)
+        rbLayout.addWidget(self.rbExistingField)
+        rbLayout.addStretch(1)
+
+        # Input widget layout (row 2) - contains either QLineEdit or QComboBox
+        inputLayout = QHBoxLayout()
+        inputLayout.setContentsMargins(0, 0, 0, 0)
+        inputLayout.setSpacing(5)
+        inputLayout.addWidget(self.tbNewFieldName)
+        inputLayout.addWidget(self.cbFields)
+
+        # Hide combo box by default (text box mode is active)
+        self.cbFields.hide()
+
+        # Main layout with two rows: radio buttons in row 1, input widget in row 2
+        mainLayout = QVBoxLayout()
+        # mainLayout.addStretch(1)
+        mainLayout.setContentsMargins(0, 0, 0, 0)
+        mainLayout.setSpacing(5)
+        mainLayout.addLayout(rbLayout)
+        mainLayout.addLayout(inputLayout)
+        mainLayout.addStretch(1)
+
+        self.setLayout(mainLayout)
+
+    def onRadioButtonToggled(self, checked: bool):
+        """Handle radio button toggles"""
+        if self.rbNewField.isChecked():
+            self.tbNewFieldName.setVisible(True)
+            self.cbFields.setVisible(False)
+        else:
+            self.tbNewFieldName.setVisible(False)
+            self.cbFields.setVisible(True)
+
+        self.validate()
+
+    def onFieldChanged(self, text: str):
+        """Handle text changes in the text box"""
+        self.validate()
+
+    def validate(self):
+        """Update the text field color based on whether the text matches an existing field"""
+        text = self.tbNewFieldName.text()
+        field_names = self.cbFields.fields().names() if self.cbFields.fields().count() > 0 else []
+
+        err = None
+        if text == '':
+            err = None
+        elif text in field_names:
+            # Text matches an existing field - show in red
+            err = f'Field "{text}" already exists'
+        elif not self.isSafeFieldName(text):
+            err = f'Field name "{text}" contains invalid characters'
+
+        if err:
+            self.tbNewFieldName.setStyleSheet("color: red;")
+            self.tbNewFieldName.setToolTip(err)
+        else:
+            # Text is a new field - show in default color
+            self.tbNewFieldName.setStyleSheet("")
+            self.tbNewFieldName.setToolTip(self.tbNewFieldName_tt)
+
+    rx_safe_fieldname = re.compile(r'^[a-zA-Z][a-zA-Z0-9_]*$')
+
+    def isSafeFieldName(self, name: str):
+        """
+        Returns True if the name is a valid field name
+        :param name: str
+        :return: bool
+        """
+        return bool(self.rx_safe_fieldname.match(name))
+
+    def onComboBoxChanged(self, text: str):
+        """Handle text changes in the combo box"""
+        self.sigValueChanged.emit()
+
+    def setFields(self, fields: QgsFields):
+        """
+        Sets the values of the combo box to show existing field names.
+
+        :param fields: QgsFields object containing field definitions
+        """
+        self.cbFields.setFields(fields)
+
+    def setValue(self, value: str):
+        """
+        Sets the widget value.
+        If value matches a field in the combo box, selects it.
+        Otherwise, sets it as text in the text box.
+        """
+        # Find if value exists in combo box
+        idx = self.cbFields.findText(value)
+        if idx >= 0:
+            # Value exists in combo - select combo mode
+            self.rbExistingField.setChecked(True)
+            self.cbFields.setCurrentIndex(idx)
+        else:
+            # Value doesn't exist - use text box
+            self.rbNewField.setChecked(True)
+            self.tbNewFieldName.setText(value)
+
+    def value(self) -> str | None:
+        """Returns the current value based on selected mode"""
+        if self.rbNewField.isChecked():
+            return self.tbNewFieldName.text()
+        else:
+            return self.cbFields.currentText()
 
 
 class SpectralProcessingRasterDestination(QgsAbstractProcessingParameterWidgetWrapper):
@@ -17,21 +177,22 @@ class SpectralProcessingRasterDestination(QgsAbstractProcessingParameterWidgetWr
     def __init__(self,
                  parameter,
                  dialogType: QgsProcessingGui.WidgetType = QgsProcessingGui.WidgetType.Standard,
-                 parent: QObject = None):
+                 parent: QObject | None = None):
         self.mLabel: Optional[QLabel] = None
-        self.mFieldComboBox: Optional[QComboBox] = None
+        self.mDestinationFieldWidget: Optional[SpectralProcessingDestinationFieldWidget] = None
         self.mFieldName: Optional[str] = None
         self.mFields: QgsFields = QgsFields()
         super(SpectralProcessingRasterDestination, self).__init__(parameter, dialogType, parent)
 
     def setFields(self, fields: QgsFields):
         self.mFields = fields
-        # self.mFieldComboBox.setFields(fields)
+        if self.mDestinationFieldWidget:
+            self.mDestinationFieldWidget.setFields(fields)
 
     def createLabel(self) -> QLabel:
         label = QLabel(f'<html> <img src=":/qps/ui/icons/field_from_raster.svg"/>   '
                        f'{self.parameterDefinition().description()}</html>')
-        label.setToolTip('An existing or new field to write raster values into')
+        label.setToolTip('An existing or new vector field to write created raster values to')
         self.mLabel = label
         return label
 
@@ -42,10 +203,10 @@ class SpectralProcessingRasterDestination(QgsAbstractProcessingParameterWidgetWr
 
     def createWrappedWidget(self, context) -> QWidget:
 
-        if not isinstance(self.mFieldComboBox, QComboBox):
-            self.mFieldComboBox = self.createWidget()
-            self.mFieldComboBox.setObjectName(self.parameterDefinition().name())
-        return self.mFieldComboBox
+        if not isinstance(self.mDestinationFieldWidget, SpectralProcessingDestinationFieldWidget):
+            self.mDestinationFieldWidget = self.createWidget()
+            self.mDestinationFieldWidget.setObjectName(self.parameterDefinition().name())
+        return self.mDestinationFieldWidget
 
     def createWrappedLabel(self) -> Optional[QLabel]:
         if not isinstance(self.mLabel, QLabel):
@@ -54,37 +215,18 @@ class SpectralProcessingRasterDestination(QgsAbstractProcessingParameterWidgetWr
         return self.mLabel
 
     def createWidget(self):
-        cb = QComboBox()
-        cb.setEditable(True)
-        for f in self.mFields:
-            cb.addItem(f.name(), f)
-        is_optional = self.parameterDefinition().flags() & QgsProcessingParameterDefinition.Flag.FlagOptional
-        if is_optional:
-            pass
-        cb.currentTextChanged.connect(self.setValue)
-        self.mFieldComboBox = cb
-        return cb
-
-    def setValue(self, value):
-
-        old = self.mFieldName
-        if isinstance(value, str):
-            self.mFieldName = value
-
-        if old != self.mFieldName:
-            self.widgetValueHasChanged.emit(self)
+        widget = SpectralProcessingDestinationFieldWidget()
+        widget.setFields(self.mFields)
+        # widget.sigFieldChanged.connect(self.onWidgetValueChanged)
+        self.mDestinationFieldWidget = widget
+        return widget
 
     def setWidgetValue(self, value, context):
-        if isinstance(self.mFieldComboBox, QComboBox) and isinstance(self.mFields, QgsFields):
-            if isinstance(value, str):
-                value2 = self.pathToFieldName(value)
-                for i in range(self.mFieldComboBox.count()):
-                    field = self.mFieldComboBox.itemData(i)
-                    if field.name() == value or field.name() == value2:
-                        self.mFieldComboBox.setCurrentIndex(i)
-                        return
-                # not found. set text for new field
-                self.mFieldComboBox.setCurrentText(value2)
+        if isinstance(self.mDestinationFieldWidget, SpectralProcessingDestinationFieldWidget):
+            self.mDestinationFieldWidget.setValue(value)
+            # if isinstance(value, str):
+            #     value2 = self.pathToFieldName(value)
+            #     self.mDestinationFieldWidget.setValue(value2)
 
     @classmethod
     def pathToFieldName(cls, path: str) -> str:
@@ -99,11 +241,13 @@ class SpectralProcessingRasterDestination(QgsAbstractProcessingParameterWidgetWr
         Use SpectralProcessingRasterDestination.pathToFieldName(path) to return the original field name
         :return:
         """
-        if isinstance(self.mFieldComboBox, QComboBox):
-            field_name = self.mFieldComboBox.currentText()
+        if isinstance(self.mDestinationFieldWidget, SpectralProcessingDestinationFieldWidget):
+            # return self.mDestinationFieldWidget.value()
+            field_name = self.mDestinationFieldWidget.value()
+            if len(field_name) == 0:
+                return None
             bn, ext = os.path.splitext(field_name)
             if ext == '':
                 ext = self.parameterDefinition().defaultFileExtension()
-                field_name = f'{bn}.{ext}'
-            return f'{QgsProcessing.TEMPORARY_OUTPUT}_{field_name}'
+            return f'{QgsProcessing.TEMPORARY_OUTPUT}_{bn}.{ext}'
         return None

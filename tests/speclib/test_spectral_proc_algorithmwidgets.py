@@ -19,13 +19,14 @@ from unittest.mock import MagicMock, patch
 
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtGui import QIcon
-from qgis._gui import QgsProcessingParameterWidgetContext
+from qgis._core import QgsVectorLayer
 from qgis.core import (
     QgsApplication,
     QgsProcessingContext,
     QgsProject,
 )
 from qgis.gui import QgsMessageBar
+from qgis.gui import QgsProcessingParameterWidgetContext
 
 from qps import initAll
 from qps.speclib.gui.spectralprocessingalgorithmwidget import SpectralProcessingAlgorithmWidget
@@ -350,7 +351,7 @@ class SpectralProcessingAlgorithmWidgetAlgorithmIntegrationTests(TestCase):
     def setUp(self):
         """Set up test fixtures."""
         self.project = QgsProject()
-        self.speclib = TestObjects.createSpectralLibrary(n=5, n_bands=10)
+        self.speclib = TestObjects.createSpectralLibrary(n=25, n_bands=10)
         self.project.addMapLayer(self.speclib)
         self.reg = QgsApplication.processingRegistry()
 
@@ -383,9 +384,45 @@ class SpectralProcessingAlgorithmWidgetAlgorithmIntegrationTests(TestCase):
     def test_run_algorithm(self):
         """Test that changing algorithm recreates parameter panel."""
         alg1 = self.reg.createAlgorithmById('gdal:translate')
-        
-        widget = SpectralProcessingAlgorithmWidget(self.speclib, algorithm=alg1)
+        if False:
+            alg1 = self.reg.createAlgorithmById('native:virtualrastercalc')
+            parameters = {'LAYERS': ['name (string)',
+                                     'profiles0 (10 bands, Micrometers)'],
+                          'EXPRESSION': '"name (string)@1" + "profiles0 (10 bands, Micrometers)@1"',
+                          'EXTENT': None, 'CELL_SIZE': None, 'CRS': None,
+                          'LAYER_NAME': 'outputband'
+                          }
+        if True:
+            alg1 = self.reg.createAlgorithmById('native:alignrasters')
+            parameters = {'LAYERS':
+                [
+                    {
+                        'inputFile': 'profiles0 (10 bands, Micrometers)',
+                        'outputFile': 'outA',
+                        'resampleMethod': 0, 'rescale': False},
+                    {
+                        'inputFile': 'name (string)',
+                        'outputFile': 'outB',
+                        'resampleMethod': 0, 'rescale': False}
+                ],
+                'REFERENCE_LAYER': 'name (string)',
+                'CRS': None, 'CELL_SIZE_X': None, 'CELL_SIZE_Y': None,
+                'GRID_OFFSET_X': None, 'GRID_OFFSET_Y': None, 'EXTENT': None
+            }
+
+        sl: QgsVectorLayer = self.speclib
+        # Keep every 2nd feature ID
+        selected_ids = [fid for i, fid in enumerate(sl.allFeatureIds()) if i % 2 == 1]
+        sl.selectByIds(selected_ids)
+        widget = SpectralProcessingAlgorithmWidget(sl)
+        widget.setAlgorithm(alg1)
+        widget.setParameters(parameters)
         widget.runAlgorithm()
+        self.showGui(widget)
+        # widget.setParameters(parameters)
+        # context = widget.processingContext()
+
+        # self.showGui(widget)
 
 
 if __name__ == '__main__':

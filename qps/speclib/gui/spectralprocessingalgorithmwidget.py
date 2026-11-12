@@ -1,6 +1,9 @@
+import os.path
+from pathlib import Path
 from typing import List, Dict, Any, Tuple
 
-from PyQt6.QtWidgets import QDialog
+import numpy as np
+from processing.gui.AlgorithmExecutor import execute
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import (
@@ -12,18 +15,24 @@ from qgis.PyQt.QtWidgets import (
     QPushButton,
     QSizePolicy,
 )
-from qgis._core import QgsProcessingUtils, QgsRasterLayer, QgsProcessingParameterMultipleLayers, QgsProcessingContext, \
-    QgsMapLayer, QgsProcessingParameterRasterLayer
-from qgis._gui import QgsProcessingParametersGenerator
+from qgis.PyQt.QtWidgets import QDialog
 from qgis.core import QgsProcessingAlgorithm, QgsVectorLayer
+from qgis.core import QgsProcessingParameterDefinition, QgsProcessingOutputRasterLayer, QgsMapLayerStore, \
+    QgsProcessingFeedback, QgsProcessingOutputMultipleLayers
+from qgis.core import QgsProcessingUtils, QgsRasterLayer, QgsProcessingParameterMultipleLayers, QgsProcessingContext, \
+    QgsMapLayer, QgsProcessingParameterRasterLayer
+from qgis.core import QgsProject
 from qgis.gui import QgsPanelWidget
+from qgis.gui import QgsProcessingParametersGenerator
 
-from core.spectrallibraryrasterdataprovider import VectorLayerFieldRasterDataProvider
 from .spectralprocessingalgorithmmodel import SpectralProcessingAlgorithmModel
 from .spectralprocessingcontextgenerator import SpectralProcessingContextGenerator
 from .spectralprocessingparameterswidget import SpectralProcessingParametersWidget
+from .spectralprocessingrasterdestination import SpectralProcessingRasterDestination
+from ..core.spectrallibraryrasterdataprovider import VectorLayerFieldRasterDataProvider
 from ...reimplementation.processingalgorithmdialog import ProcessingAlgorithmDialog
 from ...reimplementation.processingalgorithmwidget import ProcessingAlgorithmWidget
+from ...utils import write_raster_file, rasterArray
 
 
 class SpectralProcessingAlgorithmWidget(ProcessingAlgorithmWidget):
@@ -73,6 +82,9 @@ class SpectralProcessingAlgorithmWidget(ProcessingAlgorithmWidget):
         if isinstance(algorithm, QgsProcessingAlgorithm):
             self.setAlgorithm(algorithm)
 
+    def selectedFeaturesOnly(self) -> bool:
+        return self.cbSelectedFeaturesOnly.isEnabled() and self.cbSelectedFeaturesOnly.isChecked()
+
     def createParametersPanel(self, inPlaceMode, activeLayer, messageBar):
         a = self.algorithm()
         if isinstance(a, QgsProcessingAlgorithm) and isinstance(self.speclib(), QgsVectorLayer):
@@ -85,10 +97,10 @@ class SpectralProcessingAlgorithmWidget(ProcessingAlgorithmWidget):
             return widget
         else:
             w = QgsPanelWidget()
-            l = QHBoxLayout()
+            layout = QHBoxLayout()
             label = QLabel('Select an algorithm')
-            l.addWidget(label)
-            w.setLayout(l)
+            layout.addWidget(label)
+            w.setLayout(layout)
             return w
 
     def speclib(self) -> QgsVectorLayer:
@@ -155,12 +167,11 @@ class SpectralProcessingAlgorithmWidget(ProcessingAlgorithmWidget):
         processing_context = self.processingContext()
         tmp_folder: str = QgsProcessingUtils.generateTempFilename('')
         processing_context.setTemporaryFolder(tmp_folder)
+        parametersWidget: SpectralProcessingParametersWidget = self.mainWidget()
 
-        parameters = {}
-        validation_result = []
-        if self.mainWidget() is not None:
-            parameters, validation_result = (
-                self.mainWidget().createAndValidateParameters(QgsProcessingParametersGenerator.Flags())
+        if parametersWidget is not None:
+            parameters, errors = (
+                parametersWidget.createAndValidateParameters(QgsProcessingParametersGenerator.Flags())
             )
         else:
             return
@@ -169,65 +180,348 @@ class SpectralProcessingAlgorithmWidget(ProcessingAlgorithmWidget):
         if not isinstance(algorithm, QgsProcessingAlgorithm):
             return
 
-        # 1. check parameters for QgsRasterLayers that use a VectorLayerFieldRasterDataProvider.
-        #    Convert these into temporary local files that can be used with gdal algorithms
-        # 2. replace the VectorLayerFieldRasterDataProvider layer with layer that use the temporary local files
-        #    keep in mind for these parameters the VectorLayerFieldRasterDataProvider's activeFeatureIDs()
-        #    so that we can later on refer each pixel index to a feature id
-        # 3. run the algorithm with modified parameters. report to feedback and collect all results / outputs
-        # 4. collect results and convert its outputs as followed
-        #    If output raster have the same number of pixels as the input rasters:
-        #    - raster files with one band into int / float fields
-        #    - raster files with > 1 bands into spectral profile fields
-        #    otherwise do not use them
+        # Prepare Inputs
+        if len(errors) > 0:
+            err = f'Parameter Errors: {str(errors)}'
+            feedback.reportError(err)
+            feedback.pushConsoleInfo(f"Parameters:\n{str(parameters)}")
+            return
 
-        vectorfieldrasterlayers = collect_vectorlayerfieldrasters(parameters, algorithm, processing_context)
+        # set active features to selected feature IDs
+        vlf_layers = collect_vector_layer_field_rasters(parameters, algorithm, processing_context)
 
-        affected_features = set()
+        if self.selectedFeaturesOnly():
+            active_feature_ids = set(self.speclib().selectedFeatureIds())
+        else:
+            # Keep every 2nd feature ID
+            all_ids = self.speclib().allFeatureIds()
+            active_feature_ids = {fid for i, fid in enumerate(all_ids) if i % 2 == 1}
+
+        vfl_features = dict()
+        for lyr in vlf_layers:
+            lyr: QgsVectorLayer
+            dp: VectorLayerFieldRasterDataProvider = lyr.dataProvider()
+            vfl_features[lyr] = dp.activeFeatures()
+            active_feature_ids.intersection_update(dp.activeFeatureIds())
+
+        active_features = list(self.speclib().getFeatures(sorted(active_feature_ids)))
+        active_feature_ids = sorted([f.id() for f in active_features])
+
+        # set active features
+        for lyr in vlf_layers:
+            lyr: QgsVectorLayer
+            dp: VectorLayerFieldRasterDataProvider = lyr.dataProvider()
+            dp.setActiveFeatures(active_features, dp.activeField())
+
+        n_features = len(active_features)
+        feedback.pushInfo(f'Save vector field attributes for {n_features} features to temporary file context...')
+        tmp_parameter, tmp_context, tmp_project = replace_parameter_layers(
+            parameters, algorithm, processing_context, tmp_folder
+        )
+
+        # Use the temporary context and parameters from replace_parameter_layers
+        # The replace_parameter_layers function has already created temporary TIF files
+        # for all VectorLayerFieldRasterDataProvider layers and set them up in tmp_context
+
+        feedback.pushInfo(f'Execute algorithm: {algorithm.id()} ...')
+        feedback.pushInfo(f'Parameters:')
+        feedback.pushConsoleInfo(str(tmp_parameter))
+        ok, results = execute(algorithm,
+                              tmp_parameter,
+                              context=tmp_context,
+                              feedback=feedback,
+                              catch_exceptions=True)
+        if not ok:
+            feedback.reportError(f'Execution failed: {str(results)}')
+            return
+
+        # S0 = _read_project_array_data(processing_context.project())
+        # S1 = _read_project_array_data(tmp_context.project())
+        # S2 = _read_project_array_data(tmp_context.temporaryLayerStore())
+
+        # convert output rasters into vector layer attribute values
+        feedback.pushInfo(f'Save temporary raster file output to vector field attributes')
+        ok, outputs, errors = collect_outputs(results, algorithm, tmp_context)
+        if ok:
+            write_outputs_to_speclib(self.speclib(), outputs, active_feature_ids)
 
 
-def collect_vectorlayerfieldrasters_feature_ids(rasters: List[QgsRasterLayer]) -> List[int]:
+def temp_tiff(path: str, context: QgsProcessingContext):
     """
-    Returns the feature IDs that are used as inputs for the virtual raster layers
-    :return:
+    Returns a temporary file name for a raster file.
+    :param path: path to the raster file
+    :param context: processing context
+    :return: temporary file name
     """
-    all_fids = set()
-    for lyr in rasters:
-        s = ""
+    bn, ext = os.path.splitext(path)
+    return QgsProcessingUtils.generateTempFilename(f'{bn}.tif', context)
 
 
-def collect_vectorlayerfieldrasters(
+def gdal_readable_layer(layer: Any, context: QgsProcessingContext) -> QgsMapLayer | None:
+    """
+    Converts a QgsRasterLayer into a format that can be read by GDAL, by saving the data into a temporary file.
+    Other QgsMapLayer types are returned as is.
+    Returns None for other inputs or QgsMapLayers which are invalid.
+    :param layer: any QgsMapLayer
+    :param context: processing context
+    :return: QgsMapLayer or None
+    """
+    if isinstance(layer, str):
+        layer = context.getMapLayer(layer)
+    if not (isinstance(layer, QgsMapLayer) and layer.isValid()):
+        return None
+
+    if isinstance(layer, QgsRasterLayer):
+        if layer.dataProvider().name() != 'gdal':
+            s = ""
+            # create a raster that can be read from GDAL
+            new_path = temp_tiff(f'{layer.id()}.tif', context)
+            success, errors = write_raster_file(layer, new_path, context)
+            if not success:
+                raise AssertionError(f'Error writing {new_path}')
+            else:
+                layer_new = QgsRasterLayer(new_path, layer.name())
+                return layer_new
+
+    return layer
+
+    s = ""
+
+
+def _read_project_array_data(p) -> dict:
+    layers = []
+    if isinstance(p, QgsProject):
+        layers = [lyr for lyr in p.mapLayers().values() if isinstance(lyr, QgsRasterLayer)]
+    elif isinstance(p, QgsMapLayerStore):
+        layers = [lyr for lyr in p.mapLayers().values() if isinstance(lyr, QgsRasterLayer)]
+    results = dict()
+    for lyr in layers:
+        results[lyr.id()] = rasterArray(lyr)
+    return results
+
+
+def replace_parameter_layers(
     parameters: Dict[str, Any],
     alg: QgsProcessingAlgorithm,
     context: QgsProcessingContext,
-) -> dict[str, Tuple[str, QgsRasterLayer]]:
+    tmp_folder: str,
+) -> Tuple[Dict[str, Any], QgsProcessingContext, QgsProject]:
+    """
+    Replaces all QgsRasterLayers that use a VectorLayerFieldRasterDataProvider with a new QgsRasterLayer that
+    has been stored in a local temp directory and accesses gdal-readable TIF files.
+    :param parameters:
+    :param alg:
+    :param context:
+    :param tmp_folder:
+    :return: tuple of (new_parameters, new_context, new_project)
+    """
+
+    old_project = context.project()
+    new_project = QgsProject()
+    new_context = QgsProcessingContext()
+    new_context.setFeedback(context.feedback())
+    new_context.setTransformContext(context.transformContext())
+    new_context.setTemporaryFolder(tmp_folder)
+    new_context.setProject(new_project)
+    new_parameters = dict()
+
+    _all_layers = []
+    for p_name, p_value in parameters.items():
+        p_name: str
+        p_def: QgsProcessingParameterDefinition = alg.parameterDefinition(p_name)
+        if isinstance(p_def, QgsProcessingParameterMultipleLayers):
+            new_layers = []
+            for layer_id in p_value:
+                layer_id: str
+                lyr = context.getMapLayer(layer_id)
+                lyr_new = gdal_readable_layer(lyr, context)
+
+                if isinstance(lyr_new, QgsMapLayer) and lyr_new.isValid():
+                    new_layers.append(lyr_new)
+
+            new_project.addMapLayers(new_layers)
+            new_parameters[p_name] = new_layers
+            _all_layers.extend(new_layers)
+
+        elif isinstance(p_def, QgsProcessingParameterRasterLayer):
+            lyr_new = gdal_readable_layer(p_value, context)
+
+            if isinstance(lyr_new, QgsMapLayer):
+                new_project.addMapLayer(lyr_new)
+                new_parameters[p_name] = lyr_new.id()
+                _all_layers.append(lyr_new)
+        elif isinstance(p_def, QgsProcessingParameterDefinition):
+            if p_def.type() == 'alignrasterlayers' and isinstance(p_value, list):
+                new_values = []
+                for d in p_value:
+                    if isinstance(d, dict):
+                        d2 = d.copy()
+
+                        inputFile = gdal_readable_layer(d.get('inputFile'), context)
+                        if isinstance(inputFile, QgsMapLayer):
+                            d2['inputFile'] = inputFile
+                            _all_layers.append(inputFile)
+
+                        outputFile = d.get('outputFile')
+                        if isinstance(outputFile, str):
+                            d2['outputFile'] = temp_tiff(outputFile, context)
+
+                        new_values.append(d2)
+                    else:
+                        raise RuntimeError(f"Invalid value for parameter '{p_name}': {p_value}")
+                new_parameters[p_name] = new_values
+        else:
+            new_parameters[p_name] = p_value
+
+    return new_parameters, new_context, new_project
+
+
+def collect_speclib_updates(speclib: QgsVectorLayer, results: dict, alg: QgsProcessingAlgorithm,
+                            context: QgsProcessingContext) -> dict:
+    """
+    :param results:
+    :param alg:
+    :param context:
+    :return:
+    """
+    return results
+
+
+def layer_to_fieldname(layer: QgsMapLayer) -> str:
+    field_name = layer.name()
+    if field_name == '':
+        field_name = SpectralProcessingRasterDestination.pathToFieldName(layer.source())
+    return field_name
+
+
+def write_outputs_to_speclib(speclib: QgsVectorLayer, outputs: List[dict], active_feature_ids: List[int]):
+    for output in outputs:
+        outputs: SpectralProcessingOutput
+    pass
+
+
+class SpectralProcessingOutput(object):
+
+    def fromLayer(self, parameter: str, layer: QgsMapLayer):
+
+        field_name = layer_to_fieldname(layer)
+        if not isinstance(layer, QgsRasterLayer):
+            return None
+
+        data = rasterArray(layer)
+        if not isinstance(data, np.ndarray):
+            return None
+
+        return SpectralProcessingOutput(parameter, field_name, data)
+
+    def __init__(self, parameter: str, fieldname: str, data: np.ndarray):
+        self.parameter = parameter
+        self.fieldname = fieldname
+        self.data = data
+
+
+def collect_outputs(
+    results: dict,
+    alg: QgsProcessingAlgorithm,
+    context: QgsProcessingContext
+) -> Tuple[bool, List[SpectralProcessingOutput], List[str]]:
+    feedback = context.feedback()
+    if not isinstance(feedback, QgsProcessingFeedback):
+        feedback = QgsProcessingFeedback()
+
+    outputs: List[SpectralProcessingOutput] = list()
+    errors = list()
+
+    for p_def in alg.outputDefinitions():
+        p_value = results.get(p_def.name())
+
+        try:
+            if isinstance(p_def, QgsProcessingOutputRasterLayer):
+                lyr = raster_from_context(p_value, context)
+                if not isinstance(lyr, QgsRasterLayer):
+                    msg = f'Unable to read output for "{p_def.name()}": {p_value}'
+                    feedback.reportError(msg)
+                    continue
+
+                if output := SpectralProcessingOutput.fromLayer(p_def.name(), lyr):
+                    outputs.append(output)
+
+            elif isinstance(p_def, QgsProcessingOutputMultipleLayers):
+                if isinstance(p_value, list):
+                    for output_name in p_value:
+                        lyr = raster_from_context(output_name, context)
+                        if output := SpectralProcessingOutput.fromLayer(p_def.name(), lyr):
+                            outputs.append(output)
+
+        except Exception as ex:
+            msg = f'Unable to read output for "{p_def.name()}": {ex}'
+            errors.append(msg)
+            feedback.reportError(msg)
+            continue
+
+    return len(errors) == 0, outputs, errors
+
+
+def raster_from_context(
+    p_value: Any | None,
+    context: QgsProcessingContext
+) -> QgsRasterLayer | None:
+    lyr = None
+    if isinstance(p_value, QgsRasterLayer):
+        lyr = p_value
+    else:
+        lyr = context.getMapLayer(p_value)
+
+    if lyr is None:
+        lyr = context.temporaryLayerStore().mapLayer(p_value)
+    if lyr is None and isinstance(p_value, str):
+        name = None
+        p = Path(p_value)
+        if p.is_file():
+            name = p.stem
+        lyr = QgsRasterLayer(p_value, baseName=name)
+    return lyr
+
+
+def collect_vector_layer_field_rasters(
+    parameters: Dict[str, Any],
+    alg: QgsProcessingAlgorithm,
+    context: QgsProcessingContext,
+) -> List[QgsRasterLayer]:
+    """
+    :param parameters:
+    :param alg:
+    :param context:
+    :return:
+    """
     # collect vector field raster layers
-    vector_field_layers: Dict[str, Tuple[str, QgsRasterLayer]] = {}
-    required_layer = {}
+    vfr_layers: List[QgsRasterLayer] = []
 
-    def is_match(input: Any) -> bool:
-        return (
-            isinstance(input, QgsRasterLayer)
-            and input.isValid()
-            and isinstance(input.dataProvider(), VectorLayerFieldRasterDataProvider)
-        )
+    def is_vf_layer(input: Any, context: QgsProcessingContext) -> QgsRasterLayer | None:
+        if isinstance(input, str):
+            input = context.getMapLayer(input)
 
-    for k, v in parameters.items():
-        k: str
-        param = alg.parameterDefinition(k)
+        if isinstance(input, QgsRasterLayer
+                      ) and input.isValid() and isinstance(
+            input.dataProvider(), VectorLayerFieldRasterDataProvider
+        ):
+            return input
+        else:
+            return None
+
+    for parameter_name, v in parameters.items():
+        parameter_name: str
+        param = alg.parameterDefinition(parameter_name)
         if isinstance(param, QgsProcessingParameterMultipleLayers):
             for layer_id in v:
                 layer_id: str
-                lyr = context.getMapLayer(layer_id)
-                if is_match(lyr):
-                    lyr: QgsRasterLayer
-                    vector_field_layers[k] = (layer_id, lyr)
-                if isinstance(lyr, QgsMapLayer):
-                    required_layer[layer_id] = lyr
+                if vfl := is_vf_layer(layer_id, context):
+                    if vfl not in vfr_layers:
+                        vfr_layers.append(vfl)
 
         elif isinstance(param, QgsProcessingParameterRasterLayer):
-            if is_match(v):
-                v: QgsRasterLayer
-                vector_field_layers[k] = (v.id(), v)
+            if vfl := is_vf_layer(v, context):
+                if vfl not in vfr_layers:
+                    vfr_layers.append(vfl)
 
-    return vector_field_layers
+    return vfr_layers
