@@ -4213,11 +4213,10 @@ def write_raster_file(
     Writes the data of a QgsRasterLayer or QgsRasterDataProvider into a local raster data file
     file_name: str a string with the path of the new raster data file name
     """
-    _ref = None
+
     if isinstance(dp, QgsRasterLayer):
         if not dp.isValid():
             raise AssertionError(f'Input layer in not valid: {dp}')
-        _ref = dp
         dp = dp.dataProvider()
 
     if not isinstance(dp, QgsRasterDataProvider):

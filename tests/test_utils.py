@@ -1254,7 +1254,7 @@ class TestUtils(TestCase):
 
         # Test writing with layer name
         path_tif2 = DIR_TEST / 'test_raster_write_with_name.tif'
-        layer_name = 'Custom Layer Name'
+        # layer_name = 'Custom Layer Name'
 
         success, messages = write_raster_file(rl, path_tif2.as_posix())
         layer = QgsRasterLayer(str(path_tif2))

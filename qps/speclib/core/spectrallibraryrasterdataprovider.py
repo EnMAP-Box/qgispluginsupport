@@ -595,7 +595,6 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
 
         if uri:
             self._init_from_uri(uri)
-        s = ""
 
     def featureSourceId(self) -> str:
         return self.mFeatureSourceID

@@ -19,12 +19,12 @@ from unittest.mock import MagicMock, patch
 
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtGui import QIcon
-from qgis._core import QgsVectorLayer
 from qgis.core import (
     QgsApplication,
     QgsProcessingContext,
     QgsProject,
 )
+from qgis.core import QgsVectorLayer
 from qgis.gui import QgsMessageBar
 from qgis.gui import QgsProcessingParameterWidgetContext
 
@@ -394,8 +394,8 @@ class SpectralProcessingAlgorithmWidgetAlgorithmIntegrationTests(TestCase):
                           }
         if True:
             alg1 = self.reg.createAlgorithmById('native:alignrasters')
-            parameters = {'LAYERS':
-                [
+            parameters = {
+                'LAYERS': [
                     {
                         'inputFile': 'profiles0 (10 bands, Micrometers)',
                         'outputFile': 'outA',

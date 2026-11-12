@@ -1,10 +1,10 @@
 import unittest
 
-from PyQt6.QtWidgets import QHBoxLayout
 from qgis.PyQt.QtCore import QMetaType
+from qgis.PyQt.QtWidgets import QHBoxLayout
 from qgis.PyQt.QtWidgets import QWidget
-from qgis._core import QgsProcessingParameterRasterDestination, QgsProcessingContext, QgsProcessing
 from qgis.core import QgsFields, QgsField
+from qgis.core import QgsProcessingParameterRasterDestination, QgsProcessingContext, QgsProcessing
 
 from qps.speclib.gui.spectralprocessingrasterdestination import SpectralProcessingDestinationFieldWidget, \
     SpectralProcessingRasterDestination
@@ -22,7 +22,7 @@ class SpectralProcessingRasterDestinationTests(TestCase):
         widget = SpectralProcessingDestinationFieldWidget()
         widget.setFields(sl.fields())
 
-        widget.show() # needed to allow for visibility testing
+        widget.show()  # needed to allow for visibility testing
 
         # Should be in text box mode by default
         self.assertTrue(widget.tbNewFieldName.isVisible())
@@ -173,7 +173,7 @@ class SpectralProcessingRasterDestinationTests(TestCase):
         context = QgsProcessingContext()
         wrapper.setWidgetValue('newfield', context)
         pvalue = wrapper.parameterValue()
-        wvalue = wrapper.widgetValue()
+        # wvalue = wrapper.widgetValue()
         self.assertEqual(
             pvalue,
             f'{QgsProcessing.TEMPORARY_OUTPUT}_newfield.tif'

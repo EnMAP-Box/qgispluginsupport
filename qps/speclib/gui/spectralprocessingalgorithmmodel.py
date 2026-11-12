@@ -1,6 +1,6 @@
 from qgis.PyQt.QtCore import QModelIndex, QObject, Qt
-from qgis._core import QgsProcessingOutputMultipleLayers
 from qgis.core import QgsProcessingAlgorithm, QgsProcessingOutputRasterLayer, QgsProcessingRegistry
+from qgis.core import QgsProcessingOutputMultipleLayers
 from qgis.gui import QgsProcessingRecentAlgorithmLog, QgsProcessingToolboxProxyModel
 
 

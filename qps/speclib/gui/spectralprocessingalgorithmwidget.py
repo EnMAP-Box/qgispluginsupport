@@ -4,6 +4,7 @@ from typing import List, Dict, Any, Tuple
 
 import numpy as np
 from processing.gui.AlgorithmExecutor import execute
+from qgis.PyQt.QtCore import QMetaType
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import (
@@ -16,7 +17,9 @@ from qgis.PyQt.QtWidgets import (
     QSizePolicy,
 )
 from qgis.PyQt.QtWidgets import QDialog
-from qgis.core import QgsProcessingAlgorithm, QgsVectorLayer
+from qgis._core import QgsApplication
+from qgis.core import QgsFeature, QgsField
+from qgis.core import QgsProcessingAlgorithm, QgsVectorLayer, edit
 from qgis.core import QgsProcessingParameterDefinition, QgsProcessingOutputRasterLayer, QgsMapLayerStore, \
     QgsProcessingFeedback, QgsProcessingOutputMultipleLayers
 from qgis.core import QgsProcessingUtils, QgsRasterLayer, QgsProcessingParameterMultipleLayers, QgsProcessingContext, \
@@ -29,10 +32,13 @@ from .spectralprocessingalgorithmmodel import SpectralProcessingAlgorithmModel
 from .spectralprocessingcontextgenerator import SpectralProcessingContextGenerator
 from .spectralprocessingparameterswidget import SpectralProcessingParametersWidget
 from .spectralprocessingrasterdestination import SpectralProcessingRasterDestination
+from ..core.spectrallibrary import SpectralLibraryUtils
 from ..core.spectrallibraryrasterdataprovider import VectorLayerFieldRasterDataProvider
+from ..core.spectralprofile import ProfileEncoding, prepareProfileValueDict, encodeProfileValueDict
+from ...qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from ...reimplementation.processingalgorithmdialog import ProcessingAlgorithmDialog
 from ...reimplementation.processingalgorithmwidget import ProcessingAlgorithmWidget
-from ...utils import write_raster_file, rasterArray
+from ...utils import write_raster_file, rasterArray, createQgsField
 
 
 class SpectralProcessingAlgorithmWidget(ProcessingAlgorithmWidget):
@@ -72,6 +78,7 @@ class SpectralProcessingAlgorithmWidget(ProcessingAlgorithmWidget):
 
         self.mSpeclib = speclib
 
+        self.mFeedback = self.createFeedback()
         self.mContextGenerator = SpectralProcessingContextGenerator(speclib)
 
         self._parameters_panel = self.createParametersPanel(
@@ -81,6 +88,9 @@ class SpectralProcessingAlgorithmWidget(ProcessingAlgorithmWidget):
 
         if isinstance(algorithm, QgsProcessingAlgorithm):
             self.setAlgorithm(algorithm)
+
+    def feedback(self) -> QgsProcessingFeedback:
+        return self.mFeedback
 
     def selectedFeaturesOnly(self) -> bool:
         return self.cbSelectedFeaturesOnly.isEnabled() and self.cbSelectedFeaturesOnly.isChecked()
@@ -116,7 +126,12 @@ class SpectralProcessingAlgorithmWidget(ProcessingAlgorithmWidget):
             if isinstance(alg, QgsProcessingAlgorithm):
                 self.setAlgorithm(alg)
 
-    def setAlgorithm(self, algorithm: QgsProcessingAlgorithm | None):
+    def setAlgorithm(self, algorithm: QgsProcessingAlgorithm | str | None):
+        if isinstance(algorithm, str):
+            alg = QgsApplication.processingRegistry().createAlgorithmById(algorithm)
+            if alg is None:
+                raise ValueError(f'Algorithm {algorithm} not found')
+            algorithm = alg
         if algorithm != self.algorithm():
             super().setAlgorithm(algorithm)
             self._parameters_panel = self.createParametersPanel(
@@ -160,24 +175,26 @@ class SpectralProcessingAlgorithmWidget(ProcessingAlgorithmWidget):
     def widgetContext(self):
         return self.mContextGenerator.createWidgetContext()
 
-    def runAlgorithm(self):
+    def runAlgorithm(self, fail_fast: bool = False):
 
-        feedback = self.createFeedback()
+        # feedback = self.createFeedback()
+        feedback = self.feedback()
 
         processing_context = self.processingContext()
         tmp_folder: str = QgsProcessingUtils.generateTempFilename('')
         processing_context.setTemporaryFolder(tmp_folder)
         parametersWidget: SpectralProcessingParametersWidget = self.mainWidget()
 
-        if parametersWidget is not None:
-            parameters, errors = (
-                parametersWidget.createAndValidateParameters(QgsProcessingParametersGenerator.Flags())
-            )
-        else:
+        if parametersWidget is None:
             return
+
+        parameters, errors = (
+            parametersWidget.createAndValidateParameters(QgsProcessingParametersGenerator.Flags())
+        )
 
         algorithm = self.algorithm()
         if not isinstance(algorithm, QgsProcessingAlgorithm):
+            feedback.reportError('No algorithm selected.')
             return
 
         # Prepare Inputs
@@ -224,13 +241,13 @@ class SpectralProcessingAlgorithmWidget(ProcessingAlgorithmWidget):
         # for all VectorLayerFieldRasterDataProvider layers and set them up in tmp_context
 
         feedback.pushInfo(f'Execute algorithm: {algorithm.id()} ...')
-        feedback.pushInfo(f'Parameters:')
+        feedback.pushInfo('Parameters:')
         feedback.pushConsoleInfo(str(tmp_parameter))
         ok, results = execute(algorithm,
                               tmp_parameter,
                               context=tmp_context,
                               feedback=feedback,
-                              catch_exceptions=True)
+                              catch_exceptions=not fail_fast)
         if not ok:
             feedback.reportError(f'Execution failed: {str(results)}')
             return
@@ -240,10 +257,10 @@ class SpectralProcessingAlgorithmWidget(ProcessingAlgorithmWidget):
         # S2 = _read_project_array_data(tmp_context.temporaryLayerStore())
 
         # convert output rasters into vector layer attribute values
-        feedback.pushInfo(f'Save temporary raster file output to vector field attributes')
+        feedback.pushInfo('Save temporary raster file output to vector field attributes')
         ok, outputs, errors = collect_outputs(results, algorithm, tmp_context)
         if ok:
-            write_outputs_to_speclib(self.speclib(), outputs, active_feature_ids)
+            write_outputs_to_speclib(self.speclib(), outputs, active_features, feedback)
 
 
 def temp_tiff(path: str, context: QgsProcessingContext):
@@ -273,7 +290,7 @@ def gdal_readable_layer(layer: Any, context: QgsProcessingContext) -> QgsMapLaye
 
     if isinstance(layer, QgsRasterLayer):
         if layer.dataProvider().name() != 'gdal':
-            s = ""
+
             # create a raster that can be read from GDAL
             new_path = temp_tiff(f'{layer.id()}.tif', context)
             success, errors = write_raster_file(layer, new_path, context)
@@ -284,8 +301,6 @@ def gdal_readable_layer(layer: Any, context: QgsProcessingContext) -> QgsMapLaye
                 return layer_new
 
     return layer
-
-    s = ""
 
 
 def _read_project_array_data(p) -> dict:
@@ -316,7 +331,6 @@ def replace_parameter_layers(
     :return: tuple of (new_parameters, new_context, new_project)
     """
 
-    old_project = context.project()
     new_project = QgsProject()
     new_context = QgsProcessingContext()
     new_context.setFeedback(context.feedback())
@@ -394,15 +408,89 @@ def layer_to_fieldname(layer: QgsMapLayer) -> str:
     return field_name
 
 
-def write_outputs_to_speclib(speclib: QgsVectorLayer, outputs: List[dict], active_feature_ids: List[int]):
-    for output in outputs:
-        outputs: SpectralProcessingOutput
-    pass
+def write_outputs_to_speclib(
+    speclib: QgsVectorLayer,
+    outputs: List[dict],
+    active_features: List[QgsFeature],
+    feedback: QgsProcessingFeedback,
+) -> bool:
+    with edit(speclib):
+
+        nf = len(active_features)
+
+        NEW_VALUES = {}
+        for output in outputs:
+            output: SpectralProcessingOutput
+
+            nb, nl, ns = output.data.shape
+            # sprop = output.spectral_properties
+
+            is_profile_field = nb > 1
+            if ns != nf:
+                feedback.reportError(f'Output {output.parameter} has {ns} bands, expected {nf}')
+                return False
+
+            fidx = speclib.fields().indexFromName(output.fieldname)
+            if fidx == -1:
+                field = None
+                if is_profile_field:
+                    field: QgsField = SpectralLibraryUtils.createProfileField(output.fieldname)
+                    if not speclib.dataProvider().supportedType(field):
+                        field = SpectralLibraryUtils.createProfileField(output.fieldname,
+                                                                        encoding=ProfileEncoding.Text)
+                else:
+                    field = createQgsField(output.fieldname, output.data[0, 0, 0])
+                    if not speclib.dataProvider().supportedType(field):
+                        field = QgsField(
+                            name=output.fieldname,
+                            type=QMetaType.Type.Double
+                        )
+
+                if isinstance(field, QgsField):
+                    speclib.beginEditCommand(f'Add field {field.name()}')
+                    if not SpectralLibraryUtils.addAttribute(speclib, field):
+                        feedback.reportError(f'Failed to add field {output.fieldname} to spectral library')
+                        speclib.endEditCommand()
+                        return False
+                    speclib.endEditCommand()
+            fidx = speclib.fields().indexFromName(output.fieldname)
+            field = speclib.fields()[fidx]
+
+            for i, feature in enumerate(active_features):
+                attribute_map = NEW_VALUES.get(feature.id(), dict())
+
+                if is_profile_field:
+                    pdict = prepareProfileValueDict(
+                        y=output.data[:, 0, i],
+                        x=output.spectral_properties.wavelengths(),
+                        xUnit=output.spectral_properties.wavelengthUnits()[0],
+                        bbl=output.spectral_properties.badBands()
+                    )
+                    value = encodeProfileValueDict(pdict, field)
+                else:
+                    value = output.data[0, 0, i].tolist()
+                attribute_map[fidx] = value
+
+                NEW_VALUES[feature.id()] = attribute_map
+
+        # write data
+        speclib.beginEditCommand("Write data to speclib")
+        for fid, attribute_map in NEW_VALUES.items():
+            if not (speclib.changeAttributeValues(fid, attribute_map)):
+                msg = f'Failed to update attribute values for feature ID: {fid}'
+                feedback.reportError(msg)
+                speclib.endEditCommand()
+                return False
+
+        speclib.endEditCommand()
+
+    return True
 
 
 class SpectralProcessingOutput(object):
 
-    def fromLayer(self, parameter: str, layer: QgsMapLayer):
+    @classmethod
+    def fromLayer(cls, parameter: str, layer: QgsMapLayer):
 
         field_name = layer_to_fieldname(layer)
         if not isinstance(layer, QgsRasterLayer):
@@ -411,13 +499,15 @@ class SpectralProcessingOutput(object):
         data = rasterArray(layer)
         if not isinstance(data, np.ndarray):
             return None
-
-        return SpectralProcessingOutput(parameter, field_name, data)
+        output = SpectralProcessingOutput(parameter, field_name, data)
+        output.spectral_properties = QgsRasterLayerSpectralProperties.fromRasterLayer(layer)
+        return output
 
     def __init__(self, parameter: str, fieldname: str, data: np.ndarray):
         self.parameter = parameter
         self.fieldname = fieldname
         self.data = data
+        self.spectral_properties: QgsRasterLayerSpectralProperties | None = None
 
 
 def collect_outputs(
@@ -450,6 +540,10 @@ def collect_outputs(
                 if isinstance(p_value, list):
                     for output_name in p_value:
                         lyr = raster_from_context(output_name, context)
+                        if not isinstance(lyr, QgsRasterLayer):
+                            msg = f'Unable to read output for "{p_def.name()}": {p_value}'
+                            feedback.reportError(msg)
+                            continue
                         if output := SpectralProcessingOutput.fromLayer(p_def.name(), lyr):
                             outputs.append(output)
 
