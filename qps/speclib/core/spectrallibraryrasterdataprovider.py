@@ -121,6 +121,7 @@ def createRasterLayers(
             layer = QgsRasterLayer(uri, name, VectorLayerFieldRasterDataProvider.providerKey())
             dp: VectorLayerFieldRasterDataProvider = layer.dataProvider()
             dp.setActiveFeatures(features, field=field.name())
+            layer.setExtent(dp.extent())
             layers.append(layer)
 
     return layers
@@ -610,8 +611,8 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
     def activeFeatures(self) -> List[QgsFeature]:
         return self.mFeatures
 
-    def activeFeatureIDs(self) -> List[int]:
-        return [feature.id() for feature in self.mFeatures]
+    def activeFeatureIds(self) -> List[int]:
+        return [f.id() for f in self.mFeatures]
 
     def _init_from_uri(self, uri: str) -> None:
 
@@ -825,9 +826,9 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
         self.mField = activeField
 
         # set the extent Y offset
-        if not self.mYOffsetManual:
-            if fields.count() > 0:
-                self.mYOffset = fields.lookupField(activeField.name())
+        # if not self.mYOffsetManual:
+        #     if fields.count() > 0:
+        #         self.mYOffset = fields.lookupField(activeField.name())
 
         # convert feature data into fast-accessible numpy data
         if not isinstance(features, list):
@@ -843,6 +844,10 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
 
         self.fullExtentCalculated.emit()
         self.dataChanged.emit()
+
+        # workaround to ensure correct layer extents
+        if isinstance(self.parent(), QgsRasterLayer):
+            self.parent().setExtent(self.extent())
 
     def _read_raster_values(
         self,
@@ -992,9 +997,6 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
         self.mColorTable = raster_color_table
         self.mNoData = raster_nodata
         self.mRasterMetadata = raster_metadata
-
-    def activeFeatureIds(self) -> List[int]:
-        return [f.id() for f in self.mFeatures]
 
     def enableProviderResampling(self, enable: bool) -> bool:
         return True
