@@ -1,6 +1,7 @@
+from qgis.PyQt.QtCore import QModelIndex, QObject, Qt
+from qgis._core import QgsProcessingOutputMultipleLayers
 from qgis.core import QgsProcessingAlgorithm, QgsProcessingOutputRasterLayer, QgsProcessingRegistry
 from qgis.gui import QgsProcessingRecentAlgorithmLog, QgsProcessingToolboxProxyModel
-from qgis.PyQt.QtCore import QModelIndex, QObject, Qt
 
 
 def has_raster_output(alg: QgsProcessingAlgorithm) -> bool:
@@ -8,7 +9,7 @@ def has_raster_output(alg: QgsProcessingAlgorithm) -> bool:
         return False
 
     for output in alg.outputDefinitions():
-        if isinstance(output, QgsProcessingOutputRasterLayer):
+        if isinstance(output, (QgsProcessingOutputRasterLayer, QgsProcessingOutputMultipleLayers)):
             return True
     return False
 
