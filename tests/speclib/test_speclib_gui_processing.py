@@ -15,13 +15,16 @@ from qgis.core import (
 )
 from qgis.core import QgsRasterLayer
 from qgis.gui import QgsMessageBar
-from qgis.gui import QgsProcessingAlgorithmWidgetBase, QgsProcessingContextGenerator, \
+from qgis.gui import (
+    QgsProcessingAlgorithmWidgetBase, QgsProcessingContextGenerator,
     QgsProcessingGui, QgsProcessingParameterWidgetContext
+)
 
 from qps import initAll
 from qps.qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
 from qps.speclib.gui.spectralprocessingalgorithmwidget import SpectralProcessingAlgorithmWidget
+from qps.speclib.gui.spectralprocessingcontextgenerator import SpectralProcessingContextGenerator
 from qps.speclib.gui.spectralprocessingrasterlayerwidgetwrapper import SpectralProcessingRasterLayerWidgetWrapper
 from qps.speclib.gui.spectralprocessingwidget import (SpectralProcessingParametersWidget
                                                       )
@@ -322,7 +325,9 @@ class SpectralProcessingTests(TestCase):
         }
         with edit(speclib):
             slw = SpectralLibraryWidget(speclib=speclib, project=project)
-            spd = SpectralProcessingWidget(speclib=speclib, algorithmId=algorithmId, parameters=parameters)
+            spd = SpectralProcessingAlgorithmWidget(speclib=speclib)
+            spd.setAlgorithm(algorithmId)
+            spd.setParameters(parameters)
 
             # spd.runAlgorithm(fail_fast=True)
             # slw.showSpectralProcessingWidget(algorithmId=algorithmId)
@@ -414,7 +419,11 @@ class SpectralProcessingTests(TestCase):
 
         msgBar = QgsMessageBar()
 
-        wrapper1 = SpectralProcessingParametersWidget(alg1, sl, context, messageBar=msgBar)
+        g = SpectralProcessingContextGenerator(sl)
+
+        wrapper1 = SpectralProcessingParametersWidget(alg1, speclib=sl, message_bar=msgBar)
+        wrapper1.registerProcessingContextGenerator(g)
+        wrapper1.registerWidgetContextGenerator(g)
         wrapper1.initWidgets()
         w.setLayout(QHBoxLayout())
         w.layout().addWidget(wrapper1)
@@ -501,7 +510,7 @@ class SpectralProcessingTests(TestCase):
 
         w = slw.openSpectralProcessingWidget(layer_id=speclib.id(), algorithmId='gdal:translate')
 
-        self.assertIsInstance(w, SpectralProcessingWidget)
+        self.assertIsInstance(w, SpectralProcessingAlgorithmWidget)
         self.assertEqual(w.speclib(), speclib)
 
         alg = w.algorithm()

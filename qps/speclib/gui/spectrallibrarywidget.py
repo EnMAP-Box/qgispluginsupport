@@ -17,7 +17,6 @@ from .spectrallibraryplotitems import SpectralProfilePlotItem, SpectralProfilePl
 from .spectrallibraryplotmodelitems import ProfileVisualizationGroup
 from .spectrallibraryplotwidget import SpectralLibraryPlotWidget
 from .spectralprocessingalgorithmwidget import SpectralProcessingAlgorithmWidget
-from .spectralprocessingwidget import SpectralProcessingWidget
 from .spectralprofilefieldmodel import SpectralProfileFieldActivatorDialog
 from .spectralprofileplotmodel import SpectralProfilePlotModel
 from ..core import is_spectral_library
@@ -328,7 +327,7 @@ class SpectralLibraryWidget(QWidget):
         layer_id: Optional[str] = None,
         algorithmId: Optional[str] = None,
         parameters: Optional[dict] = None
-    ) -> Optional[SpectralProcessingWidget]:
+    ) -> Optional[SpectralProcessingAlgorithmWidget]:
         # alg_key = 'qps/processing/last_alg_id'
         # reg: QgsProcessingRegistry = QgsApplication.instance().processingRegistry()
 
@@ -340,9 +339,10 @@ class SpectralLibraryWidget(QWidget):
                 # profile_fields_before = profile_field_names(lyr)
                 w = SpectralProcessingAlgorithmWidget(
                     speclib=lyr,
-                    algorithmId=algorithmId,
-                    parameters=parameters
                 )
+                w.setAlgorithm(algorithmId)
+                if parameters:
+                    w.setParameters(parameters)
                 # dialog.setMainMessageBar(self.mainMessageBar())
                 # dialog.sigOutputsCreated.connect(self.onSpectralProcessingOutputsCreated)
                 # w.setParent(self)
