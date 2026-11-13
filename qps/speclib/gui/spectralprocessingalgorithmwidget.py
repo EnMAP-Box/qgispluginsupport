@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import List, Dict, Any, Tuple
 
 import numpy as np
+
 from processing.gui.AlgorithmExecutor import execute
 from qgis.PyQt.QtCore import QMetaType
 from qgis.PyQt.QtCore import Qt
@@ -28,7 +29,6 @@ from qgis.core import QgsProject
 from qgis.gui import QgsMessageBar
 from qgis.gui import QgsPanelWidget
 from qgis.gui import QgsProcessingParametersGenerator
-
 from .spectralprocessingalgorithmmodel import SpectralProcessingAlgorithmModel
 from .spectralprocessingcontextgenerator import SpectralProcessingContextGenerator
 from .spectralprocessingparameterswidget import SpectralProcessingParametersWidget
@@ -227,19 +227,16 @@ class SpectralProcessingAlgorithmWidget(ProcessingAlgorithmWidget):
         if self.selectedFeaturesOnly():
             active_feature_ids = set(speclib.selectedFeatureIds())
         else:
-            # Keep every 2nd feature ID
-            all_ids = speclib.allFeatureIds()
-            active_feature_ids = {fid for i, fid in enumerate(all_ids) if i % 2 == 1}
+            active_feature_ids = set(speclib.allFeatureIds())
 
         vfl_features = dict()
         for lyr in vlf_layers:
             lyr: QgsVectorLayer
             dp: VectorLayerFieldRasterDataProvider = lyr.dataProvider()
             vfl_features[lyr] = dp.activeFeatures()
-            active_feature_ids.intersection_update(dp.activeFeatureIds())
+            active_feature_ids.intersection_update(set(dp.activeFeatureIds()))
 
         active_features = list(speclib.getFeatures(sorted(active_feature_ids)))
-        active_feature_ids = sorted([f.id() for f in active_features])
 
         # set active features
         for lyr in vlf_layers:
@@ -333,10 +330,10 @@ def _read_project_array_data(p) -> dict:
 
 
 def replace_parameter_layers(
-    parameters: Dict[str, Any],
-    alg: QgsProcessingAlgorithm,
-    context: QgsProcessingContext,
-    tmp_folder: str,
+        parameters: Dict[str, Any],
+        alg: QgsProcessingAlgorithm,
+        context: QgsProcessingContext,
+        tmp_folder: str,
 ) -> Tuple[Dict[str, Any], QgsProcessingContext, QgsProject]:
     """
     Replaces all QgsRasterLayers that use a VectorLayerFieldRasterDataProvider with a new QgsRasterLayer that
@@ -417,10 +414,10 @@ def layer_to_fieldname(layer: QgsMapLayer) -> str:
 
 
 def write_outputs_to_speclib(
-    speclib: QgsVectorLayer,
-    outputs: List[dict],
-    active_features: List[QgsFeature],
-    feedback: QgsProcessingFeedback,
+        speclib: QgsVectorLayer,
+        outputs: List[dict],
+        active_features: List[QgsFeature],
+        feedback: QgsProcessingFeedback,
 ) -> bool:
     if not speclib.isEditable():
         raise QgsProcessingException(f'vector layer is not in editable: "{speclib.name()}"')
@@ -520,9 +517,9 @@ class SpectralProcessingOutput(object):
 
 
 def collect_outputs(
-    results: dict,
-    alg: QgsProcessingAlgorithm,
-    context: QgsProcessingContext
+        results: dict,
+        alg: QgsProcessingAlgorithm,
+        context: QgsProcessingContext
 ) -> Tuple[bool, List[SpectralProcessingOutput], List[str]]:
     feedback = context.feedback()
     if not isinstance(feedback, QgsProcessingFeedback):
@@ -566,8 +563,8 @@ def collect_outputs(
 
 
 def raster_from_context(
-    p_value: Any | None,
-    context: QgsProcessingContext
+        p_value: Any | None,
+        context: QgsProcessingContext
 ) -> QgsRasterLayer | None:
     lyr = None
     if isinstance(p_value, QgsRasterLayer):
@@ -587,9 +584,9 @@ def raster_from_context(
 
 
 def collect_vector_layer_field_rasters(
-    parameters: Dict[str, Any],
-    alg: QgsProcessingAlgorithm,
-    context: QgsProcessingContext,
+        parameters: Dict[str, Any],
+        alg: QgsProcessingAlgorithm,
+        context: QgsProcessingContext,
 ) -> List[QgsRasterLayer]:
     """
     :param parameters:
