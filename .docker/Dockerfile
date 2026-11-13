@@ -34,7 +34,8 @@ RUN pip install --break-system-packages --no-cache-dir \
     flake8-qgis \
     bandit \
     coverage-badge \
-    pystac
+    pystac \
+    spyndex
 
 RUN bash /tmp/qgis_setup.sh
 RUN cd /usr/src
