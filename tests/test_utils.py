@@ -26,6 +26,7 @@ from typing import Dict
 import defusedxml.ElementTree as ET  # B405 - defusedxml used to safely parse XML
 import numpy as np
 from osgeo import gdal, gdal_array, ogr, osr
+
 from qgis.PyQt.QtCore import NULL, QByteArray, QObject, QPoint, QRect, QUrl
 from qgis.PyQt.QtGui import QColor
 from qgis.PyQt.QtWidgets import QDialog, QDockWidget, QGroupBox, QMainWindow, QMenu, QWidget
@@ -37,7 +38,6 @@ from qgis.core import QgsCoordinateReferenceSystem, QgsFeature, QgsFeatureReques
 from qgis.core import QgsWkbTypes, QgsExpressionContextUtils
 from qgis.gui import QgsDockWidget
 from qgis.gui import QgsFieldCalculator
-
 from qps import DIR_REPO
 from qps.speclib.core import is_spectral_library
 from qps.speclib.core.spectralprofile import decodeProfileValueDict
@@ -114,7 +114,7 @@ class TestUtils(TestCase):
             self.assertEqual(root.tag, 'ui')
             baseClass = root.find('widget').attrib['class']
 
-            print('Try to load {} as {}'.format(pathUi, baseClass))
+            # print('Try to load {} as {}'.format(pathUi, baseClass))
             self.assertIsInstance(baseClass, str)
 
             if baseClass == 'QDialog':
@@ -1110,7 +1110,7 @@ class TestUtils(TestCase):
 
         for i, text in enumerate(valueSet):
             s = filenameFromString(text)
-            print('Test {}:"{}"->"{}"'.format(i + 1, text, s))
+            # print('Test {}:"{}"->"{}"'.format(i + 1, text, s))
             self.assertIsInstance(s, str)
 
     def test_selectMapLayersDialog(self):

@@ -7,7 +7,6 @@ from qgis.PyQt.QtCore import QMetaType
 from qgis.core import QgsExpression, QgsExpressionContext, QgsProject, QgsExpressionContextUtils
 from qgis.core import QgsFields, QgsField, QgsFeature
 from qgis.core import QgsRasterLayer
-
 from qps.expressionfunctions import SpectralData
 from qps.qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
@@ -44,6 +43,7 @@ class SpectralDataTests(TestCase):
 
         QgsProject.instance().removeAllMapLayers()
 
+    @unittest.skipIf(not has_spyndex, 'spyndex not installed')
     def test_spectral_data2(self):
 
         self.registerFunction(SpectralData())
@@ -128,6 +128,7 @@ class SpectralDataTests(TestCase):
         result = exp.evaluate(context)
         self.assertEqual(result, 0.2)
 
+    @unittest.skipIf(not has_spyndex, 'Requires spyndex')
     def test_required_bands(self):
 
         # R = 620 - 690
@@ -262,9 +263,10 @@ class SpectralDataTests(TestCase):
             self.assertTrue(bi is None or 0 <= bi < n_bands)
         t2 = datetime.datetime.now()
 
-        print(f'Sampling: {n}')
-        print(f'No cache: {t1 - t0}')
-        print(f'With cache: {t2 - t1}')
+        if False:
+            print(f'Sampling: {n}')
+            print(f'No cache: {t1 - t0}')
+            print(f'With cache: {t2 - t1}')
 
     def test_band_shortcut_descriptions(self):
 

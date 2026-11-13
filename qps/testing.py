@@ -41,9 +41,10 @@ from typing import List, Optional, Set, Tuple, Union, Generator, Dict, Any
 from unittest import mock
 
 import numpy as np
-import qgis.utils
 from osgeo import gdal, gdal_array, ogr, osr
 from osgeo.gdal import UseExceptions
+
+import qgis.utils
 from qgis.PyQt import sip
 from qgis.PyQt.QtCore import pyqtSignal, QMimeData, QObject, QPoint, QPointF, QSize, Qt
 from qgis.PyQt.QtGui import QDropEvent, QIcon, QImage, QStandardItemModel
@@ -64,7 +65,6 @@ from qgis.gui import (
     QgsMessageBar, QgsOptionsDialogBase, QgsOptionsPageWidget, QgsOptionsWidgetFactory, QgsPluginManagerInterface
 )
 from qgis.testing import QgisTestCase
-
 from .qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from .resources import initResourceFile
 from .unitmodel import UnitLookup
@@ -264,7 +264,7 @@ class QgisMockup(QgisInterface):
     def registerMapToolHandler(self, handler: QgsAbstractMapToolHandler) -> None:
 
         if not (
-            isinstance(handler.action(), QAction) and isinstance(handler.mapTool(), QgsMapTool)
+                isinstance(handler.action(), QAction) and isinstance(handler.mapTool(), QgsMapTool)
         ):
             raise AssertionError('Map tool handler is not properly constructed')
 
@@ -600,11 +600,12 @@ class TestCase(QgisTestCase):
         """
 
         def onProgress(progress: float):
-            sys.stdout.write('\r{:0.2f} %'.format(progress))
-            sys.stdout.flush()
+            # sys.stdout.write('\r{:0.2f} %'.format(progress))
+            # sys.stdout.flush()
 
-            if progress == 100:
-                print('')
+            # if progress == 100:
+            #    print('')
+            pass
 
         feedback = QgsProcessingFeedback(True)
         feedback.progressChanged.connect(onProgress)
@@ -1004,9 +1005,9 @@ class TestObjects(object):
 
     @staticmethod
     def spectralProfileData(
-        n: int = 10,
-        n_bands: Optional[List[int]] = None,
-        as_dict: bool = False
+            n: int = 10,
+            n_bands: Optional[List[int]] = None,
+            as_dict: bool = False
     ) -> Generator[Dict[str, Any], None, None]:
         """
         Returns n random spectral profiles from the test data
@@ -1841,8 +1842,8 @@ class QgsOptionsMockup(QgsOptionsDialogBase):
         # w = self.findChild(QListWidget, 'mOptionsListWidget')
 
         if not (
-            self.findChild(QListWidget, 'mOptionsListWidget')
-            or self.findChild(QTreeView, 'mOptionsTreeView')  # noqa: W503
+                self.findChild(QListWidget, 'mOptionsListWidget')
+                or self.findChild(QTreeView, 'mOptionsTreeView')  # noqa: W503
         ):
             raise AssertionError
 

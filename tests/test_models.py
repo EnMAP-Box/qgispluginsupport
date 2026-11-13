@@ -285,7 +285,8 @@ class ModelTests(TestCase):
         _ = QAbstractItemModelTester(TM, QAbstractItemModelTester.FailureReportingMode.Fatal)
 
         def onRowsInserted(p, first, last):
-            print(f'ROWS INSERTED {p.data(Qt.ItemDataRole.UserRole).name()} {first} to {last}')
+            # print(f'ROWS INSERTED {p.data(Qt.ItemDataRole.UserRole).name()} {first} to {last}')
+            pass
 
         TM.rowsInserted.connect(onRowsInserted)
         TV.setModel(TM)

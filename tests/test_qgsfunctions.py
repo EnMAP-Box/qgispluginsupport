@@ -4,13 +4,13 @@ import unittest
 
 import numpy as np
 from osgeo import gdal_array
+
 from qgis import processing
 from qgis.PyQt.QtCore import QByteArray, QMetaType
 from qgis.core import edit, Qgis, QgsProcessing, QgsExpression, QgsExpressionContext, \
     QgsExpressionContextUtils, QgsFeature, QgsField, QgsFields, QgsGeometry, QgsMapLayerStore, \
     QgsPointXY, QgsProject, QgsProperty, QgsRasterLayer, QgsVectorLayer, QgsWkbTypes, QgsProcessingContext
 from qgis.gui import QgsFieldCalculator
-
 from qps.expressionfunctions import RasterArray, RasterProfile, ReadSpectralProfile, SpectralEncoding, SpectralData, \
     HelpStringMaker, ExpressionFunctionUtils, SpectralMath, Format_Py
 from qps.speclib.core import profile_fields
@@ -786,7 +786,8 @@ class QgsFunctionTests(TestCase):
             f: QgsFeature
             # cName = f.attribute('class')
 
-            print(f.attributeMap())
+            # print(f.attributeMap())
+            pass
 
         QgsProject.instance().removeMapLayer(sl)
 

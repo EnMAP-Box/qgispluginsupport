@@ -8,7 +8,6 @@ from qgis.core import (
 from qgis.core import QgsProcessingFeedback
 from qgis.gui import QgsGui, QgsMessageBar, QgsProcessingContextGenerator
 from qgis.gui import QgsProcessingParametersGenerator, QgsProcessingParameterWidgetContext
-
 from qps.testing import start_app, TestCase, TestObjects
 
 app = start_app()
@@ -94,7 +93,7 @@ class TestAlgorithmWidgetContextHandling(TestCase):
 
         # get the current text of the raster layer combobox
         combobox_text = raster_widget.children()[1].currentText()
-        print(f'Raster layer combobox text: {combobox_text}')
+        # print(f'Raster layer combobox text: {combobox_text}')
         self.assertTrue(
             lyr_custom.name() in combobox_text,
             msg=f'Layer name "{lyr_custom.name()}" is not in combobox text "{combobox_text}"'

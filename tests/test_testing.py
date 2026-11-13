@@ -9,13 +9,12 @@ import unittest
 from pathlib import Path
 from typing import List
 
+import qps.testing
 from qgis.PyQt.QtCore import pyqtSignal
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QGroupBox, QLabel, QLineEdit, QVBoxLayout, QWidget
 from qgis.core import QgsApplication, QgsLayerTree, QgsLayerTreeModel, QgsProcessingRegistry, QgsProject
 from qgis.gui import QgisInterface, QgsGui, QgsLayerTreeView, QgsOptionsPageWidget, QgsOptionsWidgetFactory
-
-import qps.testing
 from qps.testing import QgsOptionsMockup, start_app, TestCase
 from scripts.install_testdata import DIR_REPO
 
@@ -160,7 +159,8 @@ class TestCasesClassTesting(TestCase):
         app = QgsApplication.instance()
         ENV = app.systemEnvVars()
         for k in sorted(ENV.keys()):
-            print('{}={}'.format(k, ENV[k]))
+            # print('{}={}'.format(k, ENV[k]))
+            pass
 
         QgsProject.instance().removeAllMapLayers()
 

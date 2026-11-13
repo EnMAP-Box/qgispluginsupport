@@ -214,7 +214,7 @@ class TestsClassificationScheme(TestCase):
     def test_ClassificationSchemeEditorWidgetFactory(self):
 
         # init some other requirements
-        print('initialize EnMAP-Box editor widget factories')
+        # print('initialize EnMAP-Box editor widget factories')
         # register Editor widgets, if not done before
 
         reg = QgsGui.editorWidgetRegistry()

@@ -6,7 +6,6 @@ from pathlib import Path
 from typing import List
 
 from qgis.core import QgsFeature, QgsVectorLayer
-
 from qps import initAll
 from qps.speclib.core import is_spectral_feature, is_spectral_library
 from qps.speclib.core.spectralprofile import isProfileValueDict
@@ -25,7 +24,7 @@ class TestSpeclibIO_SVC(TestCase):
 
         for file in self.svcFiles():
 
-            print(f'read {file}')
+            # print(f'read {file}')
 
             self.assertTrue(SVCSigFile.canReadFile(file))
 

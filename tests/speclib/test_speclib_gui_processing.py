@@ -3,6 +3,7 @@ import unittest
 
 import numpy as np
 from osgeo import gdal
+
 from qgis.PyQt.QtWidgets import QGridLayout, QWidget
 from qgis.PyQt.QtWidgets import QHBoxLayout
 from qgis.core import (
@@ -19,7 +20,6 @@ from qgis.gui import (
     QgsProcessingAlgorithmWidgetBase, QgsProcessingContextGenerator,
     QgsProcessingGui, QgsProcessingParameterWidgetContext
 )
-
 from qps import initAll
 from qps.qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
@@ -111,6 +111,7 @@ class ExampleRasterProcessing(QgsProcessingAlgorithm):
         if not input_ds:
             raise QgsProcessingException('Could not open input raster with GDAL')
 
+        input_ds: gdal.Dataset
         input_band_count = input_ds.RasterCount
         rows = input_ds.RasterYSize
         cols = input_ds.RasterXSize
@@ -549,7 +550,8 @@ class SpectralProcessingTests(TestCase):
         parameters_generator = None
 
         def onValueChanged(*args):
-            print(args)
+            # print(args)
+            pass
 
         wrappers = dict()
         widgets = []

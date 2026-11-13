@@ -90,11 +90,11 @@ class LayerFieldDialogTests(TestCase):
             self.showGui(d)
 
         else:
-
-            if d.exec() == d.Accepted:
-                print(f'Accepted: {d.layer()} {d.field()}')
-            else:
-                print(f'Canceled: {d.layer()} {d.field()}')
+            # if d.exec() == d.Accepted:
+            #    print(f'Accepted: {d.layer()} {d.field()}')
+            # else:
+            #     print(f'Canceled: {d.layer()} {d.field()}')
+            pass
 
     def test_layerfield_widget(self):
 

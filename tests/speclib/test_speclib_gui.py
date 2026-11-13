@@ -23,6 +23,7 @@ import unittest
 from pathlib import Path
 
 from osgeo import gdal, ogr
+
 from qgis.PyQt.QtCore import QMimeData, QPoint, Qt, QUrl
 from qgis.PyQt.QtCore import QSize
 from qgis.PyQt.QtGui import QDropEvent
@@ -30,7 +31,6 @@ from qgis.PyQt.QtWidgets import QAction, QApplication, QComboBox, QPushButton, Q
     QVBoxLayout, QWidget
 from qgis.core import QgsFeature, QgsProject, QgsRasterLayer, QgsVectorLayer
 from qgis.gui import QgsGui, QgsMapCanvas
-
 from qps import registerEditorWidgets
 from qps.layerproperties import AddAttributeDialog
 from qps.speclib.core import is_spectral_library, profile_field_list
@@ -73,9 +73,9 @@ class TestSpeclibWidgets(TestCase):
         }
         err_msg = err_msg.replace('\n', ' ')
         err_class = errtype.get(err_class, 'None')
-        print('Error Number: %s' % (err_num))
-        print('Error Type: %s' % (err_class))
-        print('Error Message: %s' % (err_msg))
+        # print('Error Number: %s' % (err_num))
+        # print('Error Type: %s' % (err_class))
+        # print('Error Message: %s' % (err_msg))
 
     def setUp(self):
         super().setUp()
@@ -136,7 +136,7 @@ class TestSpeclibWidgets(TestCase):
 
         event = QDropEvent(QPoint(0, 0), Qt.DropAction.CopyAction, md, Qt.MouseButton.LeftButton,
                            Qt.KeyboardModifier.NoModifier)
-        print('Drop {}'.format(envi_sli), flush=True)
+        # print('Drop {}'.format(envi_sli), flush=True)
         slw.dropEvent(event)
         self.assertEqual(len(slw.speclib()), len(sl))
 
@@ -150,7 +150,7 @@ class TestSpeclibWidgets(TestCase):
                 break
             md = QMimeData()
             md.setUrls([QUrl.fromLocalFile(file.as_posix())])
-            print('# Drop {}'.format(file.name), flush=True)
+            # print('# Drop {}'.format(file.name), flush=True)
             event = QDropEvent(
                 QPoint(0, 0), Qt.DropAction.CopyAction, md, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier
             )

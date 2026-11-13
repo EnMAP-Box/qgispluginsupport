@@ -30,7 +30,6 @@ from qgis.core import edit, QgsApplication, QgsFeature, QgsProcessingAlgorithm, 
     QgsProcessingRegistry, QgsProject, QgsTaskManager, \
     QgsVectorLayer, QgsProcessing
 from qgis.gui import QgsProcessingRecentAlgorithmLog, QgsProcessingToolboxProxyModel
-
 from qps import initAll
 from qps.expressionfunctions import registerQgsExpressionFunctions
 from qps.reimplementation.algorithmwidget import AlgorithmWidget
@@ -305,10 +304,11 @@ class ProcessingToolsTest(TestCase):
             lyr = QgsVectorLayer(lyr)
         self.assertTrue(lyr.isValid())
 
-        dt = datetime.datetime.now() - t0
-        seconds = dt.total_seconds()
-        n_total = lyr.featureCount()
-        print(f'Imported {n_total} files in {dt}. {seconds / n_total:.2f} s per file')
+        if False:
+            dt = datetime.datetime.now() - t0
+            seconds = dt.total_seconds()
+            n_total = lyr.featureCount()
+            print(f'Imported {n_total} files in {dt}. {seconds / n_total:.2f} s per file')
 
     @unittest.skipIf(TestCase.runsInCI(), 'blocking dialog')
     def test_spectralprofile_import_dialog(self):
