@@ -197,18 +197,19 @@ class RasterBandConfigWidget(QpsMapLayerConfigWidget):
         mWL = sp.wavelengths()
         mWLUnit = sp.wavelengthUnits()[0]
 
-        if UnitLookup.isMetricUnit(mWLUnit):
+        if any(mWL) and UnitLookup.isMetricUnit(mWLUnit):
             # if possible, convert to nanometers
             mWLUnit = UnitLookup.baseUnit(mWLUnit)
-            try:
-                mWL = UnitLookup.convertLengthUnit(mWL, mWLUnit, 'nm')
-                mWLUnit = 'nm'
-            except Exception:
-                mWL = None
-                mWLUnit = None
+            if isinstance(mWLUnit, str):
+                try:
+                    mWL = UnitLookup.convertLengthUnit(mWL, mWLUnit, 'nm')
+                    mWLUnit = 'nm'
+                except Exception:
+                    mWLUnit = None
 
         self.mBandWL.clear()
         self.mBandWL.extend(mWL)
+
         self.mBandWLUnit = mWLUnit
 
         from spyndex.axioms import Band

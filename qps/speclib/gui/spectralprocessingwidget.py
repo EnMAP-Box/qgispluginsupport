@@ -26,7 +26,6 @@ from qgis.gui import (
     QgsAbstractProcessingParameterWidgetWrapper, QgsMessageBar, QgsPanelWidget,
     QgsProcessingAlgorithmWidgetBase, QgsProcessingParametersGenerator, QgsProcessingParameterWidgetContext)
 
-from qps.reimplementation.processingalgorithmdialog import ProcessingAlgorithmDialog
 from .spectralprocessingalgorithmmodel import SpectralProcessingAlgorithmModel
 from .spectralprocessingparameterswidget import SpectralProcessingParametersWidget
 from .spectralprocessingrasterdestination import SpectralProcessingRasterDestination
@@ -40,6 +39,7 @@ from ..core.spectralprofile import (
     encodeProfileValueDict, prepareProfileValueDict, ProfileEncoding
 )
 from ...qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
+from ...reimplementation.processingalgorithmdialog import ProcessingAlgorithmDialog
 from ...utils import qgsRasterLayer, rasterArray, createQgsField
 
 

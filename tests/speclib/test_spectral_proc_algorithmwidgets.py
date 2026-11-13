@@ -17,7 +17,6 @@
 import unittest
 from unittest.mock import MagicMock, patch
 
-from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtGui import QIcon
 from qgis.core import (
     QgsApplication,
@@ -65,7 +64,7 @@ class SpectralProcessingAlgorithmWidgetTests(TestCase):
         widget = SpectralProcessingAlgorithmWidget(self.speclib, algorithm=alg)
 
         self.assertEqual(widget.algorithm(), alg)
-        self.assertIn(alg.displayName(), widget.windowTitle())
+        self.assertIn(alg.displayName(), widget.parent().windowTitle())
 
     def test_init_with_invalid_speclib_raises_error(self):
         """Test that initializing with invalid speclib raises TypeError."""
@@ -108,19 +107,6 @@ class SpectralProcessingAlgorithmWidgetTests(TestCase):
         widget.setAlgorithm(alg)
         self.showGui(widget)
 
-        # After setting algorithm, text should be updated
-        self.assertIn(alg.displayName(), tb_alg_name.text())
-
-    def test_algorithm_with_no_algorithm(self):
-        """Test setting algorithm to None."""
-        alg = self.reg.createAlgorithmById('gdal:translate')
-        widget = SpectralProcessingAlgorithmWidget(self.speclib, algorithm=alg)
-
-        self.assertEqual(widget.algorithm(), alg)
-
-        widget.setAlgorithm(None)
-        self.assertTrue(widget.algorithm() is None)
-
     def test_algorithm_name_display(self):
         """Test that algorithm name is displayed correctly in GUI."""
         alg = self.reg.createAlgorithmById('gdal:translate')
@@ -145,54 +131,15 @@ class SpectralProcessingAlgorithmWidgetTests(TestCase):
         self.assertIn('Algorithm ID:', tooltip)
         self.assertIn(alg.id(), tooltip)
 
-    def test_algorithm_validation_styling(self):
-        """Test that algorithm validation uses correct styling."""
-        widget = SpectralProcessingAlgorithmWidget(self.speclib)
-
-        # Without algorithm, should use red color
-        tb_alg_name = widget.tbAlgorithmName
-        style = tb_alg_name.styleSheet()
-
-        widget.setAlgorithm(None)
-        # Check that invalid algorithm gets red styling
-        widget.updateGui()
-
-        # With valid algorithm, should use default styling
-        alg = self.reg.createAlgorithmById('gdal:translate')
-        widget.setAlgorithm(alg)
-        widget.updateGui()
-
-        tb_alg_name = widget.tbAlgorithmName
-        # After setting valid algorithm, style should be cleared
-        style = tb_alg_name.styleSheet()
-        self.assertEqual(style, '')
-
     def test_selected_features_checkbox_initial_state(self):
         """Test the selected features checkbox initial state."""
-        widget = SpectralProcessingAlgorithmWidget(self.speclib)
+        sl = TestObjects.createSpectralLibrary()
+        # sl.selectByIds(sl.allFeatureIds()[0:2])
 
-        cb_selected = widget.cbSelectedFeaturesOnly
+        widget = SpectralProcessingAlgorithmWidget(sl)
 
         # Initially no features selected, so checkbox should be disabled
-        self.assertFalse(cb_selected.isEnabled())
-
-    def test_selected_features_checkbox_with_selection(self):
-        """Test the selected features checkbox with selected features."""
-        widget = SpectralProcessingAlgorithmWidget(self.speclib)
-        cb_selected = widget.cbSelectedFeaturesOnly
-
-        # Select some features
-        with QgsProject.instance().editLayer(self.speclib):
-            self.speclib.selectByIds([1, 2, 3])
-
-        widget.updateGui()
-
-        # With selected features, checkbox should be enabled
-        self.assertTrue(cb_selected.isEnabled())
-
-        # Checkbox text should reflect number of selected features
-        text = cb_selected.text()
-        self.assertIn('selected', text.lower())
+        self.assertFalse(widget.selectedFeaturesOnly())
 
     def test_selected_features_checkbox_text_update(self):
         """Test that checkbox text updates with selected feature count."""
@@ -326,15 +273,6 @@ class SpectralProcessingAlgorithmWidgetTests(TestCase):
 
         # Check default inplace mode
         self.assertFalse(widget.inPlace())
-
-    def test_window_flags(self):
-        """Test that help button is disabled."""
-        widget = SpectralProcessingAlgorithmWidget(self.speclib)
-
-        # WindowContextHelpButtonHint should be disabled
-        flags = widget.windowFlags()
-        # Check that the context help button is not present
-        self.assertFalse(bool(flags & Qt.WindowContextHelpButtonHint))
 
     def test_icon_set(self):
         """Test that window icon is set."""

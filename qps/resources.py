@@ -272,7 +272,7 @@ def compileResourceFile(
             rcc_exe = find_rcc()
 
         if not (rcc_exe and os.path.isfile(rcc_exe)):
-            raise FileNotFoundError('Unable to find rcc executable')
+            raise FileNotFoundError(f'Unable to find rcc executable: RCC_PATH={rcc_exe}')
 
         cmd = [
             str(rcc_exe), str(pathQrc),

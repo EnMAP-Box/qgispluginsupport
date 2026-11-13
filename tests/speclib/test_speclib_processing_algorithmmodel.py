@@ -4,6 +4,7 @@ import unittest
 import numpy as np
 from osgeo import gdal
 from qgis.PyQt.QtWidgets import QDialog
+from qgis.PyQt.QtWidgets import QWidget
 from qgis.core import (
     QgsApplication, QgsProcessingAlgorithm, QgsProcessingContext,
     QgsProcessingFeedback,
@@ -248,17 +249,18 @@ class SpectralProcessingGuiTests(TestCase):
     def algorithmProviderTesting(self) -> 'ExampleAlgorithmProvider':
         return QgsApplication.instance().processingRegistry().providerById(ExampleAlgorithmProvider.NAME.lower())
 
+    @unittest.skipIf(TestCase.runsInCI(), 'Blocking Dialog')
     def test_ProcessingAlgorithmDialog(self):
         model = SpectralProcessingAlgorithmModel()
-        d = ProcessingAlgorithmDialog()
+        p = QWidget()
+        p.setWindowTitle('Test')
+        d = ProcessingAlgorithmDialog(parent=p)
         d.setAlgorithmModel(model)
 
         if d.exec() == QDialog.DialogCode.Accepted:
             self.assertIsInstance(d.algorithm(), QgsProcessingAlgorithm)
-        if d.exec() == QDialog.DialogCode.Accepted:
-            self.assertIsInstance(d.algorithm(), QgsProcessingAlgorithm)
 
-        self.showGui(d)
+        self.showGui(p)
 
         self.assertIsInstance(d, ProcessingAlgorithmDialog)
 

@@ -78,7 +78,7 @@ class TestSpeclibIOGeoJSON(TestCase):
                 idx = profile.fieldNameIndex(field.name())
                 value1 = profile.attribute(field.name())
                 value2 = converter.convert(idx, value1)
-                print(type(value2), value2)
+                # print(type(value2), value2)
                 value3 = cloned.convert(idx, value1)
                 self.assertEqual(value2, value3)
                 if not is_profile_field(field):

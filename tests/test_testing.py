@@ -9,12 +9,13 @@ import unittest
 from pathlib import Path
 from typing import List
 
-import qps.testing
 from qgis.PyQt.QtCore import pyqtSignal
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QGroupBox, QLabel, QLineEdit, QVBoxLayout, QWidget
 from qgis.core import QgsApplication, QgsLayerTree, QgsLayerTreeModel, QgsProcessingRegistry, QgsProject
 from qgis.gui import QgisInterface, QgsGui, QgsLayerTreeView, QgsOptionsPageWidget, QgsOptionsWidgetFactory
+
+import qps.testing
 from qps.testing import QgsOptionsMockup, start_app, TestCase
 from scripts.install_testdata import DIR_REPO
 
@@ -112,6 +113,7 @@ class ExampleOptionsWidgetFactory(QgsOptionsWidgetFactory):
 
 class TestCasesClassTesting(TestCase):
 
+    @unittest.skipIf(TestCase.runsInCI(), 'QgisMockup not available')
     def test_init(self):
         self.assertTrue(qps.testing is not None)
 
@@ -133,14 +135,18 @@ class TestCasesClassTesting(TestCase):
 
         self.assertIsInstance(iface, QgisInterface)
         self.assertIsInstance(iface, qps.testing.QgisMockup)
-
+        QgsProject.instance().removeAllMapLayers()
         lyr1 = qps.testing.TestObjects.createVectorLayer()
         lyr2 = qps.testing.TestObjects.createVectorLayer()
 
         self.assertIsInstance(iface.layerTreeView(), QgsLayerTreeView)
         self.assertIsInstance(iface.layerTreeView().layerTreeModel(), QgsLayerTreeModel)
-        root = iface.layerTreeView().layerTreeModel().rootGroup()
+        root: QgsLayerTree = iface.layerTreeView().layerTreeModel().rootGroup()
         self.assertIsInstance(root, QgsLayerTree)
+        root.addLayer(lyr1)
+        _layers = [l1.layer() for l1 in root.findLayers()]
+        for lyr in _layers:
+            root.removeLayer(lyr)
         self.assertEqual(len(root.findLayers()), 0)
 
         QgsProject.instance().addMapLayer(lyr1, False)

@@ -54,7 +54,11 @@ class SpectralProcessingAlgorithmWidget(ProcessingAlgorithmWidget):
         # QgsProcessingContextGenerator.__init__(self)
         self.mWidgetName = 'Spectral Processing Widget'
         self.setWindowTitle(self.mWidgetName)
-        self.setWindowIcon(QIcon(r':/qps/ui/icons/profile_processing.svg'))
+        icon = QIcon(r':/qps/ui/icons/profile_processing.svg')
+        self.setWindowIcon(icon)
+        if p := self.parent():
+            p.setWindowIcon(icon)
+
         self.btnAlgorithm: QPushButton = QPushButton('Algorithm')
         self.btnAlgorithm.setIcon(QIcon(':/images/themes/default/processingAlgorithm.svg'))
         self.btnAlgorithm.clicked.connect(self.setAlgorithmFromDialog)
@@ -135,6 +139,8 @@ class SpectralProcessingAlgorithmWidget(ProcessingAlgorithmWidget):
             algorithm = alg
 
         if not isinstance(algorithm, QgsProcessingAlgorithm):
+            # once initialized, we can not set the algorithm to None
+            #
             raise ValueError(f'Algorithm {algorithm} is not a QgsProcessingAlgorithm')
 
         if algorithm != self.algorithm():

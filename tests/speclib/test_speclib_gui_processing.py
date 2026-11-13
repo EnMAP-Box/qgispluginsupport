@@ -391,17 +391,8 @@ class SpectralProcessingTests(TestCase):
             slw.show()
             spd = SpectralProcessingAlgorithmWidget(speclib)
             spd.setAlgorithm(algorithmId)
-            feedback = spd.feedback()
+            # feedback = spd.feedback()
             spd.runAlgorithm(fail_fast=True)
-
-            if False:
-
-                html = feedback.htmlLog()
-                for funcName, value in logs.items():
-                    value = str(value)
-                    if value not in html:
-                        s = ""
-                    self.assertTrue(value in html)
 
         # self.showGui([spd, slw])
 

@@ -86,16 +86,16 @@ class SpectralProcessingRasterDestinationTests(TestCase):
 
         # Switch to combo box
         widget.rbExistingField.setChecked(True)
-        self.assertFalse(widget.tbNewFieldName.isVisible())
-        self.assertTrue(widget.cbFields.isVisible())
+        self.assertFalse(widget.tbNewFieldName.isVisibleTo(widget))
+        self.assertTrue(widget.cbFields.isVisibleTo(widget))
 
         # Should still have the combo box with fields
         self.assertEqual(widget.cbFields.count(), 1)
 
         # Switch back to text box
         widget.rbNewField.setChecked(True)
-        self.assertTrue(widget.tbNewFieldName.isVisible())
-        self.assertFalse(widget.cbFields.isVisible())
+        self.assertTrue(widget.tbNewFieldName.isVisibleTo(widget))
+        self.assertFalse(widget.cbFields.isVisibleTo(widget))
 
     def test_set_value_with_existing_field(self):
         """Test setValue with a field that exists in combo box"""

@@ -1309,8 +1309,8 @@ class TestUtils(TestCase):
             self.assertEqual(rl.bandCount(), nb)
 
             path = DIR_TEST / f'test_raster_{nb}_bands.tif'
-            success, layer, messages = write_raster_file(rl, path.as_posix())
-
+            success, messages = write_raster_file(rl, path.as_posix())
+            layer = QgsRasterLayer(path.as_posix(), 'test')
             self.assertTrue(success)
             self.assertIsInstance(layer, QgsRasterLayer)
             self.assertTrue(layer.isValid())

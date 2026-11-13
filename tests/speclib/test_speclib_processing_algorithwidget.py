@@ -20,16 +20,21 @@ class SpectralProcessingAlgorithmWidgetTests(TestCase):
         alg1 = reg.createAlgorithmById('gdal:translate')
         alg2 = reg.createAlgorithmById('native:rescaleraster')
 
-        widget = SpectralProcessingAlgorithmWidget(None)
+        speclib = TestObjects.createSpectralLibrary()
+
+        widget = SpectralProcessingAlgorithmWidget(speclib)
         self.assertTrue(widget.algorithm() is None)
 
-        widget = SpectralProcessingAlgorithmWidget(alg1)
+        widget = SpectralProcessingAlgorithmWidget(speclib, algorithm=alg1)
         self.assertTrue(widget.algorithm() is alg1)
-        self.assertTrue(widget.windowTitle().endswith(alg1.displayName()))
+        self.assertTrue(widget.parent().windowTitle().endswith(alg1.displayName()))
 
         widget.setAlgorithm(alg2)
         self.assertTrue(widget.algorithm() is alg2)
 
+        with self.assertRaises(ValueError):
+            widget.setAlgorithm(None)
+        # self.assertTrue(widget.algorithm() is None)
         # widget.setAlgorithm(None)
         # self.assertTrue(widget.algorithm() is None)
         self.showGui(widget)

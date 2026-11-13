@@ -238,6 +238,7 @@ class SpectralDataTests(TestCase):
         result = exp.evaluate(context)
         self.assertAlmostEqual(result, 0.1111, 2)
 
+    @unittest.skipIf(TestCase.runsInCI(), 'Benchmark')
     def test_required_bands_benchmark(self):
         n = 1000
 
