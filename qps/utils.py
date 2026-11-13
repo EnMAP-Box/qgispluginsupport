@@ -96,6 +96,7 @@ else:
     SPYNDEX_CONSTANTS = dict()
     SPYNDEX_BANDS = dict()
     SPYNDEX_INDICES = dict()
+    warnings.warn('spyndex is not installed, spectral indices will not be available')
 
 QGIS_RESOURCE_WARNINGS = set()
 
