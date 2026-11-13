@@ -236,7 +236,7 @@ class AlgorithmWidget(ProcessingAlgorithmWidget):
             try:
                 self.showLog()
                 self.repaint()
-            except Exception:
+            except Exception:  # nosec: B110
                 pass
 
             self.cancelButton().setEnabled(

@@ -4176,6 +4176,10 @@ def band_descriptions(wl: List, wlu: str = 'nm') -> List[Dict[str, dict]]:
     :param wlu: wavelength unit, default is 'nm'
     :return: list of band descriptions
     """
+    results = []
+    if not any(wl):
+        return []
+
     # convert wavelength vector to nanometers
     CM = UnitConverterFunctionModel.instance()
     convert_function = CM.convertFunction(wlu, 'nm')
@@ -4184,7 +4188,6 @@ def band_descriptions(wl: List, wlu: str = 'nm') -> List[Dict[str, dict]]:
     if len(wl2) == 0:
         return []
 
-    results = []
     wl_min, wl_max = min(wl2), max(wl2)
 
     for b in SPYINDEX_BANDS.values():
