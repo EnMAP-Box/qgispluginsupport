@@ -97,7 +97,7 @@ class ProcessingAlgorithmWidget(QgsProcessingAlgorithmWidgetBase):
     def inPlace(self):
         return self._in_place
 
-    def setParameters(self, values):
+    def setParameters(self, values: dict):
         widget = self.parametersWidget()
         if widget:
             widget.setParameters(values)

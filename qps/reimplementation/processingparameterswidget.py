@@ -372,7 +372,7 @@ class ProcessingParametersWidget(QgsPanelWidget):
 
         return self.mAlgorithm.preprocessParameters(parameters), validationResults
 
-    def setParameters(self, parameters):
+    def setParameters(self, parameters: dict):
         context = self.processingContext()
 
         self.mExtraParameters.clear()

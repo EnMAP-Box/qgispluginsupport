@@ -82,7 +82,8 @@ class ExampleRasterProcessing(QgsProcessingAlgorithm):
         )
         p = QgsProcessingParameterRasterDestination(
             self.OUTPUT,
-            'Output raster layer'
+            'Output raster layer',
+            defaultValue='newfield',
         )
 
         self.addParameter(p)
@@ -351,17 +352,20 @@ class SpectralProcessingTests(TestCase):
 
         speclib = TestObjects.createSpectralLibrary(2)
 
+        parameters = {'OUTPUT': 'mynewfield'}
         with edit(speclib):
-            slw = SpectralLibraryWidget(speclib=speclib)
-            spd = SpectralProcessingWidget(speclib=speclib, algorithmId=algorithmId)
-            spd.runAlgorithm(fail_fast=True)
+            spw = SpectralProcessingAlgorithmWidget(speclib)
+            spw.setAlgorithm(algorithmId)
+            spw.setParameters(parameters)
+            spw.runAlgorithm(fail_fast=True)
             # slw.showSpectralProcessingWidget(algorithmId=algorithmId)
             # wrapper = spd.processingModelWrapper()
 
             # feedback = spd.processingFeedback()
 
-            self.showGui([spd, slw])
-
+            # self.showGui([spw])
+        fieldnames = speclib.fields().names()
+        self.assertTrue('mynewfield' in fieldnames)
         # preg.removeProvider(provider)
         QgsProject.instance().removeAllMapLayers()
 
@@ -412,7 +416,7 @@ class SpectralProcessingTests(TestCase):
         sl = TestObjects.createSpectralLibrary()
         w = QWidget()
         w.setWindowTitle('EXAMPLE WIDGET')
-        project = QgsProject.instance()
+        project = QgsProject()
         project.addMapLayer(sl)
         context = QgsProcessingContext()
         context.setProject(project)

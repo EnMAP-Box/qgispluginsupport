@@ -17,14 +17,15 @@ from qgis.PyQt.QtWidgets import (
     QSizePolicy,
 )
 from qgis.PyQt.QtWidgets import QDialog
-from qgis._core import QgsApplication
+from qgis.core import QgsApplication, QgsProcessingParameterRasterDestination, QgsProcessingException
 from qgis.core import QgsFeature, QgsField
-from qgis.core import QgsProcessingAlgorithm, QgsVectorLayer, edit
+from qgis.core import QgsProcessingAlgorithm, QgsVectorLayer
 from qgis.core import QgsProcessingParameterDefinition, QgsProcessingOutputRasterLayer, QgsMapLayerStore, \
     QgsProcessingFeedback, QgsProcessingOutputMultipleLayers
 from qgis.core import QgsProcessingUtils, QgsRasterLayer, QgsProcessingParameterMultipleLayers, QgsProcessingContext, \
     QgsMapLayer, QgsProcessingParameterRasterLayer
 from qgis.core import QgsProject
+from qgis.gui import QgsMessageBar
 from qgis.gui import QgsPanelWidget
 from qgis.gui import QgsProcessingParametersGenerator
 
@@ -86,7 +87,7 @@ class SpectralProcessingAlgorithmWidget(ProcessingAlgorithmWidget):
         )
         self.setMainWidget(self._parameters_panel)
 
-        if isinstance(algorithm, QgsProcessingAlgorithm):
+        if algorithm:
             self.setAlgorithm(algorithm)
 
     def feedback(self) -> QgsProcessingFeedback:
@@ -132,6 +133,10 @@ class SpectralProcessingAlgorithmWidget(ProcessingAlgorithmWidget):
             if alg is None:
                 raise ValueError(f'Algorithm {algorithm} not found')
             algorithm = alg
+
+        if not isinstance(algorithm, QgsProcessingAlgorithm):
+            raise ValueError(f'Algorithm {algorithm} is not a QgsProcessingAlgorithm')
+
         if algorithm != self.algorithm():
             super().setAlgorithm(algorithm)
             self._parameters_panel = self.createParametersPanel(
@@ -179,11 +184,17 @@ class SpectralProcessingAlgorithmWidget(ProcessingAlgorithmWidget):
 
         # feedback = self.createFeedback()
         feedback = self.feedback()
-
         processing_context = self.processingContext()
         tmp_folder: str = QgsProcessingUtils.generateTempFilename('')
         processing_context.setTemporaryFolder(tmp_folder)
         parametersWidget: SpectralProcessingParametersWidget = self.mainWidget()
+
+        speclib = self.speclib()
+        if not speclib.isEditable():
+            mbar = self.messageBar()
+            if isinstance(mbar, QgsMessageBar):
+                mbar.pushInfo('Layer in edit mode', f'The layer {speclib.name()} in now in edit mode')
+            speclib.startEditing()
 
         if parametersWidget is None:
             return
@@ -208,10 +219,10 @@ class SpectralProcessingAlgorithmWidget(ProcessingAlgorithmWidget):
         vlf_layers = collect_vector_layer_field_rasters(parameters, algorithm, processing_context)
 
         if self.selectedFeaturesOnly():
-            active_feature_ids = set(self.speclib().selectedFeatureIds())
+            active_feature_ids = set(speclib.selectedFeatureIds())
         else:
             # Keep every 2nd feature ID
-            all_ids = self.speclib().allFeatureIds()
+            all_ids = speclib.allFeatureIds()
             active_feature_ids = {fid for i, fid in enumerate(all_ids) if i % 2 == 1}
 
         vfl_features = dict()
@@ -221,7 +232,7 @@ class SpectralProcessingAlgorithmWidget(ProcessingAlgorithmWidget):
             vfl_features[lyr] = dp.activeFeatures()
             active_feature_ids.intersection_update(dp.activeFeatureIds())
 
-        active_features = list(self.speclib().getFeatures(sorted(active_feature_ids)))
+        active_features = list(speclib.getFeatures(sorted(active_feature_ids)))
         active_feature_ids = sorted([f.id() for f in active_features])
 
         # set active features
@@ -260,10 +271,10 @@ class SpectralProcessingAlgorithmWidget(ProcessingAlgorithmWidget):
         feedback.pushInfo('Save temporary raster file output to vector field attributes')
         ok, outputs, errors = collect_outputs(results, algorithm, tmp_context)
         if ok:
-            write_outputs_to_speclib(self.speclib(), outputs, active_features, feedback)
+            write_outputs_to_speclib(speclib, outputs, active_features, feedback)
 
 
-def temp_tiff(path: str, context: QgsProcessingContext):
+def temp_tiff_filename(path: str, context: QgsProcessingContext):
     """
     Returns a temporary file name for a raster file.
     :param path: path to the raster file
@@ -292,7 +303,7 @@ def gdal_readable_layer(layer: Any, context: QgsProcessingContext) -> QgsMapLaye
         if layer.dataProvider().name() != 'gdal':
 
             # create a raster that can be read from GDAL
-            new_path = temp_tiff(f'{layer.id()}.tif', context)
+            new_path = temp_tiff_filename(f'{layer.id()}.tif', context)
             success, errors = write_raster_file(layer, new_path, context)
             if not success:
                 raise AssertionError(f'Error writing {new_path}')
@@ -342,6 +353,7 @@ def replace_parameter_layers(
     _all_layers = []
     for p_name, p_value in parameters.items():
         p_name: str
+        new_value = p_value
         p_def: QgsProcessingParameterDefinition = alg.parameterDefinition(p_name)
         if isinstance(p_def, QgsProcessingParameterMultipleLayers):
             new_layers = []
@@ -354,7 +366,7 @@ def replace_parameter_layers(
                     new_layers.append(lyr_new)
 
             new_project.addMapLayers(new_layers)
-            new_parameters[p_name] = new_layers
+            new_value = new_layers
             _all_layers.extend(new_layers)
 
         elif isinstance(p_def, QgsProcessingParameterRasterLayer):
@@ -362,8 +374,10 @@ def replace_parameter_layers(
 
             if isinstance(lyr_new, QgsMapLayer):
                 new_project.addMapLayer(lyr_new)
-                new_parameters[p_name] = lyr_new.id()
+                new_value = lyr_new.id()
                 _all_layers.append(lyr_new)
+        elif isinstance(p_def, QgsProcessingParameterRasterDestination):
+            new_value = temp_tiff_filename(p_value, context)
         elif isinstance(p_def, QgsProcessingParameterDefinition):
             if p_def.type() == 'alignrasterlayers' and isinstance(p_value, list):
                 new_values = []
@@ -378,31 +392,19 @@ def replace_parameter_layers(
 
                         outputFile = d.get('outputFile')
                         if isinstance(outputFile, str):
-                            d2['outputFile'] = temp_tiff(outputFile, context)
+                            d2['outputFile'] = temp_tiff_filename(outputFile, context)
 
                         new_values.append(d2)
                     else:
                         raise RuntimeError(f"Invalid value for parameter '{p_name}': {p_value}")
-                new_parameters[p_name] = new_values
-        else:
-            new_parameters[p_name] = p_value
+                new_value = new_values
 
+        new_parameters[p_name] = new_value
     return new_parameters, new_context, new_project
 
 
-def collect_speclib_updates(speclib: QgsVectorLayer, results: dict, alg: QgsProcessingAlgorithm,
-                            context: QgsProcessingContext) -> dict:
-    """
-    :param results:
-    :param alg:
-    :param context:
-    :return:
-    """
-    return results
-
-
 def layer_to_fieldname(layer: QgsMapLayer) -> str:
-    field_name = layer.name()
+    field_name = SpectralProcessingRasterDestination.pathToFieldName(layer.name())
     if field_name == '':
         field_name = SpectralProcessingRasterDestination.pathToFieldName(layer.source())
     return field_name
@@ -414,75 +416,76 @@ def write_outputs_to_speclib(
     active_features: List[QgsFeature],
     feedback: QgsProcessingFeedback,
 ) -> bool:
-    with edit(speclib):
+    if not speclib.isEditable():
+        raise QgsProcessingException(f'vector layer is not in editable: "{speclib.name()}"')
 
-        nf = len(active_features)
+    nf = len(active_features)
 
-        NEW_VALUES = {}
-        for output in outputs:
-            output: SpectralProcessingOutput
+    NEW_VALUES = {}
+    for output in outputs:
+        output: SpectralProcessingOutput
 
-            nb, nl, ns = output.data.shape
-            # sprop = output.spectral_properties
+        nb, nl, ns = output.data.shape
+        # sprop = output.spectral_properties
 
-            is_profile_field = nb > 1
-            if ns != nf:
-                feedback.reportError(f'Output {output.parameter} has {ns} bands, expected {nf}')
-                return False
+        is_profile_field = nb > 1
+        if ns != nf:
+            feedback.reportError(f'Output {output.parameter} has {ns} bands, expected {nf}')
+            return False
 
-            fidx = speclib.fields().indexFromName(output.fieldname)
-            if fidx == -1:
-                field = None
-                if is_profile_field:
-                    field: QgsField = SpectralLibraryUtils.createProfileField(output.fieldname)
-                    if not speclib.dataProvider().supportedType(field):
-                        field = SpectralLibraryUtils.createProfileField(output.fieldname,
-                                                                        encoding=ProfileEncoding.Text)
-                else:
-                    field = createQgsField(output.fieldname, output.data[0, 0, 0])
-                    if not speclib.dataProvider().supportedType(field):
-                        field = QgsField(
-                            name=output.fieldname,
-                            type=QMetaType.Type.Double
-                        )
-
-                if isinstance(field, QgsField):
-                    speclib.beginEditCommand(f'Add field {field.name()}')
-                    if not SpectralLibraryUtils.addAttribute(speclib, field):
-                        feedback.reportError(f'Failed to add field {output.fieldname} to spectral library')
-                        speclib.endEditCommand()
-                        return False
-                    speclib.endEditCommand()
-            fidx = speclib.fields().indexFromName(output.fieldname)
-            field = speclib.fields()[fidx]
-
-            for i, feature in enumerate(active_features):
-                attribute_map = NEW_VALUES.get(feature.id(), dict())
-
-                if is_profile_field:
-                    pdict = prepareProfileValueDict(
-                        y=output.data[:, 0, i],
-                        x=output.spectral_properties.wavelengths(),
-                        xUnit=output.spectral_properties.wavelengthUnits()[0],
-                        bbl=output.spectral_properties.badBands()
+        fidx = speclib.fields().indexFromName(output.fieldname)
+        if fidx == -1:
+            field = None
+            if is_profile_field:
+                field: QgsField = SpectralLibraryUtils.createProfileField(output.fieldname)
+                if not speclib.dataProvider().supportedType(field):
+                    field = SpectralLibraryUtils.createProfileField(output.fieldname,
+                                                                    encoding=ProfileEncoding.Text)
+            else:
+                field = createQgsField(output.fieldname, output.data[0, 0, 0])
+                if not speclib.dataProvider().supportedType(field):
+                    field = QgsField(
+                        name=output.fieldname,
+                        type=QMetaType.Type.Double
                     )
-                    value = encodeProfileValueDict(pdict, field)
-                else:
-                    value = output.data[0, 0, i].tolist()
-                attribute_map[fidx] = value
 
-                NEW_VALUES[feature.id()] = attribute_map
-
-        # write data
-        speclib.beginEditCommand("Write data to speclib")
-        for fid, attribute_map in NEW_VALUES.items():
-            if not (speclib.changeAttributeValues(fid, attribute_map)):
-                msg = f'Failed to update attribute values for feature ID: {fid}'
-                feedback.reportError(msg)
+            if isinstance(field, QgsField):
+                speclib.beginEditCommand(f'Add field {field.name()}')
+                if not SpectralLibraryUtils.addAttribute(speclib, field):
+                    feedback.reportError(f'Failed to add field {output.fieldname} to spectral library')
+                    speclib.endEditCommand()
+                    return False
                 speclib.endEditCommand()
-                return False
+        fidx = speclib.fields().indexFromName(output.fieldname)
+        field = speclib.fields()[fidx]
 
-        speclib.endEditCommand()
+        for i, feature in enumerate(active_features):
+            attribute_map = NEW_VALUES.get(feature.id(), dict())
+
+            if is_profile_field:
+                pdict = prepareProfileValueDict(
+                    y=output.data[:, 0, i],
+                    x=output.spectral_properties.wavelengths(),
+                    xUnit=output.spectral_properties.wavelengthUnits()[0],
+                    bbl=output.spectral_properties.badBands()
+                )
+                value = encodeProfileValueDict(pdict, field)
+            else:
+                value = output.data[0, 0, i].tolist()
+            attribute_map[fidx] = value
+
+            NEW_VALUES[feature.id()] = attribute_map
+
+    # write data
+    speclib.beginEditCommand("Write data to speclib")
+    for fid, attribute_map in NEW_VALUES.items():
+        if not (speclib.changeAttributeValues(fid, attribute_map)):
+            msg = f'Failed to update attribute values for feature ID: {fid}'
+            feedback.reportError(msg)
+            speclib.endEditCommand()
+            return False
+
+    speclib.endEditCommand()
 
     return True
 

@@ -218,6 +218,7 @@ class SpectralProcessingRasterDestination(QgsAbstractProcessingParameterWidgetWr
         widget = SpectralProcessingDestinationFieldWidget()
         widget.setFields(self.mFields)
         # widget.sigFieldChanged.connect(self.onWidgetValueChanged)
+        widget.setValue(self.parameterDefinition().defaultValueForGui())
         self.mDestinationFieldWidget = widget
         return widget
 
@@ -230,10 +231,10 @@ class SpectralProcessingRasterDestination(QgsAbstractProcessingParameterWidgetWr
 
     @classmethod
     def pathToFieldName(cls, path: str) -> str:
-        name = Path(path).stem
+        fn = Path(path).stem
         prefix = f'{QgsProcessing.TEMPORARY_OUTPUT}_'
-        name = name.replace(prefix, '')
-        return name
+        fn = fn.replace(prefix, '')
+        return fn
 
     def widgetValue(self):
         """
@@ -244,10 +245,10 @@ class SpectralProcessingRasterDestination(QgsAbstractProcessingParameterWidgetWr
         if isinstance(self.mDestinationFieldWidget, SpectralProcessingDestinationFieldWidget):
             # return self.mDestinationFieldWidget.value()
             field_name = self.mDestinationFieldWidget.value()
-            if len(field_name) == 0:
+            if field_name is None or len(field_name) == 0:
                 return None
-            bn, ext = os.path.splitext(field_name)
+            fn, ext = os.path.splitext(field_name)
             if ext == '':
                 ext = self.parameterDefinition().defaultFileExtension()
-            return f'{QgsProcessing.TEMPORARY_OUTPUT}_{bn}.{ext}'
+            return f'{QgsProcessing.TEMPORARY_OUTPUT}_{fn}.{ext}'
         return None
