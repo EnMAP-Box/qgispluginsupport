@@ -84,16 +84,18 @@ from .unitmodel import UnitLookup, UnitConverterFunctionModel
 has_spyndex = importlib.util.find_spec('spyndex') is not None
 if has_spyndex:
     from spyndex.axioms import constants as SPYNDEX_CONSTANTS
+    from spyndex.axioms import bands as SPYNDEX_BANDS
     from spyndex.axioms import indices as SPYNDEX_INDICES
-    from spyndex.axioms import bands as SPYINDEX_BANDS
 
-    SPYNDEX_INDICES = {k: v for k, v in SPYNDEX_INDICES.items()}
     SPYNDEX_CONSTANTS = {k: v for k, v in SPYNDEX_CONSTANTS.items()}
-    SPYNDEX_BANDS = {k: v for k, v in SPYINDEX_BANDS.items()}
+    SPYNDEX_BANDS = {k: v for k, v in SPYNDEX_BANDS.items()}
+    SPYNDEX_INDICES = {k: v for k, v in SPYNDEX_INDICES.items()}
+
+
 else:
-    SPYNDEX_INDICES = dict()
     SPYNDEX_CONSTANTS = dict()
     SPYNDEX_BANDS = dict()
+    SPYNDEX_INDICES = dict()
 
 QGIS_RESOURCE_WARNINGS = set()
 
@@ -4190,7 +4192,7 @@ def band_descriptions(wl: List, wlu: str = 'nm') -> List[Dict[str, dict]]:
 
     wl_min, wl_max = min(wl2), max(wl2)
 
-    for b in SPYINDEX_BANDS.values():
+    for b in SPYNDEX_BANDS.values():
 
         b_min, b_max = b.min_wavelength, b.max_wavelength
 
