@@ -2,10 +2,10 @@
 import unittest
 
 from osgeo import ogr
-
 from qgis.PyQt.QtCore import QMetaType
 from qgis.core import QgsCoordinateReferenceSystem, QgsField, QgsPoint, QgsProject, \
     QgsVectorFileWriter, QgsVectorLayer
+
 from qps.speclib.core import is_profile_field, profile_field_names, is_spectral_library
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
@@ -78,7 +78,7 @@ class TestSpeclibIOGeoJSON(TestCase):
                 idx = profile.fieldNameIndex(field.name())
                 value1 = profile.attribute(field.name())
                 value2 = converter.convert(idx, value1)
-                print(type(value2), value2)
+                # print(type(value2), value2)
                 value3 = cloned.convert(idx, value1)
                 self.assertEqual(value2, value3)
                 if not is_profile_field(field):

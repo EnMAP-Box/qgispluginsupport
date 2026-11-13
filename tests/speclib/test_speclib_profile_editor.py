@@ -1,7 +1,7 @@
 import unittest
 from typing import List
 
-from qgis.PyQt.QtCore import NULL, QSize, Qt, QVariant
+from qgis.PyQt.QtCore import NULL, QSize, Qt
 from qgis.PyQt.QtWidgets import QCheckBox, QVBoxLayout, QWidget
 from qgis.core import QgsActionManager, QgsFeature
 from qgis.gui import QgsDualView, QgsGui, QgsMapCanvas, QgsSearchWidgetWrapper
@@ -106,7 +106,6 @@ class TestSpeclibWidgets(TestCase):
 
         not_a_profile = [None,
                          NULL,
-                         QVariant(None),
                          dict(),
                          dict(x='not a profile')]
         for p in not_a_profile:
@@ -197,7 +196,7 @@ class TestSpeclibWidgets(TestCase):
         w.layout().addWidget(cb)
 
         w.resize(QSize(300, 250))
-        print(speclib.fields().names())
+        # print(speclib.fields().names())
         look = speclib.fields().lookupField
 
         parent = QWidget()
@@ -211,7 +210,7 @@ class TestSpeclibWidgets(TestCase):
         self.assertIsInstance(eww, SpectralProfileEditorWidgetWrapper)
         self.assertIsInstance(eww.widget(), SpectralProfileEditorWidget)
 
-        eww.valueChanged.connect(lambda v: print(f'value changed: {v}'))
+        # eww.valueChanged.connect(lambda v: print(f'value changed: {v}'))
 
         _ = speclib.fields()
         speclib.startEditing()

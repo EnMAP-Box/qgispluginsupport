@@ -24,14 +24,15 @@
 ***************************************************************************
 """
 
+import json
 import os
-from pathlib import Path
 import sys
 import warnings
+from pathlib import Path
 from typing import List, Optional
 
 from qgis.PyQt.QtCore import PYQT_VERSION_STR
-from qgis.core import Qgis, QgsApplication, QgsProviderRegistry
+from qgis.core import Qgis, QgsApplication, QgsProviderRegistry, QgsSettings
 from qgis.gui import QgisInterface, QgsMapLayerConfigWidgetFactory
 
 # Qt version used by PyQtGraph
@@ -53,7 +54,7 @@ if Qgis.version() < MIN_QGIS_VERSION:
     warnings.warn(f'Your QGIS ({Qgis.QGIS_VERSION}) is outdated. '
                   f'Please update to QGIS >= {MIN_QGIS_VERSION}', RuntimeWarning)
 
-KEY_MAPLAYERCONFIGWIDGETFACTORIES = 'QPS_MAPLAYER_CONFIGWIDGET_FACTORIES'
+KEY_MAPLAYERCONFIGWIDGETFACTORIES = 'qps/QPS_MAPLAYER_CONFIGWIDGET_FACTORIES'
 
 
 def debugLog(msg: str, prefix: str = 'DEBUG:'):
@@ -77,18 +78,27 @@ def registerMapLayerConfigWidgetFactory(
     # global MAPLAYER_CONFIGWIDGET_FACTORIES
     if not (isinstance(factory, QgsMapLayerConfigWidgetFactory)):
         raise AssertionError
-    name: str = factory.__class__.__name__
+    title = factory.title()
 
-    registered = os.environ.get(KEY_MAPLAYERCONFIGWIDGETFACTORIES, '').split('::')
-
+    settings = QgsSettings()
+    registered = settings.value(
+        KEY_MAPLAYERCONFIGWIDGETFACTORIES,
+        defaultValue='[]',
+        section=QgsSettings.Section.Plugins
+    )
+    registered = json.loads(registered)
+    if not isinstance(registered, list):
+        registered = []
     from qgis.utils import iface
-    if isinstance(iface, QgisInterface) and factory not in MAPLAYER_CONFIGWIDGET_FACTORIES and name not in registered:
+    if isinstance(iface, QgisInterface) and title not in registered:
         MAPLAYER_CONFIGWIDGET_FACTORIES.append(factory)
-        registered.append(name)
-        os.environ[KEY_MAPLAYERCONFIGWIDGETFACTORIES] = '::'.join(registered)
         iface.registerMapLayerConfigWidgetFactory(factory)
-
-        QgsApplication.instance().messageLog().logMessage(f'Registered {name}', level=Qgis.MessageLevel.Info)
+        registered.append(title)
+        settings.setValue(
+            KEY_MAPLAYERCONFIGWIDGETFACTORIES,
+            json.dumps(registered),
+            section=QgsSettings.Section.Plugins
+        )
         return factory
     else:
         return None
@@ -104,21 +114,26 @@ def unregisterMapLayerConfigWidgetFactory(factory: QgsMapLayerConfigWidgetFactor
     """
     if not (isinstance(factory, QgsMapLayerConfigWidgetFactory)):
         raise AssertionError
-    # global MAPLAYER_CONFIGWIDGET_FACTORIES
-    name: str = factory.__class__.__name__
 
+    title: str = factory.title()
     while factory in MAPLAYER_CONFIGWIDGET_FACTORIES:
         MAPLAYER_CONFIGWIDGET_FACTORIES.remove(factory)
 
-    registered = os.environ.get(KEY_MAPLAYERCONFIGWIDGETFACTORIES, '').split('::')
-    while name in registered:
-        registered.remove(name)
-    os.environ[KEY_MAPLAYERCONFIGWIDGETFACTORIES] = '::'.join(registered)
+    settings = QgsSettings()
+    registered = settings.value(
+        KEY_MAPLAYERCONFIGWIDGETFACTORIES,
+        defaultValue='[]',
+        section=QgsSettings.Section.Plugins
+    )
+    registered = json.loads(registered)
+    while title in registered:
+        registered.remove(title)
+
     from qgis.utils import iface
     if isinstance(iface, QgisInterface):
         iface.unregisterMapLayerConfigWidgetFactory(factory)
         QgsApplication.instance().messageLog().logMessage(
-            f'Unregistered {factory.__class__.__name__}', level=Qgis.MessageLevel.Info
+            f'Unregistered QgsMapLayerConfigWidgetFactory {factory.title()}', level=Qgis.MessageLevel.Info
         )
 
 
@@ -159,10 +174,10 @@ def unregisterEditorWidgets():
 
 def registerExpressionFunctions():
     try:
-        from .qgsfunctions import registerQgsExpressionFunctions
+        from .expressionfunctions import registerQgsExpressionFunctions
         registerQgsExpressionFunctions()
     except Exception as ex:
-        print('Failed to call qps.speclib.qgsfunctions.registerQgsExpressionFunctions()', file=sys.stderr)
+        print('Failed to call qps.expressionfunctions.registerQgsExpressionFunctions()', file=sys.stderr)
         print(ex, file=sys.stderr)
 
 
@@ -191,7 +206,7 @@ def unregisterDataProviders():
 
 
 def unregisterExpressionFunctions():
-    from .qgsfunctions import unregisterQgsExpressionFunctions as _unregisterQgsExpressionFunctions
+    from .expressionfunctions import unregisterQgsExpressionFunctions as _unregisterQgsExpressionFunctions
     _unregisterQgsExpressionFunctions()
 
 

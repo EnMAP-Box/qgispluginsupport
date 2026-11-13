@@ -6,6 +6,7 @@ from qgis.core import (QgsCoordinateReferenceSystem,
                        QgsFeature,
                        QgsProcessingFeedback, QgsVectorFileWriter, QgsVectorLayer)
 from qgis.core import QgsProject
+
 from ..core.spectralprofile import SpectralProfileFileReader, SpectralProfileFileWriter
 from ...fieldvalueconverter import GenericFieldValueConverter
 
@@ -24,10 +25,13 @@ class GeoPackageSpectralLibraryWriter(SpectralProfileFileWriter):
     def filterString(cls) -> str:
         return 'Geopackage (*.gpkg)'
 
-    def writeFeatures(self, path: Union[str, Path],
-                      features: List[QgsFeature],
-                      feedback: Optional[QgsProcessingFeedback] = None,
-                      **kwargs) -> List[Path]:
+    def writeFeatures(
+        self,
+        path: Union[str, Path],
+        features: List[QgsFeature],
+        field_names=None,
+        feedback: Optional[QgsProcessingFeedback] = None
+    ) -> List[Path]:
 
         path = str(path)
 

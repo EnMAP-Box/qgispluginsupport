@@ -7,11 +7,11 @@ from typing import List
 
 import numpy as np
 from osgeo import gdal, gdal_array, ogr
+
 from qgis.PyQt.QtCore import QMimeData, QModelIndex, QUrl
 from qgis.PyQt.QtWidgets import QAction, QApplication, QDialog, QHBoxLayout, QMenu, QPushButton, QVBoxLayout, QWidget
 from qgis.core import edit, QgsFeature, QgsMapLayer, QgsProject, QgsRasterLayer, QgsVectorLayer
 from qgis.gui import QgsDualView, QgsMapCanvas, QgsMapLayerComboBox, QgsRasterBandComboBox
-
 from qps.layerconfigwidgets.gdalmetadata import BandFieldNames, BandPropertyCalculator, GDALBandMetadataModel, \
     GDALMetadataItem, GDALMetadataItemDialog, GDALMetadataModel, GDALMetadataModelConfigWidget
 from qps.qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
@@ -29,7 +29,7 @@ class ControlWidget(QWidget):
         self.canvas = QgsMapCanvas()
         self.w = GDALMetadataModelConfigWidget(None, self.canvas)
         self.w.setEditable(False)
-        self.w.widgetChanged.connect(lambda: print('Changed'))
+        # self.w.widgetChanged.connect(lambda: print('Changed'))
 
         self.canvas.setLayers([self.w.mapLayer()])
         self.canvas.mapSettings().setDestinationCrs(self.w.mapLayer().crs())
@@ -162,8 +162,8 @@ class TestsGdalMetadata(TestCase):
 
         # read BBL
         ds: gdal.Dataset = gdal.Open(path)
-        bbl = ds.GetMetadataItem('bbl', 'ENVI')
-        print(bbl)
+        # bbl = ds.GetMetadataItem('bbl', 'ENVI')
+        # print(bbl)
 
         _ = ds.GetMetadata_Dict('ENVI')['bbl']
 
@@ -208,8 +208,8 @@ class TestsGdalMetadata(TestCase):
 
         # print PAM
         path_pam = [f for f in ds0.GetFileList() if f.endswith('aux.xml')][0]
-        content_pam = readTextFile(path_pam)
-        print(content_pam)
+        # content_pam = readTextFile(path_pam)
+        # print(content_pam)
 
         ds2: gdal.Dataset = gdal.Open(path, gdal.GA_ReadOnly)
 
@@ -242,7 +242,7 @@ class TestsGdalMetadata(TestCase):
         content_hdr = readTextFile(path_hdr)
         content_hdr = re.sub(r',\n', ', ', content_hdr)
         content_hdr = re.sub(r'\{\n', r'{', content_hdr)
-        print(content_hdr)
+        # print(content_hdr)
         self.assertTrue('band names = {A, B, C}' in content_hdr)
         self.assertTrue('bbl = {0,1,0}' in content_hdr)
 
@@ -529,7 +529,7 @@ class TestsGdalMetadata(TestCase):
         for a in menu1.findChildren(QAction):
             a: QAction
             if a.isEnabled():
-                print(f'Trigger "{a.text()}"')
+                # print(f'Trigger "{a.text()}"')
                 a.trigger()
 
         mimeData: QMimeData = QMimeData()

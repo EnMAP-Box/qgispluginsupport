@@ -3,6 +3,7 @@ import unittest
 
 from qgis.PyQt.QtCore import QDate, QDateTime, QTime, Qt, QMetaType
 from qgis.core import edit, QgsField, QgsFields, QgsProject, QgsVectorDataProvider, QgsVectorFileWriter, QgsVectorLayer
+
 from qps.fieldvalueconverter import collect_native_types, create_vsimemfile, GenericFieldValueConverter, \
     GenericPropertyTransformer
 from qps.testing import start_app, TestCase, TestObjects
@@ -156,11 +157,12 @@ class GenericFieldValueConverterTests(TestCase):
             converter = GenericFieldValueConverter(lyr.fields(), dstFields)
             options.fieldValueConverter = converter
 
-            writer: QgsVectorFileWriter = QgsVectorFileWriter.create(path.as_posix(),
-                                                                     dstFields, lyr.wkbType(), lyr.crs(),
-                                                                     QgsProject.instance().transformContext(),
-                                                                     options,
-                                                                     )
+            writer: QgsVectorFileWriter = QgsVectorFileWriter.create(
+                path.as_posix(),
+                dstFields, lyr.wkbType(), lyr.crs(),
+                QgsProject.instance().transformContext(),
+                options,
+            )
             self.assertFalse(writer.hasError(), writer.errorMessage())
             self.assertIsInstance(writer, QgsVectorFileWriter)
             for f in lyr.getFeatures():

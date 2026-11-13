@@ -1,10 +1,11 @@
 # noinspection PyPep8Naming
-from pathlib import Path
 import re
 import unittest
+from pathlib import Path
 from typing import List
 
 from qgis.core import Qgis, QgsCoordinateReferenceSystem, QgsFeature, QgsVectorLayerExporter
+
 from qps.speclib.core import is_spectral_feature
 from qps.speclib.io.asd import ASDBinaryFile, ASDCSVFile
 from qps.testing import TestCase, start_app
@@ -22,7 +23,7 @@ class TestSpeclibIO_ASD(TestCase):
 
         features = []
         for file in files:
-            print(file)
+            # print(file)
             asd = ASDBinaryFile(file)
             features.extend(asd.asFeatures())
 
@@ -52,7 +53,7 @@ class TestSpeclibIO_ASD(TestCase):
     def test_read_asd_files(self):
 
         for file in self.asdBinFiles():
-            print(f'read {file}')
+            # print(f'read {file}')
             asd = ASDBinaryFile(file)
             profiles = asd.asFeatures()
             self.assertEqual(1, len(profiles))

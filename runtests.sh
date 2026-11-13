@@ -9,5 +9,6 @@ export PYTHONPATH="${PYTHONPATH}"\
 
 rm -Rf test-outputs
 rm -Rf test-reports
-python3 -m pytest --no-cov-on-fail "$@"
+${PYTHON_EXECUTABLE:-python3} scripts/systeminfo.py
+${PYTHON_EXECUTABLE:-python3} -m pytest --no-cov-on-fail "$@"
 # coverage-badge -o coverage.svg -f -v

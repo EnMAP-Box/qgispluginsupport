@@ -1,0 +1,424 @@
+import datetime
+import time
+from typing import Optional
+
+from processing.core.ProcessingConfig import ProcessingConfig
+from processing.core.ProcessingResults import resultsList
+from processing.gui.AlgorithmExecutor import executeIterating, execute_in_place, execute
+from processing.gui.BatchAlgorithmDialog import BatchAlgorithmDialog
+from qgis.PyQt import sip
+from qgis.PyQt.QtCore import QCoreApplication
+from qgis.PyQt.QtWidgets import QMainWindow, QPushButton, QDialogButtonBox, QMessageBox
+from qgis.core import QgsProcessingAlgRunnerTask, QgsProxyProgressTask, QgsApplication, QgsProcessingOutputHtml, \
+    QgsProcessingContext
+from qgis.core import QgsProcessingAlgorithm, Qgis, QgsProcessingFeatureSourceDefinition
+from qgis.gui import QgsGui, QgsProcessingParameterWidgetContext
+from qgis.gui import QgsProcessingAlgorithmWidgetBase, QgsProcessingParametersGenerator
+from qgis.utils import iface
+
+from .genericprocessingresultshandler import GenericProcessingResultsHandler
+from .processingalgorithmwidget import ProcessingAlgorithmWidget
+
+
+class AlgorithmWidget(ProcessingAlgorithmWidget):
+    """
+    QgsProcessingAlgorithmWidgetBase with python specific logic
+    """
+
+    def __init__(
+        self,
+        alg: QgsProcessingAlgorithm,
+        in_place: bool = False,
+        parent: Optional[QMainWindow] = None,
+        flags: QgsProcessingAlgorithmWidgetBase.WidgetFlags = QgsProcessingAlgorithmWidgetBase.WidgetFlags(),
+        initial_state: Qgis.DockableWidgetInitialState = Qgis.DockableWidgetInitialState.RestorePreviousState,
+        processing_context: Optional[QgsProcessingContext] = None,
+        widget_context: Optional[QgsProcessingParameterWidgetContext] = None,
+        results_handler: Optional[GenericProcessingResultsHandler] = None,
+    ):
+        super().__init__(
+            alg,
+            in_place,
+            parent or (iface and iface.mainWindow()),
+            flags=flags,
+            initial_state=initial_state,
+            processing_context=processing_context,
+            widget_context=widget_context,
+        )
+
+        self.feedback_dialog = None
+        self.active_layer = iface.activeLayer() if self.inPlace() else None
+
+        self.context = None
+        self.feedback = None
+        self.history_log_id = None
+        self.history_details = {}
+
+        self._is_running = False
+
+        self._parameters_panel = self.createParametersPanel(
+            self.inPlace(), self.active_layer, self.messageBar()
+        )
+
+        if results_handler is None:
+            results_handler = GenericProcessingResultsHandler()
+        self._results_handler: GenericProcessingResultsHandler = results_handler
+
+        self.setMainWidget(self._parameters_panel)
+
+        if not self.inPlace():
+            self.runAsBatchButton = QPushButton(
+                QCoreApplication.translate("AlgorithmDialog", "Run as Batch Process…")
+            )
+            self.runAsBatchButton.clicked.connect(self.runAsBatch)
+            self.buttonBox().addButton(
+                self.runAsBatchButton, QDialogButtonBox.ButtonRole.ResetRole
+            )  # reset role to ensure left alignment
+        else:
+            in_place_input_parameter_name = "INPUT"
+            if hasattr(alg, "inputParameterName"):
+                in_place_input_parameter_name = alg.inputParameterName()
+
+            self.mainWidget().setParameters(
+                {in_place_input_parameter_name: self.active_layer}
+            )
+
+            self.runAsBatchButton = None
+
+            if self.active_layer:
+                self.updateRunButtonText()
+                self.active_layer.selectionChanged.connect(self.updateRunButtonText)
+                self.active_layer.willBeDeleted.connect(self.close)
+                self.setWindowTitle(
+                    self.windowTitle() + " | " + self.active_layer.name()
+                )
+
+        self.updateRunButtonVisibility()
+
+    def updateRunButtonText(self):
+        has_selection = self.active_layer.selectedFeatureCount() > 0
+        self.buttonBox().button(QDialogButtonBox.StandardButton.Ok).setText(
+            QCoreApplication.translate("AlgorithmDialog", "Modify Selected Features")
+            if has_selection
+            else QCoreApplication.translate("AlgorithmDialog", "Modify All Features")
+        )
+
+    def runAsBatch(self):
+        self.reject()
+        p = self.parent()
+        if not isinstance(p, QMainWindow):
+            p = QMainWindow()
+        dlg = BatchAlgorithmDialog(self.algorithm().create(), parent=p)
+        dlg.exec()
+
+    def resetAdditionalGui(self):
+        if not self.inPlace():
+            self.runAsBatchButton.setEnabled(True)
+
+    def blockAdditionalControlsWhileRunning(self):
+        if not self.inPlace():
+            self.runAsBatchButton.setEnabled(False)
+
+    def runAlgorithm(self):
+        self.feedback = self.createFeedback()
+        self.context = self.processingContext()
+        self.applyContextOverrides(self.context)
+        self.algorithmAboutToRun.emit(self.context)
+
+        checkCRS = ProcessingConfig.getSetting(ProcessingConfig.WARN_UNMATCHING_CRS)
+
+        # messy as all heck, but we don't want to call the dialog's implementation of
+        # createProcessingParameters as we want to catch the exceptions raised by the
+        # parameter panel instead...
+        parameters = {}
+        validation_result = []
+        if self.mainWidget() is not None:
+            parameters, validation_result = (
+                self.mainWidget().createAndValidateParameters(
+                    QgsProcessingParametersGenerator.Flags()
+                )
+            )
+
+        all_valid = self.handleValidationResults(validation_result)
+        if not all_valid:
+            return
+
+        if checkCRS and not self.algorithm().validateInputCrs(parameters, self.context):
+            reply = QMessageBox.question(
+                self,
+                self.tr("Unmatching CRS's"),
+                self.tr(
+                    "Parameters do not all use the same CRS. This can "
+                    "cause unexpected results.\nDo you want to "
+                    "continue?"
+                ),
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
+            )
+            if reply == QMessageBox.StandardButton.No:
+                return
+        ok, msg = self.algorithm().checkParameterValues(parameters, self.context)
+        if not ok:
+            QMessageBox.warning(self, self.tr("Unable to execute algorithm"), msg)
+            return
+
+        self.blockControlsWhileRunning()
+        self.setExecutedAnyResult(True)
+        self.cancelButton().setEnabled(False)
+
+        self.iterateParam = None
+        self._is_running = True
+
+        for param in self.algorithm().parameterDefinitions():
+            flag_feature = (
+                QgsProcessingFeatureSourceDefinition.Flag.
+                FlagCreateIndividualOutputPerInputFeature
+            )
+            if (
+                isinstance(
+                    parameters.get(param.name(), None),
+                    QgsProcessingFeatureSourceDefinition,
+                ) and (parameters[param.name()].flags & flag_feature)
+            ):
+                self.iterateParam = param.name()
+                break
+
+        self.clearProgress()
+        self.feedback.pushVersionInfo(self.algorithm().provider())
+        if self.algorithm().provider() and self.algorithm().provider().warningMessage():
+            self.feedback.reportError(self.algorithm().provider().warningMessage())
+
+        self.feedback.pushInfo(
+            QCoreApplication.translate(
+                "AlgorithmDialog", "Algorithm started at: {}"
+            ).format(datetime.datetime.now().replace(microsecond=0).isoformat())
+        )
+
+        self.setInfo(
+            QCoreApplication.translate(
+                "AlgorithmDialog", "<b>Algorithm '{0}' starting&hellip;</b>"
+            ).format(self.algorithm().displayName()),
+            escapeHtml=False,
+        )
+
+        self.feedback.pushInfo(self.tr("Input parameters:"))
+        display_params = []
+        for k, v in parameters.items():
+            display_params.append(
+                f"'{k} : {self.algorithm().parameterDefinition(k).valueAsPythonString(v, self.context)}"
+            )
+        self.feedback.pushCommandInfo("{ " + ", ".join(display_params) + " }")
+        self.feedback.pushInfo("")
+        start_time = time.time()
+
+        def elapsed_time(start_time) -> str:
+            delta_t = time.time() - start_time
+            hours = int(delta_t / 3600)
+            minutes = int((delta_t % 3600) / 60)
+            seconds = delta_t - hours * 3600 - minutes * 60
+
+            str_hours = [self.tr("hour"), self.tr("hours")][hours > 1]
+            str_minutes = [self.tr("minute"), self.tr("minutes")][minutes > 1]
+            str_seconds = [self.tr("second"), self.tr("seconds")][seconds != 1]
+
+            if hours > 0:
+                elapsed = (f"{delta_t:0.2f} {str_seconds} ({hours} {str_hours} {minutes} "
+                           f"{str_minutes} {seconds:0.0f} {str_seconds})")
+            elif minutes > 0:
+                elapsed = f"{delta_t:0.2f} {str_seconds} ({minutes} {str_minutes} {seconds:0.0f} {str_seconds})"
+            else:
+                elapsed = f"{delta_t:0.2f} {str_seconds}"
+
+            return elapsed
+
+        if self.iterateParam:
+            # Make sure the Log tab is visible before executing the algorithm
+            try:
+                self.showLog()
+                self.repaint()
+            except Exception:  # nosec: B110
+                pass
+
+            self.cancelButton().setEnabled(
+                self.algorithm().flags() & QgsProcessingAlgorithm.Flag.FlagCanCancel
+            )
+            if executeIterating(
+                self.algorithm(),
+                parameters,
+                self.iterateParam,
+                self.context,
+                self.feedback,
+            ):
+                self.feedback.pushInfo(
+                    self.tr("Execution completed in {}").format(
+                        elapsed_time(start_time)
+                    )
+                )
+                self.cancelButton().setEnabled(False)
+                self.finish(True, parameters, self.context, self.feedback)
+            else:
+                self.cancelButton().setEnabled(False)
+                self.resetGui()
+        else:
+            self.history_details = {
+                "python_command": self.algorithm().asPythonCommand(
+                    parameters, self.context
+                ),
+                "algorithm_id": self.algorithm().id(),
+                "parameters": self.algorithm().asMap(parameters, self.context),
+            }
+            process_command, command_ok = self.algorithm().asQgisProcessCommand(
+                parameters, self.context
+            )
+            if command_ok:
+                self.history_details["process_command"] = process_command
+            self.history_log_id, _ = QgsGui.historyProviderRegistry().addEntry(
+                "processing", self.history_details
+            )
+
+            QgsGui.instance().processingRecentAlgorithmLog().push(self.algorithm().id())
+            self.cancelButton().setEnabled(
+                self.algorithm().flags() & QgsProcessingAlgorithm.Flag.FlagCanCancel
+            )
+
+            def on_complete(ok, results):
+                if sip.isdeleted(self):
+                    return
+
+                if ok:
+                    self.feedback.pushInfo(
+                        self.tr("Execution completed in {}").format(
+                            elapsed_time(start_time)
+                        )
+                    )
+                    self.feedback.pushFormattedResults(
+                        self.algorithm(), self.context, results
+                    )
+                else:
+                    self.feedback.reportError(
+                        self.tr("Execution failed after {}").format(
+                            elapsed_time(start_time)
+                        )
+                    )
+                self.feedback.pushInfo("")
+
+                if self.history_log_id is not None:
+                    # can't deepcopy this!
+                    self.history_details["results"] = {
+                        k: v for k, v in results.items() if k != "CHILD_INPUTS"
+                    }
+                    self.history_details["log"] = self.feedback.htmlLog()
+
+                    QgsGui.historyProviderRegistry().updateEntry(
+                        self.history_log_id, self.history_details
+                    )
+
+                if self.feedback_dialog is not None:
+                    self.feedback_dialog.close()
+                    self.feedback_dialog.deleteLater()
+                    self.feedback_dialog = None
+
+                self.cancelButton().setEnabled(False)
+
+                self.finish(
+                    ok, results, self.context, self.feedback, in_place=self.inPlace()
+                )
+
+                self.feedback = None
+                self.context = None
+
+            if not self.inPlace() and not (
+                self.algorithm().flags() & QgsProcessingAlgorithm.Flag.FlagNoThreading
+            ):
+                # Make sure the Log tab is visible before executing the algorithm
+                self.showLog()
+
+                task = QgsProcessingAlgRunnerTask(
+                    self.algorithm(), parameters, self.context, self.feedback
+                )
+                if task.isCanceled():
+                    on_complete(False, {})
+                else:
+                    task.executed.connect(on_complete)
+                    self.setCurrentTask(task)
+            else:
+                self.proxy_progress = QgsProxyProgressTask(
+                    QCoreApplication.translate(
+                        "AlgorithmDialog", "Executing “{}”"
+                    ).format(self.algorithm().displayName())
+                )
+                QgsApplication.taskManager().addTask(self.proxy_progress)
+                self.feedback.progressChanged.connect(
+                    self.proxy_progress.setProxyProgress
+                )
+                self.feedback_dialog = self.createProgressDialog()
+                self.feedback_dialog.show()
+                if self.inPlace():
+                    ok, results = execute_in_place(
+                        self.algorithm(), parameters, self.context, self.feedback
+                    )
+                else:
+                    ok, results = execute(
+                        self.algorithm(), parameters, self.context, self.feedback
+                    )
+                self.feedback.progressChanged.disconnect()
+                self.proxy_progress.finalize(ok)
+                on_complete(ok, results)
+
+    def finish(self, successful, result, context, feedback, in_place=False):
+        keepOpen = not successful or ProcessingConfig.getSetting(
+            ProcessingConfig.KEEP_DIALOG_OPEN
+        )
+        generated_html_outputs = False
+
+        self._is_running = False
+
+        if not in_place and self.iterateParam is None:
+            # add html results to results dock
+            for out in self.algorithm().outputDefinitions():
+                if (
+                    isinstance(out, QgsProcessingOutputHtml)
+                    and out.name() in result  # noqa: W503
+                    and result[out.name()]  # noqa: W503
+                ):
+                    resultsList.addResult(
+                        icon=self.algorithm().icon(),
+                        name=out.description(),
+                        timestamp=time.localtime(),
+                        result=result[out.name()],
+                    )
+                    generated_html_outputs = True
+
+            # wc = self.createWidgetContext()
+
+            if not self._results_handler.handleAlgorithmResults(self.algorithm(), context, result, feedback):
+                self.resetGui()
+                return
+
+        self.setExecuted(True)
+        self.setResults(result)
+        self.setInfo(
+            self.tr("Algorithm '{0}' finished").format(self.algorithm().displayName()),
+            escapeHtml=False,
+        )
+        try:
+            self.algorithmFinished.emit(successful, result, self.context)
+        except TypeError:
+            # QGIS <= 4.4
+            self.algorithmFinished.emit(successful, result)
+
+        if not in_place and not keepOpen:
+            self.close()
+        else:
+            self.resetGui()
+            if generated_html_outputs:
+                self.setInfo(
+                    self.tr(
+                        "HTML output has been generated by this algorithm."
+                        "\nOpen the results dialog to check it."
+                    ),
+                    escapeHtml=False,
+                )
+
+    def isRunning(self):
+        return self._is_running

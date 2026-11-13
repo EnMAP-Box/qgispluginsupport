@@ -93,7 +93,7 @@ class TestSpeclibIO_EcoSIS(TestCase):
         context, feedback = self.createProcessingContextFeedback()
 
         for path in ecosysFiles:
-            print('Read {}...'.format(path))
+            # print('Read {}...'.format(path))
 
             # profiles = EcoSISSpectralLibraryIO.importProfiles(path, feedback=feedback)
             self.assertTrue(EcoSISSpectralLibraryReader.canReadFile(path))
@@ -104,7 +104,7 @@ class TestSpeclibIO_EcoSIS(TestCase):
             for p in profiles:
                 self.assertTrue(is_spectral_feature(p))
 
-            print('Read {} (generic IO)...'.format(path))
+            # print('Read {} (generic IO)...'.format(path))
 
             context, feedback = self.createProcessingContextFeedback()
 

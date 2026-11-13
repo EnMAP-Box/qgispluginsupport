@@ -447,7 +447,7 @@ class SpectralLibraryUtils:
         if add_layer:
             store.addMapLayer(layer)
 
-        from ...qgsfunctions import RasterProfile
+        from ...expressionfunctions import RasterProfile
         exp = QgsExpression(f"{RasterProfile.NAME}('{layer.id()}', $geometry, encoding:='dict')")
         exp.prepare(context)
 

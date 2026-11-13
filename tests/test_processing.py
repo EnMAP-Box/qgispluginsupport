@@ -30,10 +30,10 @@ from qgis.core import edit, QgsApplication, QgsFeature, QgsProcessingAlgorithm, 
     QgsProcessingRegistry, QgsProject, QgsTaskManager, \
     QgsVectorLayer, QgsProcessing
 from qgis.gui import QgsProcessingRecentAlgorithmLog, QgsProcessingToolboxProxyModel
-
-from qps.processing.algorithmwidget import AlgorithmWidget, ParametersPanel
-from qps.processing.processingalgorithmdialog import ProcessingAlgorithmDialog
-from qps.qgsfunctions import registerQgsExpressionFunctions
+from qps import initAll
+from qps.expressionfunctions import registerQgsExpressionFunctions
+from qps.reimplementation.algorithmwidget import AlgorithmWidget
+from qps.reimplementation.processingalgorithmdialog import ProcessingAlgorithmDialog
 from qps.speclib.core import profile_field_names, profile_fields, is_spectral_library
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
 from qps.speclib.core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict, isProfileValueDict, \
@@ -45,6 +45,8 @@ from qps.testing import ExampleAlgorithmProvider, start_app, TestCase, TestObjec
 from qpstestdata import ecosis_csv, asd_with_gps, spectral_evolution_sed, svc_sig
 
 start_app()
+
+initAll()
 
 
 class MyAlgModel(QgsProcessingToolboxProxyModel):
@@ -80,7 +82,7 @@ class MyAlgModel(QgsProcessingToolboxProxyModel):
 class ProcessingToolsTest(TestCase):
 
     @unittest.skipIf(TestCase.runsInCI(), 'Blocking dialog')
-    def test_processingAlgorithmDialog(self):
+    def test_processingProcessingAlgorithmDialog(self):
 
         d = ProcessingAlgorithmDialog()
         model = MyAlgModel(None)
@@ -139,7 +141,7 @@ class ProcessingToolsTest(TestCase):
         alg_id = 'testalgorithmprovider:aggregateprofiles'
         # alg_id = provider.algorithms()[0].id()
 
-        alg = reg.algorithmById(alg_id)
+        alg = reg.createAlgorithmById(alg_id)
         self.assertIsInstance(alg, AggregateProfiles)
 
         d = AlgorithmWidget(alg)
@@ -183,7 +185,7 @@ class ProcessingToolsTest(TestCase):
         reg = QgsApplication.instance().processingRegistry()
 
         alg_id = provider.algorithms()[0].id()
-        alg = reg.algorithmById(alg_id)
+        alg = reg.createAlgorithmById(alg_id)
         self.assertIsInstance(alg, AggregateProfiles)
 
         parameters = {
@@ -244,6 +246,7 @@ class ProcessingToolsTest(TestCase):
         # test alg.run
         conf = {}
         results, success = alg.run(parameters, context, feedback, conf)
+        self.assertTrue(success, msg=feedback.textLog())
         on_complete(success, results)
 
         # test processing.run
@@ -301,10 +304,11 @@ class ProcessingToolsTest(TestCase):
             lyr = QgsVectorLayer(lyr)
         self.assertTrue(lyr.isValid())
 
-        dt = datetime.datetime.now() - t0
-        seconds = dt.total_seconds()
-        n_total = lyr.featureCount()
-        print(f'Imported {n_total} files in {dt}. {seconds / n_total:.2f} s per file')
+        if False:
+            dt = datetime.datetime.now() - t0
+            seconds = dt.total_seconds()
+            n_total = lyr.featureCount()
+            print(f'Imported {n_total} files in {dt}. {seconds / n_total:.2f} s per file')
 
     @unittest.skipIf(TestCase.runsInCI(), 'blocking dialog')
     def test_spectralprofile_import_dialog(self):
@@ -351,17 +355,13 @@ class ProcessingToolsTest(TestCase):
 
         reg = QgsApplication.instance().processingRegistry()
         alg_id = provider.algorithms()[0].id()
-        alg = reg.algorithmById(alg_id)
+        alg = reg.createAlgorithmById(alg_id)
         self.assertIsInstance(alg, AggregateProfiles)
 
         # Create a minimal ParametersPanel - just test that it can be instantiated
         # Note: We need to use a parent that has messageBar() method
         # AlgorithmDialog provides this, but full initialization causes crashes due to
         # parameterChanged being triggered during initWidgets()
-
-        # Test 1: Check that ParametersPanel is importable and accessible
-        from qps.processing.algorithmwidget import ParametersPanel as PanelClass
-        self.assertEqual(PanelClass, ParametersPanel)
 
         # Test 2: Verify the algorithm has the expected parameters
         param_names = [p.name() for p in alg.parameterDefinitions()]
@@ -373,7 +373,7 @@ class ProcessingToolsTest(TestCase):
         QgsProject.instance().removeAllMapLayers()
         reg.removeProvider(provider)
 
-    # @unittest.skipIf(TestCase.runsInCI(), 'blocking dialog')
+    @unittest.skipIf(TestCase.runsInCI(), 'blocking dialog')
     def test_spectralprofile_export_dialog(self):
         alg = ExportSpectralProfiles()
         alg.initAlgorithm({})
@@ -397,9 +397,7 @@ class ProcessingToolsTest(TestCase):
 
         d = AlgorithmWidget(alg, context=context)
         d.algorithmFinished.connect(onFinished)
-        d.show()
-        self.showGui(d)
-        # d.exec()
+        d.exec()
 
         lyr = results.get(ExportSpectralProfiles.P_OUTPUT)
         if lyr:

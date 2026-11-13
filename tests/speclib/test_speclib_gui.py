@@ -19,8 +19,8 @@
 import logging
 # noinspection PyPep8Naming
 import os
-from pathlib import Path
 import unittest
+from pathlib import Path
 
 from osgeo import gdal, ogr
 
@@ -73,9 +73,9 @@ class TestSpeclibWidgets(TestCase):
         }
         err_msg = err_msg.replace('\n', ' ')
         err_class = errtype.get(err_class, 'None')
-        print('Error Number: %s' % (err_num))
-        print('Error Type: %s' % (err_class))
-        print('Error Message: %s' % (err_msg))
+        # print('Error Number: %s' % (err_num))
+        # print('Error Type: %s' % (err_class))
+        # print('Error Message: %s' % (err_msg))
 
     def setUp(self):
         super().setUp()
@@ -136,7 +136,7 @@ class TestSpeclibWidgets(TestCase):
 
         event = QDropEvent(QPoint(0, 0), Qt.DropAction.CopyAction, md, Qt.MouseButton.LeftButton,
                            Qt.KeyboardModifier.NoModifier)
-        print('Drop {}'.format(envi_sli), flush=True)
+        # print('Drop {}'.format(envi_sli), flush=True)
         slw.dropEvent(event)
         self.assertEqual(len(slw.speclib()), len(sl))
 
@@ -150,7 +150,7 @@ class TestSpeclibWidgets(TestCase):
                 break
             md = QMimeData()
             md.setUrls([QUrl.fromLocalFile(file.as_posix())])
-            print('# Drop {}'.format(file.name), flush=True)
+            # print('# Drop {}'.format(file.name), flush=True)
             event = QDropEvent(
                 QPoint(0, 0), Qt.DropAction.CopyAction, md, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier
             )
@@ -186,12 +186,13 @@ class TestSpeclibWidgets(TestCase):
     def test_SpectralLibraryWidget_empty_vectorlayer(self):
 
         vl = TestObjects.createVectorLayer()
-
-        slw = SpectralLibraryWidget(speclib=vl)
+        project = QgsProject()
+        project.addMapLayer(vl)
+        slw = SpectralLibraryWidget(speclib=vl, project=project)
         self.assertTrue(not is_spectral_library(vl))
         self.assertIsInstance(slw, SpectralLibraryWidget)
         self.showGui(slw)
-        QgsProject.instance().removeAllMapLayers()
+        project.removeAllMapLayers()
 
     @unittest.skipIf(TestCase.runsInCI(), 'GUI test only')
     def test_SpectralLibraryWidget_Empty(self):

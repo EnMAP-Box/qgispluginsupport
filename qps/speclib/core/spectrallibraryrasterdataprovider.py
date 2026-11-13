@@ -13,6 +13,7 @@ from qgis.core import Qgis, QgsColorRampShader, QgsCoordinateReferenceSystem, Qg
     QgsRaster, QgsRasterBandStats, QgsRasterBlock, QgsRasterBlockFeedback, \
     QgsRasterDataProvider, QgsRasterIdentifyResult, QgsRasterLayer, QgsRectangle, QgsVectorLayer, \
     QgsProviderMetadata, QgsProviderRegistry, QgsMessageLog
+from qgis.core import QgsRasterFileWriter
 
 from .spectralprofile import groupBySpectralProperties, spectralSettingsDict
 from ..core import is_profile_field, profile_fields
@@ -20,6 +21,17 @@ from ..core.spectralprofile import decodeProfileValueDict  # , groupBySpectralPr
 from ...utils import HashableRectangle, nextColor, numpyToQgisDataType, qgsField, QGIS2NUMPY_DATA_TYPES
 
 _DEF_CRS = None
+
+LUT_RASTERFILEWRITER_ERRORS: Dict[int, str] = {
+    QgsRasterFileWriter.WriterError.SourceProviderError: 'SourceProviderError',
+    QgsRasterFileWriter.WriterError.DestProviderError: 'DestProviderError',
+    QgsRasterFileWriter.WriterError.CreateDatasourceError: 'CreateDatasourceError',
+    QgsRasterFileWriter.WriterError.WriteError: 'WriteError',
+    QgsRasterFileWriter.WriterError.NoDataConflict: 'Internal error if a value used '
+                                                    'for "no data" was found in input',
+    QgsRasterFileWriter.WriterError.WriteCanceled: 'Writing was manually canceled.',
+
+}
 
 
 def defaultCrs() -> QgsCoordinateReferenceSystem:
@@ -29,8 +41,10 @@ def defaultCrs() -> QgsCoordinateReferenceSystem:
     return _DEF_CRS
 
 
-def create_uri(vl: QgsVectorLayer, field: QgsField) -> str:
+def create_uri(vl: QgsVectorLayer, field: QgsField, layername: str | None = None) -> str:
     params = {'lid': vl.id(), 'field': field.name(), 'src': vl.source()}
+    if layername:
+        params['layername'] = layername
     uri = 'vectorlayerfieldraster://?' + urlencode(params)
     return uri
 
@@ -42,6 +56,7 @@ def createRasterLayers(
 ) -> List[QgsRasterLayer]:
     """
     Returns a list of in-memory QgsRasterLayers that represent the values inside a QgsVectorLayer.
+    Each layer uses a VectorLayerFieldRasterDataProvider data provider that accesses vector features
     :param features:
     :param fields:
     :return:
@@ -93,7 +108,7 @@ def createRasterLayers(
                 name = f'{field.name()} ({name})'
 
                 uri = create_uri(vl, field)
-                layer = QgsRasterLayer('?', name, VectorLayerFieldRasterDataProvider.providerKey())
+                layer = QgsRasterLayer(uri, name, VectorLayerFieldRasterDataProvider.providerKey())
                 dp: VectorLayerFieldRasterDataProvider = layer.dataProvider()
                 dp.setActiveFeatures(profile_features, field=field.name())
                 if not (layer.isValid()):
@@ -106,6 +121,7 @@ def createRasterLayers(
             layer = QgsRasterLayer(uri, name, VectorLayerFieldRasterDataProvider.providerKey())
             dp: VectorLayerFieldRasterDataProvider = layer.dataProvider()
             dp.setActiveFeatures(features, field=field.name())
+            layer.setExtent(dp.extent())
             layers.append(layer)
 
     return layers
@@ -594,8 +610,8 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
     def activeFeatures(self) -> List[QgsFeature]:
         return self.mFeatures
 
-    def activeFeatureIDs(self) -> List[int]:
-        return [feature.id() for feature in self.mFeatures]
+    def activeFeatureIds(self) -> List[int]:
+        return [f.id() for f in self.mFeatures]
 
     def _init_from_uri(self, uri: str) -> None:
 
@@ -809,9 +825,9 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
         self.mField = activeField
 
         # set the extent Y offset
-        if not self.mYOffsetManual:
-            if fields.count() > 0:
-                self.mYOffset = fields.lookupField(activeField.name())
+        # if not self.mYOffsetManual:
+        #     if fields.count() > 0:
+        #         self.mYOffset = fields.lookupField(activeField.name())
 
         # convert feature data into fast-accessible numpy data
         if not isinstance(features, list):
@@ -827,6 +843,10 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
 
         self.fullExtentCalculated.emit()
         self.dataChanged.emit()
+
+        # workaround to ensure correct layer extents
+        if isinstance(self.parent(), QgsRasterLayer):
+            self.parent().setExtent(self.extent())
 
     def _read_raster_values(
         self,
@@ -976,9 +996,6 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
         self.mColorTable = raster_color_table
         self.mNoData = raster_nodata
         self.mRasterMetadata = raster_metadata
-
-    def activeFeatureIds(self) -> List[int]:
-        return [f.id() for f in self.mFeatures]
 
     def enableProviderResampling(self, enable: bool) -> bool:
         return True

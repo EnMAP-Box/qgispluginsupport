@@ -54,9 +54,9 @@ class TestSpeclibPlotting(TestCase):
         }
         err_msg = err_msg.replace('\n', ' ')
         err_class = errtype.get(err_class, 'None')
-        print('Error Number: %s' % (err_num))
-        print('Error Type: %s' % (err_class))
-        print('Error Message: %s' % (err_msg))
+        # print('Error Number: %s' % (err_num))
+        # print('Error Type: %s' % (err_class))
+        # print('Error Message: %s' % (err_msg))
 
     def setUp(self):
         # spectralProfileEditorWidgetFactory(True)
@@ -316,10 +316,10 @@ class TestSpeclibPlotting(TestCase):
 
         color1 = symbol.color()
 
-        print(color1.name())
+        # print(color1.name())
         self.assertIsInstance(p, QgsProperty)
         color2, success = p.valueAsColor(expressionContext, defaultColor=QColor('black'))
-        print(color2.name())
+        # print(color2.name())
         renderer.stopRender(renderContext)
         self.assertEqual(color1, color2)
 
@@ -648,7 +648,7 @@ class TestSpeclibPlotting(TestCase):
 
         copy_items(items, 'CSV')
         data = QgsApplication.instance().clipboard().mimeData().text()
-        print(data)
+        # print(data)
 
     def test_show_selected_profiles(self):
 

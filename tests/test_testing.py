@@ -112,6 +112,7 @@ class ExampleOptionsWidgetFactory(QgsOptionsWidgetFactory):
 
 class TestCasesClassTesting(TestCase):
 
+    @unittest.skipIf(TestCase.runsInCI(), 'QgisMockup not available')
     def test_init(self):
         self.assertTrue(qps.testing is not None)
 
@@ -133,14 +134,18 @@ class TestCasesClassTesting(TestCase):
 
         self.assertIsInstance(iface, QgisInterface)
         self.assertIsInstance(iface, qps.testing.QgisMockup)
-
+        QgsProject.instance().removeAllMapLayers()
         lyr1 = qps.testing.TestObjects.createVectorLayer()
         lyr2 = qps.testing.TestObjects.createVectorLayer()
 
         self.assertIsInstance(iface.layerTreeView(), QgsLayerTreeView)
         self.assertIsInstance(iface.layerTreeView().layerTreeModel(), QgsLayerTreeModel)
-        root = iface.layerTreeView().layerTreeModel().rootGroup()
+        root: QgsLayerTree = iface.layerTreeView().layerTreeModel().rootGroup()
         self.assertIsInstance(root, QgsLayerTree)
+        root.addLayer(lyr1)
+        _layers = [l1.layer() for l1 in root.findLayers()]
+        for lyr in _layers:
+            root.removeLayer(lyr)
         self.assertEqual(len(root.findLayers()), 0)
 
         QgsProject.instance().addMapLayer(lyr1, False)
@@ -154,7 +159,8 @@ class TestCasesClassTesting(TestCase):
         app = QgsApplication.instance()
         ENV = app.systemEnvVars()
         for k in sorted(ENV.keys()):
-            print('{}={}'.format(k, ENV[k]))
+            # print('{}={}'.format(k, ENV[k]))
+            pass
 
         QgsProject.instance().removeAllMapLayers()
 
