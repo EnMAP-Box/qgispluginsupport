@@ -23,7 +23,6 @@ from qgis.core import (
     QgsProperty
 )
 from qgis.gui import QgisInterface, QgsLayerTreeView
-from qgis.utils import iface as _iface
 
 
 class GenericProcessingResultsHandler(object):
@@ -43,6 +42,7 @@ class GenericProcessingResultsHandler(object):
         :param parent: Parent object (optional)
         """
         if iface is None:
+            from qgis.utils import iface as _iface
             iface = _iface
         self._iface = iface
 
@@ -51,11 +51,11 @@ class GenericProcessingResultsHandler(object):
         self._layer_tree_view: QgsLayerTreeView = layer_tree_view
 
     def handleAlgorithmResults(
-        self,
-        algorithm: QgsProcessingAlgorithm,
-        context: QgsProcessingContext,
-        parameters,
-        feedback: QgsProcessingFeedback | None = None
+            self,
+            algorithm: QgsProcessingAlgorithm,
+            context: QgsProcessingContext,
+            parameters,
+            feedback: QgsProcessingFeedback | None = None
     ) -> bool:
 
         if feedback is None:
@@ -76,9 +76,9 @@ class GenericProcessingResultsHandler(object):
         return success
 
     def layerTreeResultsGroup(
-        self,
-        layer_details: QgsProcessingContext.LayerDetails,
-        context: QgsProcessingContext
+            self,
+            layer_details: QgsProcessingContext.LayerDetails,
+            context: QgsProcessingContext
     ) -> QgsLayerTreeGroup | None:
         # imitates QgsProcessingResultsHandler::layerTreeResultsGroup
         destinationProject = layer_details.project if hasattr(layer_details, 'project') else context.project()
@@ -132,11 +132,11 @@ class GenericProcessingResultsHandler(object):
             layer.loadNamedStyle(styleFilePath)
 
     def determineOutputName(
-        self, destinationId: str,
-        details: QgsProcessingContext.LayerDetails,
-        algorithm: QgsProcessingAlgorithm,
-        context: QgsProcessingContext,
-        parameters: dict
+            self, destinationId: str,
+            details: QgsProcessingContext.LayerDetails,
+            algorithm: QgsProcessingAlgorithm,
+            context: QgsProcessingContext,
+            parameters: dict
     ) -> str:
         # imitates QgsProcessingResultsHandler::determineOutputName
         if not isinstance(algorithm, QgsProcessingAlgorithm):
@@ -159,11 +159,11 @@ class GenericProcessingResultsHandler(object):
         return details.outputName
 
     def handleAlgorithmResultsProtected(
-        self,
-        algorithm,
-        context,
-        parameters,
-        feedback
+            self,
+            algorithm,
+            context,
+            parameters,
+            feedback
     ) -> Tuple[bool, list]:
 
         feedback.setProgressText("Loading resulting layers")
