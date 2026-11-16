@@ -1,4 +1,5 @@
 import os.path
+import typing
 from pathlib import Path
 from typing import List, Dict, Any, Tuple
 
@@ -82,7 +83,7 @@ class SpectralProcessingAlgorithmWidget(ProcessingAlgorithmWidget):
         self.mProcessingAlgorithmModel: SpectralProcessingAlgorithmModel = SpectralProcessingAlgorithmModel()
 
         self.mSpeclib = speclib
-
+        self.mResults = dict()
         self.mFeedback = self.createFeedback()
         self.mContextGenerator = SpectralProcessingContextGenerator(speclib)
 
@@ -99,6 +100,11 @@ class SpectralProcessingAlgorithmWidget(ProcessingAlgorithmWidget):
 
     def selectedFeaturesOnly(self) -> bool:
         return self.cbSelectedFeaturesOnly.isEnabled() and self.cbSelectedFeaturesOnly.isChecked()
+
+    def setResults(self, results: dict[str | None, typing.Any]) -> None:
+        # keep a ref on results
+        self.mResults = results
+        super().setResults(results)
 
     def createParametersPanel(self, inPlaceMode, activeLayer, messageBar):
         a = self.algorithm()
@@ -275,6 +281,8 @@ class SpectralProcessingAlgorithmWidget(ProcessingAlgorithmWidget):
         ok, outputs, errors = collect_outputs(results, algorithm, tmp_context)
         if ok:
             write_outputs_to_speclib(speclib, outputs, active_features, feedback)
+            self.setResults(results)
+        self.algorithmFinished.emit(ok, results)
 
 
 def temp_tiff_filename(path: str, context: QgsProcessingContext):
@@ -330,10 +338,10 @@ def _read_project_array_data(p) -> dict:
 
 
 def replace_parameter_layers(
-        parameters: Dict[str, Any],
-        alg: QgsProcessingAlgorithm,
-        context: QgsProcessingContext,
-        tmp_folder: str,
+    parameters: Dict[str, Any],
+    alg: QgsProcessingAlgorithm,
+    context: QgsProcessingContext,
+    tmp_folder: str,
 ) -> Tuple[Dict[str, Any], QgsProcessingContext, QgsProject]:
     """
     Replaces all QgsRasterLayers that use a VectorLayerFieldRasterDataProvider with a new QgsRasterLayer that
@@ -414,10 +422,10 @@ def layer_to_fieldname(layer: QgsMapLayer) -> str:
 
 
 def write_outputs_to_speclib(
-        speclib: QgsVectorLayer,
-        outputs: List[dict],
-        active_features: List[QgsFeature],
-        feedback: QgsProcessingFeedback,
+    speclib: QgsVectorLayer,
+    outputs: List[dict],
+    active_features: List[QgsFeature],
+    feedback: QgsProcessingFeedback,
 ) -> bool:
     if not speclib.isEditable():
         raise QgsProcessingException(f'vector layer is not in editable: "{speclib.name()}"')
@@ -517,9 +525,9 @@ class SpectralProcessingOutput(object):
 
 
 def collect_outputs(
-        results: dict,
-        alg: QgsProcessingAlgorithm,
-        context: QgsProcessingContext
+    results: dict,
+    alg: QgsProcessingAlgorithm,
+    context: QgsProcessingContext
 ) -> Tuple[bool, List[SpectralProcessingOutput], List[str]]:
     feedback = context.feedback()
     if not isinstance(feedback, QgsProcessingFeedback):
@@ -563,8 +571,8 @@ def collect_outputs(
 
 
 def raster_from_context(
-        p_value: Any | None,
-        context: QgsProcessingContext
+    p_value: Any | None,
+    context: QgsProcessingContext
 ) -> QgsRasterLayer | None:
     lyr = None
     if isinstance(p_value, QgsRasterLayer):
@@ -584,9 +592,9 @@ def raster_from_context(
 
 
 def collect_vector_layer_field_rasters(
-        parameters: Dict[str, Any],
-        alg: QgsProcessingAlgorithm,
-        context: QgsProcessingContext,
+    parameters: Dict[str, Any],
+    alg: QgsProcessingAlgorithm,
+    context: QgsProcessingContext,
 ) -> List[QgsRasterLayer]:
     """
     :param parameters:
