@@ -23,7 +23,6 @@ from qgis.core import (
     QgsProperty
 )
 from qgis.gui import QgisInterface, QgsLayerTreeView
-from qgis.utils import iface as _iface
 
 
 class GenericProcessingResultsHandler(object):
@@ -43,6 +42,7 @@ class GenericProcessingResultsHandler(object):
         :param parent: Parent object (optional)
         """
         if iface is None:
+            from qgis.utils import iface as _iface
             iface = _iface
         self._iface = iface
 
