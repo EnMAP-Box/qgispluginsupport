@@ -1,5 +1,6 @@
 import datetime
 import time
+import warnings
 from typing import Optional
 
 from processing.core.ProcessingConfig import ProcessingConfig
@@ -15,7 +16,6 @@ from qgis.core import QgsProcessingAlgorithm, Qgis, QgsProcessingFeatureSourceDe
 from qgis.gui import QgsGui, QgsProcessingParameterWidgetContext
 from qgis.gui import QgsProcessingAlgorithmWidgetBase, QgsProcessingParametersGenerator
 from qgis.utils import iface
-
 from .genericprocessingresultshandler import GenericProcessingResultsHandler
 from .processingalgorithmwidget import ProcessingAlgorithmWidget
 
@@ -35,7 +35,13 @@ class AlgorithmWidget(ProcessingAlgorithmWidget):
         processing_context: Optional[QgsProcessingContext] = None,
         widget_context: Optional[QgsProcessingParameterWidgetContext] = None,
         results_handler: Optional[GenericProcessingResultsHandler] = None,
+        context: Optional[QgsProcessingContext] = None,
     ):
+
+        if isinstance(context, QgsProcessingContext):
+            warnings.warn("Deprecated: use processing_context instead of context", DeprecationWarning)
+            processing_context = context
+
         super().__init__(
             alg,
             in_place,
