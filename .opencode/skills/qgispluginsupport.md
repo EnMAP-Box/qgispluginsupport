@@ -95,3 +95,29 @@ widget_context = generator.createWidgetContext()
 - QGIS version: Currently using QGIS 4.2 (Qt6)
 - Python version: 3.14
 - PyQtGraph Qt library: PyQt6 (must match QGIS Qt version)
+
+## QGIS C++ API Reference
+
+The C++ definitions for the QGIS API can be found in a parallel repository structure:
+
+```
+<parent>/
+├── qgispluginsupport/      # This repository (plugin support)
+└── QGIS/                   # QGIS main repository
+    ├── src/               # QGIS C++ source code
+    │   ├── core/          # QGIS core classes (QgsVectorLayer, QgsProcessingAlgorithm, etc.)
+    │   ├── gui/           # QGIS GUI classes
+    │   ├── python/        # Python bindings
+    │   └── ...
+    └── ...
+```
+
+When working in this repository at `<parent>/qgispluginsupport`:
+- The QGIS C++ source code is located at `<parent>/QGIS/src`
+- QGIS Python API documentation in this repository references C++ classes from the QGIS repository
+- For C++ development, you may need to build QGIS from the `<parent>/QGIS` source
+
+Use the QGIS C++ API documentation and source code when:
+- Understanding the underlying implementation of QGIS classes
+- Debugging issues that require stepping through C++ code
+- Contributing to QGIS itself
