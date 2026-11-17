@@ -3,8 +3,6 @@ from pathlib import Path
 from typing import List, Dict, Any, Tuple
 
 import numpy as np
-
-from processing.gui.AlgorithmExecutor import execute
 from qgis.PyQt.QtCore import QMetaType
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtGui import QIcon
@@ -18,6 +16,7 @@ from qgis.PyQt.QtWidgets import (
     QSizePolicy,
 )
 from qgis.PyQt.QtWidgets import QDialog
+from qgis.PyQt.QtWidgets import QMainWindow
 from qgis.core import QgsApplication, QgsProcessingParameterRasterDestination, QgsProcessingException
 from qgis.core import QgsFeature, QgsField
 from qgis.core import QgsProcessingAlgorithm, QgsVectorLayer
@@ -29,6 +28,8 @@ from qgis.core import QgsProject
 from qgis.gui import QgsMessageBar
 from qgis.gui import QgsPanelWidget
 from qgis.gui import QgsProcessingParametersGenerator
+from qgis.processing import run as executeAlgorithm
+
 from .spectralprocessingalgorithmmodel import SpectralProcessingAlgorithmModel
 from .spectralprocessingcontextgenerator import SpectralProcessingContextGenerator
 from .spectralprocessingparameterswidget import SpectralProcessingParametersWidget
@@ -48,8 +49,12 @@ class SpectralProcessingAlgorithmWidget(ProcessingAlgorithmWidget):
         if not isinstance(speclib, QgsVectorLayer):
             raise TypeError('speclib must be a QgsVectorLayer')
 
+        parent_window = kwds.get('parent_window')
+        if parent_window is None:
+            parent_window = QMainWindow()
+            kwds['parent_window'] = parent_window
         super().__init__(None, *args, **kwds)
-
+        self._parent_window: QMainWindow = parent_window
         self.setWindowFlag(Qt.WindowType.WindowContextHelpButtonHint, False)
         # QgsProcessingContextGenerator.__init__(self)
         self.mWidgetName = 'Spectral Processing Widget'
@@ -178,7 +183,7 @@ class SpectralProcessingAlgorithmWidget(ProcessingAlgorithmWidget):
         self.tbAlgorithmName.setStyleSheet(css)
         self.tbAlgorithmName.setText(info)
         self.tbAlgorithmName.setToolTip(tooltip)
-        self.setWindowTitle(self.mWidgetName)
+        # self.setWindowTitle(self.mWidgetName)
 
     def processingContext(self):
         return self.mContextGenerator.processingContext()
@@ -257,11 +262,21 @@ class SpectralProcessingAlgorithmWidget(ProcessingAlgorithmWidget):
         feedback.pushInfo(f'Execute algorithm: {algorithm.id()} ...')
         feedback.pushInfo('Parameters:')
         feedback.pushConsoleInfo(str(tmp_parameter))
-        ok, results = execute(algorithm,
-                              tmp_parameter,
-                              context=tmp_context,
-                              feedback=feedback,
-                              catch_exceptions=not fail_fast)
+
+        ok = False
+
+        try:
+            results = executeAlgorithm(
+                algOrName=algorithm,
+                parameters=tmp_parameter,
+                context=tmp_context,
+                feedback=feedback
+            )
+            ok = True
+        except Exception as ex:
+            if fail_fast:
+                raise ex
+            results = {'error': str(ex)}
         if not ok:
             feedback.reportError(f'Execution failed: {str(results)}')
             return
@@ -330,10 +345,10 @@ def _read_project_array_data(p) -> dict:
 
 
 def replace_parameter_layers(
-        parameters: Dict[str, Any],
-        alg: QgsProcessingAlgorithm,
-        context: QgsProcessingContext,
-        tmp_folder: str,
+    parameters: Dict[str, Any],
+    alg: QgsProcessingAlgorithm,
+    context: QgsProcessingContext,
+    tmp_folder: str,
 ) -> Tuple[Dict[str, Any], QgsProcessingContext, QgsProject]:
     """
     Replaces all QgsRasterLayers that use a VectorLayerFieldRasterDataProvider with a new QgsRasterLayer that
@@ -414,10 +429,10 @@ def layer_to_fieldname(layer: QgsMapLayer) -> str:
 
 
 def write_outputs_to_speclib(
-        speclib: QgsVectorLayer,
-        outputs: List[dict],
-        active_features: List[QgsFeature],
-        feedback: QgsProcessingFeedback,
+    speclib: QgsVectorLayer,
+    outputs: List[dict],
+    active_features: List[QgsFeature],
+    feedback: QgsProcessingFeedback,
 ) -> bool:
     if not speclib.isEditable():
         raise QgsProcessingException(f'vector layer is not in editable: "{speclib.name()}"')
@@ -517,9 +532,9 @@ class SpectralProcessingOutput(object):
 
 
 def collect_outputs(
-        results: dict,
-        alg: QgsProcessingAlgorithm,
-        context: QgsProcessingContext
+    results: dict,
+    alg: QgsProcessingAlgorithm,
+    context: QgsProcessingContext
 ) -> Tuple[bool, List[SpectralProcessingOutput], List[str]]:
     feedback = context.feedback()
     if not isinstance(feedback, QgsProcessingFeedback):
@@ -563,8 +578,8 @@ def collect_outputs(
 
 
 def raster_from_context(
-        p_value: Any | None,
-        context: QgsProcessingContext
+    p_value: Any | None,
+    context: QgsProcessingContext
 ) -> QgsRasterLayer | None:
     lyr = None
     if isinstance(p_value, QgsRasterLayer):
@@ -584,9 +599,9 @@ def raster_from_context(
 
 
 def collect_vector_layer_field_rasters(
-        parameters: Dict[str, Any],
-        alg: QgsProcessingAlgorithm,
-        context: QgsProcessingContext,
+    parameters: Dict[str, Any],
+    alg: QgsProcessingAlgorithm,
+    context: QgsProcessingContext,
 ) -> List[QgsRasterLayer]:
     """
     :param parameters:

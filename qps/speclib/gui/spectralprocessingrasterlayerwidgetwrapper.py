@@ -61,7 +61,7 @@ class SpectralProcessingRasterLayerWidgetWrapper(QgsAbstractProcessingParameterW
         return mapLayerWidget
 
     def onIndexChanged(self, idx, model):
-        layer = model.data(model.index(idx, 0), QgsMapLayerModel.CustomRole.LayerRole)
+        # layer = model.data(model.index(idx, 0), QgsMapLayerModel.CustomRole.LayerRole)
         self.widgetValueHasChanged.emit(self)
 
     def createWrappedWidget(self, context) -> QWidget:
