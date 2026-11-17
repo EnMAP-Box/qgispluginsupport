@@ -1,6 +1,8 @@
+import typing
 from difflib import SequenceMatcher
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional, Tuple, Any
 
+from qgis import _core
 from qgis.PyQt.QtCore import QObject
 from qgis.PyQt.QtWidgets import QWidget, QComboBox, QLabel
 from qgis.core import (
@@ -9,11 +11,9 @@ from qgis.core import (
     QgsProcessingParameterDefinition,
     QgsProcessingParameterMultipleLayers,
     QgsProcessingParameterRasterLayer,
-    QgsRasterLayer,
 )
+from qgis.core import QgsProcessingContext
 from qgis.gui import QgsAbstractProcessingParameterWidgetWrapper, QgsProcessingGui
-
-from ..core.spectrallibraryrasterdataprovider import VectorLayerFieldRasterDataProvider
 
 
 class SpectralProcessingRasterLayerWidgetWrapper(QgsAbstractProcessingParameterWidgetWrapper):
@@ -32,8 +32,9 @@ class SpectralProcessingRasterLayerWidgetWrapper(QgsAbstractProcessingParameterW
 
         self.mLabel: Optional[QLabel] = None
 
+        self.mLastContext: Optional[QgsProcessingContext] = None
+
         super(SpectralProcessingRasterLayerWidgetWrapper, self).__init__(parameter, dialogType, parent)
-        self.mProfileField: Optional[str] = None
 
     def createWidget(self):
 
@@ -61,10 +62,10 @@ class SpectralProcessingRasterLayerWidgetWrapper(QgsAbstractProcessingParameterW
 
     def onIndexChanged(self, idx, model):
         layer = model.data(model.index(idx, 0), QgsMapLayerModel.CustomRole.LayerRole)
-        self.setValue(layer)
+        self.widgetValueHasChanged.emit(self)
 
     def createWrappedWidget(self, context) -> QWidget:
-
+        self.mLastContext = context
         if not isinstance(self.mMapLayerWidget, QWidget):
             self.mMapLayerWidget = self.createWidget()
         return self.mMapLayerWidget
@@ -74,7 +75,10 @@ class SpectralProcessingRasterLayerWidgetWrapper(QgsAbstractProcessingParameterW
             self.mLabel = self.createLabel()
         return self.mLabel
 
-    def setWidgetValue(self, value, context):
+    def setParameterValue(self, value: typing.Any, context: _core.QgsProcessingContext) -> None:
+        super().setParameterValue(value, context)
+
+    def setWidgetValue(self, value: Any, context: QgsProcessingContext):
         if isinstance(self.mMapLayerWidget, QComboBox):
             if isinstance(value, str):
                 # find the best match in order of
@@ -144,24 +148,3 @@ class SpectralProcessingRasterLayerWidgetWrapper(QgsAbstractProcessingParameterW
         if not isinstance(self.mMapLayerWidget, QComboBox):
             self.mMapLayerWidget = self.createWidget()
         return self.mMapLayerWidget
-
-    def setValue(self, value):
-
-        old = self.mProfileField
-        if isinstance(value, QgsRasterLayer) and isinstance(value.dataProvider(), VectorLayerFieldRasterDataProvider):
-            dp: VectorLayerFieldRasterDataProvider = value.dataProvider()
-            self.mProfileField = dp.activeField()
-
-        if old != self.mProfileField:
-            self.widgetValueHasChanged.emit(self)
-
-    def value(self):
-
-        return self.mProfileField
-
-        if self.mDialogType == QgsProcessingGui.WidgetType.Modeler:
-            return self.widget.windowTitle() + '+Modeler'
-        elif self.mDialogType == QgsProcessingGui.WidgetType.Batch:
-            return self.widget.windowTitle() + '+Batch'
-        else:
-            return self.widget.windowTitle() + '+Std'
