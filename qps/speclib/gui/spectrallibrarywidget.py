@@ -340,14 +340,19 @@ class SpectralLibraryWidget(QWidget):
                 w = SpectralProcessingAlgorithmWidget(
                     speclib=lyr,
                 )
-                w.setAlgorithm(algorithmId)
+
+                if algorithmId:
+                    w.setAlgorithm(algorithmId)
                 if parameters:
                     w.setParameters(parameters)
                 # dialog.setMainMessageBar(self.mainMessageBar())
                 # dialog.sigOutputsCreated.connect(self.onSpectralProcessingOutputsCreated)
                 # w.setParent(self)
+
                 # w.exec()
                 # dialog.close()
+                # w.show()
+                # w.parent().setParent(self)
                 w.show()
                 return w
         return None

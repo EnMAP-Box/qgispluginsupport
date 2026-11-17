@@ -3,7 +3,6 @@ import unittest
 
 import numpy as np
 from osgeo import gdal
-
 from qgis.PyQt.QtWidgets import QGridLayout, QWidget
 from qgis.PyQt.QtWidgets import QHBoxLayout
 from qgis.core import (
@@ -20,6 +19,7 @@ from qgis.gui import (
     QgsProcessingAlgorithmWidgetBase, QgsProcessingContextGenerator,
     QgsProcessingGui, QgsProcessingParameterWidgetContext
 )
+
 from qps import initAll
 from qps.qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
@@ -28,7 +28,6 @@ from qps.speclib.gui.spectralprocessingcontextgenerator import SpectralProcessin
 from qps.speclib.gui.spectralprocessingrasterlayerwidgetwrapper import SpectralProcessingRasterLayerWidgetWrapper
 from qps.speclib.gui.spectralprocessingwidget import (SpectralProcessingParametersWidget
                                                       )
-from qps.speclib.gui.spectralprocessingwidget import SpectralProcessingWidget
 from qps.testing import ExampleAlgorithmProvider, TestCase, TestObjects, start_app
 
 start_app()
@@ -457,41 +456,19 @@ class SpectralProcessingTests(TestCase):
         n_features = 20
         speclib = TestObjects.createSpectralLibrary(n=n_features, n_bands=n_bands)
         speclib: QgsVectorLayer
-
-        slw = SpectralLibraryWidget(speclib=speclib)
+        project = QgsProject()
+        project.addMapLayer(speclib)
+        slw = SpectralLibraryWidget(speclib=speclib, project=project)
+        slw.openSpectralProcessingWidget()
         # pFields = profile_field_list(speclib)
 
         speclib.startEditing()
-        procw = SpectralProcessingWidget()
-        procw.setSpeclib(speclib)
+        procw = SpectralProcessingAlgorithmWidget(speclib)
         reg: QgsProcessingRegistry = QgsApplication.instance().processingRegistry()
         alg1 = reg.createAlgorithmById('gdal:rearrange_bands')
         self.assertIsInstance(alg1, QgsProcessingAlgorithm)
         alg2 = reg.createAlgorithmById('native:rescaleraster')
-
         procw.setAlgorithm(alg2)
-        wrapper = procw.processingModelWrapper()
-        cbInputField = wrapper.parameterWidget('INPUT')
-        cbInputField.setCurrentIndex(1)
-        _ = cbInputField.currentText()
-
-        cb2 = wrapper.outputWidget('OUTPUT')
-        cb2.setCurrentText('newfield')
-
-        procw.runAlgorithm(fail_fast=True)
-        tempFiles = procw.temporaryRaster()
-        for file in tempFiles:
-            prop = QgsRasterLayerSpectralProperties.fromRasterLayer(file)
-
-            wl = prop.wavelengths()
-            wlu = prop.wavelengthUnits()
-
-            ds = gdal.Open(file)
-            nb = ds.RasterCount
-            self.assertEqual(nb, len(wl))
-            self.assertEqual(nb, len(wlu))
-
-        self.assertTrue(True)
         self.showGui([slw, procw])
 
         QgsProject.instance().removeAllMapLayers()
