@@ -441,17 +441,17 @@ def nicePredecessor(number):
     mul = -1 if number < 0 else 1
     number = np.abs(number)
     if number > 1.0:
-        exp = np.fix(np.log10(number))
+        exp = np.trunc(np.log10(number))
         # normalize to [0.0,1.0]
         l2 = number / 10 ** (exp)
-        m = np.fix(l2)
+        m = np.trunc(l2)
         rest = l2 - m
         if rest >= 0.5:
             m += 0.5
         return mul * m * 10 ** exp
 
     elif 1.0 > number > 0:
-        exp = np.fix(np.log10(number))
+        exp = np.trunc(np.log10(number))
         # normalize to [0.0,1.0]
         m = number / 10 ** (exp - 1)
         if m >= 5:
