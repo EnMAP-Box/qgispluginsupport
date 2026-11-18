@@ -397,7 +397,7 @@ class ProcessingToolboxDockWidget(QgsDockWidget):
         if registry is None:
             return
 
-        if QGIS_VERSION_INT < 44000:
+        if QGIS_VERSION_INT < 40300:
             from processing.gui.ProviderActions import ProviderActions
             actions = ProviderActions.actions.get(provider.id(), [])
 
@@ -422,13 +422,13 @@ class ProcessingToolboxDockWidget(QgsDockWidget):
 
         new_actions = []
         for toolboxAction in actions:
-            toolboxAction: QAction
-            action = QAction(toolboxAction.name, menu)
-            action.setObjectName(toolboxAction.name)
-            action.setData(self)
-            action.triggered.connect(toolboxAction.execute)
-            menu.addAction(action)
-            new_actions.append(action)
+            if isinstance(toolboxAction, QAction):
+                action = QAction(toolboxAction.name, menu)
+                action.setObjectName(toolboxAction.name)
+                action.setData(self)
+                action.triggered.connect(toolboxAction.execute)
+                menu.addAction(action)
+                new_actions.append(action)
 
         bt.setMenu(menu)
         self._provider_buttons[provider.id()] = bt

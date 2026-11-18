@@ -18,11 +18,11 @@ class SpectralProcessingContextGenerator(QgsProcessingContextGenerator, QgsProce
 
         self._project = QgsProject()
 
-        self._speclib.attributeAdded.connect(self.updateExampleLayers)
-        self._speclib.attributeDeleted.connect(self.updateExampleLayers)
-
         self._p_context = QgsProcessingContext()
         self._p_context.setProject(self._project)
+
+        self._speclib.attributeAdded.connect(self.updateExampleLayers)
+        self._speclib.attributeDeleted.connect(self.updateExampleLayers)
 
         self.updateExampleLayers()
 
