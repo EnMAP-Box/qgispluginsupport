@@ -397,7 +397,7 @@ class ProcessingToolboxDockWidget(QgsDockWidget):
         if registry is None:
             return
 
-        if QGIS_VERSION_INT < 40300:
+        if QGIS_VERSION_INT < 40400:
             from processing.gui.ProviderActions import ProviderActions
             actions = ProviderActions.actions.get(provider.id(), [])
 
