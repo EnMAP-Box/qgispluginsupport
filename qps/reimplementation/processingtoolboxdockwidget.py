@@ -38,8 +38,6 @@ from qgis.gui import (
 
 QGIS_VERSION_INT = Qgis.versionInt()
 
-s = ""
-
 
 def _icon_size():
     """
