@@ -38,6 +38,8 @@ from qgis.gui import (
 
 QGIS_VERSION_INT = Qgis.versionInt()
 
+s = ""
+
 
 def _icon_size():
     """
@@ -397,12 +399,11 @@ class ProcessingToolboxDockWidget(QgsDockWidget):
         if registry is None:
             return
 
-        if QGIS_VERSION_INT < 40400:
+        if hasattr(registry, 'toolboxActionsForProvider'):
+            actions = registry.toolboxActionsForProvider(provider.id())
+        else:
             from processing.gui.ProviderActions import ProviderActions
             actions = ProviderActions.actions.get(provider.id(), [])
-
-        else:
-            actions = registry.toolboxActionsForProvider(provider.id())
 
         if len(actions) == 0:
             return
