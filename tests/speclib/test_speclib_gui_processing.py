@@ -25,9 +25,8 @@ from qps.qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
 from qps.speclib.gui.spectralprocessingalgorithmwidget import SpectralProcessingAlgorithmWidget
 from qps.speclib.gui.spectralprocessingcontextgenerator import SpectralProcessingContextGenerator
+from qps.speclib.gui.spectralprocessingparameterswidget import SpectralProcessingParametersWidget
 from qps.speclib.gui.spectralprocessingrasterlayerwidgetwrapper import SpectralProcessingRasterLayerWidgetWrapper
-from qps.speclib.gui.spectralprocessingwidget import (SpectralProcessingParametersWidget
-                                                      )
 from qps.testing import ExampleAlgorithmProvider, TestCase, TestObjects, start_app
 
 start_app()

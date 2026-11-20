@@ -1,4 +1,6 @@
+import json
 import os.path
+import sys
 from pathlib import Path
 from typing import List, Dict, Any, Tuple
 
@@ -34,6 +36,7 @@ from .spectralprocessingalgorithmmodel import SpectralProcessingAlgorithmModel
 from .spectralprocessingcontextgenerator import SpectralProcessingContextGenerator
 from .spectralprocessingparameterswidget import SpectralProcessingParametersWidget
 from .spectralprocessingrasterdestination import SpectralProcessingRasterDestination
+from .. import speclibSettings
 from ..core.spectrallibrary import SpectralLibraryUtils
 from ..core.spectrallibraryrasterdataprovider import VectorLayerFieldRasterDataProvider
 from ..core.spectralprofile import ProfileEncoding, prepareProfileValueDict, encodeProfileValueDict
@@ -98,6 +101,68 @@ class SpectralProcessingAlgorithmWidget(ProcessingAlgorithmWidget):
 
         if algorithm:
             self.setAlgorithm(algorithm)
+        else:
+            self.loadSettings()
+
+    def close(self, event):
+        self.saveSettings()
+        super().close(event)
+
+    def resetSettings(self):
+        """
+        Deletes the settings for this widget
+        :return:
+        """
+        settings = speclibSettings()
+        k = self.__class__.__name__
+        settings.remove(f'{k}/algorithmId')
+        settings.remove(f'{k}/algorithmParameters')
+
+    def loadSettings(self):
+        """
+        Loads saved settings for this widget, e.g. the last used algorithm and its parameters
+        """
+        settings = speclibSettings()
+        k = self.__class__.__name__
+        aid = settings.value(f'{k}/algorithmId', None)
+        if isinstance(aid, str):
+            alg = QgsApplication.instance().processingRegistry().createAlgorithmById(aid)
+            if isinstance(alg, QgsProcessingAlgorithm):
+                self.setAlgorithm(alg)
+
+                try:
+                    dump = settings.value(f'{k}/algorithmParameters', None)
+                    if isinstance(dump, str):
+                        par_restored = json.loads(dump)
+                        self.setParameters(par_restored)
+                except Exception:
+                    pass
+
+    def saveSettings(self):
+        """
+        Saves the current settings for this widget, e.g. the last used algorithm and its parameters
+        :return:
+        """
+        settings = speclibSettings()
+        k = self.__class__.__name__
+        alg = self.algorithm()
+        if isinstance(alg, QgsProcessingAlgorithm):
+            # save current algorithm id
+            settings.setValue(f'{k}/algorithmId', alg.id())
+
+            parametersWidget = self.mainWidget()
+            try:
+                if isinstance(parametersWidget, SpectralProcessingParametersWidget):
+                    parameters = parametersWidget.createProcessingParameters()
+                    parameters2 = dict()
+                    for p, v in parameters.items():
+                        if isinstance(v, QgsMapLayer):
+                            v = v.name()
+                        if isinstance(v, (str, int, float, list)):
+                            parameters2[p] = v
+                    settings.setValue(f'{k}/algorithmParameters', json.dumps(parameters2, ensure_ascii=False))
+            except Exception as ex:
+                print(f'Unable to save last settings: {ex}', file=sys.stderr)
 
     def feedback(self) -> QgsProcessingFeedback:
         return self.mFeedback

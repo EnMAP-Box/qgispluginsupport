@@ -39,6 +39,32 @@ class SpectralProcessingAlgorithmWidgetTests(TestCase):
         # self.assertTrue(widget.algorithm() is None)
         self.showGui(widget)
 
+    def test_settings(self):
+        reg: QgsProcessingRegistry = QgsApplication.processingRegistry()
+        alg1 = reg.createAlgorithmById('gdal:translate')
+        alg2 = reg.createAlgorithmById('native:rescaleraster')
+
+        speclib = TestObjects.createSpectralLibrary()
+
+        widget = SpectralProcessingAlgorithmWidget(speclib, algorithm=alg1)
+        self.assertEqual(alg1.id(), widget.algorithm().id())
+        par1 = {'NODATA': 1234}
+        widget.setParameters(par1)
+        widget.saveSettings()
+
+        widget = SpectralProcessingAlgorithmWidget(speclib)
+        self.assertEqual(widget.algorithm().id(), alg1.id())
+        par_restored = widget.createProcessingParameters()
+        self.assertIn('NODATA', par_restored)
+        self.assertEqual(par_restored['NODATA'], 1234)
+        widget.setAlgorithm(alg2)
+        widget.saveSettings()
+
+        widget = SpectralProcessingAlgorithmWidget(speclib)
+        self.assertEqual(widget.algorithm().id(), alg2.id())
+
+        widget.resetSettings()
+
     def test_spectral_processing_algorithm_widget(self):
         sl = TestObjects.createSpectralLibrary()
 
