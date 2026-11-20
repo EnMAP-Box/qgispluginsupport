@@ -37,6 +37,8 @@ from qgis.core import \
     QgsVectorDataProvider, \
     QgsFeature, QgsGeometry, QgsProject
 from qgis.gui import QgisInterface
+
+from .reimplementation.featureaction import QgsFeatureAction
 from .utils import SpatialExtent, SpatialPoint, featureBoundingBox
 
 
@@ -64,7 +66,6 @@ class VectorLayerTools(QgsVectorLayerTools):
         """
         This method should/will be called, whenever a new feature will be added to the layer.
         """
-        from .maptools import QgsFeatureAction
         a = QgsFeatureAction(action_name, f, layer, None, None)
         return a.addFeature(defaultValues)
 
