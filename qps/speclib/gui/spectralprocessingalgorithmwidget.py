@@ -104,9 +104,9 @@ class SpectralProcessingAlgorithmWidget(ProcessingAlgorithmWidget):
         else:
             self.loadSettings()
 
-    def close(self, event):
+    def closeEvent(self, event):
         self.saveSettings()
-        super().close(event)
+        super().closeEvent(event)
 
     def resetSettings(self):
         """
