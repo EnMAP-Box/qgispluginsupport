@@ -108,13 +108,14 @@ class SpectralProcessingAlgorithmWidget(ProcessingAlgorithmWidget):
         self.saveSettings()
         super().closeEvent(event)
 
-    def resetSettings(self):
+    @classmethod
+    def resetSettings(cls):
         """
         Deletes the settings for this widget
         :return:
         """
         settings = speclibSettings()
-        k = self.__class__.__name__
+        k = cls.__name__
         settings.remove(f'{k}/algorithmId')
         settings.remove(f'{k}/algorithmParameters')
 

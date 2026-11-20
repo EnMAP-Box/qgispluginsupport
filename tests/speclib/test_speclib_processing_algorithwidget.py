@@ -22,6 +22,7 @@ class SpectralProcessingAlgorithmWidgetTests(TestCase):
 
         speclib = TestObjects.createSpectralLibrary()
 
+        SpectralProcessingAlgorithmWidget.resetSettings()
         widget = SpectralProcessingAlgorithmWidget(speclib)
         self.assertTrue(widget.algorithm() is None)
 
