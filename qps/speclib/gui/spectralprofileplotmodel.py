@@ -1849,7 +1849,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
                                        slot=lambda *args, lid=speclib.id(): self.updatePlot()),
 
                 SignalProxy(speclib.styleChanged, rateLimit=rl, slot=self.onSpeclibStyleChanged),
-
+                SignalProxy(speclib.rendererChanged, rateLimit=rl, slot=self.onSpeclibStyleChanged),
                 SignalProxyUndecorated(speclib.attributeAdded, rateLimit=rl,
                                        slot=lambda aid, lid=speclib.id(): _attribute_added(lid, aid)),
 
