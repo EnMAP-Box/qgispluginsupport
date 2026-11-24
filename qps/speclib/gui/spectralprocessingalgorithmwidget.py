@@ -1,6 +1,7 @@
 import json
 import os.path
 import sys
+import typing
 from pathlib import Path
 from typing import List, Dict, Any, Tuple
 
@@ -91,7 +92,7 @@ class SpectralProcessingAlgorithmWidget(ProcessingAlgorithmWidget):
         self.mProcessingAlgorithmModel: SpectralProcessingAlgorithmModel = SpectralProcessingAlgorithmModel()
 
         self.mSpeclib = speclib
-
+        self.mResults = dict()
         self.mFeedback = self.createFeedback()
         self.mContextGenerator = SpectralProcessingContextGenerator(speclib)
 
@@ -172,6 +173,11 @@ class SpectralProcessingAlgorithmWidget(ProcessingAlgorithmWidget):
 
     def selectedFeaturesOnly(self) -> bool:
         return self.cbSelectedFeaturesOnly.isEnabled() and self.cbSelectedFeaturesOnly.isChecked()
+
+    def setResults(self, results: dict[str | None, typing.Any]) -> None:
+        # keep a ref on results
+        self.mResults = results
+        super().setResults(results)
 
     def createParametersPanel(self, inPlaceMode, activeLayer, messageBar):
         a = self.algorithm()
@@ -358,6 +364,8 @@ class SpectralProcessingAlgorithmWidget(ProcessingAlgorithmWidget):
         ok, outputs, errors = collect_outputs(results, algorithm, tmp_context)
         if ok:
             write_outputs_to_speclib(speclib, outputs, active_features, feedback)
+            self.setResults(results)
+        self.algorithmFinished.emit(ok, results)
 
 
 def temp_tiff_filename(path: str, context: QgsProcessingContext):
