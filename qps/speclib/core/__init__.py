@@ -69,7 +69,7 @@ def is_spectral_library(layer: Any) -> bool:
     :param layer: QgsVectorLayer
     :return: bool
     """
-    if not isinstance(layer, QgsVectorLayer) and layer.isValid():
+    if not (isinstance(layer, QgsVectorLayer) and layer.isValid()):
         return False
     return contains_profile_field(layer)
 
