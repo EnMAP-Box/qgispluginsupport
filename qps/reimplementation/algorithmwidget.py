@@ -3,10 +3,23 @@ import time
 import warnings
 from typing import Optional
 
-from processing.core.ProcessingConfig import ProcessingConfig
-from processing.core.ProcessingResults import resultsList
-from processing.gui.AlgorithmExecutor import executeIterating, execute_in_place, execute
-from processing.gui.BatchAlgorithmDialog import BatchAlgorithmDialog
+# Handle missing processing modules in standalone mode
+try:
+    from processing.core.ProcessingConfig import ProcessingConfig
+    from processing.core.ProcessingResults import resultsList
+    from processing.gui.AlgorithmExecutor import executeIterating, execute_in_place, execute
+    from processing.gui.BatchAlgorithmDialog import BatchAlgorithmDialog
+
+    HAS_PROCESSING_GUI = True
+except (ImportError, ModuleNotFoundError):
+    ProcessingConfig = None
+    resultsList = None
+    executeIterating = None
+    execute_in_place = None
+    execute = None
+    BatchAlgorithmDialog = None
+    HAS_PROCESSING_GUI = False
+
 from qgis.PyQt import sip
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtWidgets import QMainWindow, QPushButton, QDialogButtonBox, QMessageBox
@@ -74,7 +87,7 @@ class AlgorithmWidget(ProcessingAlgorithmWidget):
 
         if not self.inPlace():
             self.runAsBatchButton = QPushButton(
-                QCoreApplication.translate("AlgorithmDialog", "Run as Batch Process…")
+                QCoreApplication.translate("AlgorithmDialog", "Run as Batch Process...")
             )
             self.runAsBatchButton.clicked.connect(self.runAsBatch)
             self.buttonBox().addButton(
@@ -131,7 +144,10 @@ class AlgorithmWidget(ProcessingAlgorithmWidget):
         self.applyContextOverrides(self.context)
         self.algorithmAboutToRun.emit(self.context)
 
-        checkCRS = ProcessingConfig.getSetting(ProcessingConfig.WARN_UNMATCHING_CRS)
+        # Handle missing ProcessingConfig
+        checkCRS = False
+        if ProcessingConfig and hasattr(ProcessingConfig, 'getSetting'):
+            checkCRS = ProcessingConfig.getSetting(ProcessingConfig.WARN_UNMATCHING_CRS)
 
         # messy as all heck, but we don't want to call the dialog's implementation of
         # createProcessingParameters as we want to catch the exceptions raised by the
@@ -350,7 +366,7 @@ class AlgorithmWidget(ProcessingAlgorithmWidget):
             else:
                 self.proxy_progress = QgsProxyProgressTask(
                     QCoreApplication.translate(
-                        "AlgorithmDialog", "Executing “{}”"
+                        "AlgorithmDialog", "Executing \"{}\""
                     ).format(self.algorithm().displayName())
                 )
                 QgsApplication.taskManager().addTask(self.proxy_progress)
@@ -394,8 +410,6 @@ class AlgorithmWidget(ProcessingAlgorithmWidget):
                         result=result[out.name()],
                     )
                     generated_html_outputs = True
-
-            # wc = self.createWidgetContext()
 
             if not self._results_handler.handleAlgorithmResults(self.algorithm(), context, result, feedback):
                 self.resetGui()

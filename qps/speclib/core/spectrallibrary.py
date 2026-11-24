@@ -734,9 +734,12 @@ class SpectralLibraryUtils:
         return mimeData
 
     @staticmethod
-    def addSpectralProfileField(speclib: QgsVectorLayer,
-                                name: str, comment: str = None,
-                                encoding: ProfileEncoding = ProfileEncoding.Text) -> bool:
+    def addSpectralProfileField(
+        speclib: QgsVectorLayer,
+        name: str,
+        comment: str | None = None,
+        encoding: ProfileEncoding = ProfileEncoding.Text
+    ) -> bool:
         return speclib.addAttribute(create_profile_field(name, comment, encoding=encoding))
 
     @staticmethod

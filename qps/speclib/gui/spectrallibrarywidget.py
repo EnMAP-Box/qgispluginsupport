@@ -1,15 +1,15 @@
 import logging
 import warnings
 from pathlib import Path
-from typing import Dict, Generator, List, Optional, Tuple
+from typing import Dict, List, Optional
 
 from qgis.PyQt.QtCore import pyqtSignal, Qt
 from qgis.PyQt.QtGui import QCloseEvent, QKeySequence
 from qgis.PyQt.QtGui import QDragEnterEvent, QDropEvent
 from qgis.PyQt.QtWidgets import QMenu, QWidget
 from qgis.PyQt.QtWidgets import QToolButton
-from qgis.core import (QgsFeature, QgsProcessingOutputFile, QgsProject, QgsVectorLayer, QgsMapLayer)
 from qgis.core import QgsProcessingContext, QgsProcessingFeedback
+from qgis.core import (QgsProcessingOutputFile, QgsProject, QgsVectorLayer, QgsMapLayer)
 from qgis.gui import QgsAttributeTableView, QgsMapCanvas
 from qgis.gui import QgsMessageBar
 
@@ -305,7 +305,7 @@ class SpectralLibraryWidget(QWidget):
         return self.mSpeclibPlotWidget.currentSpeclib()
 
     def speclib(self) -> Optional[QgsVectorLayer]:
-        warnings.warn(DeprecationWarning('Use .speclib()'), stacklevel=2)
+        warnings.warn(DeprecationWarning('Use .currentSpeclib()'), stacklevel=2)
         return self.currentSpeclib()
 
     def sourceLayers(self) -> List[QgsVectorLayer]:
@@ -397,11 +397,7 @@ class SpectralLibraryWidget(QWidget):
     def spectralLibraryPlotWidget(self) -> SpectralLibraryPlotWidget:
         return self.mSpeclibPlotWidget
 
-    def setCurrentProfiles(self,
-                           currentProfiles: Dict[str, List[QgsFeature]],
-                           make_permanent: bool = None,
-                           currentProfileStyles: Dict[Tuple[int, str], PlotStyle] = None,
-                           ):
+    def setCurrentProfiles(self, *args, **kwds):
         """
         Sets temporary profiles for the spectral library.
         If not made permanent, they will be removed when adding the next set of temporary profiles
@@ -412,18 +408,7 @@ class SpectralLibraryWidget(QWidget):
         """
         warnings.warn(
             DeprecationWarning('Will be removed. use .plotModel().addProfileCandidates(...) instead'), stacklevel=2)
-        if isinstance(currentProfiles, Generator):
-            currentProfiles = list(currentProfiles)
-        if isinstance(currentProfiles, list):
-            currentProfiles = {self.speclib().id(): currentProfiles}
-        if not (isinstance(currentProfiles, dict)):
-            raise AssertionError
-
-        plotModel: SpectralProfilePlotModel = self.plotModel()
-        plotModel.addProfileCandidates(currentProfiles)
-
-        self.updateActions()
-        # self.speclib().triggerRepaint()
+        self.plotModel().addProfileCandidates(*args, **kwds)
 
     def canvas(self) -> QgsMapCanvas:
         """
