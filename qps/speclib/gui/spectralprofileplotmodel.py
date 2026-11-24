@@ -1944,9 +1944,12 @@ class SpectralProfilePlotModel(QStandardItemModel):
         try:
             if lid in self.mSignalProxies:
                 for proxy in self.mSignalProxies[lid]:
-                    proxy.disconnect()
+                    if hasattr(proxy, 'disconnect'):
+                        proxy.disconnect()
                 del self.mSignalProxies[lid]
-        except (AttributeError, RuntimeError):
+        except (AttributeError, RuntimeError) as ex:
+            warnings.warn(f'SpectralProfilePlotModel.disconnectSpeclibSignals for layer id:  {lid} raised:\n{ex}')
+
             # C++ object has been deleted, ignore
             pass
 

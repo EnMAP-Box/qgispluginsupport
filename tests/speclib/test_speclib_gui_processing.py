@@ -379,7 +379,7 @@ class SpectralProcessingTests(TestCase):
                 }
         provider = ExampleAlgorithmProvider.instance()
         provider.addAlgorithm(AlgorithmLogging(logs))
-        algorithmId = provider.algorithms()[0].id()
+        algorithm_id = provider.algorithms()[0].id()
 
         speclib = TestObjects.createSpectralLibrary(2)
 
@@ -389,7 +389,7 @@ class SpectralProcessingTests(TestCase):
             slw = SpectralLibraryWidget(speclib=speclib)
             slw.show()
             spd = SpectralProcessingAlgorithmWidget(speclib)
-            spd.setAlgorithm(algorithmId)
+            spd.setAlgorithm(algorithm_id)
             # feedback = spd.feedback()
             spd.runAlgorithm(fail_fast=True)
 

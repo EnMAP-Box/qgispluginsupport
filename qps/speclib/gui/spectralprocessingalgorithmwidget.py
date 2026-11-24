@@ -32,7 +32,6 @@ from qgis.core import QgsSettings
 from qgis.gui import QgsMessageBar
 from qgis.gui import QgsPanelWidget
 from qgis.gui import QgsProcessingParametersGenerator
-from qgis.processing import run as executeAlgorithm
 
 from .spectralprocessingalgorithmmodel import SpectralProcessingAlgorithmModel
 from .spectralprocessingcontextgenerator import SpectralProcessingContextGenerator
@@ -340,6 +339,7 @@ class SpectralProcessingAlgorithmWidget(ProcessingAlgorithmWidget):
         ok = False
 
         try:
+            from qgis.processing import run as executeAlgorithm
             results = executeAlgorithm(
                 algOrName=algorithm,
                 parameters=tmp_parameter,
