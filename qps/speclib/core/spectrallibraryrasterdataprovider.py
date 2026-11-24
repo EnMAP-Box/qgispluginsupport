@@ -52,7 +52,7 @@ def create_uri(vl: QgsVectorLayer, field: QgsField, layername: str | None = None
 def createRasterLayers(
     vl: QgsVectorLayer,
     selected_only: bool = False,
-    fields: Union[str, List[str], List[QgsField], QgsField, QgsFields] = None
+    fields: Union[str, List[str], List[QgsField], QgsField, QgsFields, None] = None
 ) -> List[QgsRasterLayer]:
     """
     Returns a list of in-memory QgsRasterLayers that represent the values inside a QgsVectorLayer.

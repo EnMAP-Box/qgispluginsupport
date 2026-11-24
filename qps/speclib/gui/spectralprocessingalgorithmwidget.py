@@ -1,11 +1,11 @@
+import json
 import os.path
+import sys
 import typing
 from pathlib import Path
 from typing import List, Dict, Any, Tuple
 
 import numpy as np
-
-from processing.gui.AlgorithmExecutor import execute
 from qgis.PyQt.QtCore import QMetaType
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtGui import QIcon
@@ -19,6 +19,7 @@ from qgis.PyQt.QtWidgets import (
     QSizePolicy,
 )
 from qgis.PyQt.QtWidgets import QDialog
+from qgis.PyQt.QtWidgets import QMainWindow
 from qgis.core import QgsApplication, QgsProcessingParameterRasterDestination, QgsProcessingException
 from qgis.core import QgsFeature, QgsField
 from qgis.core import QgsProcessingAlgorithm, QgsVectorLayer
@@ -27,13 +28,16 @@ from qgis.core import QgsProcessingParameterDefinition, QgsProcessingOutputRaste
 from qgis.core import QgsProcessingUtils, QgsRasterLayer, QgsProcessingParameterMultipleLayers, QgsProcessingContext, \
     QgsMapLayer, QgsProcessingParameterRasterLayer
 from qgis.core import QgsProject
+from qgis.core import QgsSettings
 from qgis.gui import QgsMessageBar
 from qgis.gui import QgsPanelWidget
 from qgis.gui import QgsProcessingParametersGenerator
+
 from .spectralprocessingalgorithmmodel import SpectralProcessingAlgorithmModel
 from .spectralprocessingcontextgenerator import SpectralProcessingContextGenerator
 from .spectralprocessingparameterswidget import SpectralProcessingParametersWidget
 from .spectralprocessingrasterdestination import SpectralProcessingRasterDestination
+from .. import speclibSettings
 from ..core.spectrallibrary import SpectralLibraryUtils
 from ..core.spectrallibraryrasterdataprovider import VectorLayerFieldRasterDataProvider
 from ..core.spectralprofile import ProfileEncoding, prepareProfileValueDict, encodeProfileValueDict
@@ -49,8 +53,12 @@ class SpectralProcessingAlgorithmWidget(ProcessingAlgorithmWidget):
         if not isinstance(speclib, QgsVectorLayer):
             raise TypeError('speclib must be a QgsVectorLayer')
 
+        parent_window = kwds.get('parent_window')
+        if parent_window is None:
+            parent_window = QMainWindow()
+            kwds['parent_window'] = parent_window
         super().__init__(None, *args, **kwds)
-
+        self._parent_window: QMainWindow = parent_window
         self.setWindowFlag(Qt.WindowType.WindowContextHelpButtonHint, False)
         # QgsProcessingContextGenerator.__init__(self)
         self.mWidgetName = 'Spectral Processing Widget'
@@ -94,6 +102,70 @@ class SpectralProcessingAlgorithmWidget(ProcessingAlgorithmWidget):
 
         if algorithm:
             self.setAlgorithm(algorithm)
+        else:
+            self.loadSettings()
+
+    def closeEvent(self, event):
+        self.saveSettings()
+        super().closeEvent(event)
+
+    @classmethod
+    def resetSettings(cls):
+        """
+        Deletes the settings for this widget
+        :return:
+        """
+        settings = speclibSettings()
+        k = cls.__name__
+        settings.remove(f'{k}/algorithmId')
+        settings.remove(f'{k}/algorithmParameters')
+
+    def loadSettings(self):
+        """
+        Loads saved settings for this widget, e.g. the last used algorithm and its parameters
+        """
+        settings: QgsSettings = speclibSettings()
+        k = self.__class__.__name__
+        aid = settings.value(f'{k}/algorithmId', None)
+        if isinstance(aid, str):
+            alg = QgsApplication.instance().processingRegistry().createAlgorithmById(aid)
+            if isinstance(alg, QgsProcessingAlgorithm):
+                self.setAlgorithm(alg)
+
+                try:
+
+                    dump = settings.value(f'{k}/algorithmParameters', None)
+                    if isinstance(dump, str):
+                        par_restored = json.loads(dump)
+                        self.setParameters(par_restored)
+                except Exception:  # nosec: B110
+                    pass
+
+    def saveSettings(self):
+        """
+        Saves the current settings for this widget, e.g. the last used algorithm and its parameters
+        :return:
+        """
+        settings = speclibSettings()
+        k = self.__class__.__name__
+        alg = self.algorithm()
+        if isinstance(alg, QgsProcessingAlgorithm):
+            # save current algorithm id
+            settings.setValue(f'{k}/algorithmId', alg.id())
+
+            parametersWidget = self.mainWidget()
+            try:
+                if isinstance(parametersWidget, SpectralProcessingParametersWidget):
+                    parameters = parametersWidget.createProcessingParameters()
+                    parameters2 = dict()
+                    for p, v in parameters.items():
+                        if isinstance(v, QgsMapLayer):
+                            v = v.name()
+                        if isinstance(v, (str, int, float, list)):
+                            parameters2[p] = v
+                    settings.setValue(f'{k}/algorithmParameters', json.dumps(parameters2, ensure_ascii=False))
+            except Exception as ex:
+                print(f'Unable to save last settings: {ex}', file=sys.stderr)
 
     def feedback(self) -> QgsProcessingFeedback:
         return self.mFeedback
@@ -184,7 +256,7 @@ class SpectralProcessingAlgorithmWidget(ProcessingAlgorithmWidget):
         self.tbAlgorithmName.setStyleSheet(css)
         self.tbAlgorithmName.setText(info)
         self.tbAlgorithmName.setToolTip(tooltip)
-        self.setWindowTitle(self.mWidgetName)
+        # self.setWindowTitle(self.mWidgetName)
 
     def processingContext(self):
         return self.mContextGenerator.processingContext()
@@ -263,11 +335,22 @@ class SpectralProcessingAlgorithmWidget(ProcessingAlgorithmWidget):
         feedback.pushInfo(f'Execute algorithm: {algorithm.id()} ...')
         feedback.pushInfo('Parameters:')
         feedback.pushConsoleInfo(str(tmp_parameter))
-        ok, results = execute(algorithm,
-                              tmp_parameter,
-                              context=tmp_context,
-                              feedback=feedback,
-                              catch_exceptions=not fail_fast)
+
+        ok = False
+
+        try:
+            from qgis.processing import run as executeAlgorithm
+            results = executeAlgorithm(
+                algOrName=algorithm,
+                parameters=tmp_parameter,
+                context=tmp_context,
+                feedback=feedback
+            )
+            ok = True
+        except Exception as ex:
+            if fail_fast:
+                raise ex
+            results = {'error': str(ex)}
         if not ok:
             feedback.reportError(f'Execution failed: {str(results)}')
             return
@@ -282,7 +365,11 @@ class SpectralProcessingAlgorithmWidget(ProcessingAlgorithmWidget):
         if ok:
             write_outputs_to_speclib(speclib, outputs, active_features, feedback)
             self.setResults(results)
-        self.algorithmFinished.emit(ok, results)
+        try:
+            self.algorithmFinished.emit(ok, results, tmp_context)
+        except TypeError:
+            # old-style
+            self.algorithmFinished.emit(ok, results)
 
 
 def temp_tiff_filename(path: str, context: QgsProcessingContext):

@@ -24,28 +24,27 @@
 import enum
 import math
 import sys
-from typing import Dict, Any, List, Optional
+from typing import Optional
 
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtCore import pyqtSignal, QTimer, QObject, QPoint, QRect, QSize, QEvent
 from qgis.PyQt.QtGui import QColor, QKeyEvent, QIcon, QCursor
-from qgis.PyQt.QtWidgets import QApplication, QAction, QLabel, QHBoxLayout, QWidget, QSizePolicy, QAbstractButton
-from qgis.core import QgsRasterDataProvider, QgsSettingsRegistryCore, QgsSettingsEntryBool, \
-    QgsWkbTypes, QgsVectorLayerTools, QgsProject, QgsVectorLayer, QgsPoint, QgsGeometry, \
-    QgsCoordinateReferenceSystem, QgsPointXY, QgsFeature, QgsEditFormConfig, QgsMultiPoint, \
-    QgsFeatureRequest, QgsExpressionContextUtils, QgsRenderContext, QgsCsException, QgsDistanceArea, QgsLineString, \
-    QgsRectangle, QgsVectorLayerUtils, QgsVectorDataProvider, Qgis, QgsRasterLayer, QgsAction, QgsMapLayer, \
-    QgsApplication, QgsPointLocator, QgsCurvePolygon, QgsPolygon, QgsFeatureIterator, QgsCoordinateTransform, \
-    QgsExpressionContextScope
+from qgis.PyQt.QtWidgets import QApplication, QLabel, QHBoxLayout, QWidget, QSizePolicy
+from qgis.core import QgsRasterDataProvider, QgsWkbTypes, QgsVectorLayerTools, QgsProject, QgsVectorLayer, QgsPoint, \
+    QgsGeometry, \
+    QgsCoordinateReferenceSystem, QgsPointXY, QgsFeature, QgsMultiPoint, \
+    QgsFeatureRequest, QgsExpressionContextUtils, QgsRenderContext, QgsCsException, QgsLineString, \
+    QgsRectangle, QgsVectorDataProvider, Qgis, QgsRasterLayer, QgsMapLayer, \
+    QgsApplication, QgsPointLocator, QgsCurvePolygon, QgsPolygon, QgsFeatureIterator, QgsCoordinateTransform
 from qgis.gui import QgsAttributeEditorContext, \
     QgsMapTool, QgsMapToolZoom, QgsMapToolPan, QgsMapToolCapture, QgsMapToolIdentify, QgsMapToolEmitPoint, \
-    QgsAttributeDialog, QgsIdentifyMenu, QgsSnapIndicator, QgsMapCanvas, QgsRubberBand, QgsMapMouseEvent, \
-    QgsAttributeForm, \
+    QgsIdentifyMenu, QgsSnapIndicator, QgsMapCanvas, QgsRubberBand, QgsMapMouseEvent, \
     QgsUserInputWidget, QgsFloatingWidget, QgsAdvancedDigitizingDockWidget, \
     QgsDoubleSpinBox, \
-    QgsVertexMarker, QgsHighlight
+    QgsVertexMarker
+
+from .reimplementation.featureaction import QgsFeatureAction
 from .utils import SpatialPoint, SpatialExtent
-from .vectorlayertools import VectorLayerTools
 
 
 def tr(t: str) -> str:
@@ -597,271 +596,6 @@ class TemporalProfileMapTool(CursorLocationMapTool):
 class SpectralProfileMapTool(CursorLocationMapTool):
     def __init__(self, *args, **kwds):
         super(SpectralProfileMapTool, self).__init__(*args, **kwds)
-
-
-class QgsFeatureAction(QAction):
-    """
-    This is a python copy of the qgis/app/QgsFeatureAction.cpp
-    """
-    sLastUsedValues: Dict[str, Dict[int, Any]] = dict()
-
-    def __init__(self, name: str, f: QgsFeature, layer: QgsVectorLayer,
-                 actionID: id = '',
-                 defaultAttr: int = -1,
-                 parent: QObject = None):
-
-        super(QgsFeatureAction, self).__init__(name, parent)
-
-        if not (isinstance(layer, QgsVectorLayer)):
-            raise AssertionError
-        self.mLayer = layer
-        self.mFeature = f
-        self.mActionId = actionID
-        self.mIdx = defaultAttr
-        self.mFeatureSaved = False
-        self.mForceSuppressFormPopup = False
-        self.mAttributeEditorContext = QgsAttributeEditorContext()
-        self.mVectorLayerTools = VectorLayerTools()
-
-    def setVectorLayerTools(self, tools: QgsVectorLayerTools):
-        if not (isinstance(VectorLayerTools, QgsVectorLayerTools)):
-            raise AssertionError
-        self.mVectorLayerTools = tools
-
-    def setAttributeEditorContext(self, context: QgsAttributeEditorContext):
-        if not (isinstance(context, QgsAttributeEditorContext)):
-            raise AssertionError
-        self.mAttributeEditorContext = context
-
-    def execute(self):
-        self.mLayer.actions().doAction(self.mActionId, self.mFeature, self.mIdx)
-
-    def newDialog(self, cloneFeatures: bool) -> QgsAttributeDialog:
-        """
-        Creates a new dialog
-        :param cloneFeatures: bool
-        :return: QgsAttributeDialog
-        """
-        f = QgsFeature(self.mFeature) if cloneFeatures else self.mFeature
-
-        myDa = QgsDistanceArea()
-        myDa.setSourceCrs(self.mLayer.crs(), QgsProject.instance().transformContext())
-        myDa.setEllipsoid(QgsProject.instance().ellipsoid())
-        context = QgsAttributeEditorContext(self.mAttributeEditorContext)
-        context.setDistanceArea(myDa)
-        context.setVectorLayerTools(self.mVectorLayerTools)
-        # context.setMapCanvas()
-        context.setFormMode(QgsAttributeEditorContext.FormMode.StandaloneDialog)
-
-        dialog = QgsAttributeDialog(self.mLayer, f, cloneFeatures, self.parentWidget(), True, context)
-        dialog.setWindowFlags(dialog.windowFlags() | Qt.WindowType.Tool)
-        dialog.setObjectName('featureaction {} {}'.format(self.mLayer.id(), f.id()))
-
-        actions = self.mLayer.actions().actions("Feature")
-        if len(actions) == 0:
-            dialog.setContextMenuPolicy(Qt.ContextMenuPolicy.ActionsContextMenu)
-
-        a = QAction(tr("Run Actions"), dialog)
-        a.setEnabled(False)
-        dialog.addAction(a)
-
-        for action in actions:
-            if not (isinstance(action, QgsAction)):
-                raise AssertionError
-            if not action.runable():
-                continue
-
-            if not self.mLayer.isEditable() and action.isEnabledOnlyWhenEditable():
-                continue
-
-            feat = dialog.feature()
-            a = QgsFeatureAction(action.name(), feat, self.mLayer, action.id(), -1, dialog)
-            dialog.addAction(a)
-            a.triggered.connect(a.execute)
-
-            pb = dialog.findChild(QAbstractButton, action.name())
-            if isinstance(pb, QAbstractButton):
-                pb.clicked.connect(a.execute)
-
-        return dialog
-
-    def viewFeatureForm(self, h: QgsHighlight) -> bool:
-
-        if not self.mLayer or not self.mFeature:
-            return False
-
-        _ = "featureactiondlg:{}:{}".format(self.mLayer.id(), self.mFeature.id())
-
-        dialog = self.newDialog(True)
-        dialog.setHighlight(h)
-        # // delete the dialog when it is closed
-        dialog.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
-        dialog.show()
-
-        return True
-
-    def editFeature(self, showModal: bool) -> bool:
-
-        if not self.mLayer:
-            return False
-
-        if showModal:
-
-            dialog = self.newDialog(False)
-
-            if not self.mFeature.isValid():
-                dialog.setMode(QgsAttributeEditorContext.Mode.AddFeatureMode)
-
-            rv = dialog.exec()
-            self.mFeature.setAttributes(dialog.feature().attributes())
-            return rv
-
-        else:
-
-            _ = "featureactiondlg:{}:{}".format(self.mLayer.id(), self.mFeatureid())
-
-            # QgsAttributeDialog *dialog = QgisApp::instance() -> findChild<QgsAttributeDialog *>( name );
-            # if ( dialog )
-            # {
-            #  dialog->raise();
-            #  return true;
-            # }
-
-            dialog = self.newDialog(False)
-
-            if not self.mFeature.isValid():
-                dialog.setMode(QgsAttributeEditorContext.Mode.AddFeatureMode)
-
-            # // delete the dialog when it is closed
-            dialog.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
-            dialog.show()
-
-        return True
-
-    def addFeature(self,
-                   defaultAttributeValues: dict = dict(),
-                   showModal: bool = True,
-                   scope: QgsExpressionContextScope = None) -> bool:
-
-        if not (isinstance(self.mLayer, QgsVectorLayer) and self.mLayer.isEditable()):
-            return
-
-        qgsSettingsRegistry = QgsSettingsRegistryCore()
-        initialAttributeValues = dict()
-        reuseLastValues = False
-        entry = qgsSettingsRegistry.settingsEntry('qgis/digitizing/reuseLastValues')
-        if isinstance(entry, QgsSettingsEntryBool):
-            reuseLastValues = entry.value()
-
-        lyr: QgsVectorLayer = self.mLayer
-        for idx in range(lyr.fields().count()):
-
-            if idx in defaultAttributeValues.keys():
-                initialAttributeValues[idx] = defaultAttributeValues[idx]
-            elif (
-                (reuseLastValues or lyr.editFormConfig().reuseLastValue(idx))
-                and self.mLayer.id() in self.sLastUsedValues.keys()  # noqa: W503
-                and idx in self.sLastUsedValues[lyr.id()].keys()  # noqa: W503
-            ):
-
-                lastUsed = self.sLastUsedValues[lyr.id()][idx]
-                """
-                // Only set initial attribute value if it's different from the default clause or we may trigger
-                // unique constraint checks for no reason, see https://github.com/qgis/QGIS/issues/42909
-                """
-                if lyr.dataProvider() and lyr.dataProvider().defaultValueClause(idx) != lastUsed:
-                    initialAttributeValues[idx] = lastUsed
-
-        fields = self.mLayer.fields()
-
-        context = self.mLayer.createExpressionContext()
-        if scope:
-            context.appendScope(scope)
-
-        newFeature = QgsVectorLayerUtils.createFeature(self.mLayer, self.mFeature.geometry(), initialAttributeValues,
-                                                       context)
-
-        self.mFeature = newFeature
-
-        isDisabledAttributesValueDlg = False
-        entry = qgsSettingsRegistry.settingsEntry('qgis/digitizing/disable_enter_attribute_values_dialog')
-        if isinstance(entry, QgsSettingsEntryBool):
-            isDisabledAttributesValueDlg = entry.value()
-
-        if not self.mLayer.isSpatial():
-            isDisabledAttributesValueDlg = False
-
-        if fields.count() == 0:
-            isDisabledAttributesValueDlg = True
-
-        opt = self.mLayer.editFormConfig().suppress()
-        if opt == QgsEditFormConfig.FeatureFormSuppress.SuppressOn:
-            isDisabledAttributesValueDlg = True
-        elif opt == QgsEditFormConfig.FeatureFormSuppress.SuppressOff:
-            isDisabledAttributesValueDlg = False
-
-        if self.mForceSuppressFormPopup:
-            isDisabledAttributesValueDlg = True
-
-        if isDisabledAttributesValueDlg:
-            self.mLayer.beginEditCommand(self.text())
-            self.mFeatureSaved = self.mLayer.addFeature(self.mFeature)
-            if self.mFeatureSaved:
-                self.mLayer.endEditCommand()
-                self.mLayer.triggerRepaint()
-            else:
-                self.mLayer.destroyEditComand()
-        else:
-
-            dialog = self.newDialog(False)
-            dialog.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
-            dialog.setMode(QgsAttributeEditorContext.Mode.AddFeatureMode)
-            dialog.setEditCommandMessage(self.text())
-
-            dialog.attributeForm().featureSaved.connect(
-                lambda f, form=dialog.attributeForm(): self.onFeatureSaved(f, form))
-            self._d = dialog
-            if not showModal:
-                self.setParent(dialog)
-                dialog.show()
-
-                self.mFeature = None
-                return True
-
-            dialog.exec()
-
-        return self.mFeatureSaved
-
-    def setForceSuppressFormPopup(self, force: bool):
-        self.mForceSuppressFormPopup = force
-
-    def onFeatureSaved(self, feature: QgsFeature, form: QgsAttributeForm):
-        form = self.sender()
-        if not isinstance(form, QgsAttributeForm):
-            return
-
-        # // Assign provider generated values
-        if self.mFeature:
-            self.mFeature = feature
-
-        self.mFeatureSaved = True
-
-        qgsSettingsRegistry = QgsSettingsRegistryCore()
-
-        reuseLastValues = False
-        entry = qgsSettingsRegistry.settingsEntry('qgis/digitizing/reuseLastValues')
-        if isinstance(entry, QgsSettingsEntryBool):
-            reuseLastValues = entry.value()
-
-        lyr = self.mLayer
-
-        if reuseLastValues:
-            fields = lyr.fields()
-            origValues: Dict[int, Any] = self.sLastUsedValues.get(lyr.id(), dict())
-            newValues: List = feature.attributes()
-            for idx in range(fields.count()):
-                origValues[idx] = newValues[idx]
-            self.sLastUsedValues[lyr.id()] = origValues
 
 
 class QgsMapToolDigitizeFeature(QgsMapToolCapture):

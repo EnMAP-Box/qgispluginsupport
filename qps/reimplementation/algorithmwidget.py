@@ -26,17 +26,22 @@ class AlgorithmWidget(ProcessingAlgorithmWidget):
     """
 
     def __init__(
-            self,
-            alg: QgsProcessingAlgorithm,
-            in_place: bool = False,
-            parent: Optional[QMainWindow] = None,
-            flags: QgsProcessingAlgorithmWidgetBase.WidgetFlags = QgsProcessingAlgorithmWidgetBase.WidgetFlags(),
-            initial_state: Qgis.DockableWidgetInitialState = Qgis.DockableWidgetInitialState.RestorePreviousState,
-            processing_context: Optional[QgsProcessingContext] = None,
-            widget_context: Optional[QgsProcessingParameterWidgetContext] = None,
-            results_handler: Optional[GenericProcessingResultsHandler] = None,
-            context=None,
+        self,
+        alg: QgsProcessingAlgorithm,
+        in_place: bool = False,
+        parent: Optional[QMainWindow] = None,
+        flags: QgsProcessingAlgorithmWidgetBase.WidgetFlags = QgsProcessingAlgorithmWidgetBase.WidgetFlags(),
+        initial_state: Qgis.DockableWidgetInitialState = Qgis.DockableWidgetInitialState.RestorePreviousState,
+        processing_context: Optional[QgsProcessingContext] = None,
+        widget_context: Optional[QgsProcessingParameterWidgetContext] = None,
+        results_handler: Optional[GenericProcessingResultsHandler] = None,
+        context: Optional[QgsProcessingContext] = None,
     ):
+
+        if isinstance(context, QgsProcessingContext):
+            warnings.warn("Deprecated: use processing_context instead of context", DeprecationWarning)
+            processing_context = context
+
         super().__init__(
             alg,
             in_place,
@@ -46,14 +51,6 @@ class AlgorithmWidget(ProcessingAlgorithmWidget):
             processing_context=processing_context,
             widget_context=widget_context,
         )
-
-        if isinstance(context, QgsProcessingContext):
-            warnings.warn(
-                "Use processing_context.",
-                DeprecationWarning,
-                stacklevel=2
-            )
-            processing_context = context
 
         self.feedback_dialog = None
         self.active_layer = iface.activeLayer() if self.inPlace() else None
@@ -184,10 +181,10 @@ class AlgorithmWidget(ProcessingAlgorithmWidget):
                 FlagCreateIndividualOutputPerInputFeature
             )
             if (
-                    isinstance(
-                        parameters.get(param.name(), None),
-                        QgsProcessingFeatureSourceDefinition,
-                    ) and (parameters[param.name()].flags & flag_feature)
+                isinstance(
+                    parameters.get(param.name(), None),
+                    QgsProcessingFeatureSourceDefinition,
+                ) and (parameters[param.name()].flags & flag_feature)
             ):
                 self.iterateParam = param.name()
                 break
@@ -252,11 +249,11 @@ class AlgorithmWidget(ProcessingAlgorithmWidget):
                 self.algorithm().flags() & QgsProcessingAlgorithm.Flag.FlagCanCancel
             )
             if executeIterating(
-                    self.algorithm(),
-                    parameters,
-                    self.iterateParam,
-                    self.context,
-                    self.feedback,
+                self.algorithm(),
+                parameters,
+                self.iterateParam,
+                self.context,
+                self.feedback,
             ):
                 self.feedback.pushInfo(
                     self.tr("Execution completed in {}").format(
@@ -337,7 +334,7 @@ class AlgorithmWidget(ProcessingAlgorithmWidget):
                 self.context = None
 
             if not self.inPlace() and not (
-                    self.algorithm().flags() & QgsProcessingAlgorithm.Flag.FlagNoThreading
+                self.algorithm().flags() & QgsProcessingAlgorithm.Flag.FlagNoThreading
             ):
                 # Make sure the Log tab is visible before executing the algorithm
                 self.showLog()
@@ -386,9 +383,9 @@ class AlgorithmWidget(ProcessingAlgorithmWidget):
             # add html results to results dock
             for out in self.algorithm().outputDefinitions():
                 if (
-                        isinstance(out, QgsProcessingOutputHtml)
-                        and out.name() in result  # noqa: W503
-                        and result[out.name()]  # noqa: W503
+                    isinstance(out, QgsProcessingOutputHtml)
+                    and out.name() in result  # noqa: W503
+                    and result[out.name()]  # noqa: W503
                 ):
                     resultsList.addResult(
                         icon=self.algorithm().icon(),

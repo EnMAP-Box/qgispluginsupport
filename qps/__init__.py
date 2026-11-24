@@ -39,8 +39,8 @@ from qgis.gui import QgisInterface, QgsMapLayerConfigWidgetFactory
 os.environ.setdefault('PYQTGRAPH_QT_LIB', f'PyQt{PYQT_VERSION_STR[0]}')
 # Qt version used by matplotlib
 os.environ.setdefault('QT_API', f'PyQt{PYQT_VERSION_STR[0]}')
-MIN_QGIS_VERSION = '4.00'
-__version__ = '2.0'
+MIN_QGIS_VERSION = '4.2'
+__version__ = '2.1'
 
 DIR_QPS = Path(__file__).parent
 DIR_REPO = DIR_QPS.parent
@@ -60,6 +60,7 @@ KEY_MAPLAYERCONFIGWIDGETFACTORIES = 'qps/QPS_MAPLAYER_CONFIGWIDGET_FACTORIES'
 def debugLog(msg: str, prefix: str = 'DEBUG:'):
     """
     Prints message 'msg' to console only if environmental variable DEBUG is set
+    :param prefix:
     :param msg: str
     """
     if str(os.environ.get('DEBUG', False)).lower() in ['1', 'true']:
