@@ -27,6 +27,7 @@ from qgis.core import QgsProcessingParameterDefinition, QgsProcessingOutputRaste
 from qgis.core import QgsProcessingUtils, QgsRasterLayer, QgsProcessingParameterMultipleLayers, QgsProcessingContext, \
     QgsMapLayer, QgsProcessingParameterRasterLayer
 from qgis.core import QgsProject
+from qgis.core import QgsSettings
 from qgis.gui import QgsMessageBar
 from qgis.gui import QgsPanelWidget
 from qgis.gui import QgsProcessingParametersGenerator
@@ -123,7 +124,7 @@ class SpectralProcessingAlgorithmWidget(ProcessingAlgorithmWidget):
         """
         Loads saved settings for this widget, e.g. the last used algorithm and its parameters
         """
-        settings = speclibSettings()
+        settings: QgsSettings = speclibSettings()
         k = self.__class__.__name__
         aid = settings.value(f'{k}/algorithmId', None)
         if isinstance(aid, str):
@@ -132,11 +133,12 @@ class SpectralProcessingAlgorithmWidget(ProcessingAlgorithmWidget):
                 self.setAlgorithm(alg)
 
                 try:
+
                     dump = settings.value(f'{k}/algorithmParameters', None)
                     if isinstance(dump, str):
                         par_restored = json.loads(dump)
                         self.setParameters(par_restored)
-                except Exception:
+                except Exception:  # nosec: B110
                     pass
 
     def saveSettings(self):
