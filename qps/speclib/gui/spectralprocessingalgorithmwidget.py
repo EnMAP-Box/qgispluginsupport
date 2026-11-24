@@ -365,7 +365,11 @@ class SpectralProcessingAlgorithmWidget(ProcessingAlgorithmWidget):
         if ok:
             write_outputs_to_speclib(speclib, outputs, active_features, feedback)
             self.setResults(results)
-        self.algorithmFinished.emit(ok, results)
+        try:
+            self.algorithmFinished.emit(ok, results, tmp_context)
+        except TypeError:
+            # old-style
+            self.algorithmFinished.emit(ok, results)
 
 
 def temp_tiff_filename(path: str, context: QgsProcessingContext):

@@ -27,6 +27,8 @@ class SpectralProcessingContextGenerator(QgsProcessingContextGenerator, QgsProce
         self.updateExampleLayers()
 
     def processingContext(self) -> QgsProcessingContext:
+        if not hasattr(self, '_p_context'):
+            return QgsProcessingContext()
         return self._p_context
 
     def createWidgetContext(self) -> QgsProcessingParameterWidgetContext:

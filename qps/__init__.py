@@ -40,7 +40,7 @@ os.environ.setdefault('PYQTGRAPH_QT_LIB', f'PyQt{PYQT_VERSION_STR[0]}')
 # Qt version used by matplotlib
 os.environ.setdefault('QT_API', f'PyQt{PYQT_VERSION_STR[0]}')
 MIN_QGIS_VERSION = '4.2'
-__version__ = '2.0'
+__version__ = '2.1'
 
 DIR_QPS = Path(__file__).parent
 DIR_REPO = DIR_QPS.parent

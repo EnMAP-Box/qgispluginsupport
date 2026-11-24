@@ -10,7 +10,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        qgis_version: [latest]
+        qgis_version: ["latest"]
     env:
       QGIS_TEST_VERSION: ${{ matrix.qgis_version }}
     steps:
