@@ -60,6 +60,7 @@ KEY_MAPLAYERCONFIGWIDGETFACTORIES = 'qps/QPS_MAPLAYER_CONFIGWIDGET_FACTORIES'
 def debugLog(msg: str, prefix: str = 'DEBUG:'):
     """
     Prints message 'msg' to console only if environmental variable DEBUG is set
+    :param prefix:
     :param msg: str
     """
     if str(os.environ.get('DEBUG', False)).lower() in ['1', 'true']:
