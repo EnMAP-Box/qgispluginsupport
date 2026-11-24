@@ -1,7 +1,7 @@
-from typing import Dict, List, Union, Optional
+from typing import Dict, List, Union, Any
 
 from qgis.PyQt.QtCore import QMetaType
-from qgis.core import QgsFeature, QgsField, QgsFields, QgsVectorLayer, QgsMapLayer
+from qgis.core import QgsFeature, QgsField, QgsFields, QgsVectorLayer
 
 
 def create_profile_field(*args, **kwds) -> QgsField:
@@ -9,7 +9,7 @@ def create_profile_field(*args, **kwds) -> QgsField:
     return SpectralLibraryUtils.createProfileField(*args, **kwds)
 
 
-def can_store_spectral_profiles(field: QgsField) -> bool:
+def can_store_spectral_profiles(field: Any) -> bool:
     """
     Returns True if the QgsField can be used to store spectral profiles
     """
@@ -45,7 +45,7 @@ def make_profile_field(field: QgsField) -> True:
     return SpectralLibraryUtils.makeToProfileField(field)
 
 
-def contains_profile_field(object: Union[QgsVectorLayer, QgsFeature, QgsFields]) -> bool:
+def contains_profile_field(object: Union[QgsVectorLayer, QgsFeature, QgsFields, Any]) -> bool:
     """
     Returns True if the input contains a QgsField of type binary / string and editorWidget SpectralProfile
     :param object:
@@ -63,18 +63,18 @@ def contains_profile_field(object: Union[QgsVectorLayer, QgsFeature, QgsFields])
     return False
 
 
-def is_spectral_library(layer: Optional[QgsMapLayer]) -> bool:
+def is_spectral_library(layer: Any) -> bool:
     """
     Returns True if a vector layer contains at least one spectral profile field
     :param layer: QgsVectorLayer
     :return: bool
     """
-    if not isinstance(layer, QgsVectorLayer):
+    if not isinstance(layer, QgsVectorLayer) and layer.isValid():
         return False
     return contains_profile_field(layer)
 
 
-def is_spectral_feature(feature: QgsFeature) -> bool:
+def is_spectral_feature(feature: Any) -> bool:
     """
     Returns True if a QgsFeatures contains at least oe spectral profile field
     :param feature:
