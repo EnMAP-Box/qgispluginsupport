@@ -6,10 +6,70 @@ This skill provides guidance and assistance for developing, testing, and maintai
 
 ## Available Commands
 
+## Python Environment Resolution
+
+Always determine the active PyCharm project Python interpreter dynamically before running Python, pytest, or module checks.
+
+- Do not hardcode a path to `python` or `venv/bin/python`.
+- On Linux/macOS, determine the interpreter by running:
+  ```bash
+  PYTHON_BIN=$(grep -oE '<option name="project-jdk-name" value="[^"]+"' .idea/misc.xml | cut -d'"' -f4)
+  ```
+  If this returns an absolute path, use `$PYTHON_BIN`. If it returns a venv name (e.g., `Python 3.11 (my-env)`), check `.idea/misc.xml` or `.idea/*.iml` for the exact SDK home path, or run `which python` inside the PyCharm terminal environment.
+- Execute Python commands using the resolved interpreter path:
+  ```bash
+  <resolved-python-path> -m pytest
+  ```
+
 ### Running Tests
 - Run all tests: `bash runtests.sh`
 - Run specific test file: `bash runtests.sh tests/speclib/test_<testname>.py`
 - Run tests with coverage: `bash runtests.sh --cov`
+
+**Important**: Unit tests must be run using the Python interpreter configured in PyCharm.
+
+**How to use the correct interpreter:**
+
+1. **Determine the PyCharm interpreter dynamically**:
+   ```bash
+   PYTHON_BIN=$(grep -oE '<option name="project-jdk-name" value="[^"]+"' .idea/misc.xml | cut -d'"' -f4)
+   echo "PyCharm interpreter: $PYTHON_BIN"
+   ```
+
+2. **If using Conda environments**, determine the path from the SDK name:
+   ```bash
+   # Check for qps_latest environment
+   CONDA_BASE=$(conda info --base)
+   PYTHON_BIN="$CONDA_BASE/envs/qps_latest/bin/python"
+   ```
+
+3. **Using the resolved interpreter**:
+   ```bash
+   PYTHON_EXECUTABLE="$PYTHON_BIN" bash runtests.sh
+   # Or directly:
+   "$PYTHON_BIN" -m pytest --no-cov-on-fail
+   ```
+
+4. **Using PyCharm's built-in terminal**: Open the terminal in PyCharm (which automatically uses the project interpreter) and run:
+   ```bash
+   bash runtests.sh
+   ```
+
+5. **For pytest directly in PyCharm**: Configure the test runner to use the project interpreter (found in PyCharm's Run Configuration settings)
+
+**Verify the interpreter before running tests:**
+```bash
+# Determine the interpreter dynamically
+PYTHON_BIN=$(grep -oE '<option name="project-jdk-name" value="[^"]+"' .idea/misc.xml | cut -d'"' -f4)
+"$PYTHON_BIN" --version
+"$PYTHON_BIN" -c "from qgis.core import Qgis; print(f'QGIS version: {Qgis.QGIS_VERSION}')"
+```
+
+**QGIS version must be >= 4.0**. Run the following to verify:
+```bash
+PYTHON_BIN=$(grep -oE '<option name="project-jdk-name" value="[^"]+"' .idea/misc.xml | cut -d'"' -f4)
+"$PYTHON_BIN" -c "from qgis.core import Qgis; import sys; sys.exit(0 if Qgis.QGIS_VERSION.startswith('4') else 1)" && echo "QGIS version check passed" || echo "QGIS version check failed - QGIS 4.x required"
+```
 
 ### Code Quality
 - Run flake8: `flake8 qps/ tests/`
@@ -27,6 +87,40 @@ This skill provides guidance and assistance for developing, testing, and maintai
 3. Create test class extending `TestCase`
 4. Add test methods with descriptive names starting with `test_`
 5. Clean up in `tearDown()` method
+
+### Running Tests
+- Use `bash runtests.sh` which respects `PYTHON_EXECUTABLE`
+- Determine the PyCharm interpreter dynamically: `grep -oE '<option name="project-jdk-name" value="[^"]+"' .idea/misc.xml | cut -d'"' -f4`
+- For Conda environments, the interpreter is typically `~/miniforge3/envs/qps_latest/bin/python`
+
+**Verify QGIS version before running tests:**
+```bash
+# Determine the interpreter dynamically
+PYTHON_BIN=$(grep -oE '<option name="project-jdk-name" value="[^"]+"' .idea/misc.xml | cut -d'"' -f4)
+"$PYTHON_BIN" -c "from qgis.core import Qgis; print(f'QGIS {Qgis.QGIS_VERSION}')"
+```
+QGIS version must be >= 4.0
+
+## Unit Test Best Practices
+
+### QgsProject Management
+**Always use a local `QgsProject` instance in unit tests, never add layers to the global `QgsProject.instance()`:**
+
+```python
+# Correct: Use a local project instance
+p = QgsProject()
+p.addMapLayers([layer1, layer2])
+# ... test logic ...
+p.removeAllMapLayers()  # Clean up
+
+# Incorrect: Do not use global project instance
+QgsProject.instance().addMapLayers([layer1, layer2])  # AVOID THIS
+```
+
+**Reason**: Using the global project instance can cause tests to interfere with each other, leading to:
+- Unpredictable test results
+- Memory leaks from accumulated layers
+- Race conditions in CI/CD environments
 
 ### Adding a New QGIS Processing Algorithm
 1. Create algorithm class extending `QgsProcessingAlgorithm`
@@ -62,19 +156,25 @@ qgispluginsupport/
 ```python
 import unittest
 from qps.testing import TestCase, start_app, TestObjects
+from qgis.core import QgsProject
 
 start_app()
 
 class MyTests(TestCase):
     def test_example(self):
+        # Create a local project instance (NOT QgsProject.instance())
+        self.project = QgsProject()
+        
         # Create test data
         speclib = TestObjects.createSpectralLibrary()
+        self.project.addMapLayers([speclib])
         
         # Test functionality
         self.assertIsNotNone(speclib)
         
     def tearDown(self):
-        QgsProject.instance().removeAllMapLayers()
+        # Clean up local project (not the global instance)
+        self.project.removeAllMapLayers()
         super().tearDown()
 
 if __name__ == '__main__':
@@ -92,9 +192,14 @@ widget_context = generator.createWidgetContext()
 
 ## Notes
 
-- QGIS version: Currently using QGIS 4.2 (Qt6)
+- QGIS version: Currently using QGIS 3.44.15 (compatibility note: some tests may require QGIS 4.x)
 - Python version: 3.14
 - PyQtGraph Qt library: PyQt6 (must match QGIS Qt version)
+
+**Compatibility Note**: The `qpspluginsupport` repository has some tests that require QGIS 4.x features (e.g., `QgsProcessingAlgorithmWidgetBase`). Tests in `tests/speclib/test_speclib_plotting.py` that rely on `SpectralLibraryWidget` may not run on QGIS 3.44. To run tests:
+1. Check QGIS version: `python -c "from qgis.core import Qgis; print(Qgis.QGIS_VERSION)"`
+2. QGIS 4.x required for full test coverage
+3. For QGIS 3.44, tests that use `SpectralProfilePlotModel` directly (without full widgets) may still work
 
 ## QGIS C++ API Reference
 
