@@ -39,7 +39,7 @@ project = QgsProject.instance()
 project.addMapLayers([speclib, raster_layer])
 slw = SpectralLibraryWidget(speclib=speclib, project=project)
 slw.show()
-if not speclib is slw.currentLayer():
+if speclib != slw.currentLayer():
     raise Exception("Spectral library layer is not the current layer")
 
 canvas = QgsMapCanvas()
