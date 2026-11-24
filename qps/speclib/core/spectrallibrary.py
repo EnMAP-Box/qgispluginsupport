@@ -33,10 +33,9 @@ import sys
 import warnings
 import weakref
 from pathlib import Path, PurePosixPath
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union, Any
 
 from osgeo import gdal, ogr
-
 from qgis.PyQt.QtCore import QDateTime, QMimeData, Qt, QUrl, QMetaType
 from qgis.PyQt.QtWidgets import QWidget
 from qgis.core import QgsProcessingContext
@@ -46,6 +45,7 @@ from qgis.core import edit, Qgis, QgsAction, QgsActionManager, QgsApplication, Q
     QgsFeatureRequest, QgsField, QgsFields, QgsGeometry, QgsMapLayerStore, QgsPointXY, QgsProcessingFeedback, \
     QgsProject, QgsProperty, QgsRasterLayer, QgsRemappingProxyFeatureSink, QgsRemappingSinkDefinition, QgsVectorLayer, \
     QgsWkbTypes
+
 from . import can_store_spectral_profiles, create_profile_field, is_profile_field, is_spectral_library, \
     profile_field_list, profile_field_names
 from .spectralprofile import decodeProfileValueDict, encodeProfileValueDict, prepareProfileValueDict, ProfileEncoding, \
@@ -237,9 +237,9 @@ class SpectralLibraryUtils:
 
     @staticmethod
     def createProfileField(
-            name: str,
-            comment: Optional[str] = None,
-            encoding: ProfileEncoding = ProfileEncoding.Text
+        name: str,
+        comment: Optional[str] = None,
+        encoding: ProfileEncoding = ProfileEncoding.Text
     ) -> QgsField:
         """
         Creates a QgsField that can store spectral profiles
@@ -261,7 +261,7 @@ class SpectralLibraryUtils:
         return field
 
     @staticmethod
-    def isProfileField(field: QgsField) -> bool:
+    def isProfileField(field: Any) -> bool:
         return can_store_spectral_profiles(field) and field.editorWidgetSetup().type() == EDITOR_WIDGET_REGISTRY_KEY
 
     @staticmethod
@@ -313,7 +313,7 @@ class SpectralLibraryUtils:
                           QgsFeatureIterator,
                           List[QgsFeature]],
                       uri: Union[str, Path, QUrl],
-                      field: Union[str, QgsField] = None,
+                      field: Union[str, QgsField, None] = None,
                       feedback: Optional[QgsProcessingFeedback] = None,
                       **kwargs: dict) -> List[Path]:
 
@@ -552,15 +552,19 @@ class SpectralLibraryUtils:
 
     @staticmethod
     def createSpectralLibrary(
-            profile_fields: List[str] = [FIELD_VALUES],
-            name: str = DEFAULT_NAME,
-            encoding: ProfileEncoding = ProfileEncoding.Json,
-            wkbType: Qgis.WkbType = Qgis.WkbType.Point,
-            crs: Optional[QgsCoordinateReferenceSystem] = None
+        profile_fields: List[str] | None = None,
+        name: str = DEFAULT_NAME,
+        encoding: ProfileEncoding = ProfileEncoding.Json,
+        wkbType: Qgis.WkbType = Qgis.WkbType.Point,
+        crs: Optional[QgsCoordinateReferenceSystem] = None
     ) -> QgsVectorLayer:
         """
         Creates an empty in-memory spectral library with a "name" and a "profiles" field
         """
+
+        if profile_fields is None:
+            profile_fields = [FIELD_VALUES]
+
         provider = 'memory'
         if not isinstance(wkbType, str):
             wkbType = QgsWkbTypes.displayString(wkbType)
