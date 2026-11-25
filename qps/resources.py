@@ -193,6 +193,9 @@ def find_rcc() -> Optional[Path]:
             '/usr/local/bin',
         ])
 
+    if conda_prefix := os.environ.get('CONDA_PREFIX'):
+        candidates.append(Path(conda_prefix) / 'lib/qt6')
+
     def is_executable(path) -> bool:
         return os.path.isfile(path) and os.access(path, os.X_OK)
 
