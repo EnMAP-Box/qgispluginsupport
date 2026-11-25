@@ -12,7 +12,6 @@ from qgis.core import QgsProcessingContext, QgsProcessingFeedback
 from qgis.core import (QgsProcessingOutputFile, QgsProject, QgsVectorLayer, QgsMapLayer)
 from qgis.gui import QgsAttributeTableView, QgsMapCanvas
 from qgis.gui import QgsMessageBar
-
 from .spectrallibraryplotitems import SpectralProfilePlotItem, SpectralProfilePlotWidget
 from .spectrallibraryplotmodelitems import ProfileVisualizationGroup
 from .spectrallibraryplotwidget import SpectralLibraryPlotWidget
@@ -340,11 +339,16 @@ class SpectralLibraryWidget(QWidget):
                 w = SpectralProcessingAlgorithmWidget(
                     speclib=lyr,
                 )
-
+                load_settings = True
                 if algorithmId:
                     w.setAlgorithm(algorithmId)
+                    load_settings = False
                 if parameters:
                     w.setParameters(parameters)
+                    load_settings = False
+                if load_settings:
+                    w.loadSettings()
+
                 # dialog.setMainMessageBar(self.mainMessageBar())
                 # dialog.sigOutputsCreated.connect(self.onSpectralProcessingOutputsCreated)
                 # w.setParent(self)
