@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import List, Dict, Any, Tuple
 
 import numpy as np
+
 from qgis.PyQt.QtCore import QMetaType
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtGui import QIcon
@@ -20,23 +21,18 @@ from qgis.PyQt.QtWidgets import (
 )
 from qgis.PyQt.QtWidgets import QDialog
 from qgis.PyQt.QtWidgets import QMainWindow
-from qgis.core import QgsApplication, QgsProcessingParameterRasterDestination, QgsProcessingException
-from qgis.core import QgsFeature, QgsField
-from qgis.core import QgsProcessingAlgorithm, QgsVectorLayer
-from qgis.core import QgsProcessingParameterDefinition, QgsProcessingOutputRasterLayer, QgsMapLayerStore, \
-    QgsProcessingFeedback, QgsProcessingOutputMultipleLayers
-from qgis.core import QgsProcessingUtils, QgsRasterLayer, QgsProcessingParameterMultipleLayers, QgsProcessingContext, \
-    QgsMapLayer, QgsProcessingParameterRasterLayer
-from qgis.core import QgsProject
-from qgis.core import QgsSettings
-from qgis.gui import QgsMessageBar
-from qgis.gui import QgsPanelWidget
-from qgis.gui import QgsProcessingParametersGenerator
-
+from qgis.core import (
+    QgsApplication, QgsProcessingParameterRasterDestination, QgsProcessingException, QgsFeature, QgsField,
+    QgsProcessingAlgorithm, QgsVectorLayer, QgsProcessing,
+    QgsProcessingParameterDefinition, QgsProcessingOutputRasterLayer, QgsMapLayerStore,
+    QgsProcessingFeedback, QgsProcessingOutputMultipleLayers,
+    QgsProcessingUtils, QgsRasterLayer, QgsProcessingParameterMultipleLayers, QgsProcessingContext,
+    QgsMapLayer, QgsProcessingParameterRasterLayer, QgsSettings, QgsProject
+)
+from qgis.gui import QgsProcessingParametersGenerator, QgsPanelWidget, QgsMessageBar
 from .spectralprocessingalgorithmmodel import SpectralProcessingAlgorithmModel
 from .spectralprocessingcontextgenerator import SpectralProcessingContextGenerator
 from .spectralprocessingparameterswidget import SpectralProcessingParametersWidget
-from .spectralprocessingrasterdestination import SpectralProcessingRasterDestination
 from .. import speclibSettings
 from ..core.spectrallibrary import SpectralLibraryUtils
 from ..core.spectrallibraryrasterdataprovider import VectorLayerFieldRasterDataProvider
@@ -102,8 +98,6 @@ class SpectralProcessingAlgorithmWidget(ProcessingAlgorithmWidget):
 
         if algorithm:
             self.setAlgorithm(algorithm)
-        else:
-            self.loadSettings()
 
     def closeEvent(self, event):
         self.saveSettings()
@@ -157,13 +151,8 @@ class SpectralProcessingAlgorithmWidget(ProcessingAlgorithmWidget):
             try:
                 if isinstance(parametersWidget, SpectralProcessingParametersWidget):
                     parameters = parametersWidget.createProcessingParameters()
-                    parameters2 = dict()
-                    for p, v in parameters.items():
-                        if isinstance(v, QgsMapLayer):
-                            v = v.name()
-                        if isinstance(v, (str, int, float, list)):
-                            parameters2[p] = v
-                    settings.setValue(f'{k}/algorithmParameters', json.dumps(parameters2, ensure_ascii=False))
+                    parameters = create_settings_parameters(parameters, alg)
+                    settings.setValue(f'{k}/algorithmParameters', json.dumps(parameters, ensure_ascii=False))
             except Exception as ex:
                 print(f'Unable to save last settings: {ex}', file=sys.stderr)
 
@@ -425,6 +414,42 @@ def _read_project_array_data(p) -> dict:
     return results
 
 
+def create_settings_parameters(
+    parameters: Dict[str, Any],
+    alg: QgsProcessingAlgorithm
+) -> Dict[str, Any]:
+    """
+    Converts a settings parameter dictionary into a dictionary that can be serialized to JSON.
+    Replaces temporary file names like `TEMPORARY_OUTPUT_newfield.tif` into `newfield`
+    :param parameters:
+    :param alg:
+    :return:
+    """
+    new_parameters = dict()
+    for p_name, p_value in parameters.items():
+        p_name: str
+        p_def: QgsProcessingParameterDefinition = alg.parameterDefinition(p_name)
+        new_value = None
+        if isinstance(p_def, QgsProcessingParameterMultipleLayers):
+            if isinstance(p_value, list):
+                new_value = [path_to_field_name(v) for v in p_value if isinstance(v, str)]
+
+        elif isinstance(p_def, QgsProcessingParameterRasterLayer):
+            if isinstance(p_value, str):
+                new_value = path_to_field_name(p_value)
+
+        elif isinstance(p_def, QgsProcessingParameterRasterDestination):
+            if isinstance(p_value, str):
+                new_value = path_to_field_name(p_value)
+        else:
+            if isinstance(p_value, (str, int, float, list)):
+                new_value = p_value
+
+        if new_value is not None:
+            new_parameters[p_name] = new_value
+    return new_parameters
+
+
 def replace_parameter_layers(
     parameters: Dict[str, Any],
     alg: QgsProcessingAlgorithm,
@@ -502,10 +527,18 @@ def replace_parameter_layers(
     return new_parameters, new_context, new_project
 
 
-def layer_to_fieldname(layer: QgsMapLayer) -> str:
-    field_name = SpectralProcessingRasterDestination.pathToFieldName(layer.name())
+def path_to_field_name(path: str) -> str:
+    fn = Path(path).stem
+    prefix = f'{QgsProcessing.TEMPORARY_OUTPUT}_'
+    fn = fn.removeprefix(prefix)
+    # fn = re.sub(r'\.(tif|bil|bip|bsq|hdr)$', '', fn)
+    return fn
+
+
+def layer_to_field_name(layer: QgsMapLayer) -> str:
+    field_name = path_to_field_name(layer.name())
     if field_name == '':
-        field_name = SpectralProcessingRasterDestination.pathToFieldName(layer.source())
+        field_name = path_to_field_name(layer.source())
     return field_name
 
 
@@ -594,7 +627,7 @@ class SpectralProcessingOutput(object):
     @classmethod
     def fromLayer(cls, parameter: str, layer: QgsMapLayer):
 
-        field_name = layer_to_fieldname(layer)
+        field_name = layer_to_field_name(layer)
         if not isinstance(layer, QgsRasterLayer):
             return None
 
