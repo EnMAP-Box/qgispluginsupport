@@ -1,6 +1,5 @@
 import os
 import re
-from pathlib import Path
 from typing import Optional
 
 from qgis.PyQt.QtCore import QObject
@@ -228,13 +227,6 @@ class SpectralProcessingRasterDestination(QgsAbstractProcessingParameterWidgetWr
             # if isinstance(value, str):
             #     value2 = self.pathToFieldName(value)
             #     self.mDestinationFieldWidget.setValue(value2)
-
-    @classmethod
-    def pathToFieldName(cls, path: str) -> str:
-        fn = Path(path).stem
-        prefix = f'{QgsProcessing.TEMPORARY_OUTPUT}_'
-        fn = fn.replace(prefix, '')
-        return fn
 
     def widgetValue(self):
         """

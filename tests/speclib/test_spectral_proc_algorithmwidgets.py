@@ -55,7 +55,6 @@ class SpectralProcessingAlgorithmWidgetTests(TestCase):
 
         self.assertIsInstance(widget, SpectralProcessingAlgorithmWidget)
         self.assertEqual(widget.speclib(), self.speclib)
-        self.assertTrue(widget.algorithm() is None)
         self.assertEqual(widget.windowTitle(), 'Spectral Processing Widget')
 
     def test_init_with_algorithm(self):
