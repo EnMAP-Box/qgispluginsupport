@@ -161,6 +161,35 @@ class SpectralProcessingAlgorithmWidgetTests(TestCase):
         context = widget.processingContext()
         self.assertIsInstance(context, QgsProcessingContext)
 
+    def test_run_algorithm(self):
+        """Test that changing algorithm recreates parameter panel."""
+        alg1 = self.reg.createAlgorithmById('native:virtualrastercalc')
+        parameters = {'LAYERS': ['name (string)',
+                                 'profiles0 (10 bands, Micrometers)'],
+                      'EXPRESSION': '"name (string)@1" + "profiles0 (10 bands, Micrometers)@1"',
+                      'EXTENT': None, 'CELL_SIZE': None, 'CRS': None,
+                      'LAYER_NAME': 'outputband'
+                      }
+
+        sl: QgsVectorLayer = self.speclib
+        # Keep every 2nd feature ID
+        selected_ids = [fid for i, fid in enumerate(sl.allFeatureIds()) if i % 2 == 1]
+        sl.selectByIds(selected_ids)
+        widget = SpectralProcessingAlgorithmWidget(sl)
+        widget.setAlgorithm(alg1)
+        widget.setParameters(parameters)
+        widget.setSelectedFeaturesOnly(True)
+        widget.runAlgorithm()
+        c1 = widget.processingContext()
+        tf1 = c1.temporaryFolder()
+        widget.runAlgorithm()
+        c2 = widget.processingContext()
+        tf2 = c2.temporaryFolder()
+        self.assertEqual(tf1, tf2)
+        self.assertEqual(c1, c2)
+
+        self.showGui(widget)
+
     def test_widget_context(self):
         """Test that widget context is properly generated."""
         widget = SpectralProcessingAlgorithmWidget(self.speclib)
