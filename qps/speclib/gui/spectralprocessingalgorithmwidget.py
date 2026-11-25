@@ -79,7 +79,7 @@ class SpectralProcessingAlgorithmWidget(ProcessingAlgorithmWidget):
         self.tbAlgorithmName.setAutoFillBackground(True)
         self.tbAlgorithmName.setSizePolicy(QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred))
 
-        self.cbSelectedFeaturesOnly = QCheckBox('Only process selected features')
+        self.cbSelectedFeaturesOnly = QCheckBox('Process selected features only')
 
         self.mTopGrid = QGridLayout()
         self.mTopGrid.addWidget(self.btnAlgorithm, 0, 0)
@@ -173,6 +173,9 @@ class SpectralProcessingAlgorithmWidget(ProcessingAlgorithmWidget):
     def selectedFeaturesOnly(self) -> bool:
         return self.cbSelectedFeaturesOnly.isEnabled() and self.cbSelectedFeaturesOnly.isChecked()
 
+    def setSelectedFeaturesOnly(self, b: bool):
+        self.cbSelectedFeaturesOnly.setChecked(b)
+
     def setResults(self, results: dict[str | None, typing.Any]) -> None:
         # keep a ref on results
         self.mResults = results
@@ -238,7 +241,7 @@ class SpectralProcessingAlgorithmWidget(ProcessingAlgorithmWidget):
         if isinstance(sl, QgsVectorLayer):
             n = sl.selectedFeatureCount()
             self.cbSelectedFeaturesOnly.setEnabled(n > 0)
-            self.cbSelectedFeaturesOnly.setText(f'Only process {n} selected features')
+            self.cbSelectedFeaturesOnly.setText(f'Process {n} selected features only')
 
         self.tbAlgorithmName: QLineEdit
 
@@ -269,8 +272,6 @@ class SpectralProcessingAlgorithmWidget(ProcessingAlgorithmWidget):
         # feedback = self.createFeedback()
         feedback = self.feedback()
         processing_context = self.processingContext()
-        tmp_folder: str = QgsProcessingUtils.generateTempFilename('')
-        processing_context.setTemporaryFolder(tmp_folder)
         parametersWidget: SpectralProcessingParametersWidget = self.mainWidget()
 
         speclib = self.speclib()
@@ -325,7 +326,7 @@ class SpectralProcessingAlgorithmWidget(ProcessingAlgorithmWidget):
         n_features = len(active_features)
         feedback.pushInfo(f'Save vector field attributes for {n_features} features to temporary file context...')
         tmp_parameter, tmp_context, tmp_project = replace_parameter_layers(
-            parameters, algorithm, processing_context, tmp_folder
+            parameters, algorithm, processing_context, 'tmp_folder'
         )
 
         # Use the temporary context and parameters from replace_parameter_layers
@@ -444,7 +445,7 @@ def replace_parameter_layers(
     new_context = QgsProcessingContext()
     new_context.setFeedback(context.feedback())
     new_context.setTransformContext(context.transformContext())
-    new_context.setTemporaryFolder(tmp_folder)
+    new_context.setTemporaryFolder(context.temporaryFolder())
     new_context.setProject(new_project)
     new_parameters = dict()
 

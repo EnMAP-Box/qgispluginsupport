@@ -1,6 +1,7 @@
 from typing import List
 
 from qgis.core import QgsMapLayer
+from qgis.core import QgsProcessingUtils
 from qgis.core import QgsVectorLayer, QgsProcessingContext, QgsProject, QgsRasterLayer
 from qgis.gui import QgsProcessingContextGenerator, QgsProcessingParametersGenerator, \
     QgsProcessingParameterWidgetContext
@@ -20,6 +21,7 @@ class SpectralProcessingContextGenerator(QgsProcessingContextGenerator, QgsProce
 
         self._p_context = QgsProcessingContext()
         self._p_context.setProject(self._project)
+        self._p_context.setTemporaryFolder(QgsProcessingUtils.tempFolder())
 
         self._speclib.attributeAdded.connect(self.updateExampleLayers)
         self._speclib.attributeDeleted.connect(self.updateExampleLayers)
