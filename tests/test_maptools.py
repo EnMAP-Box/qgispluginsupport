@@ -13,12 +13,14 @@ __copyright__ = 'Copyright 2019, Benjamin Jakimow'
 
 import gc
 import unittest
+from typing import Tuple
 
 from qgis.PyQt.QtCore import QEvent, QPointF, Qt, pyqtSlot
 from qgis.PyQt.QtGui import QMouseEvent
 from qgis.core import QgsCoordinateReferenceSystem, QgsProject, QgsRectangle, QgsVectorLayer, QgsWkbTypes
 from qgis.gui import QgsAdvancedDigitizingDockWidget, QgsMapCanvas, QgsMapMouseEvent, QgsMapTool, QgsMapToolCapture, \
     QgsMapToolZoom
+
 from qps.maptools import FullExtentMapTool, MapToolCenter, MapTools, PixelScaleExtentMapTool, QgsMapToolAddFeature, \
     QgsMapToolSelect, QgsMapToolSelectionHandler, SpatialExtentMapTool
 from qps.testing import TestCase, TestObjects, start_app
@@ -29,11 +31,12 @@ start_app()
 
 class TestMapTools(TestCase):
 
-    def createCanvas(self) -> [QgsMapCanvas, QgsVectorLayer]:
+    def createCanvas(self) -> Tuple[QgsMapCanvas, QgsVectorLayer]:
         canvas = QgsMapCanvas()
         lyr = TestObjects.createVectorLayer()
         QgsProject.instance().addMapLayer(lyr)
         canvas.setLayers([lyr])
+        canvas.setCurrentLayer(lyr)
         canvas.setExtent(lyr.extent())
         canvas.setExtent(canvas.fullExtent())
         return canvas, lyr

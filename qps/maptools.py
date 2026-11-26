@@ -114,9 +114,12 @@ class MapTools(enum.Enum):
     SelectFeatureByPolygon = 'SELECT_FEATURE_POLYGON'
     SelectFeatureByFreehand = 'SELECT_FEATURE_FREEHAND'
     SelectFeatureByRadius = 'SELECT_FEATURE_RADIUS'
+    SelectFeatureByMouseOver = 'SELECT_FEATURE_MOUSEOVER'
 
     @staticmethod
     def toMapToolEnum(arg):
+        if isinstance(arg, MapTools):
+            return arg
         if isinstance(arg, str):
             names = MapTools.mapToolNames()
             values = MapTools.mapToolValues()
@@ -181,6 +184,9 @@ class MapTools(enum.Enum):
         elif mapToolEnum == MapTools.SelectFeatureByRadius:
             mapTool = QgsMapToolSelect(canvas)
             mapTool.setSelectionMode(QgsMapToolSelectionHandler.SelectionMode.SelectRadius)
+        elif mapToolEnum == MapTools.SelectFeatureByMouseOver:
+            mapTool = QgsMapToolSelect(canvas)
+            mapTool.setSelectionMode(QgsMapToolSelectionHandler.SelectionMode.SelectOnMouseOver)
         else:
             raise NotImplementedError('Unknown MapTool "{}"'.format(mapToolEnum))
 
@@ -241,7 +247,14 @@ class CursorLocationMapTool(QgsMapToolEmitPoint):
         self.hideRubberband()
 
     def flags(self) -> QgsMapTool.Flags:
-        return QgsMapTool.Flag.ShowContextMenu
+        # Return ShowContextMenu only for modes that use rectangle/radius selection
+        if self.mSelectionHandler.selectionMode() in (
+                QgsMapToolSelectionHandler.SelectionMode.SelectSimple,
+                QgsMapToolSelectionHandler.SelectionMode.SelectOnMouseOver,
+                QgsMapToolSelectionHandler.SelectionMode.SelectFreehand,
+                QgsMapToolSelectionHandler.SelectionMode.SelectRadius):
+            return QgsMapTool.Flag.ShowContextMenu
+        return QgsMapTool.Flags()
 
     def setMouseButtons(self, listOfButtons):
         if not (isinstance(listOfButtons)):
@@ -435,7 +448,14 @@ class PointLayersMapTool(CursorLocationMapTool):
         QgsMapToolIdentify.__init__(self, canvas)
 
     def flags(self) -> QgsMapTool.Flags:
-        return QgsMapTool.Flag.ShowContextMenu
+        # Return ShowContextMenu only for modes that use rectangle/radius selection
+        if self.mSelectionHandler.selectionMode() in (
+                QgsMapToolSelectionHandler.SelectionMode.SelectSimple,
+                QgsMapToolSelectionHandler.SelectionMode.SelectOnMouseOver,
+                QgsMapToolSelectionHandler.SelectionMode.SelectFreehand,
+                QgsMapToolSelectionHandler.SelectionMode.SelectRadius):
+            return QgsMapTool.Flag.ShowContextMenu
+        return QgsMapTool.Flags()
 
 
 class SpatialExtentMapTool(QgsMapToolEmitPoint):
@@ -452,7 +472,9 @@ class SpatialExtentMapTool(QgsMapToolEmitPoint):
         self.reset()
 
     def flags(self) -> QgsMapTool.Flags:
-        return QgsMapTool.Flag.ShowContextMenu
+        # Return ShowContextMenu only for modes that use rectangle/radius selection
+        flags = QgsMapTool.Flags() | QgsMapTool.Flag.ShowContextMenu
+        return flags
 
     def setStyle(self, color: QColor, width: int):
         """
@@ -1227,6 +1249,7 @@ class QgsMapToolSelectionHandler(QObject):
         SelectPolygon = 1
         SelectFreehand = 2
         SelectRadius = 3
+        SelectOnMouseOver = 4
 
     geometryChanged = pyqtSignal(object)
 
@@ -1253,6 +1276,8 @@ class QgsMapToolSelectionHandler(QObject):
         self.mSelectionRubberBand = None
         self.mInitDragPos = None
         self.mRadiusCenter = None
+        self.mMoveLastCursorPos = None
+        self.mOnMouseMoveDelayTimer = None
         self.mFillColor = QColor(254, 178, 76, 63)
         self.mStrokeColor = QColor(254, 58, 29, 100)
 
@@ -1267,7 +1292,8 @@ class QgsMapToolSelectionHandler(QObject):
             self.selectRadiusReleaseEvent(e)
 
     def canvasMoveEvent(self, e: QgsMapMouseEvent):
-        if self.mSelectionMode == QgsMapToolSelectionHandler.SelectionMode.SelectSimple:
+        if self.mSelectionMode in (QgsMapToolSelectionHandler.SelectionMode.SelectSimple,
+                                   QgsMapToolSelectionHandler.SelectionMode.SelectOnMouseOver):
             self.selectFeaturesMoveEvent(e)
         elif self.mSelectionMode == QgsMapToolSelectionHandler.SelectionMode.SelectPolygon:
             self.selectPolygonMoveEvent(e)
@@ -1277,7 +1303,8 @@ class QgsMapToolSelectionHandler(QObject):
             self.selectRadiusMoveEvent(e)
 
     def canvasPressEvent(self, e: QgsMapMouseEvent):
-        if self.mSelectionMode == QgsMapToolSelectionHandler.SelectionMode.SelectSimple:
+        if self.mSelectionMode in (QgsMapToolSelectionHandler.SelectionMode.SelectSimple,
+                                   QgsMapToolSelectionHandler.SelectionMode.SelectOnMouseOver):
             self.selectFeaturesPressEvent(e)
         elif self.mSelectionMode == QgsMapToolSelectionHandler.SelectionMode.SelectPolygon:
             self.selectPolygonPressEvent(e)
@@ -1303,6 +1330,20 @@ class QgsMapToolSelectionHandler(QObject):
 
     def selectFeaturesMoveEvent(self, e: QgsMapMouseEvent):
 
+        if self.mSelectionMode == QgsMapToolSelectionHandler.SelectionMode.SelectOnMouseOver:
+            # Handle SelectOnMouseOver mode
+            if self.mCanvas.underMouse():
+                self.mMoveLastCursorPos = e.pos()
+                if not self.mOnMouseMoveDelayTimer or not self.mOnMouseMoveDelayTimer.isActive():
+                    self.setSelectedGeometry(QgsGeometry.fromPointXY(self.toMapCoordinates(e.pos())), e.modifiers())
+                    if self.mOnMouseMoveDelayTimer is None:
+                        self.mOnMouseMoveDelayTimer = QTimer()
+                        self.mOnMouseMoveDelayTimer.setSingleShot(True)
+                    self.mOnMouseMoveDelayTimer.timeout.connect(
+                        lambda: self._onMouseMoveDelayTimerTimeout(e))
+                    self.mOnMouseMoveDelayTimer.start(300)
+                return
+
         if e.buttons() != Qt.MouseButton.LeftButton:
             return
 
@@ -1315,11 +1356,17 @@ class QgsMapToolSelectionHandler(QObject):
         if isinstance(self.mSelectionRubberBand, QgsRubberBand):
             self.mSelectionRubberBand.setToCanvasRectangle(rect)
 
+    def _onMouseMoveDelayTimerTimeout(self, e):
+        if self.mMoveLastCursorPos is not None:
+            self.setSelectedGeometry(QgsGeometry.fromPointXY(self.toMapCoordinates(self.mMoveLastCursorPos)),
+                                     e.modifiers())
+
     def selectFeaturesReleaseEvent(self, e: QgsMapMouseEvent):
 
         point = e.pos() - self.mInitDragPos
+        point_distance = abs(point.x()) + abs(point.y())
 
-        if not self.mSelectionActive or (point.manhattanLength() < QApplication.startDragDistance()):
+        if not self.mSelectionActive or (point_distance < QApplication.startDragDistance()):
             self.mSelectionActive = False
             self.setSelectedGeometry(QgsGeometry.fromPointXY(self.toMapCoordinates(e.pos())), e.modifiers())
 
@@ -1392,14 +1439,14 @@ class QgsMapToolSelectionHandler(QObject):
 
     def selectFreehandMoveEvent(self, e: QgsMapMouseEvent):
 
-        if not (self.mSelectionActive or self.mSelectionRubberBand):
+        if not self.mSelectionActive or not self.mSelectionRubberBand:
             return
 
         self.mSelectionRubberBand.addPoint(self.toMapCoordinates(e.pos()))
 
     def selectFreehandReleaseEvent(self, e: QgsMapMouseEvent):
 
-        if self.mSelectionActive:
+        if not self.mSelectionActive:
             if e.button() != Qt.MouseButton.LeftButton:
                 return
 
@@ -1495,6 +1542,10 @@ class QgsMapToolSelectionHandler(QObject):
     def cancel(self):
 
         self.deleteDistanceWidget()
+        if self.mOnMouseMoveDelayTimer:
+            self.mOnMouseMoveDelayTimer.stop()
+            self.mOnMouseMoveDelayTimer = None
+        self.mMoveLastCursorPos = None
         self.mSnapIndicator.setMatch(QgsPointLocator.Match())
         if isinstance(self.mSelectionRubberBand, QgsRubberBand):
             self.mSelectionRubberBand.reset()
@@ -1530,6 +1581,10 @@ class QgsMapToolSelectionHandler(QObject):
     def setSelectedGeometry(self, geometry: QgsGeometry, modifiers: Qt.KeyboardModifiers):
 
         self.mSelectionGeometry = geometry
+        self.mMoveLastCursorPos = None
+        if self.mOnMouseMoveDelayTimer:
+            self.mOnMouseMoveDelayTimer.stop()
+            self.mOnMouseMoveDelayTimer = None
         self.geometryChanged.emit(modifiers)
 
     def setSelectionMode(self, mode):
@@ -1542,6 +1597,7 @@ class QgsMapToolSelectionHandler(QObject):
 
 
 class QgsMapToolSelect(QgsMapTool):
+    modeChanged = pyqtSignal(object)  # Matches C++ modeChanged(GeometryModifierMode) signal
 
     def __init__(self, canvas: QgsMapCanvas):
         super(QgsMapToolSelect, self).__init__(canvas)
@@ -1551,10 +1607,19 @@ class QgsMapToolSelect(QgsMapTool):
                                                             parent=self)
         self.mSelectionHandler.setParent(self)
         self.mSelectionHandler.geometryChanged.connect(self.selectFeatures)
+        self.mToolName = "Select features"
         self.setSelectionMode(QgsMapToolSelectionHandler.SelectionMode.SelectSimple)
 
     def flags(self) -> QgsMapTool.Flags:
-        return QgsMapTool.Flag.ShowContextMenu
+        # Return ShowContextMenu only for modes that use rectangle/radius selection
+        flags = QgsMapTool.Flags()
+        if self.mSelectionHandler.selectionMode() in (
+                QgsMapToolSelectionHandler.SelectionMode.SelectSimple,
+                QgsMapToolSelectionHandler.SelectionMode.SelectOnMouseOver,
+                QgsMapToolSelectionHandler.SelectionMode.SelectFreehand,
+                QgsMapToolSelectionHandler.SelectionMode.SelectRadius):
+            flags |= QgsMapTool.Flag.ShowContextMenu
+        return flags
 
     def setSelectionMode(self, selectionMode: QgsMapToolSelectionHandler.SelectionMode):
         self.mSelectionHandler.setSelectionMode(selectionMode)
@@ -1572,11 +1637,47 @@ class QgsMapToolSelect(QgsMapTool):
     def canvasReleaseEvent(self, e: QgsMapMouseEvent):
         self.mSelectionHandler.canvasReleaseEvent(e)
 
+    def keyPressEvent(self, e: QKeyEvent):
+        if not e.isAutoRepeat():
+            if e.key() in (Qt.Key.Key_Shift, Qt.Key.Key_Control, Qt.Key.Key_Alt, Qt.Key.Key_Meta):
+                # Track modifier state changes
+                ctrl = e.modifiers() & Qt.KeyboardModifier.ControlModifier or e.key() == Qt.Key.Key_Control
+                shift = e.modifiers() & Qt.KeyboardModifier.ShiftModifier or e.key() == Qt.Key.Key_Shift
+                alt = e.modifiers() & Qt.KeyboardModifier.AltModifier or e.key() == Qt.Key.Key_Alt
+
+                # Check for combined modifiers
+                if (
+                    e.modifiers() & Qt.KeyboardModifier.ControlModifier and  # noqa: W504
+                    e.modifiers() & Qt.KeyboardModifier.ShiftModifier and  # noqa: W504
+                    e.key() == Qt.Key.Key_Meta
+                ):
+                    alt = True
+
+                self.modifiersChanged(ctrl, shift, alt)
+        super(QgsMapToolSelect, self).keyPressEvent(e)
+
     def keyReleaseEvent(self, e: QKeyEvent):
         if self.mSelectionHandler.keyReleaseEvent(e):
             return
 
-        super(QgsMapToolSelect, self).keyPressEvent(e)
+        if not e.isAutoRepeat():
+            if e.key() in (Qt.Key.Key_Shift, Qt.Key.Key_Control, Qt.Key.Key_Alt, Qt.Key.Key_Meta):
+                # Track modifier state changes on release
+                ctrl = bool(e.modifiers() & Qt.KeyboardModifier.ControlModifier and e.key() != Qt.Key.Key_Control)
+                shift = bool(e.modifiers() & Qt.KeyboardModifier.ShiftModifier and e.key() != Qt.Key.Key_Shift)
+                alt = bool(e.modifiers() & Qt.KeyboardModifier.AltModifier and e.key() != Qt.Key.Key_Alt)
+
+                # Check for combined modifiers release
+                if (
+                    e.modifiers() & Qt.KeyboardModifier.ControlModifier
+                    and e.modifiers() & Qt.KeyboardModifier.ShiftModifier  # noqa: W503
+                    and e.key() == Qt.Key.Key_Meta  # noqa: W503
+                ):
+                    alt = True
+
+                self.modifiersChanged(ctrl, shift, alt)
+
+        super(QgsMapToolSelect, self).keyReleaseEvent(e)
 
     def deactivate(self):
         self.mSelectionHandler.deactivate()
@@ -1599,3 +1700,27 @@ class QgsMapToolSelect(QgsMapTool):
         else:
             QgsMapToolSelectUtils.selectMultipleFeatures(self.canvas(), self.mSelectionHandler.selectedGeometry(),
                                                          modifiers)
+
+    def modifiersChanged(self, ctrlModifier: bool, shiftModifier: bool, altModifier: bool):
+        """
+        Emit modeChanged signal based on modifier combinations.
+        Matches the C++ implementation behavior.
+        """
+        # Determine the geometry mode based on modifiers
+        # These match Qgis::GeometryModifierMode enum values
+        if not ctrlModifier and not shiftModifier and not altModifier:
+            self.modeChanged.emit(0)  # GeometryIntersectsSetSelection
+        elif not ctrlModifier and not shiftModifier and altModifier:
+            self.modeChanged.emit(1)  # GeometryWithinSetSelection
+        elif not ctrlModifier and shiftModifier and not altModifier:
+            self.modeChanged.emit(2)  # GeometryIntersectsAddToSelection
+        elif not ctrlModifier and shiftModifier and altModifier:
+            self.modeChanged.emit(3)  # GeometryWithinAddToSelection
+        elif ctrlModifier and not shiftModifier and not altModifier:
+            self.modeChanged.emit(4)  # GeometryIntersectsSubtractFromSelection
+        elif ctrlModifier and not shiftModifier and altModifier:
+            self.modeChanged.emit(5)  # GeometryWithinSubtractFromSelection
+        elif ctrlModifier and shiftModifier and not altModifier:
+            self.modeChanged.emit(6)  # GeometryIntersectsIntersectWithSelection
+        elif ctrlModifier and shiftModifier and altModifier:
+            self.modeChanged.emit(7)  # GeometryWithinIntersectWithSelection
