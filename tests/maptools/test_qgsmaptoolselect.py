@@ -58,6 +58,7 @@ class TestQgsMapToolSelect(TestCase):
 
         self.assertEqual(mt.mSelectionHandler.selectionMode(),
                          QgsMapToolSelectionHandler.SelectionMode.SelectSimple)
+        self.showGui(self.canvas)
 
     def test_set_selection_mode_select_polygon(self):
         """Test setSelectionMode with SelectPolygon"""
@@ -79,6 +80,7 @@ class TestQgsMapToolSelect(TestCase):
 
         self.assertEqual(mt.mSelectionHandler.selectionMode(),
                          QgsMapToolSelectionHandler.SelectionMode.SelectFreehand)
+        self.showGui(self.canvas)
 
     def test_set_selection_mode_select_radius(self):
         """Test setSelectionMode with SelectRadius"""
@@ -88,6 +90,7 @@ class TestQgsMapToolSelect(TestCase):
 
         self.assertEqual(mt.mSelectionHandler.selectionMode(),
                          QgsMapToolSelectionHandler.SelectionMode.SelectRadius)
+        self.showGui(self.canvas)
 
     def test_cursor_changes_with_selection_mode(self):
         """Test that cursor changes when selection mode changes"""

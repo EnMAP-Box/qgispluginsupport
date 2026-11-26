@@ -1462,7 +1462,7 @@ class QgsMapToolSelectionHandler(QObject):
                     self.setSelectedGeometry(self.mSelectionRubberBand.asGeometry(), e.modifiers())
 
             if self.mSelectionRubberBand:
-                self.mSelectionRubberBand.reset()
+                self.mSelectionRubberBand.reset(Qgis.GeometryType.PolygonGeometry)
             self.mSelectionActive = False
 
     def selectRadiusMoveEvent(self, e: QgsMapMouseEvent):
@@ -1548,7 +1548,7 @@ class QgsMapToolSelectionHandler(QObject):
         self.mMoveLastCursorPos = None
         self.mSnapIndicator.setMatch(QgsPointLocator.Match())
         if isinstance(self.mSelectionRubberBand, QgsRubberBand):
-            self.mSelectionRubberBand.reset()
+            self.mSelectionRubberBand.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
         self.mSelectionActive = False
 
     def updateRadiusRubberband(self, radius: float):
