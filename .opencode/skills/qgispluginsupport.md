@@ -28,6 +28,8 @@ Always determine the active PyCharm project Python interpreter dynamically befor
 
 **Important**: Unit tests must be run using the Python interpreter configured in PyCharm.
 
+**CI Environment**: The `runtests.sh` script automatically sets `CI=True` and `QT_QPA_PLATFORM=offscreen` to ensure tests run in non-interactive environments without blocking GUI elements.
+
 **How to use the correct interpreter:**
 
 1. **Determine the PyCharm interpreter dynamically**:
@@ -93,6 +95,8 @@ PYTHON_BIN=$(grep -oE '<option name="project-jdk-name" value="[^"]+"' .idea/misc
 - Determine the PyCharm interpreter dynamically: `grep -oE '<option name="project-jdk-name" value="[^"]+"' .idea/misc.xml | cut -d'"' -f4`
 - For Conda environments, the interpreter is typically `~/miniforge3/envs/qps_latest/bin/python`
 
+**CI Environment**: The `runtests.sh` script automatically sets `CI=True`, `QT_QPA_PLATFORM=offscreen`, and `QGIS_CONTINUOUS_INTEGRATION_RUN=true` to ensure tests run in non-interactive environments without blocking GUI elements. When running tests manually (not using `runtests.sh`), ensure these environment variables are set.
+
 **Verify QGIS version before running tests:**
 ```bash
 # Determine the interpreter dynamically
@@ -100,6 +104,18 @@ PYTHON_BIN=$(grep -oE '<option name="project-jdk-name" value="[^"]+"' .idea/misc
 "$PYTHON_BIN" -c "from qgis.core import Qgis; print(f'QGIS {Qgis.QGIS_VERSION}')"
 ```
 QGIS version must be >= 4.0
+
+### Running Tests in CI/Environment
+**Important**: When running unit tests in CI or any non-interactive environment, set `CI=True` as an environment variable to prevent GUI elements from blocking tests.
+
+```bash
+# Set CI environment variable before running tests
+CI=True python -m pytest tests/
+# Or
+CI=True bash runtests.sh
+```
+
+**Why**: Without `CI=True`, GUI elements (e.g., dialogs, canvas rendering) may attempt to open and block the test execution. The `CI=True` variable signals the test framework to use offscreen rendering and skip interactive operations.
 
 ## Unit Test Best Practices
 
