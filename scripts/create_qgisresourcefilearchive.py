@@ -1,9 +1,12 @@
 import argparse
 import os
-from pathlib import Path
+import sys
 import zipfile
+from pathlib import Path
+from typing import Union
 
 REPO: Path = Path(__file__).parents[1]
+sys.path.append(str(REPO))
 
 
 def findQGISRepo() -> Path:
@@ -18,7 +21,10 @@ def findQGISRepo() -> Path:
     return None
 
 
-def create_qgis_resource_file_archive(qgis_repo=None):
+def create_qgis_resource_file_archive(
+    qgis_repo: Union[str, Path, None] = None,
+    fail_fast: bool = True,
+):
     from qps.resources import compileQGISResourceFiles
 
     if qgis_repo is None:
@@ -37,7 +43,7 @@ def create_qgis_resource_file_archive(qgis_repo=None):
     TARGET_ZIP = REPO / 'qgisresources.zip'
 
     os.makedirs(TARGET_DIR, exist_ok=True)
-    compileQGISResourceFiles(qgis_repo, TARGET_DIR)
+    compileQGISResourceFiles(qgis_repo, TARGET_DIR, fail_fast=fail_fast)
 
     # create the zip file that contains all PLUGIN_FILES
     with zipfile.ZipFile(TARGET_ZIP, 'w', compression=zipfile.ZIP_DEFLATED) as f:
@@ -57,4 +63,4 @@ if __name__ == '__main__':
                         help='Path to local QGIS repository',
                         action='store_true')
     args = parser.parse_args()
-    create_qgis_resource_file_archive(qgis_repo=args.qgisrepo)
+    create_qgis_resource_file_archive(qgis_repo=args.qgisrepo, fail_fast=False)
