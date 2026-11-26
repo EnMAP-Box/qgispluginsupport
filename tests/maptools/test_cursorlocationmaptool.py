@@ -9,6 +9,7 @@ from qgis.PyQt.QtCore import QPointF, Qt
 from qgis.PyQt.QtGui import QMouseEvent
 from qgis.core import QgsCoordinateReferenceSystem, QgsProject
 from qgis.gui import QgsMapCanvas, QgsMapMouseEvent
+from qgis.gui import QgsMapTool
 
 from qps.maptools import CursorLocationMapTool
 from qps.testing import TestCase, TestObjects, start_app
@@ -32,8 +33,11 @@ class TestCursorLocationMapTool(TestCase):
     def test_creation(self):
         """Test that CursorLocationMapTool can be created"""
         mt = CursorLocationMapTool(self.canvas)
+        self.canvas.setMapTool(mt)
         self.assertIsInstance(mt, CursorLocationMapTool)
         self.assertIsNotNone(mt)
+
+        self.showGui(self.canvas)
 
     def test_show_crosshair_parameter(self):
         """Test that showCrosshair parameter is respected"""
@@ -128,6 +132,13 @@ class TestCursorLocationMapTool(TestCase):
         # So we test the mButtons attribute directly
         mt.mButtons = buttons
         self.assertEqual(mt.mButtons, buttons)
+
+    def test_flags(self):
+        """Test flags method"""
+        mt = CursorLocationMapTool(self.canvas)
+        self.canvas.setMapTool(mt)
+        flags = mt.flags()
+        self.assertIsInstance(flags, QgsMapTool.Flag)
 
 
 if __name__ == '__main__':

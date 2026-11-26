@@ -7,6 +7,7 @@ import unittest
 
 from qgis.core import QgsProject
 from qgis.gui import QgsMapCanvas
+from qgis.gui import QgsMapTool
 
 from qps.maptools import SpectralProfileMapTool
 from qps.testing import TestCase, TestObjects, start_app
@@ -31,6 +32,12 @@ class TestSpectralProfileMapTool(TestCase):
         """Test that SpectralProfileMapTool can be created"""
         mt = SpectralProfileMapTool(self.canvas)
         self.assertIsInstance(mt, SpectralProfileMapTool)
+
+    def test_flags(self):
+        """Test flags method"""
+        mt = SpectralProfileMapTool(self.canvas)
+        flags = mt.flags()
+        self.assertIsInstance(flags, QgsMapTool.Flag)
 
 
 if __name__ == '__main__':

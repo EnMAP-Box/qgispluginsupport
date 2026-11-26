@@ -247,14 +247,7 @@ class CursorLocationMapTool(QgsMapToolEmitPoint):
         self.hideRubberband()
 
     def flags(self) -> QgsMapTool.Flags:
-        # Return ShowContextMenu only for modes that use rectangle/radius selection
-        if self.mSelectionHandler.selectionMode() in (
-                QgsMapToolSelectionHandler.SelectionMode.SelectSimple,
-                QgsMapToolSelectionHandler.SelectionMode.SelectOnMouseOver,
-                QgsMapToolSelectionHandler.SelectionMode.SelectFreehand,
-                QgsMapToolSelectionHandler.SelectionMode.SelectRadius):
-            return QgsMapTool.Flag.ShowContextMenu
-        return QgsMapTool.Flags()
+        return QgsMapTool.Flag.ShowContextMenu
 
     def setMouseButtons(self, listOfButtons):
         if not (isinstance(listOfButtons)):
@@ -446,16 +439,6 @@ class PointLayersMapTool(CursorLocationMapTool):
         self.layerType = QgsMapToolIdentify.Type.AllLayers
         self.identifyMode = QgsMapToolIdentify.IdentifyMode.LayerSelection
         QgsMapToolIdentify.__init__(self, canvas)
-
-    def flags(self) -> QgsMapTool.Flags:
-        # Return ShowContextMenu only for modes that use rectangle/radius selection
-        if self.mSelectionHandler.selectionMode() in (
-                QgsMapToolSelectionHandler.SelectionMode.SelectSimple,
-                QgsMapToolSelectionHandler.SelectionMode.SelectOnMouseOver,
-                QgsMapToolSelectionHandler.SelectionMode.SelectFreehand,
-                QgsMapToolSelectionHandler.SelectionMode.SelectRadius):
-            return QgsMapTool.Flag.ShowContextMenu
-        return QgsMapTool.Flags()
 
 
 class SpatialExtentMapTool(QgsMapToolEmitPoint):
