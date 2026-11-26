@@ -1040,6 +1040,10 @@ class SpectralProfileLayerFieldItem(PropertyItem):
             if model := plotModel():
                 model.sigOpenAttributeTableRequest.emit(self.mLayerID)
 
+        def onOpenFieldCalculator(*args):
+            if model := plotModel():
+                model.sigOpenFieldCalculatorRequest.emit(self.mLayerID)
+
         def onSpectralProcessingWidgetRequest(*args):
             if model := plotModel():
                 model.sigOpenSpectralProcessingRequest.emit(self.mLayerID)
@@ -1055,6 +1059,11 @@ class SpectralProfileLayerFieldItem(PropertyItem):
             a.setIcon(QIcon(':/images/themes/default/mActionOpenTable.svg'))
             a.setToolTip(f'Open an attribute table for layer "{layer.name()}"')
             a.triggered.connect(onOpenAttributeTableRequest)
+
+            a = menu.addAction('Field Calculator')
+            a.setIcon(QIcon(':/images/themes/default/mActionCalculateField.svg'))
+            a.setToolTip(f'Open the field calculator for layer "{layer.name()}"')
+            a.triggered.connect(onOpenFieldCalculator)
 
             a = menu.addAction('Spectral Processing')
             a.setIcon(QIcon(':/qps/ui/icons/profile_processing.svg'))

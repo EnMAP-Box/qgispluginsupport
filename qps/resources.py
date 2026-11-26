@@ -29,8 +29,9 @@ import os
 import re
 import shutil
 import sys
+import warnings
 from pathlib import Path
-from typing import Any, Generator, List, Optional, Union
+from typing import Any, Generator, List, Union, Optional
 
 from qgis.PyQt.QtCore import QAbstractTableModel, QDirIterator, QFile, QModelIndex, QSortFilterProxyModel, Qt, \
     QTextStream, QT_VERSION_STR
@@ -67,11 +68,12 @@ def getDOMAttributes(elem):
 
 def compileResourceFiles(
     dirRoot: Union[str, Path],
-    targetDir: Optional[Union[str, Path]] = None,
+    targetDir: Union[str, Path, None] = None,
     suffix: str = '_rc.py',
     skip_qgis_images: bool = True,
-    compressLevel=19,
-    compressThreshold=100
+    compressLevel: int = 19,
+    compressThreshold: int = 100,
+    fail_fast: bool = True,
 ) -> List[Path]:
     """
     Searches for *.ui files and compiles the *.qrc files they use.
@@ -156,14 +158,19 @@ def compileResourceFiles(
             s = '{}{}'.format(i, suffix)
             outName = '{}{}'.format(bn, s)
 
-        py_file = compileResourceFile(qrcFile,
-                                      targetDir=targetDir,
-                                      suffix=s,
-                                      compressLevel=compressLevel,
-                                      compressThreshold=compressThreshold)
-        targetDirOutputNames.append(outName)
-
-        py_files.append(py_file)
+        try:
+            py_file = compileResourceFile(qrcFile,
+                                          targetDir=targetDir,
+                                          suffix=s,
+                                          compressLevel=compressLevel,
+                                          compressThreshold=compressThreshold)
+            targetDirOutputNames.append(outName)
+            py_files.append(py_file)
+        except Exception as ex:
+            if fail_fast:
+                raise ex
+            else:
+                warnings.warn(f'Error compiling resource file {qrcFile}:\n{ex}')
 
     if len(qrc_files_skipped) > 0:
         print('Skipped *.qrc files (out of root directory):')
@@ -303,10 +310,16 @@ def compileResourceFile(
     return pathPy
 
 
-def compileQGISResourceFiles(qgis_repo: Union[str, Path, None], target: str = None):
+def compileQGISResourceFiles(
+    qgis_repo: Union[str, Path, None],
+    target: Union[str, Path, None] = None,
+    fail_fast: bool = True
+):
     """
     Searches for *.qrc files in the QGIS repository and compiles them to <target>
 
+    :param fail_fast: If True (default), compilation will stop on the first error.
+                      Otherwise, compilation will continue with other files.
     :param qgis_repo: str, path to local QGIS repository.
     :param target: str, path to directory that contains the compiled QGIS resources. By default, it will be
             `<REPOSITORY_ROOT>/qgisresources`.
@@ -323,14 +336,11 @@ def compileQGISResourceFiles(qgis_repo: Union[str, Path, None], target: str = No
         print('QGIS_REPO location undefined', file=sys.stderr)
         return
 
-    if not isinstance(qgis_repo, Path):
-        qgis_repo = Path(qgis_repo)
-    if not (isinstance(qgis_repo, Path)):
-        raise AssertionError
     if not (qgis_repo.is_dir()):
-        raise AssertionError
+        raise FileNotFoundError('Missing QGIS repository. Define QGIS_REPO environment variable '
+                                'or pass the path to the QGIS repository as the first argument.')
     if not ((qgis_repo / 'images' / 'images.qrc').is_file()):
-        raise AssertionError('{} is not the QGIS repository root'.format(
+        raise FileNotFoundError('{} is not the QGIS repository root'.format(
             qgis_repo.as_posix()))
 
     if target is None:
@@ -341,8 +351,8 @@ def compileQGISResourceFiles(qgis_repo: Union[str, Path, None], target: str = No
         target = Path(target)
 
     os.makedirs(target, exist_ok=True)
-    compileResourceFiles(qgis_repo / 'src', targetDir=target, skip_qgis_images=False)
-    compileResourceFiles(qgis_repo / 'images', targetDir=target, skip_qgis_images=False)
+    compileResourceFiles(qgis_repo / 'src', targetDir=target, skip_qgis_images=False, fail_fast=fail_fast)
+    compileResourceFiles(qgis_repo / 'images', targetDir=target, skip_qgis_images=False, fail_fast=fail_fast)
 
 
 def initQtResources(roots: Union[None, str, Path, list] = None) -> List[Path]:
