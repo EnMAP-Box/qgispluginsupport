@@ -31,7 +31,7 @@ import shutil
 import sys
 import warnings
 from pathlib import Path
-from typing import Any, Generator, List, Union
+from typing import Any, Generator, List, Union, Optional
 
 from qgis.PyQt.QtCore import QAbstractTableModel, QDirIterator, QFile, QModelIndex, QSortFilterProxyModel, Qt, \
     QTextStream, QT_VERSION_STR
