@@ -31,7 +31,6 @@ class TestTemporalProfileMapTool(TestCase):
         """Test that TemporalProfileMapTool can be created"""
         mt = TemporalProfileMapTool(self.canvas)
         self.assertIsInstance(mt, TemporalProfileMapTool)
-        self.assertIsInstance(mt, TemporalProfileMapTool.__bases__[0])  # Check inheritance from CursorLocationMapTool
 
 
 if __name__ == '__main__':

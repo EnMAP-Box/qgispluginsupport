@@ -1253,7 +1253,7 @@ class QgsMapToolSelectionHandler(QObject):
 
     geometryChanged = pyqtSignal(object)
 
-    def __init__(self, canvas: QgsMapCanvas, selectionMode, parent: QObject = None):
+    def __init__(self, canvas: QgsMapCanvas, selectionMode, parent: QObject | None = None):
         super(QgsMapToolSelectionHandler, self).__init__(parent=parent)
         self.mSelectionGeometry = None
         if not (isinstance(selectionMode, QgsMapToolSelectionHandler.SelectionMode)):
@@ -1273,7 +1273,7 @@ class QgsMapToolSelectionHandler(QObject):
 
         # create own user-input widget or use the first that is child to the map canvas
         self.mUserInputWidget = createQgsMapCanvasUserInputWidget(self.mCanvas)
-        self.mSelectionRubberBand = None
+        self.mSelectionRubberBand: QgsRubberBand | None = None
         self.mInitDragPos = None
         self.mRadiusCenter = None
         self.mMoveLastCursorPos = None
@@ -1434,7 +1434,7 @@ class QgsMapToolSelectionHandler(QObject):
             if self.mSelectionRubberBand.numberOfVertices() > 2:
                 self.setSelectedGeometry(self.mSelectionRubberBand.asGeometry(), e.modifiers())
 
-            self.mSelectionRubberBand.reset()
+            self.mSelectionRubberBand.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
             self.mSelectionActive = False
 
     def selectFreehandMoveEvent(self, e: QgsMapMouseEvent):
@@ -1581,7 +1581,7 @@ class QgsMapToolSelectionHandler(QObject):
     def setSelectedGeometry(self, geometry: QgsGeometry, modifiers: Qt.KeyboardModifiers):
 
         self.mSelectionGeometry = geometry
-        self.mMoveLastCursorPos = None
+        self.mMoveLastCursorPos = QPoint()
         if self.mOnMouseMoveDelayTimer:
             self.mOnMouseMoveDelayTimer.stop()
             self.mOnMouseMoveDelayTimer = None

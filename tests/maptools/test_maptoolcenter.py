@@ -34,7 +34,6 @@ class TestMapToolCenter(TestCase):
         """Test that MapToolCenter can be created"""
         mt = MapToolCenter(self.canvas)
         self.assertIsInstance(mt, MapToolCenter)
-        self.assertIsInstance(mt, MapToolCenter.__bases__[0])  # Check inheritance
 
     def test_flags(self):
         """Test flags method"""

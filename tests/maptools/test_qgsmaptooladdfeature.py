@@ -35,7 +35,6 @@ class TestQgsMapToolAddFeature(TestCase):
         mt = QgsMapToolAddFeature(self.canvas, self.cad_dock_widget)
         self.canvas.setMapTool(mt)
         self.assertIsInstance(mt, QgsMapToolAddFeature)
-        self.assertIsInstance(mt, QgsMapToolAddFeature.__bases__[0])  # Check inheritance
 
     def test_creation_with_mode(self):
         """Test that QgsMapToolAddFeature can be created with specific capture mode"""

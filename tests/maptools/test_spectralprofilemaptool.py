@@ -31,7 +31,6 @@ class TestSpectralProfileMapTool(TestCase):
         """Test that SpectralProfileMapTool can be created"""
         mt = SpectralProfileMapTool(self.canvas)
         self.assertIsInstance(mt, SpectralProfileMapTool)
-        self.assertIsInstance(mt, SpectralProfileMapTool.__bases__[0])  # Check inheritance from CursorLocationMapTool
 
 
 if __name__ == '__main__':
