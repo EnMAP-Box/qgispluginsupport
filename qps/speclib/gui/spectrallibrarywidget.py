@@ -1,22 +1,21 @@
 import logging
 import warnings
 from pathlib import Path
-from typing import Dict, Generator, List, Optional, Tuple
+from typing import Dict, List, Optional
 
-from processing.gui.algorithm_widget import AlgorithmWidget as AlgorithmDialog
 from qgis.PyQt.QtCore import pyqtSignal, Qt
 from qgis.PyQt.QtGui import QCloseEvent, QKeySequence
 from qgis.PyQt.QtGui import QDragEnterEvent, QDropEvent
 from qgis.PyQt.QtWidgets import QMenu, QWidget
 from qgis.PyQt.QtWidgets import QToolButton
-from qgis.core import (QgsFeature, QgsProcessingOutputFile, QgsProject, QgsVectorLayer, QgsMapLayer)
 from qgis.core import QgsProcessingContext, QgsProcessingFeedback
+from qgis.core import (QgsProcessingOutputFile, QgsProject, QgsVectorLayer, QgsMapLayer)
 from qgis.gui import QgsAttributeTableView, QgsMapCanvas
 from qgis.gui import QgsMessageBar
 from .spectrallibraryplotitems import SpectralProfilePlotItem, SpectralProfilePlotWidget
 from .spectrallibraryplotmodelitems import ProfileVisualizationGroup
 from .spectrallibraryplotwidget import SpectralLibraryPlotWidget
-from .spectralprocessingdialog import SpectralProcessingDialog
+from .spectralprocessingalgorithmwidget import SpectralProcessingAlgorithmWidget
 from .spectralprofilefieldmodel import SpectralProfileFieldActivatorDialog
 from .spectralprofileplotmodel import SpectralProfilePlotModel
 from ..core import is_spectral_library
@@ -26,6 +25,7 @@ from ..processing.extractspectralprofiles import ExtractSpectralProfiles
 from ..processing.importspectralprofiles import ImportSpectralProfiles
 from ...layerproperties import showLayerPropertiesDialog, AttributeTableWidget
 from ...plotstyling.plotstyling import PlotStyle
+from ...reimplementation.algorithmwidget import AlgorithmWidget
 from ...utils import loadUi
 
 logger = logging.getLogger(__name__)
@@ -102,7 +102,7 @@ class SpectralLibraryWidget(QWidget):
         self.actionRejectCurrentProfiles.setShortcutContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
         self.actionRejectCurrentProfiles.triggered.connect(self.rejectCurrentProfiles)
 
-        m = QMenu()
+        m = QMenu(parent=self)
         m.setToolTipsVisible(True)
         m.addAction(self.actionAddCurrentProfiles)
         m.addAction(self.actionRejectCurrentProfiles)
@@ -114,7 +114,7 @@ class SpectralLibraryWidget(QWidget):
         btn: QToolButton = self.toolBar.widgetForAction(self.actionGrpAddProfiles)
         btn.setPopupMode(QToolButton.ToolButtonPopupMode.MenuButtonPopup)
 
-        m = QMenu()
+        m = QMenu(parent=self)
         m.setToolTipsVisible(True)
         m.addAction(self.actionImportSpeclib)
         m.addAction(self.actionExtractProfiles)
@@ -129,7 +129,7 @@ class SpectralLibraryWidget(QWidget):
         self.actionExportSpeclib.triggered.connect(self.onExportProfiles)
         self.actionShowProfileFields.triggered.connect(self.openProfileFieldDialog)
 
-        m = QMenu()
+        m = QMenu(parent=self)
         m.setToolTipsVisible(True)
         m.addAction(self.actionShowProperties)
         m.addAction(self.actionShowProfileFields)
@@ -137,7 +137,6 @@ class SpectralLibraryWidget(QWidget):
         self.actionGrpLayerProperties.triggered.connect(self.actionShowProperties.trigger)
         self.actionGrpLayerProperties.setMenu(m)
         btn: QToolButton = self.toolBar.widgetForAction(self.actionGrpLayerProperties)
-        # btn.setDefaultAction(self.actionShowProperties)
         btn.setPopupMode(QToolButton.ToolButtonPopupMode.MenuButtonPopup)
 
         self.actionRefreshPlot.triggered.connect(self.updatePlot)
@@ -149,7 +148,7 @@ class SpectralLibraryWidget(QWidget):
         self.mDelegateOpenRequests: bool = False
 
         self.actionShowProperties.triggered.connect(lambda *args: self.openLayerProperties())
-        self.actionShowSpectralProcessingDialog.triggered.connect(lambda *args: self.openSpectralProcessingWidget())
+        self.actionShowSpectralProcessingWidget.triggered.connect(lambda *args: self.openSpectralProcessingWidget())
         self.actionShowAttributeTable.triggered.connect(lambda *args: self.openAttributeTable())
 
         model = self.plotModel()
@@ -283,7 +282,7 @@ class SpectralLibraryWidget(QWidget):
         has_speclib = isinstance(self.currentSpeclib(), QgsVectorLayer)
 
         self.actionShowAttributeTable.setEnabled(has_speclib)
-        self.actionShowSpectralProcessingDialog.setEnabled(has_speclib)
+        self.actionShowSpectralProcessingWidget.setEnabled(has_speclib)
         self.actionExportSpeclib.setEnabled(has_speclib)
         self.actionGrpLayerProperties.setEnabled(has_layer)
         # self.actionShowProfileFields.setEnabled(b)
@@ -305,7 +304,7 @@ class SpectralLibraryWidget(QWidget):
         return self.mSpeclibPlotWidget.currentSpeclib()
 
     def speclib(self) -> Optional[QgsVectorLayer]:
-        warnings.warn(DeprecationWarning('Use .speclib()'), stacklevel=2)
+        warnings.warn(DeprecationWarning('Use .currentSpeclib()'), stacklevel=2)
         return self.currentSpeclib()
 
     def sourceLayers(self) -> List[QgsVectorLayer]:
@@ -322,13 +321,14 @@ class SpectralLibraryWidget(QWidget):
             return None
         return self.spectralLibraryPlotWidget().createProfileVisualization(layer_id=speclib)
 
-    def openSpectralProcessingWidget(self,
-                                     layer_id: Optional[str] = None,
-                                     algorithmId: Optional[str] = None,
-                                     parameters: Optional[dict] = None):
+    def openSpectralProcessingWidget(
+        self,
+        layer_id: Optional[str] = None,
+        algorithmId: Optional[str] = None,
+        parameters: Optional[dict] = None
+    ) -> Optional[SpectralProcessingAlgorithmWidget]:
         # alg_key = 'qps/processing/last_alg_id'
         # reg: QgsProcessingRegistry = QgsApplication.instance().processingRegistry()
-        # if not isinstance(self.mSpectralProcessingWidget, SpectralProcessingDialog):
 
         if lyr := self._layerInstance(layer_id=layer_id):
             if isinstance(lyr, QgsVectorLayer):
@@ -336,15 +336,30 @@ class SpectralLibraryWidget(QWidget):
                     lyr.startEditing()
 
                 # profile_fields_before = profile_field_names(lyr)
-                dialog = SpectralProcessingDialog(
+                w = SpectralProcessingAlgorithmWidget(
                     speclib=lyr,
-                    algorithmId=algorithmId,
-                    parameters=parameters)
+                )
+                load_settings = True
+                if algorithmId:
+                    w.setAlgorithm(algorithmId)
+                    load_settings = False
+                if parameters:
+                    w.setParameters(parameters)
+                    load_settings = False
+                if load_settings:
+                    w.loadSettings()
+
                 # dialog.setMainMessageBar(self.mainMessageBar())
                 # dialog.sigOutputsCreated.connect(self.onSpectralProcessingOutputsCreated)
-                dialog.exec()
+                # w.setParent(self)
 
-                dialog.close()
+                # w.exec()
+                # dialog.close()
+                # w.show()
+                # w.parent().setParent(self)
+                w.show()
+                return w
+        return None
 
     def onSpectralProcessingOutputsCreated(self, outputs: Dict):
 
@@ -386,11 +401,7 @@ class SpectralLibraryWidget(QWidget):
     def spectralLibraryPlotWidget(self) -> SpectralLibraryPlotWidget:
         return self.mSpeclibPlotWidget
 
-    def setCurrentProfiles(self,
-                           currentProfiles: Dict[str, List[QgsFeature]],
-                           make_permanent: bool = None,
-                           currentProfileStyles: Dict[Tuple[int, str], PlotStyle] = None,
-                           ):
+    def setCurrentProfiles(self, *args, **kwds):
         """
         Sets temporary profiles for the spectral library.
         If not made permanent, they will be removed when adding the next set of temporary profiles
@@ -401,18 +412,7 @@ class SpectralLibraryWidget(QWidget):
         """
         warnings.warn(
             DeprecationWarning('Will be removed. use .plotModel().addProfileCandidates(...) instead'), stacklevel=2)
-        if isinstance(currentProfiles, Generator):
-            currentProfiles = list(currentProfiles)
-        if isinstance(currentProfiles, list):
-            currentProfiles = {self.speclib().id(): currentProfiles}
-        if not (isinstance(currentProfiles, dict)):
-            raise AssertionError
-
-        plotModel: SpectralProfilePlotModel = self.plotModel()
-        plotModel.addProfileCandidates(currentProfiles)
-
-        self.updateActions()
-        # self.speclib().triggerRepaint()
+        self.plotModel().addProfileCandidates(*args, **kwds)
 
     def canvas(self) -> QgsMapCanvas:
         """
@@ -460,7 +460,7 @@ class SpectralLibraryWidget(QWidget):
 
         alg = ExtractSpectralProfiles()
         alg.initAlgorithm({})
-        d = AlgorithmDialog(alg, context=context)
+        d = AlgorithmWidget(alg, context=context)
         d.algorithmFinished.connect(onFinished)
         d.exec()
 
@@ -481,23 +481,23 @@ class SpectralLibraryWidget(QWidget):
         feedback = QgsProcessingFeedback()
         context.setFeedback(feedback)
 
-        results = {}
-
         def onFinished(ok, res):
             if not (ok):
                 raise AssertionError
-            results.update(res)
+
+            lyr = res.get(ImportSpectralProfiles.P_OUTPUT, None)
+            if isinstance(lyr, (QgsVectorLayer, str)):
+                self.libraryPlotWidget().createProfileVisualization(layer_id=lyr)
 
         alg = ImportSpectralProfiles()
         alg.initAlgorithm({})
-        d = AlgorithmDialog(alg, context=context)
+        d = AlgorithmWidget(alg, context=context)
+        # d.setParent(self)
         d.algorithmFinished.connect(onFinished)
         d.exec()
+        self.__ref = d
 
-        lyr = results.get(ImportSpectralProfiles.P_OUTPUT, None)
-        if isinstance(lyr, (QgsVectorLayer, str)):
-            self.libraryPlotWidget().createProfileVisualization(layer_id=lyr)
-            # self.addSpeclib(results['output'], askforNewFields=True)
+        # self.addSpeclib(results['output'], askforNewFields=True)
 
         # sl = self.currentSpeclib()
         # if isinstance(sl, QgsVectorLayer):
@@ -562,7 +562,7 @@ class SpectralLibraryWidget(QWidget):
                 conf[alg.P_FIELD] = vis.fieldName()
 
             alg.initAlgorithm(conf)
-            d = AlgorithmDialog(alg, context=context)
+            d = AlgorithmWidget(alg, context=context)
             d.algorithmFinished.connect(onFinished)
             d.exec()
 

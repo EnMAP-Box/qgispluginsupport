@@ -406,8 +406,8 @@ class TestQgsRasterLayerProperties(TestCase):
         properties._readBandProperties(rasterLayer)
 
         properties.setValues('BBL', [1, 2], [False, False])
-        badBands1 = properties.values('BBL')
-        print(badBands1)
+        # badBands1 = properties.values('BBL')
+        # print(badBands1)
 
     def test_QgsRasterLayerSpectralPropertiesTableWidget(self):
         rasterLayer = TestObjects.createRasterLayer(nb=24)

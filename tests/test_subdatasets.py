@@ -89,7 +89,7 @@ class TestSubDataSets(TestCase):
         if not TestCase.runsInCI():
             if d.exec() == QDialog.DialogCode.Accepted:
                 sublayers = d.selectedSublayerDetails()
-                print(f'Sub layers: {sublayers}')
+                # print(f'Sub layers: {sublayers}')
 
 
 if __name__ == '__main__':

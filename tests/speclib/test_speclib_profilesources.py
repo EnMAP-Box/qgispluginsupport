@@ -9,7 +9,6 @@ from qgis.PyQt.QtWidgets import QHBoxLayout, QPushButton, QSplitter, QVBoxLayout
 from qgis.core import edit, Qgis, QgsExpressionContext, QgsFeature, QgsField, QgsGeometry, QgsMapToPixel, QgsPoint, \
     QgsPointXY, QgsProject, QgsRaster, QgsRasterDataProvider, QgsRasterLayer, QgsVectorLayer, QgsWkbTypes
 from qgis.gui import QgsDualView, QgsMapCanvas
-
 from qps import initAll
 from qps.maptools import CursorLocationMapTool
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
@@ -51,8 +50,10 @@ class SpectralProcessingTests(TestCase):
         success, n_del = sl.deleteSelectedFeatures(context)
         sl.endEditCommand()
         self.assertTrue(success)
-        print(f'Required {datetime.datetime.now() - t0} to delete {n_del} features')
-        # self.showGui(dv)
+
+        if False:
+            print(f'Required {datetime.datetime.now() - t0} to delete {n_del} features')
+            self.showGui(dv)
 
     def test_borderPixel(self):
         from qpstestdata import enmap
@@ -133,7 +134,7 @@ class SpectralProcessingTests(TestCase):
 
         for s in sources:
             s: SpectralProfileSource
-            print(f'Test {s.__class__.__name__}')
+            # print(f'Test {s.__class__.__name__}')
             self.assertIsInstance(s, SpectralProfileSource)
             self.assertIsInstance(s.name(), str)
             self.assertIsInstance(s.toolTip(), str)
@@ -191,7 +192,9 @@ class SpectralProcessingTests(TestCase):
                              ['n3b: Field is undefined.',
                               'n3b: Value is undefined. Needs a value/expression or uncheck the field.'])
         for e in n2.errors(recursive=True):
-            print(e)
+            # print(e)
+            pass
+
         self.assertListEqual(list(n2.errors(recursive=True)),
                              ['n2: Field is undefined.',
                               'n2: Value is undefined. Needs a value/expression or uncheck the field.',

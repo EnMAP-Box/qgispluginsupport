@@ -4,8 +4,13 @@
   "description": "Returns spectral profile values",
   "arguments": [ {
     "arg":"profile_field",
-    "description":"field (BLOB, text, JSON) with widget type Spectral Profiles"}
-                 ],
+    "description":"field (BLOB, text, JSON) with widget type Spectral Profiles"},
+    {
+      "arg":"band",
+      "description":"name of wavelength region to return a single band value, e.g. 'R' for red band, 'N' for NIR, R350 for a band closest to 350nm"
+    }
+
+  ],
   "examples": [{
     "expression":"spectralData(\"profiles\")",
     "returns":"A map with spectral data from spectral profiles in field column \"profiles\""},

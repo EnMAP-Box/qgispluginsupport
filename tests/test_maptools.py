@@ -96,7 +96,7 @@ class TestMapTools(TestCase):
 
         @pyqtSlot(QgsCoordinateReferenceSystem, QgsRectangle)
         def onEmit(crs, rect):
-            print('# onEmit2')
+            # print('# onEmit2')
             self.assertIsInstance(crs, QgsCoordinateReferenceSystem)
             self.assertIsInstance(rect, QgsRectangle)
 
@@ -104,7 +104,7 @@ class TestMapTools(TestCase):
 
         @pyqtSlot()
         def doEmit():
-            print('#doEmit')
+            # print('#doEmit')
             ext = SpatialExtent.fromMapCanvas(canvas)
             mt2.sigSpatialExtentSelected[QgsCoordinateReferenceSystem, QgsRectangle].emit(ext.crs(), canvas.extent())
 
@@ -324,7 +324,7 @@ class TestMapTools(TestCase):
             # MapTools.SelectFeatureByRadius
         ]
         for enum in mt_enums:
-            print('Test MapTool {}...'.format(enum.name))
+            # print('Test MapTool {}...'.format(enum.name))
             if enum.name in [MapTools.AddFeature.name]:
                 mapTool = MapTools.create(enum.name, canvas, cadDockWidget)
             else:

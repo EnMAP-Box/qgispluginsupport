@@ -17,7 +17,7 @@ from ..core import is_profile_field
 from ..core.spectralprofile import (
     decodeProfileValueDict, encodeProfileValueDict,
     prepareProfileValueDict, ProfileEncoding)
-from ...qgsfunctions import HM, SPECLIB_FUNCTION_GROUP, SpectralMath, StaticExpressionFunction
+from ...expressionfunctions import HelpStringMaker as HM, SPECLIB_FUNCTION_GROUP, SpectralMath, StaticExpressionFunction
 
 
 class Group(object):

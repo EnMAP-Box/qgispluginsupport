@@ -40,7 +40,7 @@ class ResizableImageLabel(QLabel):
 
 class FlowLayout(QLayout):
     """
-    A FlowLayout, as descrbied in  https://doc.qt.io/qt-5/qtwidgets-layouts-flowlayout-example.html
+    A FlowLayout, as described in  https://doc.qt.io/qt-5/qtwidgets-layouts-flowlayout-example.html
     """
 
     def __init__(self, parent: QWidget = None, margin: int = -1, hSpacing: int = -1, vSpacing: int = -1):

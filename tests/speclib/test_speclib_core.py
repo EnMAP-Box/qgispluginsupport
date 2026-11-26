@@ -11,7 +11,7 @@
 *                                                                         *
 *   This program is free software; you can redistribute it and/or modify  *
 *   it under the terms of the GNU General Public License as published by  *
-*   the Free Software Foundation; either version 2 of the License, or     *
+*   the Free Software Foundation; either version 2  the License, or     *
 *   (at your option) any later version.                                   *
 *                                                                         *
 ***************************************************************************
@@ -27,7 +27,7 @@ from typing import List
 import numpy as np
 from osgeo import ogr
 
-from qgis.PyQt.QtCore import NULL, QByteArray, QJsonDocument, QVariant, QMetaType
+from qgis.PyQt.QtCore import NULL, QByteArray, QJsonDocument, QMetaType
 from qgis.core import edit, QgsCoordinateReferenceSystem, QgsFeature, QgsField, QgsFields, QgsRasterLayer, \
     QgsVectorLayer, QgsWkbTypes
 from qps import initAll
@@ -47,11 +47,6 @@ from qpstestdata import enmap, envi_sli
 start_app()
 initAll()
 
-
-# registerSpectralProfileEditorWidget()
-# registerEditorWidgets()
-#
-# registerMapLayerConfigWidgetFactories()
 
 class SpeclibCoreTests(TestCase):
 
@@ -109,7 +104,6 @@ class SpeclibCoreTests(TestCase):
         examples = [
             None,
             NULL,
-            QVariant(None),
             dict(),
             dict(foobar=[1, 2, 3]),
             dict(x=[1, 2, 3]),
@@ -130,7 +124,7 @@ class SpeclibCoreTests(TestCase):
             self.assertEqual(msg, '')
             self.assertTrue(len(d) > 0)
 
-        for p in [None, dict(), NULL, QVariant(None)]:
+        for p in [None, dict(), NULL]:
             self.assertFalse(validateProfileValueDict(p)[0])
             self.assertTrue(validateProfileValueDict(p, allowEmpty=True)[0])
 
@@ -413,15 +407,16 @@ class SpeclibCoreTests(TestCase):
 
         n_profiles = 2000
         n_bands = 300
-        pinfo = f'{n_profiles} profiles[{n_bands} bands]'
-        print(f'Test loading/writing times for {pinfo}')
+
+        # pinfo = f'{n_profiles} profiles[{n_bands} bands]'
+        # print(f'Test loading/writing times for {pinfo}')
 
         def now():
             return datetime.datetime.now()
 
         t0 = now()
         sl: QgsVectorLayer = TestObjects.createSpectralLibrary(n_profiles, n_bands=[n_bands])
-        print(f'Initialized in-memory speclib with {pinfo}: {now() - t0}')
+        # print(f'Initialized in-memory speclib with {pinfo}: {now() - t0}')
 
         n_profiles = sl.featureCount()
         DIR = self.createTestOutputDirectory()
@@ -442,12 +437,12 @@ class SpeclibCoreTests(TestCase):
         t0 = now()
         for f in sl.getFeatures():
             ba = f.attribute(pfield.name())
-        print(f'{pinfo}: read only: {now() - t0}')
+        # print(f'{pinfo}: read only: {now() - t0}')
         t0 = now()
         for f in sl.getFeatures():
             ba = f.attribute(pfield.name())
             DATA[f.id()] = decodeProfileValueDict(ba)
-        print(f'{pinfo}: read & decode: {now() - t0}')
+        # print(f'{pinfo}: read & decode: {now() - t0}')
         self.assertEqual(n_profiles, sl.featureCount())
 
         t0 = now()
@@ -457,8 +452,10 @@ class SpeclibCoreTests(TestCase):
                 dump = encodeProfileValueDict(DATA[f.id()], pfield)
                 sl.changeAttributeValue(f.id(), iPField, dump)
             sl.endEditCommand()
-        dt = now() - t0
-        print(f'Read & write {sl.featureCount()} profiles from/to GPKG: {dt}')
+
+        if False:
+            dt = now() - t0
+            print(f'Read & write {sl.featureCount()} profiles from/to GPKG: {dt}')
 
     # @unittest.skip('')
     def test_groupBySpectralProperties(self):
@@ -526,9 +523,9 @@ class SpeclibCoreTests(TestCase):
 
         i = lyr.fields().lookupField('profiles')
 
-        print(f'Is SpectralProfile field? {is_profile_field(lyr.fields().at(i))}')
+        # print(f'Is SpectralProfile field? {is_profile_field(lyr.fields().at(i))}')
         lyr.setEditorWidgetSetup(i, fieldP.editorWidgetSetup())
-        print(f'Is SpectralProfile field? {is_profile_field(lyr.fields().at(i))}')
+        # print(f'Is SpectralProfile field? {is_profile_field(lyr.fields().at(i))}')
 
     # @unittest.skip('')
     def test_SpectralLibraryUtils(self):

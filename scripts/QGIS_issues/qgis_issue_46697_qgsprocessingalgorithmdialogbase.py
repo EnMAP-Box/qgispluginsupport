@@ -10,8 +10,8 @@ QgsApplication.processingRegistry().addProvider(QgsNativeAlgorithms())
 Processing.initialize()
 
 reg: QgsProcessingRegistry = QgsApplication.instance().processingRegistry()
-alg1 = reg.algorithmById('native:rescaleraster')
-alg2 = reg.algorithmById('gdal:aspect')
+alg1 = reg.createAlgorithmById('native:rescaleraster')
+alg2 = reg.createAlgorithmById('gdal:aspect')
 
 if not (alg1.shortHelpString() != ''):
     raise AssertionError

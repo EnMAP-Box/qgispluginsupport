@@ -9,13 +9,13 @@ from typing import Any, Dict, List, Optional, Pattern, Tuple, Union
 import numpy as np
 from osgeo import gdal
 from osgeo.gdal import Band
-
 from qgis.PyQt.QtCore import QMetaType
 from qgis.PyQt.QtWidgets import QVBoxLayout, QWidget
 from qgis.PyQt.QtXml import QDomDocument, QDomElement
 from qgis.core import QgsDefaultValue, QgsFeature, QgsField, QgsFieldConstraints, QgsObjectCustomProperties, \
     QgsRasterDataProvider, QgsRasterLayer, QgsVectorLayer, QgsVectorLayerCache
 from qgis.gui import QgsAttributeTableFilterModel, QgsAttributeTableModel, QgsAttributeTableView, QgsMapCanvas
+
 from .unitmodel import UnitLookup
 
 logger = logging.getLogger(__name__)
@@ -393,7 +393,7 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
         """
         self.setBandValues('*', SpectralPropertyKeys.WavelengthUnit, units)
 
-    def wavelengths(self) -> Optional[List[Optional[float]]]:
+    def wavelengths(self) -> List[Optional[float]]:
         """
         Returns n = .bandCount() wavelengths.
         """

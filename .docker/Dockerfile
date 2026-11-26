@@ -1,4 +1,4 @@
-ARG QGIS_VERSION=stable
+ARG QGIS_VERSION=latest
 FROM --platform=linux/amd64 qgis/qgis:${QGIS_VERSION}
 LABEL maintainer="Benjamin Jakimow <benjamin.jakimow@geo.hu-berlin.de>"
 LABEL description="container to test qgispluginsupport"
@@ -34,7 +34,8 @@ RUN pip install --break-system-packages --no-cache-dir \
     flake8-qgis \
     bandit \
     coverage-badge \
-    pystac
+    pystac \
+    spyndex
 
 RUN bash /tmp/qgis_setup.sh
 RUN cd /usr/src

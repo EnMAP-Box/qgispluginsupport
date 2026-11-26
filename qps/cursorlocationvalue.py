@@ -37,6 +37,7 @@ from qgis.core import QgsCoordinateReferenceSystem, QgsWkbTypes, QgsField, QgsFe
     QgsFeatureRequest, QgsRasterBlock, QgsPalettedRasterRenderer, QgsRaster
 from qgis.core import QgsRasterDataProvider
 from qgis.gui import QgsMapCanvas
+
 from . import DIR_UI_FILES
 from .classification.classificationscheme import ClassInfo, ClassificationScheme
 from .models import TreeNode, TreeModel, TreeView
@@ -565,26 +566,23 @@ class CursorLocationInfoDock(QDockWidget):
 
     def updateCursorLocationInfo(self):
 
-        self.btnCrs.setToolTip(f'Set CRS<br>Selected CRS: {self.mCrs.description()}')
+        self.btnCrs.setToolTip(
+            f'Set the coordinate reference system (CRS) to display'
+            f'the location values in.'
+            f'<br>Selected CRS: {self.mCrs.description()}'
+        )
 
         # transform this point to targeted CRS
         pt = self.cursorLocation()
         if isinstance(pt, SpatialPoint):
             pt2 = pt.toCrs(self.mCrs)
             if isinstance(pt2, SpatialPoint):
-                tt = f'{pt2.asWkt()} <br>CRS: {self.mCrs.description()}'
-                self.tbX.setText('{}'.format(pt2.x()))
-                self.tbY.setText('{}'.format(pt2.y()))
-                self.tbX.setToolTip(tt)
-                self.tbY.setToolTip(tt)
+                tt = f'{pt2} <br>WKT:{pt2.asWkt()}<br>CRS:{self.mCrs.description()}'
+                self.tbLocation.setText(f'{pt2.toString(6)}')
+                self.tbLocation.setToolTip(tt)
             else:
-                self.tbX.setText('None')
-                self.tbY.setText('None')
-                tt = f'Unable to convert {pt.asWkt()} from ' \
-                     f'<br>CRS 1: {pt.crs().description()} to' \
-                     f'<br>CRS 2: {self.mCrs.description()}'
-                self.tbX.setToolTip(tt)
-                self.tbY.setToolTip(tt)
+                self.tbLocation.setText(None)
+                self.tbLocation.setText('Select a map location to show its coordinate here')
 
     def setCanvas(self, mapCanvas):
         self.setCanvases([mapCanvas])
@@ -616,8 +614,8 @@ class CursorLocationInfoDock(QDockWidget):
         if not (isinstance(crs, QgsCoordinateReferenceSystem)):
             raise AssertionError
         if crs != self.mCrs:
-            self.mCrs = crs
-            self.btnCrs.setCrs(crs)
+            self.mCrs = QgsCoordinateReferenceSystem(crs)
+            self.btnCrs.setCrs(self.mCrs)
         self.updateCursorLocationInfo()
 
     def cursorLocation(self) -> SpatialPoint:

@@ -1,6 +1,7 @@
 import unittest
 
 import numpy as np
+
 from qgis.PyQt.QtCore import QMetaType
 from qgis.PyQt.QtWidgets import QVBoxLayout, QWidget
 from qgis.core import (
@@ -9,7 +10,6 @@ from qgis.core import (
 from qgis.core import QgsField
 from qgis.core import QgsRasterBandStats
 from qgis.gui import QgsMapCanvas, QgsMapLayerComboBox
-
 from qps import initResources
 from qps.speclib.core import is_profile_field
 from qps.speclib.core.spectrallibraryrasterdataprovider import createRasterLayers, registerDataProvider, \
@@ -50,7 +50,7 @@ class RasterDataProviderTests(TestCase):
         registerDataProvider()
         for field in vl.fields():
             name = f'Test {field.name()}:{field.typeName()}'
-            print(name)
+            # print(name)
             src = f'?lid={{{vl.id()}}}&field={field.name()}'
             layer = QgsRasterLayer(src, name, VectorLayerFieldRasterDataProvider.providerKey())
             dp = layer.dataProvider()

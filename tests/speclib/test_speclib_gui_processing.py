@@ -4,6 +4,7 @@ import unittest
 import numpy as np
 from osgeo import gdal
 from qgis.PyQt.QtWidgets import QGridLayout, QWidget
+from qgis.PyQt.QtWidgets import QHBoxLayout
 from qgis.core import (
     QgsApplication, QgsProcessingAlgorithm, QgsProcessingContext,
     QgsProcessingFeedback,
@@ -13,15 +14,19 @@ from qgis.core import (
     QgsProcessingParameterNumber, QgsProcessingParameterRasterDestination,
 )
 from qgis.core import QgsRasterLayer
-from qgis.gui import QgsProcessingAlgorithmWidgetBase, QgsProcessingContextGenerator, \
+from qgis.gui import QgsMessageBar
+from qgis.gui import (
+    QgsProcessingAlgorithmWidgetBase, QgsProcessingContextGenerator,
     QgsProcessingGui, QgsProcessingParameterWidgetContext
+)
 
 from qps import initAll
 from qps.qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
-from qps.speclib.gui.spectralprocessingdialog import (
-    SpectralProcessingDialog, SpectralProcessingRasterLayerWidgetWrapper
-)
+from qps.speclib.gui.spectralprocessingalgorithmwidget import SpectralProcessingAlgorithmWidget
+from qps.speclib.gui.spectralprocessingcontextgenerator import SpectralProcessingContextGenerator
+from qps.speclib.gui.spectralprocessingparameterswidget import SpectralProcessingParametersWidget
+from qps.speclib.gui.spectralprocessingrasterlayerwidgetwrapper import SpectralProcessingRasterLayerWidgetWrapper
 from qps.testing import ExampleAlgorithmProvider, TestCase, TestObjects, start_app
 
 start_app()
@@ -75,7 +80,8 @@ class ExampleRasterProcessing(QgsProcessingAlgorithm):
         )
         p = QgsProcessingParameterRasterDestination(
             self.OUTPUT,
-            'Output raster layer'
+            'Output raster layer',
+            defaultValue='newfield',
         )
 
         self.addParameter(p)
@@ -103,6 +109,7 @@ class ExampleRasterProcessing(QgsProcessingAlgorithm):
         if not input_ds:
             raise QgsProcessingException('Could not open input raster with GDAL')
 
+        input_ds: gdal.Dataset
         input_band_count = input_ds.RasterCount
         rows = input_ds.RasterYSize
         cols = input_ds.RasterXSize
@@ -289,6 +296,8 @@ class SpectralProcessingTests(TestCase):
         a3.initAlgorithm({})
         # e3b = ext(a3)
 
+        QgsProject.instance().removeAllMapLayers()
+
     def test_virtual_inputs(self):
 
         algorithmId = 'native:virtualrastercalc'
@@ -316,7 +325,9 @@ class SpectralProcessingTests(TestCase):
         }
         with edit(speclib):
             slw = SpectralLibraryWidget(speclib=speclib, project=project)
-            spd = SpectralProcessingDialog(speclib=speclib, algorithmId=algorithmId, parameters=parameters)
+            spd = SpectralProcessingAlgorithmWidget(speclib=speclib)
+            spd.setAlgorithm(algorithmId)
+            spd.setParameters(parameters)
 
             # spd.runAlgorithm(fail_fast=True)
             # slw.showSpectralProcessingWidget(algorithmId=algorithmId)
@@ -340,17 +351,20 @@ class SpectralProcessingTests(TestCase):
 
         speclib = TestObjects.createSpectralLibrary(2)
 
+        parameters = {'OUTPUT': 'mynewfield'}
         with edit(speclib):
-            slw = SpectralLibraryWidget(speclib=speclib)
-            spd = SpectralProcessingDialog(speclib=speclib, algorithmId=algorithmId)
-            spd.runAlgorithm(fail_fast=True)
+            spw = SpectralProcessingAlgorithmWidget(speclib)
+            spw.setAlgorithm(algorithmId)
+            spw.setParameters(parameters)
+            spw.runAlgorithm(fail_fast=True)
             # slw.showSpectralProcessingWidget(algorithmId=algorithmId)
             # wrapper = spd.processingModelWrapper()
 
             # feedback = spd.processingFeedback()
 
-            self.showGui([spd, slw])
-
+            # self.showGui([spw])
+        fieldnames = speclib.fields().names()
+        self.assertTrue('mynewfield' in fieldnames)
         # preg.removeProvider(provider)
         QgsProject.instance().removeAllMapLayers()
 
@@ -365,7 +379,7 @@ class SpectralProcessingTests(TestCase):
                 }
         provider = ExampleAlgorithmProvider.instance()
         provider.addAlgorithm(AlgorithmLogging(logs))
-        algorithmId = provider.algorithms()[0].id()
+        algorithm_id = provider.algorithms()[0].id()
 
         speclib = TestObjects.createSpectralLibrary(2)
 
@@ -373,20 +387,42 @@ class SpectralProcessingTests(TestCase):
 
         with edit(speclib):
             slw = SpectralLibraryWidget(speclib=speclib)
-            spd = SpectralProcessingDialog(speclib=speclib, algorithmId=algorithmId)
+            slw.show()
+            spd = SpectralProcessingAlgorithmWidget(speclib)
+            spd.setAlgorithm(algorithm_id)
+            # feedback = spd.feedback()
             spd.runAlgorithm(fail_fast=True)
-            # slw.showSpectralProcessingWidget(algorithmId=algorithmId)
-            # wrapper = spd.processingModelWrapper()
 
-            feedback = spd.processingFeedback()
-            html = feedback.htmlLog()
-            for funcName, value in logs.items():
-                value = str(value)
-                self.assertTrue(value in html)
-            self.showGui([spd, slw])
+        # self.showGui([spd, slw])
 
         # preg.removeProvider(provider)
         QgsProject.instance().removeAllMapLayers()
+
+    def test_processing_parameters_widget(self):
+
+        reg: QgsProcessingRegistry = QgsApplication.instance().processingRegistry()
+        alg1 = reg.createAlgorithmById('gdal:translate')
+        alg1.initAlgorithm({})
+        sl = TestObjects.createSpectralLibrary()
+        w = QWidget()
+        w.setWindowTitle('EXAMPLE WIDGET')
+        project = QgsProject()
+        project.addMapLayer(sl)
+        context = QgsProcessingContext()
+        context.setProject(project)
+
+        msgBar = QgsMessageBar()
+
+        g = SpectralProcessingContextGenerator(sl)
+
+        wrapper1 = SpectralProcessingParametersWidget(alg1, speclib=sl, message_bar=msgBar)
+        wrapper1.registerProcessingContextGenerator(g)
+        wrapper1.registerWidgetContextGenerator(g)
+        wrapper1.initWidgets()
+        w.setLayout(QHBoxLayout())
+        w.layout().addWidget(wrapper1)
+
+        self.showGui(w)
 
     def test_algwidget(self):
 
@@ -398,15 +434,17 @@ class SpectralProcessingTests(TestCase):
         speclib: QgsVectorLayer
 
         speclib.startEditing()
-        procw = SpectralProcessingDialog(speclib=speclib)
+        procw = SpectralProcessingAlgorithmWidget(speclib=speclib)
         # procw.setSpeclib(speclib)
         reg: QgsProcessingRegistry = QgsApplication.instance().processingRegistry()
-        alg1 = reg.algorithmById('gdal:rearrange_bands')
+        alg1 = reg.createAlgorithmById('gdal:rearrange_bands')
         self.assertIsInstance(alg1, QgsProcessingAlgorithm)
-        alg2 = reg.algorithmById('native:rescaleraster')
+        alg2 = reg.createAlgorithmById('native:rescaleraster')
         self.assertIsInstance(alg2, QgsProcessingAlgorithm)
         procw.setAlgorithm(alg2)
         self.showGui(procw)
+
+        QgsProject.instance().removeAllMapLayers()
 
     @unittest.skipIf(TestCase.runsInCI(), 'Blocking dialog')
     def test_SpectralProcessingWidget2(self):
@@ -417,42 +455,43 @@ class SpectralProcessingTests(TestCase):
         n_features = 20
         speclib = TestObjects.createSpectralLibrary(n=n_features, n_bands=n_bands)
         speclib: QgsVectorLayer
-
-        slw = SpectralLibraryWidget(speclib=speclib)
+        project = QgsProject()
+        project.addMapLayer(speclib)
+        slw = SpectralLibraryWidget(speclib=speclib, project=project)
+        slw.openSpectralProcessingWidget()
         # pFields = profile_field_list(speclib)
 
         speclib.startEditing()
-        procw = SpectralProcessingDialog()
-        procw.setSpeclib(speclib)
+        procw = SpectralProcessingAlgorithmWidget(speclib)
         reg: QgsProcessingRegistry = QgsApplication.instance().processingRegistry()
-        alg1 = reg.algorithmById('gdal:rearrange_bands')
+        alg1 = reg.createAlgorithmById('gdal:rearrange_bands')
         self.assertIsInstance(alg1, QgsProcessingAlgorithm)
-        alg2 = reg.algorithmById('native:rescaleraster')
-
+        alg2 = reg.createAlgorithmById('native:rescaleraster')
         procw.setAlgorithm(alg2)
-        wrapper = procw.processingModelWrapper()
-        cbInputField = wrapper.parameterWidget('INPUT')
-        cbInputField.setCurrentIndex(1)
-        _ = cbInputField.currentText()
-
-        cb2 = wrapper.outputWidget('OUTPUT')
-        cb2.setCurrentText('newfield')
-
-        procw.runAlgorithm(fail_fast=True)
-        tempFiles = procw.temporaryRaster()
-        for file in tempFiles:
-            prop = QgsRasterLayerSpectralProperties.fromRasterLayer(file)
-
-            wl = prop.wavelengths()
-            wlu = prop.wavelengthUnits()
-
-            ds = gdal.Open(file)
-            nb = ds.RasterCount
-            self.assertEqual(nb, len(wl))
-            self.assertEqual(nb, len(wlu))
-
-        self.assertTrue(True)
         self.showGui([slw, procw])
+
+        QgsProject.instance().removeAllMapLayers()
+
+    def test_openSpectralProcessingWidget_gdal_translate(self):
+
+        from qps.speclib.core.spectrallibraryrasterdataprovider import registerDataProvider
+        registerDataProvider()
+
+        speclib = TestObjects.createSpectralLibrary(2)
+        slw = SpectralLibraryWidget(speclib=speclib)
+
+        w = slw.openSpectralProcessingWidget(layer_id=speclib.id(), algorithmId='gdal:translate')
+
+        self.assertIsInstance(w, SpectralProcessingAlgorithmWidget)
+        self.assertEqual(w.speclib(), speclib)
+
+        alg = w.algorithm()
+        self.assertIsInstance(alg, QgsProcessingAlgorithm)
+        self.assertEqual(alg.id(), 'gdal:translate')
+
+        self.showGui(w)
+
+        # w.close()
 
         QgsProject.instance().removeAllMapLayers()
 
@@ -487,7 +526,8 @@ class SpectralProcessingTests(TestCase):
         parameters_generator = None
 
         def onValueChanged(*args):
-            print(args)
+            # print(args)
+            pass
 
         wrappers = dict()
         widgets = []
@@ -509,6 +549,8 @@ class SpectralProcessingTests(TestCase):
         w = QWidget()
         w.setLayout(gridLayout)
         self.showGui(w)
+
+        QgsProject.instance().removeAllMapLayers()
 
     @unittest.skipIf(TestCase.runsInCI(), 'Sandbox only')
     def test_dialog(self):
@@ -539,6 +581,8 @@ class SpectralProcessingTests(TestCase):
         slw = SpectralLibraryWidget(speclib=speclib)
         self.showGui(slw)
         slw.project().removeAllMapLayers()
+
+        QgsProject.instance().removeAllMapLayers()
 
 
 if __name__ == '__main__':

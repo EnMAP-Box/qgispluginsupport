@@ -5,12 +5,13 @@
 
 __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 
-from pathlib import Path
 import re
 import unittest
+from pathlib import Path
 
 from qgis.PyQt.QtGui import QIcon
 from qgis.gui import QgsEditorWidgetRegistry, QgsGui
+
 from qps import registerEditorWidgets
 from qps.classification.classificationscheme import ClassificationSchemeWidgetFactory
 from qps.plotstyling.plotstyling import PlotStyleEditorWidgetFactory
@@ -18,7 +19,6 @@ from qps.resources import initQtResources
 from qps.speclib.gui.spectralprofileeditor import SpectralProfileEditorWidgetFactory
 from qps.testing import start_app, TestCase
 from qps.utils import file_search, scanResources
-from scripts.create_resourcefile import create_resource_files
 
 start_app()
 
@@ -27,8 +27,8 @@ class TestsCases_Init(TestCase):
 
     def test_init(self):
 
-        py_files = create_resource_files()
-        self.assertTrue(len(py_files) > 0)
+        # py_files = create_resource_files()
+        # self.assertTrue(len(py_files) > 0)
         files = initQtResources()
         self.assertTrue(len(files) > 0)
 

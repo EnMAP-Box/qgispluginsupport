@@ -2,7 +2,6 @@ from pathlib import Path
 from typing import Any, List, Union, Optional
 
 import numpy as np
-
 from qgis.PyQt.QtCore import QMetaType
 from qgis.core import (QgsCoordinateReferenceSystem, QgsCoordinateTransformContext,
                        QgsExpressionContext,
@@ -11,6 +10,7 @@ from qgis.core import (QgsCoordinateReferenceSystem, QgsCoordinateTransformConte
                        QgsRemappingProxyFeatureSink, QgsRemappingSinkDefinition,
                        QgsVectorFileWriter, QgsVectorLayer)
 from qgis.core import QgsFeatureIterator
+
 from ..core import is_profile_field
 from ..core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict, SpectralProfileFileReader, \
     SpectralProfileFileWriter
@@ -81,10 +81,13 @@ class GeoJSONSpectralLibraryWriter(SpectralProfileFileWriter):
     def filterString(cls) -> bool:
         return "GeoJSON (*.geojson)"
 
-    def writeFeatures(self,
-                      path: Union[str, Path],
-                      features: List[QgsFeature],
-                      feedback: Optional[QgsProcessingFeedback] = None) -> List[Path]:
+    def writeFeatures(
+        self,
+        path: Union[str, Path],
+        features: List[QgsFeature],
+        field_names=None,
+        feedback: Optional[QgsProcessingFeedback] = None
+    ) -> List[Path]:
 
         path = Path(path)
 

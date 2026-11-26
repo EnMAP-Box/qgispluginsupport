@@ -241,8 +241,8 @@ class PlotStyleTests(TestCase):
         stream << pen  # Use the Qt operator<< to serialize
 
         # Convert to a string (e.g., for storage or transmission)
-        pen_string = byte_array.toHex().data().decode("utf-8")
-        print("Serialized Pen:", pen_string)
+        # pen_string = byte_array.toHex().data().decode("utf-8")
+        # print("Serialized Pen:", pen_string)
 
     def test_PlotStyleQgsAction(self):
 

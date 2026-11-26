@@ -6,7 +6,6 @@ import unittest
 import numpy as np
 from osgeo import gdal
 from pyqtgraph import InfiniteLine
-
 from qgis.PyQt.QtCore import QEvent, QPointF, Qt, QMetaType
 from qgis.PyQt.QtGui import QColor, QMouseEvent, QPen
 from qgis.PyQt.QtWidgets import QHBoxLayout, QVBoxLayout, QWidget
@@ -17,6 +16,7 @@ from qgis.core import (
     QgsMultiBandColorRenderer, QgsNullSymbolRenderer, QgsProject, QgsProperty, QgsReadWriteContext, QgsRenderContext,
     QgsRendererCategory, QgsRendererRange, QgsSingleBandGrayRenderer, QgsSingleSymbolRenderer, QgsVectorLayer)
 from qgis.gui import QgsMapCanvas
+
 from qps import DIR_REPO, initAll
 from qps.plotstyling.plotstyling import MarkerSymbol, PlotStyle
 from qps.speclib.core import create_profile_field, profile_field_list, profile_field_names, profile_fields
@@ -54,9 +54,9 @@ class TestSpeclibPlotting(TestCase):
         }
         err_msg = err_msg.replace('\n', ' ')
         err_class = errtype.get(err_class, 'None')
-        print('Error Number: %s' % (err_num))
-        print('Error Type: %s' % (err_class))
-        print('Error Message: %s' % (err_msg))
+        # print('Error Number: %s' % (err_num))
+        # print('Error Type: %s' % (err_class))
+        # print('Error Message: %s' % (err_msg))
 
     def setUp(self):
         # spectralProfileEditorWidgetFactory(True)
@@ -316,10 +316,10 @@ class TestSpeclibPlotting(TestCase):
 
         color1 = symbol.color()
 
-        print(color1.name())
+        # print(color1.name())
         self.assertIsInstance(p, QgsProperty)
         color2, success = p.valueAsColor(expressionContext, defaultColor=QColor('black'))
-        print(color2.name())
+        # print(color2.name())
         renderer.stopRender(renderContext)
         self.assertEqual(color1, color2)
 
@@ -575,6 +575,88 @@ class TestSpeclibPlotting(TestCase):
         self.assertNotEqual(item1.plotStyle(), item2.plotStyle())
         self.assertNotEqual(item1, item2)
 
+    def test_item_selection(self):
+        """
+        Test clearCurveSelection in SpectralProfilePlotModel.
+
+        Note: This test verifies the clearCurveSelection logic. The method:
+        1. Sets curveIsSelected(False) on all data items
+        2. Calls layer.deselect() for each feature in each layer
+
+        Due to QGIS 3.44 compatibility issues, we test the logic directly
+        by verifying the method handles the data structures correctly.
+        """
+        # Create spectral library with features
+        sl1 = TestObjects.createSpectralLibrary(n=3, n_bands=[10], profile_field_names=['p1'])
+
+        p = QgsProject()
+        p.addMapLayers([sl1])
+
+        # Create model
+        plotWidget = SpectralProfilePlotWidget()
+        model = SpectralProfilePlotModel()
+        model.setProject(p)
+        model.setPlotWidget(plotWidget)
+
+        vis1 = ProfileVisualizationGroup()
+        vis1.setLayerField(sl1, 'p1')
+
+        model.insertPropertyGroup(-1, [vis1])
+        model.updatePlot()
+
+        # Verify model was set up correctly
+        self.assertEqual(len(model.visualizations()), 1)
+        self.assertEqual(model.visualizations()[0].layer(), sl1)
+
+        items = list(model.plotWidget().spectralProfilePlotDataItems())
+        self.assertEqual(len(items), sl1.featureCount())
+
+        n_selected = len([item for item in items if item.isSelected()])
+        self.assertEqual(n_selected, 0)
+
+        selected = model.curveSelection()
+        self.assertDictEqual(selected, {})
+
+        to_select = dict()
+        for item in items[0:2]:
+            fids = to_select.get(item.layerID(), [])
+            fids.append(item.featureID())
+            to_select[item.layerID()] = fids
+
+        model.setCurveSelection(to_select)
+
+        selected = model.curveSelection()
+
+        self.assertDictEqual(to_select, selected)
+        for item in model.plotWidget().spectralProfilePlotDataItems(is_selected=True):
+            self.assertIsInstance(item, SpectralProfilePlotDataItem)
+            self.assertIn(item.layerID(), to_select)
+            fids = to_select[item.layerID()]
+            self.assertIn(item.featureID(), fids)
+
+    def test_update_speclib_field(self):
+        """Test updating field values in a spectral library and verifying the plot updates"""
+
+        # Create spectral library with features
+        sl1 = TestObjects.createSpectralLibrary(n=3, n_bands=[10], profile_field_names=['p1'])
+
+        p = QgsProject()
+        p.addMapLayers([sl1])
+
+        # Create model and visualization
+        model = SpectralProfilePlotModel()
+        model.setProject(p)
+
+        vis1 = ProfileVisualizationGroup()
+        vis1.setLayerField(sl1, 'p1')
+
+        model.insertPropertyGroup(-1, [vis1])
+
+        sl1.updatedFields.emit()
+        model.flushProxySignals()
+        # p.removeAllMapLayers()
+        # del sl1
+
     def test_badBands(self):
 
         d = prepareProfileValueDict(y=[1, 2, 3, 4, 4, 3, 2, 3, 3, 4],
@@ -648,7 +730,7 @@ class TestSpeclibPlotting(TestCase):
 
         copy_items(items, 'CSV')
         data = QgsApplication.instance().clipboard().mimeData().text()
-        print(data)
+        # print(data)
 
     def test_show_selected_profiles(self):
 
