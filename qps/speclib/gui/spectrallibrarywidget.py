@@ -6,12 +6,15 @@ from typing import Dict, List, Optional
 from qgis.PyQt.QtCore import pyqtSignal, Qt
 from qgis.PyQt.QtGui import QCloseEvent, QKeySequence
 from qgis.PyQt.QtGui import QDragEnterEvent, QDropEvent
+from qgis.PyQt.QtWidgets import QDialog
 from qgis.PyQt.QtWidgets import QMenu, QWidget
 from qgis.PyQt.QtWidgets import QToolButton
 from qgis.core import QgsProcessingContext, QgsProcessingFeedback
 from qgis.core import (QgsProcessingOutputFile, QgsProject, QgsVectorLayer, QgsMapLayer)
 from qgis.gui import QgsAttributeTableView, QgsMapCanvas
+from qgis.gui import QgsFieldCalculator
 from qgis.gui import QgsMessageBar
+
 from .spectrallibraryplotitems import SpectralProfilePlotItem, SpectralProfilePlotWidget
 from .spectrallibraryplotmodelitems import ProfileVisualizationGroup
 from .spectrallibraryplotwidget import SpectralLibraryPlotWidget
@@ -26,7 +29,7 @@ from ..processing.importspectralprofiles import ImportSpectralProfiles
 from ...layerproperties import showLayerPropertiesDialog, AttributeTableWidget
 from ...plotstyling.plotstyling import PlotStyle
 from ...reimplementation.algorithmwidget import AlgorithmWidget
-from ...utils import loadUi
+from ...utils import loadUi, TemporaryGlobalLayerContext
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +42,7 @@ class SpectralLibraryWidget(QWidget):
     sigCurrentProfilesChanged = pyqtSignal(list)
     sigOpenAttributeTableRequest = pyqtSignal(str)
     sigOpenLayerPropertiesRequest = pyqtSignal(str)
+    sigOpenFieldCalculatorRequest = pyqtSignal(str)
     sigWindowIsClosing = pyqtSignal()
 
     def __init__(self, *args,
@@ -150,12 +154,14 @@ class SpectralLibraryWidget(QWidget):
         self.actionShowProperties.triggered.connect(lambda *args: self.openLayerProperties())
         self.actionShowSpectralProcessingWidget.triggered.connect(lambda *args: self.openSpectralProcessingWidget())
         self.actionShowAttributeTable.triggered.connect(lambda *args: self.openAttributeTable())
+        self.actionOpenFieldCalculator.triggered.connect(lambda *args: self.openFieldCalculator())
 
         model = self.plotModel()
 
         model.sigOpenAttributeTableRequest.connect(self.openAttributeTable)
         model.sigOpenLayerPropertiesRequest.connect(self.openLayerProperties)
         model.sigOpenSpectralProcessingRequest.connect(self.onOpenSpectralProcessingWidget)
+        model.sigOpenFieldCalculatorRequest.connect(self.openFieldCalculator)
 
         self.updateActions()
 
@@ -203,6 +209,18 @@ class SpectralLibraryWidget(QWidget):
         if isinstance(lyr, QgsMapLayer) and lyr.isValid():
             return lyr
         return None
+
+    def openFieldCalculator(self, layer_id: str | None = None):
+        if lyr := self._layerInstance(layer_id=layer_id):
+            if isinstance(lyr, QgsVectorLayer):
+                if self.mDelegateOpenRequests:
+                    self.sigOpenFieldCalculatorRequest.emit(lyr.id())
+                else:
+
+                    with TemporaryGlobalLayerContext(lyr.project()) as _:
+                        calc: QgsFieldCalculator = QgsFieldCalculator(lyr, self)
+                        if calc.exec() == QDialog.DialogCode.Accepted:
+                            pass
 
     def openAttributeTable(self, layer_id: Optional[str] = None):
         """
@@ -285,6 +303,7 @@ class SpectralLibraryWidget(QWidget):
         self.actionShowSpectralProcessingWidget.setEnabled(has_speclib)
         self.actionExportSpeclib.setEnabled(has_speclib)
         self.actionGrpLayerProperties.setEnabled(has_layer)
+        self.actionOpenFieldCalculator.setEnabled(has_speclib)
         # self.actionShowProfileFields.setEnabled(b)
         # self.actionShowProperties.setEnabled(b)
 

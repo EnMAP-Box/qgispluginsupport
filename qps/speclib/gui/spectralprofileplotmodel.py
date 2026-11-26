@@ -114,6 +114,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
     sigMaxProfilesExceeded = pyqtSignal()
     sigOpenAttributeTableRequest = pyqtSignal(str)
     sigOpenLayerPropertiesRequest = pyqtSignal(str)
+    sigOpenFieldCalculatorRequest = pyqtSignal(str)
     sigOpenSpectralProcessingRequest = pyqtSignal(str)
     sigProfileCandidatesChanged = pyqtSignal()
     sigXUnitChanged = pyqtSignal(str)

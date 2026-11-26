@@ -16,10 +16,10 @@
 *                                                                         *
 ***************************************************************************
 """
-from pathlib import Path
 import re
 import sys
 import warnings
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
 from qgis.PyQt.QtCore import QTextStream, QByteArray

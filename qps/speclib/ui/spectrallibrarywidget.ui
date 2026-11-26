@@ -65,7 +65,7 @@
         </size>
        </property>
        <property name="toolButtonStyle">
-        <enum>Qt::ToolButtonIconOnly</enum>
+        <enum>Qt::ToolButtonStyle::ToolButtonIconOnly</enum>
        </property>
        <property name="floatable">
         <bool>false</bool>
@@ -80,6 +80,7 @@
        <addaction name="actionGrpLayerProperties"/>
        <addaction name="actionShowAttributeTable"/>
        <addaction name="actionShowSpectralProcessingWidget"/>
+       <addaction name="actionOpenFieldCalculator"/>
       </widget>
      </item>
      <item>
@@ -156,7 +157,7 @@
   </action>
   <action name="actionShowProperties">
    <property name="icon">
-    <iconset theme=":/images/themes/default/propertyicons/system.svg" resource="../../../../../../QGIS/images/images.qrc">
+    <iconset theme=":/images/themes/default/propertyicons/system.svg" resource="../../../../QGIS/images/images.qrc">
      <normaloff>:/images/themes/default/propertyicons/system.svg</normaloff>:/images/themes/default/propertyicons/system.svg</iconset>
    </property>
    <property name="text">
@@ -198,7 +199,7 @@
     <bool>true</bool>
    </property>
    <property name="icon">
-    <iconset resource="../../../../../../QGIS/images/images.qrc">
+    <iconset resource="../../../../QGIS/images/images.qrc">
      <normaloff>:/images/themes/default/legend.svg</normaloff>:/images/themes/default/legend.svg</iconset>
    </property>
    <property name="text">
@@ -210,7 +211,7 @@
   </action>
   <action name="actionShowAttributeTable">
    <property name="icon">
-    <iconset resource="../../../../../../QGIS/images/images.qrc">
+    <iconset resource="../../../../QGIS/images/images.qrc">
      <normaloff>:/images/themes/default/mActionOpenTable.svg</normaloff>:/images/themes/default/mActionOpenTable.svg</iconset>
    </property>
    <property name="text">
@@ -234,7 +235,7 @@
   </action>
   <action name="actionGrpLayerProperties">
    <property name="icon">
-    <iconset resource="../../../../../../QGIS/images/images.qrc">
+    <iconset resource="../../../../QGIS/images/images.qrc">
      <normaloff>:/images/themes/default/propertyicons/system.svg</normaloff>:/images/themes/default/propertyicons/system.svg</iconset>
    </property>
    <property name="text">
@@ -270,7 +271,7 @@
   </action>
   <action name="actionExtractProfiles">
    <property name="icon">
-    <iconset resource="../../../../../../QGIS/images/images.qrc">
+    <iconset resource="../../../../QGIS/images/images.qrc">
      <normaloff>:/images/themes/default/mIconRaster.svg</normaloff>:/images/themes/default/mIconRaster.svg</iconset>
    </property>
    <property name="text">
@@ -282,7 +283,7 @@
   </action>
   <action name="actionRejectCurrentProfiles">
    <property name="icon">
-    <iconset resource="../../../../../../QGIS/images/images.qrc">
+    <iconset resource="../../../../QGIS/images/images.qrc">
      <normaloff>:/images/themes/default/mActionRemove.svg</normaloff>:/images/themes/default/mActionRemove.svg</iconset>
    </property>
    <property name="text">
@@ -290,6 +291,21 @@
    </property>
    <property name="toolTip">
     <string>Reject the current profile candidates.</string>
+   </property>
+  </action>
+  <action name="actionOpenFieldCalculator">
+   <property name="icon">
+    <iconset resource="../../../../QGIS/images/images.qrc">
+     <normaloff>:/images/themes/default/mActionCalculateField.svg</normaloff>:/images/themes/default/mActionCalculateField.svg</iconset>
+   </property>
+   <property name="text">
+    <string>Open field calculator</string>
+   </property>
+   <property name="toolTip">
+    <string>Open field calculator (Ctrl+I)</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+I</string>
    </property>
   </action>
  </widget>
@@ -303,7 +319,7 @@
  </customwidgets>
  <resources>
   <include location="../../qpsresources.qrc"/>
-  <include location="../../../../../../QGIS/images/images.qrc"/>
+  <include location="../../../../QGIS/images/images.qrc"/>
  </resources>
  <connections/>
 </ui>
