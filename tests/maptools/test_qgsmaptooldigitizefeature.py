@@ -7,6 +7,7 @@ import unittest
 
 from qgis.core import QgsProject, QgsWkbTypes
 from qgis.gui import QgsAdvancedDigitizingDockWidget, QgsMapCanvas
+from qgis.gui import QgsMapTool
 
 from qps.maptools import QgsMapToolDigitizeFeature
 from qps.testing import TestCase, TestObjects, start_app
@@ -35,6 +36,7 @@ class TestQgsMapToolDigitizeFeature(TestCase):
         mt = QgsMapToolDigitizeFeature(self.canvas, self.lyr, self.cad_dock_widget)
         self.canvas.setMapTool(mt)
         self.assertIsInstance(mt, QgsMapToolDigitizeFeature)
+        self.showGui(self.canvas)
 
     def test_creation_with_vector_layer_tools(self):
         """Test that QgsMapToolDigitizeFeature can be created with vectorLayerTools parameter"""
@@ -77,6 +79,13 @@ class TestQgsMapToolDigitizeFeature(TestCase):
 
         # Verify the signal exists and can be connected
         self.assertIsNotNone(mt.digitizingCompleted)
+
+    def test_flags(self):
+        """Test flags method"""
+        mt = QgsMapToolDigitizeFeature(self.canvas, self.lyr, self.cad_dock_widget)
+        self.canvas.setMapTool(mt)
+        flags = mt.flags()
+        self.assertIsInstance(flags, QgsMapTool.Flag)
 
 
 if __name__ == '__main__':

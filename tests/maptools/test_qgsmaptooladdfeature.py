@@ -7,6 +7,7 @@ import unittest
 
 from qgis.core import QgsProject, QgsWkbTypes
 from qgis.gui import QgsAdvancedDigitizingDockWidget, QgsMapCanvas, QgsMapToolCapture
+from qgis.gui import QgsMapTool
 
 from qps.maptools import QgsMapToolAddFeature
 from qps.testing import TestCase, TestObjects, start_app
@@ -35,6 +36,7 @@ class TestQgsMapToolAddFeature(TestCase):
         mt = QgsMapToolAddFeature(self.canvas, self.cad_dock_widget)
         self.canvas.setMapTool(mt)
         self.assertIsInstance(mt, QgsMapToolAddFeature)
+        self.showGui(self.canvas)
 
     def test_creation_with_mode(self):
         """Test that QgsMapToolAddFeature can be created with specific capture mode"""
@@ -66,6 +68,13 @@ class TestQgsMapToolAddFeature(TestCase):
 
         # The tool should be listening to project signals
         # This is verified by the existence of the connections in the constructor
+
+    def test_flags(self):
+        """Test flags method"""
+        mt = QgsMapToolAddFeature(self.canvas, self.cad_dock_widget)
+        self.canvas.setMapTool(mt)
+        flags = mt.flags()
+        self.assertIsInstance(flags, QgsMapTool.Flag)
 
 
 if __name__ == '__main__':
